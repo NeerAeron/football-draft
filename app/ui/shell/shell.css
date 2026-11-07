@@ -1,0 +1,193 @@
+/* App shell: top bar, brand, main region, how-to steps */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  height: var(--topbar-h);
+  background: linear-gradient(180deg, rgb(7 11 22 / 0.92), rgb(7 11 22 / 0.78));
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border-bottom: 1px solid var(--line-1);
+}
+.topbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+}
+.topbar__back {
+  margin-left: -10px;
+}
+.topbar__title {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: -8px;
+}
+.topbar .icon-btn.is-pressed {
+  color: var(--text-1);
+  background: transparent;
+  border-color: transparent;
+}
+.topbar .icon-btn.is-pressed:hover {
+  background: rgb(148 170 220 / 0.1);
+}
+.topbar .icon-btn.is-current {
+  color: var(--volt-300);
+}
+
+/* Brand */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--touch);
+  color: var(--text-1);
+  text-decoration: none;
+  flex: none;
+}
+.brand:hover {
+  color: var(--text-1);
+}
+.brand:focus-visible {
+  border-radius: var(--radius-sm);
+}
+.brand__word {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.brand__word b {
+  margin-left: 0.18em;
+  color: var(--volt-400);
+  font-weight: inherit;
+}
+.brand-mark__bg {
+  fill: var(--volt-400);
+}
+.brand-mark__ball {
+  fill: var(--ink-900);
+}
+.brand-mark__patch {
+  fill: var(--volt-400);
+}
+.brand-mark__seams {
+  fill: none;
+  stroke: var(--volt-400);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+/* Off Home on phones the bar shows the screen title instead of the wordmark */
+@media (max-width: 559px) {
+  .brand--compact .brand__word {
+    display: none;
+  }
+  .brand--compact + .topbar__title {
+    display: block;
+  }
+}
+
+.app-main {
+  display: block;
+  outline: none;
+}
+h1[tabindex='-1']:focus,
+.app-main:focus {
+  outline: none;
+}
+
+/* How it works (inline on Home and in the sheet) */
+.howto {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+.howto__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgb(4 7 15 / 0.4);
+  border: 1px solid var(--line-1);
+}
+.howto__num {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--volt-400);
+  color: var(--on-volt);
+  font-size: 12px;
+  font-weight: var(--weight-heavy);
+  z-index: 1;
+}
+.howto__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, var(--surface-4), var(--surface-2));
+  color: var(--volt-300);
+  box-shadow: var(--shadow-inset);
+}
+.howto__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.howto__title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.howto__body {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.howto__demo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+@media (min-width: 960px) {
+  .howto--row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .howto--row .howto__step {
+    grid-template-columns: 1fr;
+    padding: var(--space-4);
+  }
+}
