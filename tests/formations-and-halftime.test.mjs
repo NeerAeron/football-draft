@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
-import { FORMATIONS, formationLines, formationLabel } from '../app/core/players/formations.js';
+import { FORMATIONS, formationLabel } from '../app/core/players/formations.js';
 import { tacticAccess } from '../app/core/sim/coach.js';
 import { playerTier, POSITIONS } from '../app/core/players/ratings.js';
 import { preference } from '../app/core/sim/player-model.js';
@@ -21,7 +21,6 @@ test('all formation variations have eleven usable roles and run without invalid 
     assert.ok(
       rows.every(([x, y, role]) => x > 0 && x < 105 && y > 0 && y < 68 && POSITIONS.includes(role)),
     );
-    assert.equal(formationLines(id).flat().length, 10);
     const m = new Match(16, 180);
     m.setTactic(0, 'formation', id);
     m.setTactic(1, 'formation', id);

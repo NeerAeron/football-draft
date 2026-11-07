@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
-import { commonName, receiptLabel } from '../app/core/players/player-labels.js';
+import { commonName } from '../app/core/players/player-labels.js';
 import { snapshot, applyReplayFrame } from '../app/core/sim/replay.js';
 
-test('receipt names preserve football names, appear on control, fade and reset on the next receipt', () => {
+test('common names preserve football names', () => {
   for (const [name, expected] of [
     ['E. Haaland', 'Haaland'],
     ['V. van Dijk', 'van Dijk'],
@@ -14,54 +14,46 @@ test('receipt names preserve football names, appear on control, fade and reset o
     ['Bruno Fernandes', 'Bruno Fernandes'],
   ])
     assert.equal(commonName({ name }), expected);
+});
+test('receiving stamps the possession time without RNG; reset and replay restore it', () => {
   const m = new Match(3),
     p = m.players[9];
-  assert.equal(receiptLabel(p, 0), null);
+  assert.equal(p.possessionAt, -10);
   m.elapsed = 10;
+  const rng = m.rng;
   m.own(p);
-  const rng = m.rng,
-    initial = receiptLabel(p, 10);
-  assert.ok(initial.opacity > 0.7);
-  assert.equal(receiptLabel(p, 10.5).opacity, initial.opacity);
-  assert.ok(Math.abs(receiptLabel(p, 10.875).opacity - initial.opacity / 2) < 1e-9);
-  assert.ok(receiptLabel(p, 11.24).opacity < 0.001);
-  assert.equal(receiptLabel(p, 11.25), null);
-  for (let tick = 31; tick < 75; tick++)
-    assert.ok(
-      receiptLabel(p, 10 + tick / 60).opacity < receiptLabel(p, 10 + (tick - 1) / 60).opacity,
-    );
+  assert.equal(p.possessionAt, 10);
   assert.equal(m.rng, rng);
   m.elapsed = 14;
   m.own(p);
-  assert.equal(receiptLabel(p, 14).opacity, initial.opacity);
+  assert.equal(p.possessionAt, 14);
   m.reset();
-  assert.equal(receiptLabel(p, 0), null);
-});
-test('replay restores receipt times when seeking through highlights', () => {
-  const m = new Match(5),
-    p = m.players[9];
-  m.elapsed = 10;
-  m.own(p);
-  const a = snapshot(m);
-  m.elapsed = 14;
-  const b = snapshot(m);
-  m.elapsed = 20;
-  m.own(p);
-  const c = snapshot(m);
+  assert.equal(p.possessionAt, -10);
+  const r = new Match(5),
+    q = r.players[9];
+  r.elapsed = 10;
+  r.own(q);
+  const a = snapshot(r);
+  r.elapsed = 14;
+  const b = snapshot(r);
+  r.elapsed = 20;
+  r.own(q);
+  const c = snapshot(r);
   const recording = {
       frames: [a, b, c],
       clips: [{ start: 10, end: 21, offset: 0 }],
       result: { events: [] },
     },
     target = new Match(5);
-  applyReplayFrame(target, recording, 0);
-  assert.ok(receiptLabel(target.players[9], target.elapsed));
-  applyReplayFrame(target, recording, 5);
-  assert.equal(receiptLabel(target.players[9], target.elapsed), null);
-  applyReplayFrame(target, recording, 10);
-  assert.ok(receiptLabel(target.players[9], target.elapsed));
-  applyReplayFrame(target, recording, 0);
-  assert.equal(target.players[9].possessionAt, 10);
+  for (const [t, at] of [
+    [0, 10],
+    [5, 10],
+    [10, 20],
+    [0, 10],
+  ]) {
+    applyReplayFrame(target, recording, t);
+    assert.equal(target.players[9].possessionAt, at);
+  }
 });
 test('an average fresh player crosses the usable pitch in 12–13 seconds with finite sprint reserve', () => {
   const times = [];

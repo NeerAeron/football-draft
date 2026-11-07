@@ -5,24 +5,14 @@ import { overallRating, positionFamiliarity } from './ratings.js';
 import { stamp } from './catalog-codec.js';
 
 // Squad arrays returned by clubSquads → their lineups, so a default-options call for one of
-// them (e.g. chooseAIFormation(club.players)) reuses the precomputed XI.
+// them (e.g. assignClubLineup(club.players, formation)) reuses the precomputed XI.
 const known = new WeakMap();
 
 // Rectangular assignment: every slot gets a different, compatible player.
 // Hungarian matching is O(11² × squad size), including squads larger than an XI.
-export function assignClubLineup(
-  players,
-  formation,
-  { minimumFit = CONFIG.ai.minimumFit, minimumOverall = 0, random = null, variation = 0 } = {},
-) {
+export function assignClubLineup(players, formation, { minimumFit = CONFIG.ai.minimumFit } = {}) {
   const cached = known.get(players);
-  if (
-    cached &&
-    !random &&
-    minimumOverall === 0 &&
-    minimumFit === CONFIG.ai.minimumFit &&
-    cached.key === clubLineupStamp()
-  )
+  if (cached && minimumFit === CONFIG.ai.minimumFit && cached.key === clubLineupStamp())
     return cached.lineups[formation] ? [...cached.lineups[formation]] : null;
   const rows = FORMATIONS[formation],
     n = rows.length,
@@ -30,11 +20,9 @@ export function assignClubLineup(
   if (m < n) return null;
   const costs = rows.map(([, , role]) =>
     players.map(p =>
-      (role === 'GK') !== (p.primaryPosition === 'GK') ||
-      positionFamiliarity(p, role) < minimumFit ||
-      overallRating(p, true, role) < minimumOverall
+      (role === 'GK') !== (p.primaryPosition === 'GK') || positionFamiliarity(p, role) < minimumFit
         ? 1e6
-        : -overallRating(p, false, role) - (random ? random() * variation : 0),
+        : -overallRating(p, false, role),
     ),
   );
   const u = Array(n + 1).fill(0),
@@ -83,17 +71,6 @@ export function assignClubLineup(
       lineup[p[j] - 1] = players[j - 1];
     }
   return lineup;
-}
-export function partialClubLineup(players, formation) {
-  const attrs = Object.fromEntries(Object.keys(players[0]?.attrs || {}).map(k => [k, 1]));
-  const vacant = FORMATIONS[formation].map(([, , role], i) => ({
-    profileId: `vacant:${i}`,
-    vacant: true,
-    attrs,
-    primaryPosition: role,
-    secondaryPositions: [],
-  }));
-  return assignClubLineup([...players, ...vacant], formation).map(p => (p.vacant ? null : p));
 }
 // Stamps of the configuration that club ratings and club lineups depend on. The catalog file
 // stores the stamps its precomputed values were made with; a mismatch (user overrides or a

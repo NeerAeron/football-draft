@@ -10,11 +10,7 @@ import {
   positionFamiliarity,
 } from '../app/core/players/ratings.js';
 import { catalogIndex, bestEleven } from '../app/core/draft/pools.js';
-import {
-  clubSquads,
-  assignClubLineup,
-  partialClubLineup,
-} from '../app/core/players/club-lineups.js';
+import { clubSquads, assignClubLineup } from '../app/core/players/club-lineups.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { CONFIG } from '../app/core/config/config.js';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
@@ -108,17 +104,7 @@ test('squad assignment rejects incomplete clubs and chooses unique players by po
   }
 });
 
-test('partial Sandbox lineups preserve real club members and expose empty slots without invented players', () => {
-  // Every club now has a full squad (18+ players), so use six real members of one club.
-  const club = clubSquads(catalog).find(c => c.name === 'Arsenal'),
-    lineup = partialClubLineup(club.players.slice(0, 6), '433');
-  assert.equal(lineup.length, 11);
-  assert.ok(lineup.some(p => !p));
-  const filled = lineup.filter(Boolean);
-  assert.ok(filled.length > 0);
-  assert.equal(new Set(filled.map(p => p.profileId)).size, filled.length);
-  assert.ok(filled.every(p => p.source.clubId === club.id && !p.vacant));
-  // Colour provenance stays in the compiler reference, not in the runtime catalog.
+test('every club has reviewed colours; provenance stays in the compiler reference', () => {
   const colorSources = new Map(reference.colors.map(c => [String(c.id), c.sourceUrl]));
   for (const t of catalog.teams) {
     assert.match(t.primary, /^#[0-9a-f]{6}$/i);

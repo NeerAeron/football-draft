@@ -287,11 +287,3 @@ const VARIANTS = {
 };
 export const formationLabel = id =>
   String(id).split('-')[0].split('').join('–') + (VARIANTS[id] ? ` · ${VARIANTS[id]}` : '');
-export function formationLines(id) {
-  const rows = FORMATIONS[id];
-  return [
-    ['CB', 'LB', 'RB'],
-    ['DM', 'CM', 'LM', 'RM'],
-    ['AM', 'LW', 'RW', 'ST'],
-  ].map(roles => rows.flatMap((r, i) => (roles.includes(r[2]) ? [i] : [])));
-}
