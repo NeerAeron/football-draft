@@ -60,8 +60,8 @@ app/                  the deployed site, served as-is
     util/             seeded RNG, math and text helpers
   services/           browser services shared by UIs: sound, playback clock, fullscreen
   legacy/             the current UI (scripts and stylesheets)
-  data/               players-runtime.json, the compiled catalog the game fetches
-  assets/logos/       league logos
+  data/               catalog.v3.json, the compiled player catalog the game fetches
+  assets/             league logos, flags
 data/                 compiler inputs and reference data (not deployed)
 scripts/              catalog compiler and audit export; scripts/dev/ holds the dev tools
 tests/                node:test suites, fixtures, browser flows
@@ -78,14 +78,14 @@ data" on Kaggle, file `FC26_20250921.csv` (18,405 rows, CC BY 4.0, SHA-256
 <https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv>.
 
 ```sh
-node scripts/compile-league-catalog.mjs FC26_20250921.csv data/catalog-reference.json data/players-fc26.json
+npm run data:fetch   # downloads the pinned CSV into data/raw/ and checks its SHA-256
+npm run data:build   # compiles app/data/catalog.v3.json, the flags and data/build/players-fc26.json
 ```
 
-This writes `data/players-fc26.json` (the full catalog with provenance, used by tests and tools)
-and `app/data/players-runtime.json` (what the browser loads). Both are deterministic, so a rerun
-is byte-identical. League caps, the expansion pool and the reviewed club metadata (Opta scores,
-colours, logos) live in `data/catalog-reference.json`; every selected player's club must have an
-entry there.
+The build is deterministic, so a rerun is byte-identical. The catalog holds every player of every
+league we have reviewed club metadata for (15,378 players, 546 clubs, 152 nations), including
+national-team players without a club. League selection and the reviewed club metadata (Opta
+scores, colours, logos) live in `data/catalog-reference.json`.
 
 ## Deploy
 
@@ -105,6 +105,8 @@ tests and browser smoke test on every push and pull request.
 - **Club and league strength:** a September 2026 snapshot of the
   [Opta Power Rankings](https://dataviz.theanalyst.com/opta-power-rankings/), stored in
   `data/catalog-reference.json`.
+- **Flags:** [flag-icons](https://github.com/lipis/flag-icons) 7.6.0 by Panayiotis Lipiridis,
+  MIT licence (`app/assets/flags/LICENSE`), optimised with svgo.
 - **League logos:** provided via [TheSportsDB](https://www.thesportsdb.com/) and the
   Brack.Alltron official media kit; per-asset sources and terms are in
   `data/league-logo-sources.json`. League names and logos belong to their respective owners.
