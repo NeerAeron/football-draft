@@ -65,6 +65,11 @@
   min-height: 38px;
   border-radius: var(--radius-pill);
 }
+@media (pointer: coarse) {
+  .tabs--pill .tabs__tab {
+    min-height: var(--touch);
+  }
+}
 .tabs--pill .tabs__tab.is-active {
   color: var(--text-1);
   background: var(--surface-4);

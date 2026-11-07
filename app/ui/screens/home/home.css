@@ -508,7 +508,7 @@
 .home__links a {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: var(--touch);
   color: var(--text-2);
   font-size: var(--text-sm);
 }

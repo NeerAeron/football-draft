@@ -7,26 +7,15 @@ import { fileURLToPath } from 'node:url';
 import * as prettier from 'prettier';
 import { decodeCatalog, indexCatalog } from '../../core/players/catalog-codec.js';
 import { reconcileCatalog } from '../../core/players/catalog-derived.js';
-import { playerView } from '../lib/player-view.js';
+import { makePlayerView } from '../lib/player-view.js';
 
 const here = path => fileURLToPath(new URL(path, import.meta.url));
 const file = JSON.parse(readFileSync(here('../../data/catalog.v3.json'), 'utf8'));
 const c = indexCatalog(reconcileCatalog(decodeCatalog(file)));
 
 const nationByName = new Map(c.nations.map(n => [n.name, n]));
-const teamById = new Map(c.teams.map(t => [t.id, t]));
-const leagueById = new Map(c.leagues.map(l => [l.id, l]));
 const ovr = p => p.overall ?? p.sourceOverall;
-
-const view = p => {
-  const team = teamById.get(p.source?.clubId);
-  const nation = nationByName.get(p.source?.nationality);
-  return playerView(p, {
-    team,
-    league: leagueById.get(p.source?.leagueId || team?.leagueId),
-    nation: nation ? { name: nation.name, code: nation.code } : undefined,
-  });
-};
+const view = makePlayerView(c);
 
 const find = (name, nationality) => {
   const hits = c.players.filter(p => p.name === name && p.source?.nationality === nationality);

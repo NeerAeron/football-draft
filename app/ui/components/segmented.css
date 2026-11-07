@@ -19,11 +19,6 @@
   --seg-h: 34px;
   border-radius: var(--radius-sm);
 }
-@media (pointer: coarse) {
-  .segmented--sm {
-    --seg-h: 40px;
-  }
-}
 .segmented--lg {
   --seg-h: 56px;
 }
@@ -105,4 +100,10 @@
 .segmented__item.is-disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+/* Touch: every segment is at least 44 px tall (faces are --seg-h minus 8 px) */
+@media (pointer: coarse) {
+  .segmented:not(.segmented--lg) {
+    --seg-h: 52px;
+  }
 }

@@ -75,6 +75,31 @@ export function playerView(p, { team, league, nation } = {}) {
   };
 }
 
+/**
+ * Catalog-bound converter: const toView = makePlayerView(await loadCatalog()); toView(p).
+ * Resolves club colours, league logo/tier and the nation's flag code
+ * (catalog.nations[] by p.source.nationality). Club-less players get no club/league.
+ * Results are cached per player object.
+ */
+export function makePlayerView(catalog) {
+  const nations = new Map((catalog.nations || []).map(n => [n.name, n]));
+  const teams = new Map((catalog.teams || []).map(t => [t.id, t]));
+  const leagues = new Map((catalog.leagues || []).map(l => [l.id, l]));
+  const cache = new WeakMap();
+  return p => {
+    if (cache.has(p)) return cache.get(p);
+    const team = p.source?.clubId != null ? teams.get(p.source.clubId) : undefined;
+    const nation = nations.get(p.source?.nationality);
+    const view = playerView(p, {
+      team,
+      league: leagues.get(p.source?.leagueId ?? team?.leagueId),
+      nation: nation ? { name: nation.name, code: nation.code } : undefined,
+    });
+    cache.set(p, view);
+    return view;
+  };
+}
+
 /** Last word of the short name for tight spaces: 'M. Salah' → 'Salah', 'Vinícius Jr.' kept. */
 export function surname(name = '') {
   const clean = String(name)

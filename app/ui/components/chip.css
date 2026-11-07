@@ -92,15 +92,16 @@
     color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out);
 }
-@media (pointer: coarse) {
-  .toggle-chip {
-    min-height: 40px;
-  }
-}
 .toggle-chip--sm {
   min-height: 30px;
   padding: 0 11px;
   font-size: var(--text-xs);
+}
+@media (pointer: coarse) {
+  .toggle-chip,
+  .toggle-chip--sm {
+    min-height: var(--touch);
+  }
 }
 .toggle-chip:hover:not(:disabled) {
   color: var(--text-1);

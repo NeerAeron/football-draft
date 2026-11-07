@@ -84,6 +84,11 @@
   font-weight: var(--weight-semibold);
   min-height: 32px;
 }
+@media (pointer: coarse) {
+  .toast__action {
+    min-height: var(--touch);
+  }
+}
 .toast__close {
   margin-top: -2px;
 }

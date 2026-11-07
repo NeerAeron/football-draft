@@ -359,6 +359,24 @@ p {
   gap: var(--space-3);
   grid-template-columns: repeat(auto-fill, minmax(var(--grid-min, 160px), 1fr));
 }
+/* Sticky bottom action bar (phones: the primary action stays under the thumb) */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--space-2);
+  margin-inline: calc(-1 * var(--gutter));
+  padding: var(--space-6) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, rgb(7 11 22 / 0.94) 40%);
+  pointer-events: none;
+}
+.action-bar > * {
+  pointer-events: auto;
+}
+.action-bar > .btn--primary {
+  flex: 1;
+}
 .divider {
   height: 1px;
   border: 0;

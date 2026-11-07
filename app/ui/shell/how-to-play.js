@@ -41,11 +41,11 @@ export function HowToSteps({ compact = false, class: className }) {
     ${HOW_TO_STEPS.map(
       (step, i) =>
         html`<li class="howto__step" key=${step.title}>
-          <span class="howto__num num" aria-hidden="true">${i + 1}</span>
           <span class="howto__icon" aria-hidden="true"
             ><${Icon} name=${step.icon} size=${22}
           /></span>
           <span class="howto__text">
+            <span class="howto__step-no" aria-hidden="true">Step ${i + 1}</span>
             <strong class="howto__title">${step.title}</strong>
             <span class="howto__body">${step.text}</span>
             ${
