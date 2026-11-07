@@ -15,6 +15,7 @@ import { isReducedMotion } from '../../lib/motion.js';
 import { markMatchLive, saveMatchResult, FULL_DURATION } from '../../lib/match-store.js';
 import { commentary } from './commentary.js';
 import { summarizeMatch } from './report.js';
+import { forceShootout } from './demo.js';
 import { draw, makeKits, WORLD, SHOOTOUT_CAMERA, mixCamera } from './renderer/index.js';
 
 const RING_SECONDS = 12;
@@ -40,18 +41,6 @@ export function periodLabel(m) {
 }
 
 const viewDuration = (view, request) => (view === 'full' ? request.duration || FULL_DURATION : 300);
-
-/** Demo/testing only: a level knockout match about to go to penalties. */
-export function forceShootout(m) {
-  if (!m.competition?.knockout) m.competition = { ...m.competition, knockout: true };
-  m.half = 2;
-  m.periodStart = m.duration / 2;
-  m.elapsed = m.duration;
-  m.time = 5400;
-  m.mode = 'play';
-  m.finishPeriod();
-  return m;
-}
 
 function shotStop(e) {
   switch (e.type) {

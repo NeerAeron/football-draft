@@ -94,6 +94,7 @@ Stored when the match finishes (and persisted, so a refresh shows it again):
   outcomes: ['W' | 'D' | 'L', …],        // per side by the score: a shootout win is a 'D'
   extraTime: false, abandoned: null | team,
   xg: [h, a],
+  momentum: [0.12, -0.3, …],             // per match minute, home − away (−1…1)
   stats: [{ possession /* % */, shots, onTarget, xg, bigChances, passes, completed,
             passAccuracy /* % */, saves, tackles, fouls, yellowCards, redCards, offsides,
             corners, woodwork }, …],
@@ -130,8 +131,9 @@ from kickoff (same seed); a refresh after full time shows the result again.
 ## Demo and tests
 
 `#/match?demo=1[&view=key|full|instant][&knockout=1][&pens=1][&seed=n]` builds a request from
-two real club XIs (`loadCatalog()` → `clubSquads` → best XI). `pens=1` jumps a level knockout
-straight to the penalty shootout (shootout scene tests). Browser flows: `match-key`,
+two real club XIs (`loadCatalog()` → `clubSquads` → best XI; `buildDemoRequest` in
+`screens/match/demo.js`). `pens=1` sets `meta.forceShootout`: the match jumps straight to a
+level knockout's penalty shootout (`forceShootout`, demo/test only — never in real requests). Browser flows: `match-key`,
 `match-full`, `match-instant`, `match-pens` in `tests/browser/flows.mjs`.
 
 ## Off-main-thread simulation (`app/services/sim-client.js`)

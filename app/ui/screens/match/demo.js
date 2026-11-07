@@ -45,3 +45,15 @@ export function buildDemoRequest(catalog, query = {}) {
     },
   });
 }
+
+/** Demo/testing only: a level knockout match about to go to penalties. */
+export function forceShootout(m) {
+  if (!m.competition?.knockout) m.competition = { ...m.competition, knockout: true };
+  m.half = 2;
+  m.periodStart = m.duration / 2;
+  m.elapsed = m.duration;
+  m.time = 5400;
+  m.mode = 'play';
+  m.finishPeriod();
+  return m;
+}
