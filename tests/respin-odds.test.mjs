@@ -1,13 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Draft } from '../app/core/draft/draft.js';
 import { CONFIG, DEFAULT_CONFIG, normalizeConfig } from '../app/core/config/config.js';
 import { leagueWeight, teamWeight, respinMultiplier } from '../app/core/draft/leagues.js';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+const catalog = loadRuntimeCatalog();
 test('club re-spin improvements apply exactly one relative boost, with no bonus for equal or worse teams', () => {
   const previous = { overall: 70 };
   for (const [overall, expected] of [

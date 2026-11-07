@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Match } from '../app/core/sim/engine.js';
 import { overallRating, playerTier } from '../app/core/players/ratings.js';
 import { BADGES, badgeDescription, badgeEligible } from '../app/core/players/traits.js';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 
 function lane(half = 1, team = 0) {
   const m = new Match(703, 300);
@@ -151,7 +151,7 @@ test('attribute quality slightly widens execution differences while overall stay
 });
 
 test('badge descriptions keep mechanics private, and compiled additions fit their players', () => {
-  const catalog = JSON.parse(readFileSync(new URL('../data/players-fc26.json', import.meta.url)));
+  const catalog = loadRuntimeCatalog();
   for (const b of BADGES)
     assert.doesNotMatch(badgeDescription(b), /[+%\d]|attribute|bonus|odds|preference/i, b.label);
   for (const id of ['slalom', 'pressescape', 'givego', 'latearrival', 'overlap', 'anchor'])

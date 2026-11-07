@@ -20,8 +20,17 @@ import { FORMATIONS, formationLabel } from '../app/core/players/formations.js';
 // A reproducible, read-only export of the shipped catalog and opening draft pools.
 const output = resolve(process.argv[2] || '/tmp/football-draft-audit');
 mkdirSync(output, { recursive: true });
-const bytes = readFileSync(new URL('../data/players-fc26.json', import.meta.url)),
-  catalog = JSON.parse(bytes);
+// Reads the full catalog with provenance, which is generated rather than committed.
+let bytes;
+try {
+  bytes = readFileSync(new URL('../data/build/players-fc26.json', import.meta.url));
+} catch {
+  console.error(
+    'data/build/players-fc26.json is missing: run `npm run data:fetch && npm run data:build` first.',
+  );
+  process.exit(1);
+}
+const catalog = JSON.parse(bytes);
 const draft = new Draft(catalog, { seed: 1 }),
   opening = draft.leagueOptions(),
   weightSum = opening.reduce((n, l) => n + l.weight, 0),
@@ -56,7 +65,9 @@ const teams = clubs.map(c => {
     siblings = clubs.filter(t => t.leagueId === l.id),
     denominator = siblings.reduce((n, t) => n + teamWeight(t), 0);
   return {
-    ...Object.fromEntries(Object.entries(c).filter(([key]) => key !== 'players')),
+    ...Object.fromEntries(
+      Object.entries(c).filter(([key]) => !['players', 'lineups'].includes(key)),
+    ),
     goalkeepers: c.players.filter(p => p.primaryPosition === 'GK').length,
     completeXI: c.formations.length > 0,
     clubWeight: teamWeight(c),
@@ -81,7 +92,7 @@ const players = catalog.players
       overall,
       tier: tier.name,
       badgeRange: [tier.minimum, tier.capacity],
-      openingPlayerPoolAccessProbability: club.openingPlayerPoolAccessProbability,
+      openingPlayerPoolAccessProbability: club?.openingPlayerPoolAccessProbability ?? 0,
       impossibleNaturalOverallEligible: overall >= CONFIG.ai.impossibleOverall,
     };
   })
@@ -306,8 +317,8 @@ writeFileSync(
       players.map((p, i) => [
         i + 1,
         p.name,
-        p.source.club,
-        leagues.find(l => l.id === p.source.leagueId).name,
+        p.source.club ?? 'No club (national team only)',
+        leagues.find(l => l.id === p.source.leagueId)?.name ?? '—',
         [p.primaryPosition, ...p.secondaryPositions].join('/'),
         p.foot,
         p.sourceOverall,
