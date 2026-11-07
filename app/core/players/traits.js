@@ -100,6 +100,10 @@ export const TAGS = BADGES; // Legacy tag field now contains badges only.
 // snapshotted per match, so this never happens during play).
 const boostCache = new WeakMap();
 const NO_TAGS = Object.freeze([]);
+// A keeper's OVR is their goalkeeping rating alone, so goalkeeping badges (Safe Hands,
+// Quick Reflexes, Extended Reach) stacked +3..+4 hidden OVR onto it. Their combined
+// goalkeeping boost is capped at +2, in line with an outfield Superstar's badge gain (~+2.3).
+export const GOALKEEPING_BADGE_CAP = 2;
 export function badgeBoost(p, key) {
   const tuning = p.tuning?.badges || CONFIG.badges,
     boosts = tuning.boosts,
@@ -118,6 +122,7 @@ export function badgeBoost(p, key) {
   if (total === undefined) {
     total = 0;
     for (let i = 0; i < tags.length; i++) total += boosts[tags[i]]?.[key] || 0;
+    if (key === 'goalkeeping' && total > GOALKEEPING_BADGE_CAP) total = GOALKEEPING_BADGE_CAP;
     entry.sums.set(key, total);
   }
   return Math.min(tuning.attributeCap, total);

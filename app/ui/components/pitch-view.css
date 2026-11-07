@@ -1,0 +1,279 @@
+/* PitchView — sizes derive from the pitch width (cqw), so it scales anywhere. */
+.pitch {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--pitch-aspect, 4 / 5);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(60% 40% at 0% 0%, rgb(220 240 255 / 0.16), transparent 70%),
+    radial-gradient(60% 40% at 100% 0%, rgb(220 240 255 / 0.16), transparent 70%),
+    radial-gradient(120% 90% at 50% 50%, transparent 55%, rgb(0 10 5 / 0.55)),
+    repeating-linear-gradient(
+      180deg,
+      var(--pitch-stripe-a) 0 8.333%,
+      var(--pitch-stripe-b) 8.333% 16.666%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.06),
+    0 0 0 1px rgb(0 0 0 / 0.4),
+    var(--shadow-lg);
+  --token: clamp(28px, 12.4cqw, 58px);
+  --label: clamp(9px, 3.1cqw, 13px);
+}
+.pitch__lines,
+.pitch__links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.pitch__lines {
+  fill: none;
+  stroke: var(--pitch-line);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.pitch__lines * {
+  vector-effect: non-scaling-stroke;
+}
+.pitch__spot {
+  fill: var(--pitch-line);
+}
+.pitch__link {
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.pitch__link--1 {
+  stroke: rgb(255 255 255 / 0.4);
+  stroke-width: 2px;
+  stroke-dasharray: 4 5;
+}
+.pitch__link--2 {
+  stroke: var(--volt-400);
+  stroke-width: 2.5px;
+  opacity: 0.85;
+}
+.pitch__link--3 {
+  stroke: var(--gold-400);
+  stroke-width: 3.5px;
+  filter: drop-shadow(0 0 4px rgb(245 200 76 / 0.6));
+}
+.pitch__slots {
+  position: absolute;
+  inset: 0;
+}
+
+/* Slot */
+.pitch-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: calc(var(--token) * 1.9);
+  transform: translate(-50%, calc(var(--token) * -0.5));
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-1);
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+button.pitch-slot {
+  cursor: pointer;
+}
+.pitch-slot:focus-visible {
+  outline: none;
+}
+.pitch-slot:focus-visible .pitch-slot__ring {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.pitch-slot__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--token);
+  height: var(--token);
+  border-radius: 50%;
+  transition:
+    transform var(--dur-base) var(--ease-spring),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+.pitch-slot__token {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  padding: 2.5px;
+  background: var(--tier-starter-frame);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.5);
+}
+.pitch-slot__token--superstar {
+  background: var(--tier-superstar-frame);
+}
+.pitch-slot__token--star {
+  background: var(--tier-star-frame);
+}
+.pitch-slot__token--normal {
+  background: var(--tier-normal-frame);
+}
+.pitch-slot__token--bench {
+  background: var(--tier-bench-frame);
+}
+.pitch-slot__token--hidden {
+  background: var(--tier-hidden-frame);
+}
+.pitch-slot__face {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.pitch-slot__face .flag,
+.pitch-slot__face .crest {
+  --flag-h: 100% !important;
+  --flag-w: 100% !important;
+  --crest: calc(var(--token) - 5px) !important;
+  width: 100%;
+  height: 100%;
+  box-shadow: none;
+}
+.pitch-slot__token--empty {
+  padding: 0;
+  background: rgb(3 25 12 / 0.38);
+  border: 2px dashed rgb(236 255 240 / 0.45);
+  box-shadow: none;
+}
+.pitch-slot__role {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: calc(var(--token) * 0.3);
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.04em;
+  color: rgb(236 255 240 / 0.9);
+  pointer-events: none;
+}
+.pitch-slot__ovr {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--token) * -0.16);
+  transform: translateX(-50%);
+  min-width: calc(var(--token) * 0.52);
+  padding: 1px 4px 0;
+  border-radius: 5px;
+  background: var(--tier-starter-frame);
+  color: #0b0f18;
+  font-size: calc(var(--token) * 0.27);
+  font-weight: var(--weight-heavy);
+  line-height: 1.1;
+  text-align: center;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
+}
+.pitch-slot__token--superstar .pitch-slot__ovr {
+  background: var(--tier-superstar-frame);
+}
+.pitch-slot__token--star .pitch-slot__ovr {
+  background: var(--tier-star-frame);
+}
+.pitch-slot__token--normal .pitch-slot__ovr {
+  background: var(--tier-normal-frame);
+}
+.pitch-slot__token--bench .pitch-slot__ovr {
+  background: var(--tier-bench-frame);
+  color: var(--text-1);
+}
+.pitch-slot__name {
+  max-width: 100%;
+  margin-top: calc(var(--token) * 0.2);
+  padding: 1px 5px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgb(3 12 8 / 0.55);
+  font-size: var(--label);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+}
+.pitch-slot__fit {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.5));
+}
+.pitch-slot.is-filled .pitch-slot__fit {
+  bottom: calc(100% + 2px);
+}
+.pitch-slot__fit .fit-tag {
+  background-color: rgb(6 14 10 / 0.92);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.pitch-slot__fit .fit-tag--best {
+  background: var(--volt-400);
+  box-shadow: none;
+}
+
+/* Hover / selection / fit states */
+button.pitch-slot:hover .pitch-slot__ring {
+  transform: scale(1.06);
+}
+.pitch-slot.is-selected .pitch-slot__ring {
+  transform: scale(1.1);
+  box-shadow:
+    0 0 0 3px var(--volt-400),
+    0 0 18px 2px var(--volt-glow);
+}
+.pitch-slot.is-fit-best .pitch-slot__ring,
+.pitch-slot.is-fit-ok .pitch-slot__ring {
+  box-shadow: 0 0 0 3px var(--green-400);
+}
+.pitch-slot.is-fit-best .pitch-slot__ring {
+  box-shadow: 0 0 0 3px var(--volt-400);
+  --pulse-color: rgb(205 245 69 / 0.55);
+  animation: pulse-ring 1.6s var(--ease-out) infinite;
+}
+.pitch-slot.is-fit-ok .pitch-slot__token--empty,
+.pitch-slot.is-fit-best .pitch-slot__token--empty {
+  border-style: solid;
+  border-color: transparent;
+  background: rgb(205 245 69 / 0.16);
+}
+.pitch-slot.is-fit-penalty .pitch-slot__ring {
+  box-shadow: 0 0 0 3px var(--amber-400);
+}
+.pitch-slot.is-fit-penalty .pitch-slot__token--empty {
+  border-style: solid;
+  border-color: transparent;
+  background: rgb(255 181 71 / 0.16);
+}
+.pitch-slot.is-fit-swap .pitch-slot__ring {
+  box-shadow: 0 0 0 3px var(--sky-400);
+}
+.pitch-slot.is-fit-blocked {
+  cursor: not-allowed;
+}
+.pitch-slot.is-fit-blocked .pitch-slot__ring {
+  opacity: 0.4;
+}
+.pitch-slot.is-fit-blocked .pitch-slot__token--empty {
+  border-color: rgb(255 111 97 / 0.7);
+}
+button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
+  transform: none;
+}
+.pitch-slot__face .flag__initials {
+  font-size: calc(var(--token) * 0.34);
+}

@@ -1,0 +1,311 @@
+/* Design tokens — "Floodlit night".
+   Ink-navy night sky, floodlit pitch greens, volt (lime) as the one primary accent,
+   gold foil for stars and trophies, coral for negatives. Every component reads these
+   custom properties; never hard-code a colour, size or duration in a component.
+   Docs: docs/ui-guide.md#tokens */
+
+:root {
+  color-scheme: dark;
+
+  /* ---------- Colour: base ---------- */
+  --ink-950: #04070f;
+  --ink-900: #070b16; /* page background */
+  --ink-850: #0a101d;
+  --ink-800: #0d1424; /* surface 1 */
+  --ink-750: #101829;
+  --ink-700: #131c31; /* surface 2 */
+  --ink-600: #1a253e; /* surface 3 */
+  --ink-500: #223050; /* surface 4 / hover */
+  --ink-400: #2e3e63;
+  --ink-300: #44567f;
+
+  --bg: var(--ink-900);
+  --surface-1: var(--ink-800);
+  --surface-2: var(--ink-700);
+  --surface-3: var(--ink-600);
+  --surface-4: var(--ink-500);
+  --surface-glass: rgb(19 28 49 / 0.72);
+  --scrim: rgb(2 4 10 / 0.72);
+
+  --line-1: rgb(148 170 220 / 0.1); /* hairlines, dividers */
+  --line-2: rgb(148 170 220 / 0.18); /* card borders */
+  --line-3: rgb(148 170 220 / 0.32); /* input borders, strong */
+
+  /* Text (contrast on --surface-1: t1 17:1, t2 10:1, t3 5.9:1) */
+  --text-1: #f3f6fd;
+  --text-2: #b4bfd6;
+  --text-3: #8592ad;
+  --text-disabled: #56617a;
+  --text-inverse: #0a1200;
+
+  /* ---------- Colour: accents ---------- */
+  --volt-200: #ecff9e;
+  --volt-300: #def97a;
+  --volt-400: #cdf545; /* primary accent */
+  --volt-500: #b2dc26;
+  --volt-600: #8bb012;
+  --volt-glow: rgb(205 245 69 / 0.35);
+  --on-volt: #0a1200;
+
+  --gold-200: #fff1c4;
+  --gold-300: #ffe08a;
+  --gold-400: #f5c84c;
+  --gold-500: #dba52a;
+  --gold-600: #a8770f;
+  --gold-glow: rgb(245 200 76 / 0.35);
+  --on-gold: #1a1000;
+
+  --coral-300: #ff9a90;
+  --coral-400: #ff6f61;
+  --coral-500: #e5483b;
+  --coral-glow: rgb(255 111 97 / 0.3);
+
+  --green-300: #7debb0;
+  --green-400: #3ddc84;
+  --green-500: #1fb866;
+  --amber-400: #ffb547;
+  --amber-500: #f09a16;
+  --sky-300: #9adcff;
+  --sky-400: #5cc8ff;
+  --violet-400: #a98bff;
+
+  /* Semantic */
+  --accent: var(--volt-400);
+  --positive: var(--green-400);
+  --negative: var(--coral-400);
+  --warning: var(--amber-400);
+  --info: var(--sky-400);
+  --focus-ring: var(--volt-300);
+
+  /* ---------- Colour: pitch ---------- */
+  --pitch-900: #0b3a22;
+  --pitch-800: #0f4a2b;
+  --pitch-700: #135733;
+  --pitch-600: #17663c;
+  --pitch-500: #1c7546;
+  --pitch-line: rgb(236 255 240 / 0.38);
+  --pitch-stripe-a: #155f37;
+  --pitch-stripe-b: #186b3e;
+
+  /* ---------- Tier palettes (player OVR) ----------
+     Superstar 85+ holo · Star 80–84 gold · Starter 74–79 silver · Normal 68–73 bronze · Bench slate.
+     --tier-* = solid accent (numerals, rings); --tier-*-frame = foil border gradient;
+     --tier-*-fill = card body tint. */
+  --tier-superstar: #c9b6ff;
+  --tier-superstar-frame: conic-gradient(
+    from 210deg,
+    #ff8fd0,
+    #b494ff,
+    #6fd6ff,
+    #7dffc0,
+    #fff07a,
+    #ffb27a,
+    #ff8fd0
+  );
+  --tier-superstar-fill: linear-gradient(160deg, #2a1f4d 0%, #16203d 45%, #0e2a3a 100%);
+  --tier-superstar-sheen: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgb(255 160 230 / 0.22) 35%,
+    rgb(140 230 255 / 0.26) 45%,
+    rgb(200 255 170 / 0.2) 55%,
+    transparent 70%
+  );
+
+  --tier-star: var(--gold-400);
+  --tier-star-frame: linear-gradient(
+    145deg,
+    #fff3c9 0%,
+    #f5c84c 22%,
+    #a8770f 48%,
+    #f7d774 70%,
+    #fff1c4 100%
+  );
+  --tier-star-fill: linear-gradient(160deg, #3a2c0c 0%, #1d1a14 50%, #12151f 100%);
+  --tier-star-sheen: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgb(255 236 170 / 0.22) 45%,
+    transparent 65%
+  );
+
+  --tier-starter: #d9e1ee;
+  --tier-starter-frame: linear-gradient(
+    145deg,
+    #ffffff 0%,
+    #c4cedd 25%,
+    #6f7d93 50%,
+    #d8e0ec 75%,
+    #f4f7fb 100%
+  );
+  --tier-starter-fill: linear-gradient(160deg, #2a3346 0%, #171e2e 55%, #11172a 100%);
+  --tier-starter-sheen: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgb(255 255 255 / 0.14) 45%,
+    transparent 65%
+  );
+
+  --tier-normal: #e9a873;
+  --tier-normal-frame: linear-gradient(
+    145deg,
+    #ffd2a8 0%,
+    #d98c4e 28%,
+    #7a3f17 52%,
+    #e2a06a 76%,
+    #ffd9b6 100%
+  );
+  --tier-normal-fill: linear-gradient(160deg, #3a2414 0%, #1d1715 55%, #13151e 100%);
+  --tier-normal-sheen: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgb(255 210 170 / 0.14) 45%,
+    transparent 65%
+  );
+
+  --tier-bench: #93a0b8;
+  --tier-bench-frame: linear-gradient(145deg, #6b7891 0%, #3b465c 50%, #59657c 100%);
+  --tier-bench-fill: linear-gradient(160deg, #1e2535 0%, #151b29 60%, #11162a 100%);
+  --tier-bench-sheen: none;
+
+  --tier-hidden: #9fb0cf;
+  --tier-hidden-frame: linear-gradient(145deg, #3c4c70 0%, #24304b 50%, #3c4c70 100%);
+  --tier-hidden-fill: linear-gradient(160deg, #19223a 0%, #121a2e 100%);
+
+  /* Grade palette (S+..F) */
+  --grade-s: var(--tier-superstar-frame);
+  --grade-a: linear-gradient(160deg, #fff1c4, #f5c84c 45%, #dba52a);
+  --grade-b: linear-gradient(160deg, #ecff9e, #cdf545 45%, #8bb012);
+  --grade-c: linear-gradient(160deg, #d6f1ff, #5cc8ff 50%, #2a8fc7);
+  --grade-d: linear-gradient(160deg, #ffe0b8, #ffb547 50%, #c77510);
+  --grade-f: linear-gradient(160deg, #ffd0ca, #ff6f61 50%, #b8322a);
+
+  /* Team colours: components set --team / --team-2 / --team-ink inline (see lib/color.js) */
+  --team: var(--ink-400);
+  --team-2: var(--text-1);
+  --team-ink: var(--text-1);
+
+  /* ---------- Typography ---------- */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-num: var(--font-display);
+
+  /* UI text scale (Inter) */
+  --text-2xs: 0.6875rem; /* 11 */
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.8125rem; /* 13 */
+  --text-md: 0.9375rem; /* 15 — body */
+  --text-lg: 1.0625rem; /* 17 */
+  --text-xl: 1.25rem; /* 20 */
+
+  /* Display scale (Barlow Condensed, uppercase headings and numerals) */
+  --display-xs: 1.125rem; /* 18 */
+  --display-sm: 1.5rem; /* 24 */
+  --display-md: 2rem; /* 32 */
+  --display-lg: clamp(2.25rem, 1.6rem + 2.6vw, 3rem); /* 36–48 */
+  --display-xl: clamp(2.75rem, 1.8rem + 4vw, 4.5rem); /* 44–72 */
+  --display-2xl: clamp(3.5rem, 2rem + 6vw, 6rem); /* 56–96 */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  --leading-tight: 1.05;
+  --leading-snug: 1.25;
+  --leading-body: 1.5;
+  --tracking-caps: 0.08em;
+  --tracking-display: 0.01em;
+
+  /* ---------- Space (4 px grid) ---------- */
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+
+  --gutter: var(--space-4); /* page side padding on phones */
+  --content-max: 1200px;
+  --column-max: 520px; /* single-column screens on desktop */
+  --topbar-h: 60px;
+  --touch: 44px; /* minimum touch target */
+
+  /* ---------- Radii ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* ---------- Elevation ---------- */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 18px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);
+  --shadow-xl: 0 32px 72px -18px rgb(0 0 0 / 0.8);
+  --shadow-inset: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --glow-volt: 0 0 0 1px rgb(205 245 69 / 0.5), 0 8px 28px -6px var(--volt-glow);
+  --glow-gold: 0 0 0 1px rgb(245 200 76 / 0.55), 0 8px 28px -6px var(--gold-glow);
+  --glow-coral: 0 0 0 1px rgb(255 111 97 / 0.5), 0 8px 24px -8px var(--coral-glow);
+
+  /* Floodlight backdrop used by body and hero panels */
+  --floodlight:
+    radial-gradient(70% 55% at 50% -12%, rgb(128 160 255 / 0.2), transparent 70%),
+    radial-gradient(40% 35% at 8% -6%, rgb(205 245 69 / 0.08), transparent 70%),
+    radial-gradient(40% 35% at 92% -6%, rgb(120 210 255 / 0.1), transparent 70%);
+
+  /* ---------- Motion ---------- */
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+  --dur-slower: 600ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-emph: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* ---------- Z-index ---------- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-topbar: 200;
+  --z-overlay: 900;
+  --z-modal: 1000;
+  --z-toast: 1100;
+  --z-confetti: 1200;
+}
+
+@media (min-width: 720px) {
+  :root {
+    --gutter: var(--space-6);
+    --topbar-h: 64px;
+  }
+}
+
+/* Reduced motion: system preference or the in-app override (html[data-motion="reduce"],
+   set by lib/motion.js). Durations collapse, so CSS transitions become instant. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) {
+    --dur-instant: 0.01ms;
+    --dur-fast: 0.01ms;
+    --dur-base: 0.01ms;
+    --dur-slow: 0.01ms;
+    --dur-slower: 0.01ms;
+  }
+}
+:root[data-motion='reduce'] {
+  --dur-instant: 0.01ms;
+  --dur-fast: 0.01ms;
+  --dur-base: 0.01ms;
+  --dur-slow: 0.01ms;
+  --dur-slower: 0.01ms;
+}

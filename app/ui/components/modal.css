@@ -1,0 +1,132 @@
+/* Modal + Sheet (native dialog) */
+.modal {
+  --modal-w: 520px;
+  max-width: min(var(--modal-w), calc(100vw - 2 * var(--space-4)));
+  max-height: min(88dvh, 860px);
+  width: 100%;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  color: var(--text-1);
+  overflow: visible;
+}
+.modal--sm {
+  --modal-w: 400px;
+}
+.modal--lg {
+  --modal-w: 720px;
+}
+.modal::backdrop {
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.modal[open] {
+  animation: modal-in var(--dur-slow) var(--ease-emph) both;
+}
+.modal[open]::backdrop {
+  animation: fade-in var(--dur-base) var(--ease-out) both;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+.modal__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+  border-radius: inherit;
+  border: 1px solid var(--line-2);
+  background:
+    radial-gradient(90% 50% at 50% 0%, rgb(120 160 255 / 0.12), transparent 70%), var(--surface-2);
+  box-shadow: var(--shadow-xl), var(--shadow-inset);
+  overflow: hidden;
+}
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+.modal__header:last-child,
+.modal__header:has(+ .modal__footer) {
+  padding-bottom: var(--space-5);
+}
+.modal__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.modal__title {
+  font-size: var(--display-md);
+}
+.modal__description {
+  color: var(--text-2);
+  font-size: var(--text-md);
+}
+.modal__close {
+  margin: -6px -8px 0 0;
+}
+.modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-5) var(--space-5);
+  overscroll-behavior: contain;
+}
+.modal__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5) calc(var(--space-4) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-1);
+  background: rgb(10 16 29 / 0.6);
+}
+.modal__grip {
+  display: none;
+}
+
+/* Bottom sheet on phones */
+@media (max-width: 719px) {
+  .modal--sheet {
+    max-width: 100vw;
+    width: 100vw;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  .modal--sheet[open] {
+    animation-name: sheet-in;
+  }
+  .modal--sheet .modal__panel {
+    border-bottom: 0;
+  }
+  .modal--sheet .modal__grip {
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 10px auto 0;
+    border-radius: 2px;
+    background: var(--line-3);
+  }
+  .modal--sheet .modal__header {
+    padding-top: var(--space-3);
+  }
+  .modal--sheet .modal__footer > .btn {
+    flex: 1 1 0;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(40%);
+    opacity: 0;
+  }
+}

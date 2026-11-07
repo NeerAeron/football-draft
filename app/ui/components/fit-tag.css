@@ -1,0 +1,56 @@
+/* FitTag */
+.fit-tag {
+  --fit: var(--text-2);
+  --fit-bg: rgb(148 170 220 / 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--fit-bg);
+  color: var(--fit);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.fit-tag--sm {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 12px;
+  gap: 2px;
+}
+.fit-tag .num {
+  font-weight: var(--weight-heavy);
+}
+.fit-tag--best {
+  --fit: var(--on-volt);
+  --fit-bg: var(--volt-400);
+}
+.fit-tag--ok {
+  --fit: var(--green-300);
+  --fit-bg: rgb(61 220 132 / 0.16);
+}
+.fit-tag--penalty {
+  --fit: var(--amber-400);
+  --fit-bg: rgb(255 181 71 / 0.16);
+}
+.fit-tag--swap {
+  --fit: var(--sky-300);
+  --fit-bg: rgb(92 200 255 / 0.16);
+}
+.fit-tag--blocked {
+  --fit: var(--coral-300);
+  --fit-bg: rgb(255 111 97 / 0.16);
+}
+.fit-tag--neutral {
+  --fit: var(--text-3);
+  --fit-bg: transparent;
+  padding-inline: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
