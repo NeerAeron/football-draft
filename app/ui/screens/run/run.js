@@ -137,6 +137,12 @@ function RunHeader({ snapshot, meta, nations }) {
       <span class="run-head__stage"
         >${snapshot.complete ? 'Final record' : snapshot.stageLabel}</span
       >
+      ${
+        meta.challenge?.by &&
+        html`<${Chip} tone="gold" size="sm" icon="swords" class="run-head__target"
+          >${`To beat: ${meta.challenge.by}`}<//
+        >`
+      }
     </div>
   </header>`;
 }

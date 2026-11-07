@@ -90,6 +90,6 @@ export function shareCardFor({ snapshot, views, formation, title, hideRatings, s
       { label: 'Team OVR', value: hideRatings ? '??' : snapshot.user.rating.toFixed(1) },
       { label: 'Goals', value: `${snapshot.record.gf}–${snapshot.record.ga}` },
     ],
-    footer: host,
+    footer: host ? `Beat it → ${host}` : '',
   };
 }

@@ -1308,3 +1308,6 @@
 .ticker__score.is-pop {
   animation: score-pop var(--dur-slower) var(--ease-spring) both;
 }
+.run-head__target {
+  margin-top: var(--space-1);
+}

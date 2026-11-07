@@ -34,7 +34,7 @@ export function pitchTokenLayout(formation, box) {
     if (last && rows[i][0] - rows[last.at(-1)][0] <= LINE_GAP) last.push(i);
     else lines.push([i]);
   }
-  const bottom = box.y + box.h * 0.9,
+  const bottom = box.y + box.h * 0.85,
     top = box.y + box.h * 0.12,
     step = lines.length > 1 ? (bottom - top) / (lines.length - 1) : 0;
   const out = [];
@@ -336,16 +336,16 @@ export async function renderShareImage(card, { canvas } = {}) {
   ctx.fillText(
     fitText(card.stageLabel || '', textW, s => ctx.measureText(s).width),
     textX,
-    gy + 124,
+    gy + 132,
   );
   const r = card.record || { w: 0, d: 0, l: 0 };
   ctx.font = `800 64px ${DISPLAY}`;
   ctx.fillStyle = C.text1;
-  ctx.fillText(`${r.w}–${r.d}–${r.l}`, textX, gy + 190);
+  ctx.fillText(`${r.w}–${r.d}–${r.l}`, textX, gy + 196);
   const rw = ctx.measureText(`${r.w}–${r.d}–${r.l}`).width;
   ctx.font = `600 22px ${UI}`;
   ctx.fillStyle = C.text3;
-  ctx.fillText('W – D – L', textX + rw + 18, gy + 186);
+  ctx.fillText('W – D – L', textX + rw + 18, gy + 192);
 
   // result squares
   const squares = resultSquares(7, { x: M, y: 384, size: 62, gap: 12, groupGap: 40 });
