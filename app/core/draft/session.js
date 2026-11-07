@@ -51,16 +51,21 @@ export function mixSeed(x) {
   x = Math.imul(x, 0xc2b2ae35) >>> 0;
   return (x ^ (x >>> 16)) >>> 0;
 }
-/** RNG state for a seed: a number (uint32) or any string (FNV-1a), mixed. */
-export function seedValue(seed) {
-  if (typeof seed === 'number' && Number.isFinite(seed)) return mixSeed(seed >>> 0);
+/**
+ * A seed as a uint32: numbers as is, strings by FNV-1a (so a string seed can travel as a
+ * number in a link: seedNumber('abc') seeds exactly like 'abc').
+ */
+export function seedNumber(seed) {
+  if (typeof seed === 'number' && Number.isFinite(seed)) return seed >>> 0;
   if (typeof seed === 'string' && seed.length) {
     let h = 0x811c9dc5;
     for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 0x01000193) >>> 0;
-    return mixSeed(h);
+    return h;
   }
   throw Error('A draft needs a seed (number or string)');
 }
+/** RNG state for a seed (number or string), mixed. */
+export const seedValue = seed => mixSeed(seedNumber(seed));
 const round1 = x => Math.round(x * 10) / 10;
 const round3 = x => Math.round(x * 1000) / 1000;
 
