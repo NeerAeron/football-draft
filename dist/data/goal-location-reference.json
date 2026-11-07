@@ -1,0 +1,356 @@
+{
+  "source_commit": "4b73468fc5b0f1950f9f66fada70ad3a4f9327cb",
+  "definition": {
+    "inside_penalty_area": "x >=102 and 18 <= y <=62",
+    "central_corridor": "30 <= y <=50",
+    "eligible": "Shot events with period<=4 and shot.type != Penalty; own-goal events excluded"
+  },
+  "competition_meta": {
+    "World Cup 2022": {
+      "matches": 64,
+      "official_goals": 172,
+      "match_url": "https://raw.githubusercontent.com/hudl/open-data/4b73468fc5b0f1950f9f66fada70ad3a4f9327cb/data/matches/43/106.json"
+    },
+    "Euro 2024": {
+      "matches": 51,
+      "official_goals": 117,
+      "match_url": "https://raw.githubusercontent.com/hudl/open-data/4b73468fc5b0f1950f9f66fada70ad3a4f9327cb/data/matches/55/282.json"
+    }
+  },
+  "own_goal_events": {
+    "World Cup 2022": {
+      "Own Goal For": 3,
+      "Own Goal Against": 3
+    },
+    "Euro 2024": {
+      "Own Goal Against": 10,
+      "Own Goal For": 10
+    }
+  },
+  "results": [
+    {
+      "competition": "World Cup 2022",
+      "all_shot_events": 1494,
+      "shootout_shots_excluded": 41,
+      "penalty_shots_excluded": 23,
+      "penalty_goals_excluded": 17,
+      "non_penalty_shots": 1430,
+      "missing_locations": 0,
+      "non_penalty_goals": 152,
+      "box_goals": 140,
+      "outside_goals": 12,
+      "central_goals": 129,
+      "side_goals": 23,
+      "central_inside_box": 120,
+      "central_outside_box": 9,
+      "box_goal_pct": 92.10526315789474,
+      "central_goal_pct": 84.86842105263158,
+      "tiles": {
+        "18+ units from goal": {
+          "wide_left": {
+            "shots": 5,
+            "goals": 1
+          },
+          "left_box_side": {
+            "shots": 99,
+            "goals": 1
+          },
+          "central": {
+            "shots": 321,
+            "goals": 9
+          },
+          "right_box_side": {
+            "shots": 106,
+            "goals": 1
+          },
+          "wide_right": {
+            "shots": 1,
+            "goals": 0
+          }
+        },
+        "12\u201318 units": {
+          "wide_left": {
+            "shots": 3,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 62,
+            "goals": 7
+          },
+          "central": {
+            "shots": 200,
+            "goals": 30
+          },
+          "right_box_side": {
+            "shots": 56,
+            "goals": 4
+          },
+          "wide_right": {
+            "shots": 2,
+            "goals": 0
+          }
+        },
+        "6\u201312 units": {
+          "wide_left": {
+            "shots": 2,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 58,
+            "goals": 4
+          },
+          "central": {
+            "shots": 300,
+            "goals": 57
+          },
+          "right_box_side": {
+            "shots": 54,
+            "goals": 3
+          },
+          "wide_right": {
+            "shots": 1,
+            "goals": 0
+          }
+        },
+        "0\u20136 units": {
+          "wide_left": {
+            "shots": 1,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 21,
+            "goals": 1
+          },
+          "central": {
+            "shots": 116,
+            "goals": 33
+          },
+          "right_box_side": {
+            "shots": 21,
+            "goals": 1
+          },
+          "wide_right": {
+            "shots": 1,
+            "goals": 0
+          }
+        }
+      }
+    },
+    {
+      "competition": "Euro 2024",
+      "all_shot_events": 1340,
+      "shootout_shots_excluded": 24,
+      "penalty_shots_excluded": 12,
+      "penalty_goals_excluded": 9,
+      "non_penalty_shots": 1304,
+      "missing_locations": 0,
+      "non_penalty_goals": 98,
+      "box_goals": 80,
+      "outside_goals": 18,
+      "central_goals": 79,
+      "side_goals": 19,
+      "central_inside_box": 66,
+      "central_outside_box": 13,
+      "box_goal_pct": 81.63265306122449,
+      "central_goal_pct": 80.61224489795919,
+      "tiles": {
+        "18+ units from goal": {
+          "wide_left": {
+            "shots": 2,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 103,
+            "goals": 1
+          },
+          "central": {
+            "shots": 318,
+            "goals": 13
+          },
+          "right_box_side": {
+            "shots": 91,
+            "goals": 4
+          },
+          "wide_right": {
+            "shots": 3,
+            "goals": 0
+          }
+        },
+        "12\u201318 units": {
+          "wide_left": {
+            "shots": 2,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 55,
+            "goals": 3
+          },
+          "central": {
+            "shots": 173,
+            "goals": 18
+          },
+          "right_box_side": {
+            "shots": 48,
+            "goals": 1
+          },
+          "wide_right": {
+            "shots": 2,
+            "goals": 0
+          }
+        },
+        "6\u201312 units": {
+          "wide_left": {
+            "shots": 1,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 60,
+            "goals": 5
+          },
+          "central": {
+            "shots": 261,
+            "goals": 27
+          },
+          "right_box_side": {
+            "shots": 53,
+            "goals": 3
+          },
+          "wide_right": {
+            "shots": 0,
+            "goals": 0
+          }
+        },
+        "0\u20136 units": {
+          "wide_left": {
+            "shots": 1,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 20,
+            "goals": 2
+          },
+          "central": {
+            "shots": 92,
+            "goals": 21
+          },
+          "right_box_side": {
+            "shots": 16,
+            "goals": 0
+          },
+          "wide_right": {
+            "shots": 3,
+            "goals": 0
+          }
+        }
+      }
+    },
+    {
+      "competition": "Combined",
+      "all_shot_events": 2834,
+      "shootout_shots_excluded": 65,
+      "penalty_shots_excluded": 35,
+      "penalty_goals_excluded": 26,
+      "non_penalty_shots": 2734,
+      "missing_locations": 0,
+      "non_penalty_goals": 250,
+      "box_goals": 220,
+      "outside_goals": 30,
+      "central_goals": 208,
+      "side_goals": 42,
+      "central_inside_box": 186,
+      "central_outside_box": 22,
+      "box_goal_pct": 88.0,
+      "central_goal_pct": 83.2,
+      "tiles": {
+        "18+ units from goal": {
+          "wide_left": {
+            "shots": 7,
+            "goals": 1
+          },
+          "left_box_side": {
+            "shots": 202,
+            "goals": 2
+          },
+          "central": {
+            "shots": 639,
+            "goals": 22
+          },
+          "right_box_side": {
+            "shots": 197,
+            "goals": 5
+          },
+          "wide_right": {
+            "shots": 4,
+            "goals": 0
+          }
+        },
+        "12\u201318 units": {
+          "wide_left": {
+            "shots": 5,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 117,
+            "goals": 10
+          },
+          "central": {
+            "shots": 373,
+            "goals": 48
+          },
+          "right_box_side": {
+            "shots": 104,
+            "goals": 5
+          },
+          "wide_right": {
+            "shots": 4,
+            "goals": 0
+          }
+        },
+        "6\u201312 units": {
+          "wide_left": {
+            "shots": 3,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 118,
+            "goals": 9
+          },
+          "central": {
+            "shots": 561,
+            "goals": 84
+          },
+          "right_box_side": {
+            "shots": 107,
+            "goals": 6
+          },
+          "wide_right": {
+            "shots": 1,
+            "goals": 0
+          }
+        },
+        "0\u20136 units": {
+          "wide_left": {
+            "shots": 2,
+            "goals": 0
+          },
+          "left_box_side": {
+            "shots": 41,
+            "goals": 3
+          },
+          "central": {
+            "shots": 208,
+            "goals": 54
+          },
+          "right_box_side": {
+            "shots": 37,
+            "goals": 1
+          },
+          "wide_right": {
+            "shots": 4,
+            "goals": 0
+          }
+        }
+      }
+    }
+  ]
+}

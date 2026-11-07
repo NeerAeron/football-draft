@@ -1,0 +1,1453 @@
+{
+  "description": "Single production change: 300-second deliveryError 1 -> 0.60. No decision, defense, speed, finishing, or completion-credit changes. Paired default squads, Balanced style, tempo/width/press 3. Match completion combines both teams; team median is also reported. Completion is secured teammate possession, never assigned to meet a target.",
+  "physicsStep": 0.016666666666666666,
+  "duration": 300,
+  "firstSeed": 21501,
+  "lastSeed": 21548,
+  "beforeCommit": "42eaf660e27c3e915d9ed1b1bdb5e150f812300c",
+  "before": {
+    "matches": 48,
+    "medianMatchCompletion": 0.7124060150375939,
+    "meanMatchCompletion": 0.7101952361215594,
+    "medianTeamCompletion": 0.7090909090909091,
+    "aggregateCompletion": 0.7100891410048622,
+    "forwardPassShare": 0.6788897893030794,
+    "meanGoals": 2.8958333333333335,
+    "medianGoals": 3.0,
+    "meanSquadStamina": 0.08632438295566824,
+    "insideGoalShare": 0.8848920863309353
+  },
+  "after": {
+    "matches": 48,
+    "medianMatchCompletion": 0.7508809560288034,
+    "meanMatchCompletion": 0.754348351882193,
+    "medianTeamCompletion": 0.7561463693539165,
+    "aggregateCompletion": 0.7550698956487497,
+    "forwardPassShare": 0.67690490253987,
+    "meanGoals": 3,
+    "medianGoals": 3.0,
+    "meanSquadStamina": 0.08626542591929659,
+    "insideGoalShare": 0.8888888888888888
+  },
+  "unchanged180sReference": {
+    "matches": 48,
+    "medianMatchCompletion": 0.7678511845178512,
+    "meanMatchCompletion": 0.7695434897451764,
+    "medianTeamCompletion": 0.775,
+    "aggregateCompletion": 0.7697529188161825,
+    "forwardPassShare": 0.6592451805593267,
+    "meanGoals": 2.6875,
+    "medianGoals": 2.5,
+    "meanSquadStamina": 0.09288052644984389,
+    "insideGoalShare": 0.7829457364341085
+  },
+  "profile": {
+    "deliveryError": 0.6,
+    "decisionTime": 1,
+    "finishPatience": 1.15,
+    "readWindow": 0.94,
+    "directness": 1.08,
+    "shotUrge": 2.4,
+    "spread": 0.44,
+    "saveBoost": -0.3,
+    "release": 1.05,
+    "runSupport": 8,
+    "passUrge": 0.12,
+    "deepUrge": 1,
+    "rangeUrge": 0.65
+  },
+  "samples": [
+    {
+      "seed": 21501,
+      "score": [
+        1,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 44,
+          "completed": 30,
+          "forwardPasses": 36,
+          "shots": 3,
+          "onTarget": 3,
+          "boxGoals": 1,
+          "keeperDistributions": 5,
+          "keeperLosses": 2
+        },
+        {
+          "passes": 45,
+          "completed": 36,
+          "forwardPasses": 34,
+          "shots": 5,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 5,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21502,
+      "score": [
+        4,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 58,
+          "completed": 48,
+          "forwardPasses": 35,
+          "shots": 8,
+          "onTarget": 6,
+          "boxGoals": 4,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 49,
+          "completed": 35,
+          "forwardPasses": 31,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 0,
+          "keeperDistributions": 3,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21503,
+      "score": [
+        1,
+        3
+      ],
+      "teams": [
+        {
+          "passes": 47,
+          "completed": 35,
+          "forwardPasses": 27,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 50,
+          "completed": 37,
+          "forwardPasses": 30,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21504,
+      "score": [
+        1,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 56,
+          "completed": 43,
+          "forwardPasses": 40,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 7,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 50,
+          "completed": 39,
+          "forwardPasses": 33,
+          "shots": 6,
+          "onTarget": 4,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21505,
+      "score": [
+        4,
+        5
+      ],
+      "teams": [
+        {
+          "passes": 57,
+          "completed": 47,
+          "forwardPasses": 33,
+          "shots": 6,
+          "onTarget": 4,
+          "boxGoals": 4,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 51,
+          "completed": 42,
+          "forwardPasses": 27,
+          "shots": 9,
+          "onTarget": 6,
+          "boxGoals": 5,
+          "keeperDistributions": 1,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21506,
+      "score": [
+        1,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 64,
+          "completed": 48,
+          "forwardPasses": 38,
+          "shots": 6,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 58,
+          "completed": 45,
+          "forwardPasses": 43,
+          "shots": 3,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 4,
+          "keeperLosses": 3
+        }
+      ]
+    },
+    {
+      "seed": 21507,
+      "score": [
+        2,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 61,
+          "completed": 52,
+          "forwardPasses": 43,
+          "shots": 6,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 50,
+          "completed": 37,
+          "forwardPasses": 33,
+          "shots": 2,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 3,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21508,
+      "score": [
+        1,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 53,
+          "completed": 39,
+          "forwardPasses": 36,
+          "shots": 6,
+          "onTarget": 4,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 51,
+          "completed": 36,
+          "forwardPasses": 42,
+          "shots": 1,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 6,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21509,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 46,
+          "completed": 32,
+          "forwardPasses": 29,
+          "shots": 4,
+          "onTarget": 4,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 2
+        },
+        {
+          "passes": 48,
+          "completed": 38,
+          "forwardPasses": 33,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21510,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 58,
+          "completed": 41,
+          "forwardPasses": 40,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 49,
+          "completed": 31,
+          "forwardPasses": 31,
+          "shots": 4,
+          "onTarget": 2,
+          "boxGoals": 0,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21511,
+      "score": [
+        0,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 52,
+          "completed": 41,
+          "forwardPasses": 32,
+          "shots": 4,
+          "onTarget": 2,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 58,
+          "completed": 42,
+          "forwardPasses": 45,
+          "shots": 3,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 4,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21512,
+      "score": [
+        1,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 55,
+          "completed": 41,
+          "forwardPasses": 34,
+          "shots": 5,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 48,
+          "completed": 36,
+          "forwardPasses": 32,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 5,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21513,
+      "score": [
+        3,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 55,
+          "completed": 39,
+          "forwardPasses": 39,
+          "shots": 4,
+          "onTarget": 4,
+          "boxGoals": 1,
+          "keeperDistributions": 6,
+          "keeperLosses": 3
+        },
+        {
+          "passes": 52,
+          "completed": 41,
+          "forwardPasses": 33,
+          "shots": 8,
+          "onTarget": 4,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21514,
+      "score": [
+        2,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 56,
+          "completed": 44,
+          "forwardPasses": 34,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 52,
+          "completed": 41,
+          "forwardPasses": 41,
+          "shots": 4,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 4,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21515,
+      "score": [
+        0,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 54,
+          "completed": 41,
+          "forwardPasses": 35,
+          "shots": 3,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 1,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 51,
+          "completed": 37,
+          "forwardPasses": 40,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 4,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21516,
+      "score": [
+        4,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 54,
+          "completed": 42,
+          "forwardPasses": 41,
+          "shots": 7,
+          "onTarget": 5,
+          "boxGoals": 2,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 66,
+          "completed": 50,
+          "forwardPasses": 42,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 4,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21517,
+      "score": [
+        0,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 54,
+          "completed": 39,
+          "forwardPasses": 35,
+          "shots": 2,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 50,
+          "completed": 37,
+          "forwardPasses": 38,
+          "shots": 2,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 5,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21518,
+      "score": [
+        1,
+        3
+      ],
+      "teams": [
+        {
+          "passes": 45,
+          "completed": 38,
+          "forwardPasses": 30,
+          "shots": 6,
+          "onTarget": 4,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 62,
+          "completed": 51,
+          "forwardPasses": 43,
+          "shots": 4,
+          "onTarget": 3,
+          "boxGoals": 1,
+          "keeperDistributions": 6,
+          "keeperLosses": 3
+        }
+      ]
+    },
+    {
+      "seed": 21519,
+      "score": [
+        1,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 62,
+          "completed": 45,
+          "forwardPasses": 43,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 68,
+          "completed": 54,
+          "forwardPasses": 48,
+          "shots": 1,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21520,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 52,
+          "completed": 40,
+          "forwardPasses": 30,
+          "shots": 3,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 50,
+          "completed": 39,
+          "forwardPasses": 39,
+          "shots": 5,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21521,
+      "score": [
+        2,
+        4
+      ],
+      "teams": [
+        {
+          "passes": 48,
+          "completed": 34,
+          "forwardPasses": 33,
+          "shots": 4,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 52,
+          "completed": 40,
+          "forwardPasses": 36,
+          "shots": 5,
+          "onTarget": 4,
+          "boxGoals": 4,
+          "keeperDistributions": 3,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21522,
+      "score": [
+        5,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 51,
+          "completed": 41,
+          "forwardPasses": 41,
+          "shots": 5,
+          "onTarget": 5,
+          "boxGoals": 5,
+          "keeperDistributions": 4,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 48,
+          "completed": 31,
+          "forwardPasses": 28,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 0,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21523,
+      "score": [
+        1,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 50,
+          "completed": 32,
+          "forwardPasses": 30,
+          "shots": 1,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 47,
+          "completed": 36,
+          "forwardPasses": 33,
+          "shots": 4,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21524,
+      "score": [
+        2,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 53,
+          "completed": 41,
+          "forwardPasses": 43,
+          "shots": 2,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 51,
+          "completed": 41,
+          "forwardPasses": 34,
+          "shots": 1,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21525,
+      "score": [
+        1,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 56,
+          "completed": 39,
+          "forwardPasses": 35,
+          "shots": 2,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 55,
+          "completed": 40,
+          "forwardPasses": 37,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21526,
+      "score": [
+        1,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 48,
+          "completed": 34,
+          "forwardPasses": 36,
+          "shots": 8,
+          "onTarget": 4,
+          "boxGoals": 1,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 53,
+          "completed": 39,
+          "forwardPasses": 38,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 0,
+          "keeperDistributions": 5,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21527,
+      "score": [
+        3,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 42,
+          "completed": 32,
+          "forwardPasses": 30,
+          "shots": 7,
+          "onTarget": 4,
+          "boxGoals": 3,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 56,
+          "completed": 43,
+          "forwardPasses": 33,
+          "shots": 1,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21528,
+      "score": [
+        4,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 63,
+          "completed": 49,
+          "forwardPasses": 48,
+          "shots": 6,
+          "onTarget": 5,
+          "boxGoals": 4,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 50,
+          "completed": 40,
+          "forwardPasses": 35,
+          "shots": 2,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 3,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21529,
+      "score": [
+        2,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 53,
+          "completed": 40,
+          "forwardPasses": 34,
+          "shots": 4,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 52,
+          "completed": 36,
+          "forwardPasses": 38,
+          "shots": 2,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 4,
+          "keeperLosses": 2
+        }
+      ]
+    },
+    {
+      "seed": 21530,
+      "score": [
+        1,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 43,
+          "completed": 31,
+          "forwardPasses": 31,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 56,
+          "completed": 40,
+          "forwardPasses": 38,
+          "shots": 7,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21531,
+      "score": [
+        0,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 45,
+          "completed": 33,
+          "forwardPasses": 29,
+          "shots": 3,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 55,
+          "completed": 41,
+          "forwardPasses": 32,
+          "shots": 1,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21532,
+      "score": [
+        2,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 58,
+          "completed": 47,
+          "forwardPasses": 32,
+          "shots": 9,
+          "onTarget": 4,
+          "boxGoals": 1,
+          "keeperDistributions": 0,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 51,
+          "completed": 39,
+          "forwardPasses": 35,
+          "shots": 2,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 5,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21533,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 40,
+          "completed": 30,
+          "forwardPasses": 29,
+          "shots": 4,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 51,
+          "completed": 39,
+          "forwardPasses": 32,
+          "shots": 4,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21534,
+      "score": [
+        1,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 54,
+          "completed": 39,
+          "forwardPasses": 34,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 1,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 55,
+          "completed": 48,
+          "forwardPasses": 42,
+          "shots": 6,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 5,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21535,
+      "score": [
+        0,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 46,
+          "completed": 34,
+          "forwardPasses": 34,
+          "shots": 4,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 65,
+          "completed": 50,
+          "forwardPasses": 44,
+          "shots": 4,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 5,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21536,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 58,
+          "completed": 44,
+          "forwardPasses": 32,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 0,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 48,
+          "completed": 35,
+          "forwardPasses": 33,
+          "shots": 1,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 3,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21537,
+      "score": [
+        0,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 56,
+          "completed": 39,
+          "forwardPasses": 39,
+          "shots": 2,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 0,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 60,
+          "completed": 46,
+          "forwardPasses": 42,
+          "shots": 2,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21538,
+      "score": [
+        1,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 52,
+          "completed": 37,
+          "forwardPasses": 37,
+          "shots": 3,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 55,
+          "completed": 42,
+          "forwardPasses": 36,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21539,
+      "score": [
+        2,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 48,
+          "completed": 37,
+          "forwardPasses": 35,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 1,
+          "keeperDistributions": 5,
+          "keeperLosses": 2
+        },
+        {
+          "passes": 60,
+          "completed": 43,
+          "forwardPasses": 42,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 3,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21540,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 44,
+          "completed": 32,
+          "forwardPasses": 30,
+          "shots": 4,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 50,
+          "completed": 36,
+          "forwardPasses": 30,
+          "shots": 1,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21541,
+      "score": [
+        2,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 54,
+          "completed": 40,
+          "forwardPasses": 42,
+          "shots": 4,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 5,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 57,
+          "completed": 48,
+          "forwardPasses": 42,
+          "shots": 5,
+          "onTarget": 2,
+          "boxGoals": 0,
+          "keeperDistributions": 5,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21542,
+      "score": [
+        1,
+        3
+      ],
+      "teams": [
+        {
+          "passes": 54,
+          "completed": 39,
+          "forwardPasses": 35,
+          "shots": 1,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 2
+        },
+        {
+          "passes": 51,
+          "completed": 44,
+          "forwardPasses": 37,
+          "shots": 6,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21543,
+      "score": [
+        1,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 56,
+          "completed": 40,
+          "forwardPasses": 38,
+          "shots": 3,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 66,
+          "completed": 52,
+          "forwardPasses": 40,
+          "shots": 2,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21544,
+      "score": [
+        2,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 56,
+          "completed": 45,
+          "forwardPasses": 37,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 1,
+          "keeperDistributions": 3,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 48,
+          "completed": 34,
+          "forwardPasses": 35,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 4,
+          "keeperLosses": 0
+        }
+      ]
+    },
+    {
+      "seed": 21545,
+      "score": [
+        2,
+        2
+      ],
+      "teams": [
+        {
+          "passes": 55,
+          "completed": 43,
+          "forwardPasses": 35,
+          "shots": 7,
+          "onTarget": 5,
+          "boxGoals": 2,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 54,
+          "completed": 44,
+          "forwardPasses": 39,
+          "shots": 3,
+          "onTarget": 2,
+          "boxGoals": 2,
+          "keeperDistributions": 3,
+          "keeperLosses": 1
+        }
+      ]
+    },
+    {
+      "seed": 21546,
+      "score": [
+        5,
+        0
+      ],
+      "teams": [
+        {
+          "passes": 55,
+          "completed": 42,
+          "forwardPasses": 35,
+          "shots": 9,
+          "onTarget": 6,
+          "boxGoals": 4,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 53,
+          "completed": 42,
+          "forwardPasses": 30,
+          "shots": 2,
+          "onTarget": 1,
+          "boxGoals": 0,
+          "keeperDistributions": 4,
+          "keeperLosses": 3
+        }
+      ]
+    },
+    {
+      "seed": 21547,
+      "score": [
+        2,
+        3
+      ],
+      "teams": [
+        {
+          "passes": 41,
+          "completed": 28,
+          "forwardPasses": 27,
+          "shots": 6,
+          "onTarget": 3,
+          "boxGoals": 2,
+          "keeperDistributions": 1,
+          "keeperLosses": 0
+        },
+        {
+          "passes": 57,
+          "completed": 42,
+          "forwardPasses": 39,
+          "shots": 5,
+          "onTarget": 3,
+          "boxGoals": 3,
+          "keeperDistributions": 4,
+          "keeperLosses": 3
+        }
+      ]
+    },
+    {
+      "seed": 21548,
+      "score": [
+        0,
+        1
+      ],
+      "teams": [
+        {
+          "passes": 51,
+          "completed": 33,
+          "forwardPasses": 36,
+          "shots": 1,
+          "onTarget": 0,
+          "boxGoals": 0,
+          "keeperDistributions": 2,
+          "keeperLosses": 1
+        },
+        {
+          "passes": 52,
+          "completed": 40,
+          "forwardPasses": 33,
+          "shots": 3,
+          "onTarget": 1,
+          "boxGoals": 1,
+          "keeperDistributions": 2,
+          "keeperLosses": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "formula": "clamp(raw + roleOffset,1,99), before familiarity; GK unchanged",
+  "roleOffsets": {
+    "CB": 2.5,
+    "LB": 2,
+    "RB": 2,
+    "DM": 1.75,
+    "CM": 0.5,
+    "AM": 2,
+    "LM": 3,
+    "RM": 3,
+    "LW": 1,
+    "RW": 1,
+    "ST": 1.5
+  },
+  "metrics": {
+    "first1000": {
+      "before": {
+        "n": 1000,
+        "mae": 1.9969271999999998,
+        "bias": -1.9175638,
+        "roundedMAE": 1.984,
+        "roundedBias": -1.916,
+        "within2": 0.681,
+        "within3": 0.857
+      },
+      "after": {
+        "n": 1000,
+        "mae": 1.0927901999999998,
+        "bias": -0.3118138,
+        "roundedMAE": 1.058,
+        "roundedBias": -0.308,
+        "within2": 0.937,
+        "within3": 0.99
+      }
+    },
+    "remainder": {
+      "before": {
+        "n": 15343,
+        "mae": 2.0022399139672813,
+        "bias": -1.8464467965847617,
+        "roundedMAE": 1.9941341328293032,
+        "roundedBias": -1.8503552108453367,
+        "within2": 0.6800495339894415,
+        "within3": 0.8448804014860197
+      },
+      "after": {
+        "n": 15343,
+        "mae": 1.132265841100176,
+        "bias": 0.046794420908557614,
+        "roundedMAE": 1.1104738317147884,
+        "roundedBias": 0.04549305872384801,
+        "within2": 0.91025223228834,
+        "within3": 0.9769927654304895
+      }
+    },
+    "all": {
+      "before": {
+        "n": 16343,
+        "mae": 2.0019148381570093,
+        "bias": -1.8507983234412289,
+        "roundedMAE": 1.993514042709417,
+        "roundedBias": -1.854371902343511,
+        "within2": 0.6801076913663342,
+        "within3": 0.8456219788288564
+      },
+      "after": {
+        "n": 16343,
+        "mae": 1.129850394664382,
+        "bias": 0.024851801994737757,
+        "roundedMAE": 1.1072630483999266,
+        "roundedBias": 0.023863427767239796,
+        "within2": 0.9118888820901915,
+        "within3": 0.9777886556935691
+      }
+    }
+  },
+  "source": {
+    "file": "FC26_20250921.csv",
+    "sha256": "4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2",
+    "note": "Primary-role outfield ratings, source CSV order. Descriptive dataset comparison; broad errors inspected during calibration, not an independent holdout."
+  }
+}

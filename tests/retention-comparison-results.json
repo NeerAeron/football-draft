@@ -1,0 +1,3216 @@
+{
+  "baselineCommit": "fd23f57dee138e5d94c7749d4b8be730b4f17320",
+  "engineSHA256": "122ca6e368509b00466320d86691566f75b34caf9e153e75d31fa99758a28097",
+  "configSHA256": "bb08345273b97543f6c5432608d8bc24493e1e85098f6021453a89623babc945",
+  "method": "32 paired seeded fixtures: 24 mirror-roster matches over three quality/style groups, plus the eight original catalog audit fixtures; equal numbers of 180 and 300 second matches. All outcomes simulated at 1/60 second steps. Turnovers are secure opposition control or an opposition restart following possession, excluding shots, goals and period endings. Reception errors include recovered bobbles; they are not all turnovers. No turnover or shot quotas. These are a calibration sample, not population guarantees.",
+  "summary": {
+    "all": {
+      "before": {
+        "matches": 32,
+        "perMatch": {
+          "turnovers": 33.84375,
+          "receivingMiscontrols": 13.625,
+          "shots": 6.625,
+          "goals": 2.59375,
+          "offTarget": 2.25,
+          "blocked": 0.84375,
+          "longBalls": 9.875
+        },
+        "turnoversPerTeam": 16.921875,
+        "weightedPassCompletion": 75.4985754985755,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.125,
+          "Clean interception": 9.09375,
+          "Failed take-on": 1.3125,
+          "Heavy dribbling touch": 1.71875,
+          "Offside": 0.125,
+          "Opponent deflection, then recovery": 0.8125,
+          "Pass out without a control attempt": 1.46875,
+          "Receiving miscontrol": 6.9375,
+          "Tackled off the ball": 8.90625,
+          "Uncollected pass near intended receiver": 3.34375
+        }
+      },
+      "after": {
+        "matches": 32,
+        "perMatch": {
+          "turnovers": 22.53125,
+          "receivingMiscontrols": 3.90625,
+          "shots": 8.625,
+          "goals": 2.5625,
+          "offTarget": 3.34375,
+          "blocked": 1.1875,
+          "longBalls": 9.96875
+        },
+        "turnoversPerTeam": 11.265625,
+        "weightedPassCompletion": 86.6331096196868,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.09375,
+          "Clean interception": 7.90625,
+          "Failed take-on": 0.96875,
+          "Heavy dribbling touch": 2.15625,
+          "Offside": 0.15625,
+          "Opponent deflection, then recovery": 0.59375,
+          "Pass out without a control attempt": 1.0,
+          "Receiving miscontrol": 1.65625,
+          "Tackled off the ball": 6.71875,
+          "Uncollected pass near intended receiver": 1.28125
+        }
+      }
+    },
+    "balanced73": {
+      "before": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 32.875,
+          "receivingMiscontrols": 12.0,
+          "shots": 6.75,
+          "goals": 2.25,
+          "offTarget": 2.75,
+          "blocked": 1.0,
+          "longBalls": 10.0
+        },
+        "turnoversPerTeam": 16.4375,
+        "weightedPassCompletion": 75.0,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.125,
+          "Clean interception": 9.125,
+          "Failed take-on": 0.625,
+          "Heavy dribbling touch": 2.125,
+          "Opponent deflection, then recovery": 1.0,
+          "Pass out without a control attempt": 1.375,
+          "Receiving miscontrol": 5.375,
+          "Tackled off the ball": 9.75,
+          "Uncollected pass near intended receiver": 3.375
+        }
+      },
+      "after": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 23.0,
+          "receivingMiscontrols": 3.875,
+          "shots": 9.875,
+          "goals": 2.875,
+          "offTarget": 5.125,
+          "blocked": 1.125,
+          "longBalls": 10.5
+        },
+        "turnoversPerTeam": 11.5,
+        "weightedPassCompletion": 84.91048593350384,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.125,
+          "Clean interception": 7.5,
+          "Failed take-on": 1.25,
+          "Heavy dribbling touch": 2.75,
+          "Offside": 0.25,
+          "Opponent deflection, then recovery": 0.625,
+          "Pass out without a control attempt": 1.125,
+          "Receiving miscontrol": 1.625,
+          "Tackled off the ball": 6.625,
+          "Uncollected pass near intended receiver": 1.125
+        }
+      }
+    },
+    "balanced80": {
+      "before": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 33.875,
+          "receivingMiscontrols": 12.625,
+          "shots": 7.375,
+          "goals": 3.125,
+          "offTarget": 2.25,
+          "blocked": 0.75,
+          "longBalls": 8.375
+        },
+        "turnoversPerTeam": 16.9375,
+        "weightedPassCompletion": 76.01078167115902,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.125,
+          "Clean interception": 8.0,
+          "Failed take-on": 1.625,
+          "Heavy dribbling touch": 1.875,
+          "Offside": 0.375,
+          "Opponent deflection, then recovery": 0.625,
+          "Pass out without a control attempt": 1.75,
+          "Receiving miscontrol": 6.375,
+          "Tackled off the ball": 10.25,
+          "Uncollected pass near intended receiver": 2.875
+        }
+      },
+      "after": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 23.875,
+          "receivingMiscontrols": 3.75,
+          "shots": 9.0,
+          "goals": 2.5,
+          "offTarget": 2.875,
+          "blocked": 1.375,
+          "longBalls": 9.625
+        },
+        "turnoversPerTeam": 11.9375,
+        "weightedPassCompletion": 86.47125140924464,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.125,
+          "Clean interception": 8.0,
+          "Failed take-on": 1.25,
+          "Heavy dribbling touch": 1.75,
+          "Offside": 0.25,
+          "Opponent deflection, then recovery": 0.625,
+          "Pass out without a control attempt": 1.125,
+          "Receiving miscontrol": 1.625,
+          "Tackled off the ball": 8.25,
+          "Uncollected pass near intended receiver": 0.875
+        }
+      }
+    },
+    "elitePossession": {
+      "before": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 34.5,
+          "receivingMiscontrols": 13.0,
+          "shots": 5.875,
+          "goals": 3.0,
+          "offTarget": 0.875,
+          "blocked": 1.0,
+          "longBalls": 12.5
+        },
+        "turnoversPerTeam": 17.25,
+        "weightedPassCompletion": 78.1094527363184,
+        "lossReasonsPerMatch": {
+          "Clean interception": 11.25,
+          "Failed take-on": 1.25,
+          "Heavy dribbling touch": 1.0,
+          "Offside": 0.125,
+          "Opponent deflection, then recovery": 0.5,
+          "Pass out without a control attempt": 1.5,
+          "Receiving miscontrol": 7.375,
+          "Tackled off the ball": 7.625,
+          "Uncollected pass near intended receiver": 3.875
+        }
+      },
+      "after": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 16.5,
+          "receivingMiscontrols": 4.25,
+          "shots": 7.25,
+          "goals": 2.25,
+          "offTarget": 2.125,
+          "blocked": 1.0,
+          "longBalls": 9.75
+        },
+        "turnoversPerTeam": 8.25,
+        "weightedPassCompletion": 91.13475177304964,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.125,
+          "Clean interception": 7.125,
+          "Failed take-on": 0.375,
+          "Heavy dribbling touch": 1.625,
+          "Offside": 0.125,
+          "Opponent deflection, then recovery": 0.25,
+          "Pass out without a control attempt": 1.0,
+          "Receiving miscontrol": 1.5,
+          "Tackled off the ball": 3.625,
+          "Uncollected pass near intended receiver": 0.75
+        }
+      }
+    },
+    "catalog": {
+      "before": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 34.125,
+          "receivingMiscontrols": 16.875,
+          "shots": 6.5,
+          "goals": 2.0,
+          "offTarget": 3.125,
+          "blocked": 0.625,
+          "longBalls": 8.625
+        },
+        "turnoversPerTeam": 17.0625,
+        "weightedPassCompletion": 71.67630057803468,
+        "lossReasonsPerMatch": {
+          "Carried ball out of play": 0.25,
+          "Clean interception": 8.0,
+          "Failed take-on": 1.75,
+          "Heavy dribbling touch": 1.875,
+          "Opponent deflection, then recovery": 1.125,
+          "Pass out without a control attempt": 1.25,
+          "Receiving miscontrol": 8.625,
+          "Tackled off the ball": 8.0,
+          "Uncollected pass near intended receiver": 3.25
+        }
+      },
+      "after": {
+        "matches": 8,
+        "perMatch": {
+          "turnovers": 26.75,
+          "receivingMiscontrols": 3.75,
+          "shots": 8.375,
+          "goals": 2.625,
+          "offTarget": 3.25,
+          "blocked": 1.25,
+          "longBalls": 10.0
+        },
+        "turnoversPerTeam": 13.375,
+        "weightedPassCompletion": 82.02824133504492,
+        "lossReasonsPerMatch": {
+          "Clean interception": 9.0,
+          "Failed take-on": 1.0,
+          "Heavy dribbling touch": 2.5,
+          "Opponent deflection, then recovery": 0.875,
+          "Pass out without a control attempt": 0.75,
+          "Receiving miscontrol": 1.875,
+          "Tackled off the ball": 8.375,
+          "Uncollected pass near intended receiver": 2.375
+        }
+      }
+    }
+  },
+  "before": [
+    {
+      "id": "balanced73-180-6301",
+      "archetype": "balanced73",
+      "seed": 6301,
+      "duration": 180,
+      "overall": 73.09339999999999,
+      "outfieldRetention": 69.47,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 8,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 4,
+      "passes": 77,
+      "completed": 53,
+      "passAccuracy": 68.83116883116882,
+      "turnovers": 23,
+      "turnoversByTeam": [
+        12,
+        11
+      ],
+      "categories": {
+        "Receiving miscontrol": 6,
+        "Clean interception": 9,
+        "Uncollected pass near intended receiver": 3,
+        "Tackled off the ball": 3,
+        "Heavy dribbling touch": 1,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 59,
+      "receivingMiscontrols": 8,
+      "miscontrols": 16,
+      "heavyTouches": 1,
+      "longBalls": 10
+    },
+    {
+      "id": "balanced73-300-6301",
+      "archetype": "balanced73",
+      "seed": 6301,
+      "duration": 300,
+      "overall": 73.09339999999999,
+      "outfieldRetention": 69.47,
+      "goals": 3,
+      "score": [
+        0,
+        3
+      ],
+      "shots": 6,
+      "offTarget": 0,
+      "blocked": 2,
+      "onTarget": 3,
+      "passes": 104,
+      "completed": 79,
+      "passAccuracy": 75.96153846153847,
+      "turnovers": 39,
+      "turnoversByTeam": [
+        20,
+        19
+      ],
+      "categories": {
+        "Receiving miscontrol": 10,
+        "Clean interception": 9,
+        "Heavy dribbling touch": 3,
+        "Pass out without a control attempt": 3,
+        "Tackled off the ball": 12,
+        "Uncollected pass near intended receiver": 1,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 89,
+      "receivingMiscontrols": 19,
+      "miscontrols": 40,
+      "heavyTouches": 5,
+      "longBalls": 13
+    },
+    {
+      "id": "balanced80-180-6301",
+      "archetype": "balanced80",
+      "seed": 6301,
+      "duration": 180,
+      "overall": 79.65547272727272,
+      "outfieldRetention": 77.75500000000001,
+      "goals": 1,
+      "score": [
+        0,
+        1
+      ],
+      "shots": 4,
+      "offTarget": 2,
+      "blocked": 1,
+      "onTarget": 1,
+      "passes": 79,
+      "completed": 56,
+      "passAccuracy": 70.88607594936708,
+      "turnovers": 30,
+      "turnoversByTeam": [
+        15,
+        15
+      ],
+      "categories": {
+        "Receiving miscontrol": 8,
+        "Tackled off the ball": 9,
+        "Offside": 1,
+        "Clean interception": 6,
+        "Uncollected pass near intended receiver": 2,
+        "Pass out without a control attempt": 2,
+        "Carried ball out of play": 1,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 64,
+      "receivingMiscontrols": 16,
+      "miscontrols": 29,
+      "heavyTouches": 1,
+      "longBalls": 3
+    },
+    {
+      "id": "balanced80-300-6301",
+      "archetype": "balanced80",
+      "seed": 6301,
+      "duration": 300,
+      "overall": 79.65547272727272,
+      "outfieldRetention": 77.75500000000001,
+      "goals": 3,
+      "score": [
+        1,
+        2
+      ],
+      "shots": 12,
+      "offTarget": 4,
+      "blocked": 3,
+      "onTarget": 5,
+      "passes": 107,
+      "completed": 76,
+      "passAccuracy": 71.02803738317758,
+      "turnovers": 45,
+      "turnoversByTeam": [
+        25,
+        20
+      ],
+      "categories": {
+        "Receiving miscontrol": 11,
+        "Clean interception": 7,
+        "Uncollected pass near intended receiver": 3,
+        "Heavy dribbling touch": 2,
+        "Tackled off the ball": 13,
+        "Offside": 2,
+        "Failed take-on": 2,
+        "Pass out without a control attempt": 5
+      },
+      "receivingAttempts": 87,
+      "receivingMiscontrols": 18,
+      "miscontrols": 34,
+      "heavyTouches": 3,
+      "longBalls": 17
+    },
+    {
+      "id": "elitePossession-180-6301",
+      "archetype": "elitePossession",
+      "seed": 6301,
+      "duration": 180,
+      "overall": 85.62292727272727,
+      "outfieldRetention": 84.67,
+      "goals": 5,
+      "score": [
+        3,
+        2
+      ],
+      "shots": 7,
+      "offTarget": 0,
+      "blocked": 2,
+      "onTarget": 5,
+      "passes": 101,
+      "completed": 77,
+      "passAccuracy": 76.23762376237623,
+      "turnovers": 23,
+      "turnoversByTeam": [
+        11,
+        12
+      ],
+      "categories": {
+        "Clean interception": 11,
+        "Uncollected pass near intended receiver": 2,
+        "Receiving miscontrol": 6,
+        "Tackled off the ball": 3,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 83,
+      "receivingMiscontrols": 13,
+      "miscontrols": 22,
+      "heavyTouches": 0,
+      "longBalls": 9
+    },
+    {
+      "id": "elitePossession-300-6301",
+      "archetype": "elitePossession",
+      "seed": 6301,
+      "duration": 300,
+      "overall": 85.62292727272727,
+      "outfieldRetention": 84.67,
+      "goals": 1,
+      "score": [
+        1,
+        0
+      ],
+      "shots": 2,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 1,
+      "passes": 151,
+      "completed": 113,
+      "passAccuracy": 74.83443708609272,
+      "turnovers": 61,
+      "turnoversByTeam": [
+        29,
+        32
+      ],
+      "categories": {
+        "Clean interception": 17,
+        "Failed take-on": 2,
+        "Uncollected pass near intended receiver": 8,
+        "Receiving miscontrol": 10,
+        "Tackled off the ball": 21,
+        "Opponent deflection, then recovery": 1,
+        "Pass out without a control attempt": 1,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 123,
+      "receivingMiscontrols": 20,
+      "miscontrols": 32,
+      "heavyTouches": 1,
+      "longBalls": 11
+    },
+    {
+      "id": "balanced73-180-6302",
+      "archetype": "balanced73",
+      "seed": 6302,
+      "duration": 180,
+      "overall": 72.92994545454545,
+      "outfieldRetention": 69.305,
+      "goals": 1,
+      "score": [
+        1,
+        0
+      ],
+      "shots": 4,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 1,
+      "passes": 81,
+      "completed": 62,
+      "passAccuracy": 76.54320987654322,
+      "turnovers": 31,
+      "turnoversByTeam": [
+        14,
+        17
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 3,
+        "Tackled off the ball": 11,
+        "Clean interception": 9,
+        "Receiving miscontrol": 3,
+        "Heavy dribbling touch": 3,
+        "Pass out without a control attempt": 1,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 65,
+      "receivingMiscontrols": 9,
+      "miscontrols": 20,
+      "heavyTouches": 3,
+      "longBalls": 4
+    },
+    {
+      "id": "balanced73-300-6302",
+      "archetype": "balanced73",
+      "seed": 6302,
+      "duration": 300,
+      "overall": 72.92994545454545,
+      "outfieldRetention": 69.305,
+      "goals": 2,
+      "score": [
+        1,
+        1
+      ],
+      "shots": 6,
+      "offTarget": 2,
+      "blocked": 0,
+      "onTarget": 3,
+      "passes": 99,
+      "completed": 73,
+      "passAccuracy": 73.73737373737374,
+      "turnovers": 46,
+      "turnoversByTeam": [
+        23,
+        23
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 3,
+        "Tackled off the ball": 19,
+        "Failed take-on": 2,
+        "Pass out without a control attempt": 2,
+        "Receiving miscontrol": 7,
+        "Clean interception": 9,
+        "Opponent deflection, then recovery": 2,
+        "Heavy dribbling touch": 2
+      },
+      "receivingAttempts": 81,
+      "receivingMiscontrols": 19,
+      "miscontrols": 45,
+      "heavyTouches": 6,
+      "longBalls": 8
+    },
+    {
+      "id": "balanced80-180-6302",
+      "archetype": "balanced80",
+      "seed": 6302,
+      "duration": 180,
+      "overall": 80.33264545454544,
+      "outfieldRetention": 77.15,
+      "goals": 6,
+      "score": [
+        4,
+        2
+      ],
+      "shots": 8,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 7,
+      "passes": 73,
+      "completed": 59,
+      "passAccuracy": 80.82191780821918,
+      "turnovers": 26,
+      "turnoversByTeam": [
+        13,
+        13
+      ],
+      "categories": {
+        "Tackled off the ball": 13,
+        "Receiving miscontrol": 7,
+        "Clean interception": 3,
+        "Uncollected pass near intended receiver": 1,
+        "Failed take-on": 1,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 66,
+      "receivingMiscontrols": 10,
+      "miscontrols": 21,
+      "heavyTouches": 0,
+      "longBalls": 6
+    },
+    {
+      "id": "balanced80-300-6302",
+      "archetype": "balanced80",
+      "seed": 6302,
+      "duration": 300,
+      "overall": 80.33264545454544,
+      "outfieldRetention": 77.15,
+      "goals": 4,
+      "score": [
+        3,
+        1
+      ],
+      "shots": 10,
+      "offTarget": 1,
+      "blocked": 1,
+      "onTarget": 6,
+      "passes": 104,
+      "completed": 81,
+      "passAccuracy": 77.88461538461539,
+      "turnovers": 45,
+      "turnoversByTeam": [
+        21,
+        24
+      ],
+      "categories": {
+        "Failed take-on": 5,
+        "Opponent deflection, then recovery": 1,
+        "Clean interception": 8,
+        "Tackled off the ball": 15,
+        "Receiving miscontrol": 10,
+        "Heavy dribbling touch": 3,
+        "Uncollected pass near intended receiver": 2,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 91,
+      "receivingMiscontrols": 13,
+      "miscontrols": 27,
+      "heavyTouches": 3,
+      "longBalls": 6
+    },
+    {
+      "id": "elitePossession-180-6302",
+      "archetype": "elitePossession",
+      "seed": 6302,
+      "duration": 180,
+      "overall": 85.7808090909091,
+      "outfieldRetention": 85.19500000000001,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 3,
+      "offTarget": 0,
+      "blocked": 0,
+      "onTarget": 3,
+      "passes": 103,
+      "completed": 83,
+      "passAccuracy": 80.58252427184466,
+      "turnovers": 19,
+      "turnoversByTeam": [
+        10,
+        9
+      ],
+      "categories": {
+        "Pass out without a control attempt": 4,
+        "Clean interception": 8,
+        "Receiving miscontrol": 2,
+        "Tackled off the ball": 1,
+        "Uncollected pass near intended receiver": 4
+      },
+      "receivingAttempts": 85,
+      "receivingMiscontrols": 7,
+      "miscontrols": 10,
+      "heavyTouches": 0,
+      "longBalls": 12
+    },
+    {
+      "id": "elitePossession-300-6302",
+      "archetype": "elitePossession",
+      "seed": 6302,
+      "duration": 300,
+      "overall": 85.7808090909091,
+      "outfieldRetention": 85.19500000000001,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 9,
+      "offTarget": 2,
+      "blocked": 1,
+      "onTarget": 6,
+      "passes": 137,
+      "completed": 110,
+      "passAccuracy": 80.2919708029197,
+      "turnovers": 35,
+      "turnoversByTeam": [
+        17,
+        18
+      ],
+      "categories": {
+        "Receiving miscontrol": 13,
+        "Uncollected pass near intended receiver": 3,
+        "Clean interception": 7,
+        "Tackled off the ball": 5,
+        "Offside": 1,
+        "Failed take-on": 2,
+        "Pass out without a control attempt": 2,
+        "Heavy dribbling touch": 2
+      },
+      "receivingAttempts": 123,
+      "receivingMiscontrols": 20,
+      "miscontrols": 26,
+      "heavyTouches": 3,
+      "longBalls": 20
+    },
+    {
+      "id": "balanced73-180-6303",
+      "archetype": "balanced73",
+      "seed": 6303,
+      "duration": 180,
+      "overall": 72.88757272727274,
+      "outfieldRetention": 67.22500000000001,
+      "goals": 3,
+      "score": [
+        1,
+        2
+      ],
+      "shots": 7,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 3,
+      "passes": 81,
+      "completed": 64,
+      "passAccuracy": 79.01234567901234,
+      "turnovers": 20,
+      "turnoversByTeam": [
+        10,
+        10
+      ],
+      "categories": {
+        "Clean interception": 6,
+        "Receiving miscontrol": 5,
+        "Uncollected pass near intended receiver": 3,
+        "Tackled off the ball": 5,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 69,
+      "receivingMiscontrols": 9,
+      "miscontrols": 18,
+      "heavyTouches": 1,
+      "longBalls": 10
+    },
+    {
+      "id": "balanced73-300-6303",
+      "archetype": "balanced73",
+      "seed": 6303,
+      "duration": 300,
+      "overall": 72.88757272727274,
+      "outfieldRetention": 67.22500000000001,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 12,
+      "offTarget": 6,
+      "blocked": 4,
+      "onTarget": 2,
+      "passes": 100,
+      "completed": 77,
+      "passAccuracy": 77,
+      "turnovers": 37,
+      "turnoversByTeam": [
+        18,
+        19
+      ],
+      "categories": {
+        "Clean interception": 13,
+        "Receiving miscontrol": 4,
+        "Tackled off the ball": 8,
+        "Uncollected pass near intended receiver": 4,
+        "Heavy dribbling touch": 6,
+        "Failed take-on": 1,
+        "Carried ball out of play": 1
+      },
+      "receivingAttempts": 81,
+      "receivingMiscontrols": 12,
+      "miscontrols": 36,
+      "heavyTouches": 12,
+      "longBalls": 12
+    },
+    {
+      "id": "balanced80-180-6303",
+      "archetype": "balanced80",
+      "seed": 6303,
+      "duration": 180,
+      "overall": 80.10222727272726,
+      "outfieldRetention": 76.545,
+      "goals": 2,
+      "score": [
+        1,
+        1
+      ],
+      "shots": 4,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 3,
+      "passes": 80,
+      "completed": 66,
+      "passAccuracy": 82.5,
+      "turnovers": 18,
+      "turnoversByTeam": [
+        8,
+        10
+      ],
+      "categories": {
+        "Clean interception": 7,
+        "Tackled off the ball": 4,
+        "Receiving miscontrol": 2,
+        "Uncollected pass near intended receiver": 2,
+        "Pass out without a control attempt": 2,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 68,
+      "receivingMiscontrols": 8,
+      "miscontrols": 15,
+      "heavyTouches": 3,
+      "longBalls": 8
+    },
+    {
+      "id": "balanced80-300-6303",
+      "archetype": "balanced80",
+      "seed": 6303,
+      "duration": 300,
+      "overall": 80.10222727272726,
+      "outfieldRetention": 76.545,
+      "goals": 3,
+      "score": [
+        1,
+        2
+      ],
+      "shots": 7,
+      "offTarget": 3,
+      "blocked": 1,
+      "onTarget": 3,
+      "passes": 115,
+      "completed": 85,
+      "passAccuracy": 73.91304347826087,
+      "turnovers": 42,
+      "turnoversByTeam": [
+        23,
+        19
+      ],
+      "categories": {
+        "Clean interception": 17,
+        "Uncollected pass near intended receiver": 5,
+        "Tackled off the ball": 13,
+        "Heavy dribbling touch": 2,
+        "Receiving miscontrol": 3,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 89,
+      "receivingMiscontrols": 12,
+      "miscontrols": 24,
+      "heavyTouches": 4,
+      "longBalls": 13
+    },
+    {
+      "id": "elitePossession-180-6303",
+      "archetype": "elitePossession",
+      "seed": 6303,
+      "duration": 180,
+      "overall": 85.71101818181818,
+      "outfieldRetention": 84.905,
+      "goals": 3,
+      "score": [
+        2,
+        1
+      ],
+      "shots": 4,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 3,
+      "passes": 93,
+      "completed": 71,
+      "passAccuracy": 76.34408602150538,
+      "turnovers": 28,
+      "turnoversByTeam": [
+        14,
+        14
+      ],
+      "categories": {
+        "Clean interception": 11,
+        "Tackled off the ball": 5,
+        "Uncollected pass near intended receiver": 4,
+        "Receiving miscontrol": 3,
+        "Opponent deflection, then recovery": 1,
+        "Heavy dribbling touch": 3,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 74,
+      "receivingMiscontrols": 6,
+      "miscontrols": 14,
+      "heavyTouches": 3,
+      "longBalls": 7
+    },
+    {
+      "id": "elitePossession-300-6303",
+      "archetype": "elitePossession",
+      "seed": 6303,
+      "duration": 300,
+      "overall": 85.71101818181818,
+      "outfieldRetention": 84.905,
+      "goals": 4,
+      "score": [
+        3,
+        1
+      ],
+      "shots": 8,
+      "offTarget": 0,
+      "blocked": 2,
+      "onTarget": 5,
+      "passes": 164,
+      "completed": 125,
+      "passAccuracy": 76.21951219512195,
+      "turnovers": 46,
+      "turnoversByTeam": [
+        22,
+        24
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 6,
+        "Clean interception": 15,
+        "Tackled off the ball": 8,
+        "Receiving miscontrol": 10,
+        "Failed take-on": 3,
+        "Opponent deflection, then recovery": 1,
+        "Pass out without a control attempt": 2,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 135,
+      "receivingMiscontrols": 16,
+      "miscontrols": 33,
+      "heavyTouches": 3,
+      "longBalls": 14
+    },
+    {
+      "id": "balanced73-180-6304",
+      "archetype": "balanced73",
+      "seed": 6304,
+      "duration": 180,
+      "overall": 73.52717272727273,
+      "outfieldRetention": 70.985,
+      "goals": 0,
+      "score": [
+        0,
+        0
+      ],
+      "shots": 4,
+      "offTarget": 1,
+      "blocked": 2,
+      "onTarget": 1,
+      "passes": 80,
+      "completed": 60,
+      "passAccuracy": 75,
+      "turnovers": 24,
+      "turnoversByTeam": [
+        11,
+        13
+      ],
+      "categories": {
+        "Opponent deflection, then recovery": 3,
+        "Clean interception": 8,
+        "Receiving miscontrol": 3,
+        "Tackled off the ball": 4,
+        "Uncollected pass near intended receiver": 4,
+        "Pass out without a control attempt": 1,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 64,
+      "receivingMiscontrols": 7,
+      "miscontrols": 17,
+      "heavyTouches": 2,
+      "longBalls": 8
+    },
+    {
+      "id": "balanced73-300-6304",
+      "archetype": "balanced73",
+      "seed": 6304,
+      "duration": 300,
+      "overall": 73.52717272727273,
+      "outfieldRetention": 70.985,
+      "goals": 3,
+      "score": [
+        1,
+        2
+      ],
+      "shots": 7,
+      "offTarget": 4,
+      "blocked": 0,
+      "onTarget": 3,
+      "passes": 98,
+      "completed": 72,
+      "passAccuracy": 73.46938775510205,
+      "turnovers": 43,
+      "turnoversByTeam": [
+        22,
+        21
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 6,
+        "Clean interception": 10,
+        "Tackled off the ball": 16,
+        "Receiving miscontrol": 5,
+        "Failed take-on": 1,
+        "Opponent deflection, then recovery": 1,
+        "Heavy dribbling touch": 2,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 77,
+      "receivingMiscontrols": 13,
+      "miscontrols": 26,
+      "heavyTouches": 3,
+      "longBalls": 15
+    },
+    {
+      "id": "balanced80-180-6304",
+      "archetype": "balanced80",
+      "seed": 6304,
+      "duration": 180,
+      "overall": 80.1131909090909,
+      "outfieldRetention": 77.295,
+      "goals": 2,
+      "score": [
+        2,
+        0
+      ],
+      "shots": 6,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 2,
+      "passes": 75,
+      "completed": 58,
+      "passAccuracy": 77.33333333333333,
+      "turnovers": 25,
+      "turnoversByTeam": [
+        13,
+        12
+      ],
+      "categories": {
+        "Receiving miscontrol": 7,
+        "Tackled off the ball": 6,
+        "Clean interception": 5,
+        "Pass out without a control attempt": 1,
+        "Opponent deflection, then recovery": 1,
+        "Failed take-on": 3,
+        "Heavy dribbling touch": 2
+      },
+      "receivingAttempts": 65,
+      "receivingMiscontrols": 12,
+      "miscontrols": 20,
+      "heavyTouches": 2,
+      "longBalls": 8
+    },
+    {
+      "id": "balanced80-300-6304",
+      "archetype": "balanced80",
+      "seed": 6304,
+      "duration": 300,
+      "overall": 80.1131909090909,
+      "outfieldRetention": 77.295,
+      "goals": 4,
+      "score": [
+        1,
+        3
+      ],
+      "shots": 8,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 5,
+      "passes": 109,
+      "completed": 83,
+      "passAccuracy": 76.14678899082568,
+      "turnovers": 40,
+      "turnoversByTeam": [
+        20,
+        20
+      ],
+      "categories": {
+        "Heavy dribbling touch": 4,
+        "Uncollected pass near intended receiver": 8,
+        "Clean interception": 11,
+        "Tackled off the ball": 9,
+        "Opponent deflection, then recovery": 2,
+        "Receiving miscontrol": 3,
+        "Pass out without a control attempt": 1,
+        "Failed take-on": 2
+      },
+      "receivingAttempts": 86,
+      "receivingMiscontrols": 12,
+      "miscontrols": 33,
+      "heavyTouches": 6,
+      "longBalls": 6
+    },
+    {
+      "id": "elitePossession-180-6304",
+      "archetype": "elitePossession",
+      "seed": 6304,
+      "duration": 180,
+      "overall": 86.7898,
+      "outfieldRetention": 86.00500000000002,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 6,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 5,
+      "passes": 93,
+      "completed": 76,
+      "passAccuracy": 81.72043010752688,
+      "turnovers": 23,
+      "turnoversByTeam": [
+        12,
+        11
+      ],
+      "categories": {
+        "Tackled off the ball": 6,
+        "Receiving miscontrol": 6,
+        "Clean interception": 7,
+        "Uncollected pass near intended receiver": 1,
+        "Pass out without a control attempt": 2,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 83,
+      "receivingMiscontrols": 10,
+      "miscontrols": 14,
+      "heavyTouches": 0,
+      "longBalls": 13
+    },
+    {
+      "id": "elitePossession-300-6304",
+      "archetype": "elitePossession",
+      "seed": 6304,
+      "duration": 300,
+      "overall": 86.7898,
+      "outfieldRetention": 86.00500000000002,
+      "goals": 1,
+      "score": [
+        0,
+        1
+      ],
+      "shots": 8,
+      "offTarget": 2,
+      "blocked": 3,
+      "onTarget": 3,
+      "passes": 163,
+      "completed": 130,
+      "passAccuracy": 79.75460122699387,
+      "turnovers": 41,
+      "turnoversByTeam": [
+        22,
+        19
+      ],
+      "categories": {
+        "Clean interception": 14,
+        "Receiving miscontrol": 9,
+        "Tackled off the ball": 12,
+        "Uncollected pass near intended receiver": 3,
+        "Failed take-on": 1,
+        "Heavy dribbling touch": 1,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 139,
+      "receivingMiscontrols": 12,
+      "miscontrols": 31,
+      "heavyTouches": 1,
+      "longBalls": 14
+    },
+    {
+      "id": "catalog-180-5701",
+      "archetype": "catalog",
+      "seed": 5701,
+      "duration": 180,
+      "overall": 70.36363636363636,
+      "outfieldRetention": 0,
+      "goals": 2,
+      "score": [
+        2,
+        0
+      ],
+      "shots": 4,
+      "offTarget": 2,
+      "blocked": 0,
+      "onTarget": 2,
+      "saves": 0,
+      "boxShots": 3,
+      "boxGoals": 1,
+      "passes": 72,
+      "completed": 51,
+      "passAccuracy": 70.83333333333333,
+      "turnovers": 27,
+      "turnoversByTeam": [
+        12,
+        15
+      ],
+      "categories": {
+        "Clean interception": 4,
+        "Tackled off the ball": 5,
+        "Opponent deflection, then recovery": 2,
+        "Receiving miscontrol": 9,
+        "Failed take-on": 3,
+        "Heavy dribbling touch": 1,
+        "Uncollected pass near intended receiver": 3
+      },
+      "receivingAttempts": 60,
+      "receivingMiscontrols": 14,
+      "miscontrols": 30,
+      "heavyTouches": 1,
+      "longBalls": 7
+    },
+    {
+      "id": "catalog-300-5701",
+      "archetype": "catalog",
+      "seed": 5701,
+      "duration": 300,
+      "overall": 70.36363636363636,
+      "outfieldRetention": 0,
+      "goals": 3,
+      "score": [
+        2,
+        1
+      ],
+      "shots": 7,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 3,
+      "saves": 0,
+      "boxShots": 6,
+      "boxGoals": 3,
+      "passes": 111,
+      "completed": 81,
+      "passAccuracy": 72.97297297297297,
+      "turnovers": 40,
+      "turnoversByTeam": [
+        20,
+        20
+      ],
+      "categories": {
+        "Receiving miscontrol": 13,
+        "Tackled off the ball": 8,
+        "Failed take-on": 2,
+        "Clean interception": 7,
+        "Uncollected pass near intended receiver": 4,
+        "Heavy dribbling touch": 4,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 94,
+      "receivingMiscontrols": 18,
+      "miscontrols": 35,
+      "heavyTouches": 5,
+      "longBalls": 11
+    },
+    {
+      "id": "catalog-180-5702",
+      "archetype": "catalog",
+      "seed": 5702,
+      "duration": 180,
+      "overall": 70.27272727272727,
+      "outfieldRetention": 0,
+      "goals": 4,
+      "score": [
+        1,
+        3
+      ],
+      "shots": 9,
+      "offTarget": 1,
+      "blocked": 1,
+      "onTarget": 4,
+      "saves": 0,
+      "boxShots": 9,
+      "boxGoals": 4,
+      "passes": 65,
+      "completed": 50,
+      "passAccuracy": 76.92307692307692,
+      "turnovers": 18,
+      "turnoversByTeam": [
+        11,
+        7
+      ],
+      "categories": {
+        "Receiving miscontrol": 8,
+        "Uncollected pass near intended receiver": 5,
+        "Tackled off the ball": 4,
+        "Clean interception": 1
+      },
+      "receivingAttempts": 58,
+      "receivingMiscontrols": 13,
+      "miscontrols": 22,
+      "heavyTouches": 0,
+      "longBalls": 7
+    },
+    {
+      "id": "catalog-300-5702",
+      "archetype": "catalog",
+      "seed": 5702,
+      "duration": 300,
+      "overall": 70.27272727272727,
+      "outfieldRetention": 0,
+      "goals": 0,
+      "score": [
+        0,
+        0
+      ],
+      "shots": 6,
+      "offTarget": 4,
+      "blocked": 2,
+      "onTarget": 0,
+      "saves": 0,
+      "boxShots": 5,
+      "boxGoals": 0,
+      "passes": 99,
+      "completed": 68,
+      "passAccuracy": 68.68686868686869,
+      "turnovers": 53,
+      "turnoversByTeam": [
+        26,
+        27
+      ],
+      "categories": {
+        "Receiving miscontrol": 11,
+        "Clean interception": 11,
+        "Tackled off the ball": 16,
+        "Pass out without a control attempt": 1,
+        "Heavy dribbling touch": 5,
+        "Failed take-on": 3,
+        "Opponent deflection, then recovery": 4,
+        "Uncollected pass near intended receiver": 2
+      },
+      "receivingAttempts": 79,
+      "receivingMiscontrols": 24,
+      "miscontrols": 51,
+      "heavyTouches": 6,
+      "longBalls": 6
+    },
+    {
+      "id": "catalog-180-5703",
+      "archetype": "catalog",
+      "seed": 5703,
+      "duration": 180,
+      "overall": 72.77272727272727,
+      "outfieldRetention": 0,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 6,
+      "offTarget": 4,
+      "blocked": 0,
+      "onTarget": 2,
+      "saves": 0,
+      "boxShots": 4,
+      "boxGoals": 2,
+      "passes": 73,
+      "completed": 53,
+      "passAccuracy": 72.6027397260274,
+      "turnovers": 26,
+      "turnoversByTeam": [
+        13,
+        13
+      ],
+      "categories": {
+        "Clean interception": 9,
+        "Receiving miscontrol": 7,
+        "Tackled off the ball": 4,
+        "Heavy dribbling touch": 1,
+        "Uncollected pass near intended receiver": 2,
+        "Opponent deflection, then recovery": 1,
+        "Failed take-on": 2
+      },
+      "receivingAttempts": 61,
+      "receivingMiscontrols": 11,
+      "miscontrols": 17,
+      "heavyTouches": 1,
+      "longBalls": 7
+    },
+    {
+      "id": "catalog-300-5703",
+      "archetype": "catalog",
+      "seed": 5703,
+      "duration": 300,
+      "overall": 72.77272727272727,
+      "outfieldRetention": 0,
+      "goals": 2,
+      "score": [
+        1,
+        1
+      ],
+      "shots": 12,
+      "offTarget": 7,
+      "blocked": 1,
+      "onTarget": 4,
+      "saves": 2,
+      "boxShots": 7,
+      "boxGoals": 2,
+      "passes": 104,
+      "completed": 72,
+      "passAccuracy": 69.23076923076923,
+      "turnovers": 45,
+      "turnoversByTeam": [
+        23,
+        22
+      ],
+      "categories": {
+        "Tackled off the ball": 13,
+        "Receiving miscontrol": 8,
+        "Uncollected pass near intended receiver": 1,
+        "Clean interception": 18,
+        "Pass out without a control attempt": 1,
+        "Carried ball out of play": 1,
+        "Failed take-on": 2,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 80,
+      "receivingMiscontrols": 19,
+      "miscontrols": 30,
+      "heavyTouches": 2,
+      "longBalls": 15
+    },
+    {
+      "id": "catalog-180-5704",
+      "archetype": "catalog",
+      "seed": 5704,
+      "duration": 180,
+      "overall": 69.68181818181819,
+      "outfieldRetention": 0,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 3,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 2,
+      "saves": 0,
+      "boxShots": 3,
+      "boxGoals": 2,
+      "passes": 69,
+      "completed": 50,
+      "passAccuracy": 72.46376811594203,
+      "turnovers": 26,
+      "turnoversByTeam": [
+        14,
+        12
+      ],
+      "categories": {
+        "Receiving miscontrol": 9,
+        "Uncollected pass near intended receiver": 4,
+        "Clean interception": 4,
+        "Pass out without a control attempt": 2,
+        "Heavy dribbling touch": 1,
+        "Tackled off the ball": 5,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 59,
+      "receivingMiscontrols": 19,
+      "miscontrols": 27,
+      "heavyTouches": 2,
+      "longBalls": 7
+    },
+    {
+      "id": "catalog-300-5704",
+      "archetype": "catalog",
+      "seed": 5704,
+      "duration": 300,
+      "overall": 69.68181818181819,
+      "outfieldRetention": 0,
+      "goals": 1,
+      "score": [
+        1,
+        0
+      ],
+      "shots": 5,
+      "offTarget": 3,
+      "blocked": 1,
+      "onTarget": 1,
+      "saves": 0,
+      "boxShots": 5,
+      "boxGoals": 1,
+      "passes": 99,
+      "completed": 71,
+      "passAccuracy": 71.71717171717172,
+      "turnovers": 38,
+      "turnoversByTeam": [
+        18,
+        20
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 5,
+        "Clean interception": 10,
+        "Tackled off the ball": 9,
+        "Failed take-on": 1,
+        "Receiving miscontrol": 4,
+        "Carried ball out of play": 1,
+        "Pass out without a control attempt": 4,
+        "Heavy dribbling touch": 2,
+        "Opponent deflection, then recovery": 2
+      },
+      "receivingAttempts": 75,
+      "receivingMiscontrols": 17,
+      "miscontrols": 35,
+      "heavyTouches": 4,
+      "longBalls": 9
+    }
+  ],
+  "after": [
+    {
+      "id": "balanced73-180-6301",
+      "archetype": "balanced73",
+      "seed": 6301,
+      "duration": 180,
+      "overall": 73.09339999999999,
+      "outfieldRetention": 69.47,
+      "goals": 1,
+      "score": [
+        1,
+        0
+      ],
+      "shots": 7,
+      "offTarget": 5,
+      "blocked": 1,
+      "onTarget": 1,
+      "saves": 0,
+      "boxShots": 6,
+      "boxGoals": 0,
+      "passes": 82,
+      "completed": 70,
+      "passAccuracy": 85.36585365853658,
+      "turnovers": 14,
+      "turnoversByTeam": [
+        7,
+        7
+      ],
+      "categories": {
+        "Clean interception": 6,
+        "Tackled off the ball": 4,
+        "Heavy dribbling touch": 2,
+        "Uncollected pass near intended receiver": 1,
+        "Offside": 1
+      },
+      "receivingAttempts": 70,
+      "receivingMiscontrols": 0,
+      "miscontrols": 12,
+      "heavyTouches": 3,
+      "longBalls": 10
+    },
+    {
+      "id": "balanced73-300-6301",
+      "archetype": "balanced73",
+      "seed": 6301,
+      "duration": 300,
+      "overall": 73.09339999999999,
+      "outfieldRetention": 69.47,
+      "goals": 4,
+      "score": [
+        1,
+        3
+      ],
+      "shots": 14,
+      "offTarget": 8,
+      "blocked": 1,
+      "onTarget": 5,
+      "saves": 1,
+      "boxShots": 12,
+      "boxGoals": 4,
+      "passes": 111,
+      "completed": 95,
+      "passAccuracy": 85.58558558558559,
+      "turnovers": 30,
+      "turnoversByTeam": [
+        19,
+        11
+      ],
+      "categories": {
+        "Failed take-on": 3,
+        "Clean interception": 11,
+        "Receiving miscontrol": 3,
+        "Tackled off the ball": 10,
+        "Pass out without a control attempt": 1,
+        "Heavy dribbling touch": 2
+      },
+      "receivingAttempts": 98,
+      "receivingMiscontrols": 7,
+      "miscontrols": 22,
+      "heavyTouches": 2,
+      "longBalls": 10
+    },
+    {
+      "id": "balanced80-180-6301",
+      "archetype": "balanced80",
+      "seed": 6301,
+      "duration": 180,
+      "overall": 79.65547272727272,
+      "outfieldRetention": 77.75500000000001,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 13,
+      "offTarget": 3,
+      "blocked": 3,
+      "onTarget": 6,
+      "saves": 2,
+      "boxShots": 13,
+      "boxGoals": 4,
+      "passes": 91,
+      "completed": 84,
+      "passAccuracy": 92.3076923076923,
+      "turnovers": 8,
+      "turnoversByTeam": [
+        2,
+        6
+      ],
+      "categories": {
+        "Clean interception": 3,
+        "Tackled off the ball": 3,
+        "Heavy dribbling touch": 1,
+        "Receiving miscontrol": 1
+      },
+      "receivingAttempts": 85,
+      "receivingMiscontrols": 3,
+      "miscontrols": 16,
+      "heavyTouches": 2,
+      "longBalls": 9
+    },
+    {
+      "id": "balanced80-300-6301",
+      "archetype": "balanced80",
+      "seed": 6301,
+      "duration": 300,
+      "overall": 79.65547272727272,
+      "outfieldRetention": 77.75500000000001,
+      "goals": 1,
+      "score": [
+        1,
+        0
+      ],
+      "shots": 8,
+      "offTarget": 5,
+      "blocked": 0,
+      "onTarget": 2,
+      "saves": 1,
+      "boxShots": 6,
+      "boxGoals": 1,
+      "passes": 147,
+      "completed": 125,
+      "passAccuracy": 85.03401360544218,
+      "turnovers": 35,
+      "turnoversByTeam": [
+        17,
+        18
+      ],
+      "categories": {
+        "Opponent deflection, then recovery": 2,
+        "Uncollected pass near intended receiver": 3,
+        "Clean interception": 13,
+        "Tackled off the ball": 10,
+        "Failed take-on": 4,
+        "Receiving miscontrol": 1,
+        "Pass out without a control attempt": 1,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 126,
+      "receivingMiscontrols": 2,
+      "miscontrols": 15,
+      "heavyTouches": 3,
+      "longBalls": 11
+    },
+    {
+      "id": "elitePossession-180-6301",
+      "archetype": "elitePossession",
+      "seed": 6301,
+      "duration": 180,
+      "overall": 85.62292727272727,
+      "outfieldRetention": 84.67,
+      "goals": 3,
+      "score": [
+        2,
+        1
+      ],
+      "shots": 5,
+      "offTarget": 1,
+      "blocked": 0,
+      "onTarget": 3,
+      "saves": 0,
+      "boxShots": 5,
+      "boxGoals": 3,
+      "passes": 100,
+      "completed": 88,
+      "passAccuracy": 88,
+      "turnovers": 19,
+      "turnoversByTeam": [
+        9,
+        10
+      ],
+      "categories": {
+        "Clean interception": 7,
+        "Tackled off the ball": 6,
+        "Pass out without a control attempt": 1,
+        "Uncollected pass near intended receiver": 2,
+        "Heavy dribbling touch": 2,
+        "Receiving miscontrol": 1
+      },
+      "receivingAttempts": 89,
+      "receivingMiscontrols": 4,
+      "miscontrols": 9,
+      "heavyTouches": 3,
+      "longBalls": 2
+    },
+    {
+      "id": "elitePossession-300-6301",
+      "archetype": "elitePossession",
+      "seed": 6301,
+      "duration": 300,
+      "overall": 85.62292727272727,
+      "outfieldRetention": 84.67,
+      "goals": 4,
+      "score": [
+        3,
+        1
+      ],
+      "shots": 10,
+      "offTarget": 4,
+      "blocked": 1,
+      "onTarget": 5,
+      "saves": 1,
+      "boxShots": 8,
+      "boxGoals": 4,
+      "passes": 163,
+      "completed": 146,
+      "passAccuracy": 89.57055214723927,
+      "turnovers": 23,
+      "turnoversByTeam": [
+        10,
+        13
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 3,
+        "Clean interception": 8,
+        "Tackled off the ball": 4,
+        "Carried ball out of play": 1,
+        "Heavy dribbling touch": 4,
+        "Receiving miscontrol": 1,
+        "Failed take-on": 1,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 147,
+      "receivingMiscontrols": 4,
+      "miscontrols": 18,
+      "heavyTouches": 4,
+      "longBalls": 10
+    },
+    {
+      "id": "balanced73-180-6302",
+      "archetype": "balanced73",
+      "seed": 6302,
+      "duration": 180,
+      "overall": 72.92994545454545,
+      "outfieldRetention": 69.305,
+      "goals": 7,
+      "score": [
+        3,
+        4
+      ],
+      "shots": 11,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 8,
+      "saves": 1,
+      "boxShots": 9,
+      "boxGoals": 5,
+      "passes": 91,
+      "completed": 81,
+      "passAccuracy": 89.01098901098901,
+      "turnovers": 8,
+      "turnoversByTeam": [
+        4,
+        4
+      ],
+      "categories": {
+        "Clean interception": 5,
+        "Uncollected pass near intended receiver": 2,
+        "Tackled off the ball": 1
+      },
+      "receivingAttempts": 81,
+      "receivingMiscontrols": 3,
+      "miscontrols": 11,
+      "heavyTouches": 1,
+      "longBalls": 10
+    },
+    {
+      "id": "balanced73-300-6302",
+      "archetype": "balanced73",
+      "seed": 6302,
+      "duration": 300,
+      "overall": 72.92994545454545,
+      "outfieldRetention": 69.305,
+      "goals": 2,
+      "score": [
+        2,
+        0
+      ],
+      "shots": 8,
+      "offTarget": 4,
+      "blocked": 2,
+      "onTarget": 2,
+      "saves": 0,
+      "boxShots": 8,
+      "boxGoals": 2,
+      "passes": 117,
+      "completed": 92,
+      "passAccuracy": 78.63247863247864,
+      "turnovers": 37,
+      "turnoversByTeam": [
+        17,
+        20
+      ],
+      "categories": {
+        "Tackled off the ball": 5,
+        "Clean interception": 15,
+        "Heavy dribbling touch": 5,
+        "Opponent deflection, then recovery": 1,
+        "Uncollected pass near intended receiver": 2,
+        "Receiving miscontrol": 5,
+        "Failed take-on": 3,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 97,
+      "receivingMiscontrols": 6,
+      "miscontrols": 25,
+      "heavyTouches": 9,
+      "longBalls": 16
+    },
+    {
+      "id": "balanced80-180-6302",
+      "archetype": "balanced80",
+      "seed": 6302,
+      "duration": 180,
+      "overall": 80.33264545454544,
+      "outfieldRetention": 77.15,
+      "goals": 3,
+      "score": [
+        2,
+        1
+      ],
+      "shots": 7,
+      "offTarget": 4,
+      "blocked": 0,
+      "onTarget": 3,
+      "saves": 0,
+      "boxShots": 6,
+      "boxGoals": 2,
+      "passes": 91,
+      "completed": 79,
+      "passAccuracy": 86.81318681318682,
+      "turnovers": 17,
+      "turnoversByTeam": [
+        9,
+        8
+      ],
+      "categories": {
+        "Clean interception": 9,
+        "Tackled off the ball": 5,
+        "Heavy dribbling touch": 2,
+        "Receiving miscontrol": 1
+      },
+      "receivingAttempts": 80,
+      "receivingMiscontrols": 1,
+      "miscontrols": 5,
+      "heavyTouches": 2,
+      "longBalls": 9
+    },
+    {
+      "id": "balanced80-300-6302",
+      "archetype": "balanced80",
+      "seed": 6302,
+      "duration": 300,
+      "overall": 80.33264545454544,
+      "outfieldRetention": 77.15,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 12,
+      "offTarget": 4,
+      "blocked": 1,
+      "onTarget": 6,
+      "saves": 4,
+      "boxShots": 12,
+      "boxGoals": 2,
+      "passes": 128,
+      "completed": 116,
+      "passAccuracy": 90.625,
+      "turnovers": 27,
+      "turnoversByTeam": [
+        16,
+        11
+      ],
+      "categories": {
+        "Tackled off the ball": 15,
+        "Offside": 2,
+        "Clean interception": 3,
+        "Carried ball out of play": 1,
+        "Failed take-on": 2,
+        "Heavy dribbling touch": 2,
+        "Receiving miscontrol": 2
+      },
+      "receivingAttempts": 118,
+      "receivingMiscontrols": 4,
+      "miscontrols": 23,
+      "heavyTouches": 5,
+      "longBalls": 10
+    },
+    {
+      "id": "elitePossession-180-6302",
+      "archetype": "elitePossession",
+      "seed": 6302,
+      "duration": 180,
+      "overall": 85.7808090909091,
+      "outfieldRetention": 85.19500000000001,
+      "goals": 3,
+      "score": [
+        3,
+        0
+      ],
+      "shots": 5,
+      "offTarget": 0,
+      "blocked": 1,
+      "onTarget": 4,
+      "saves": 1,
+      "boxShots": 4,
+      "boxGoals": 3,
+      "passes": 116,
+      "completed": 105,
+      "passAccuracy": 90.51724137931035,
+      "turnovers": 13,
+      "turnoversByTeam": [
+        4,
+        9
+      ],
+      "categories": {
+        "Clean interception": 6,
+        "Tackled off the ball": 2,
+        "Heavy dribbling touch": 2,
+        "Receiving miscontrol": 1,
+        "Pass out without a control attempt": 1,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 106,
+      "receivingMiscontrols": 2,
+      "miscontrols": 8,
+      "heavyTouches": 3,
+      "longBalls": 7
+    },
+    {
+      "id": "elitePossession-300-6302",
+      "archetype": "elitePossession",
+      "seed": 6302,
+      "duration": 300,
+      "overall": 85.7808090909091,
+      "outfieldRetention": 85.19500000000001,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 11,
+      "offTarget": 4,
+      "blocked": 1,
+      "onTarget": 6,
+      "saves": 4,
+      "boxShots": 8,
+      "boxGoals": 2,
+      "passes": 172,
+      "completed": 158,
+      "passAccuracy": 91.86046511627907,
+      "turnovers": 14,
+      "turnoversByTeam": [
+        11,
+        3
+      ],
+      "categories": {
+        "Clean interception": 8,
+        "Receiving miscontrol": 3,
+        "Tackled off the ball": 1,
+        "Offside": 1,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 161,
+      "receivingMiscontrols": 8,
+      "miscontrols": 13,
+      "heavyTouches": 1,
+      "longBalls": 16
+    },
+    {
+      "id": "balanced73-180-6303",
+      "archetype": "balanced73",
+      "seed": 6303,
+      "duration": 180,
+      "overall": 72.88757272727274,
+      "outfieldRetention": 67.22500000000001,
+      "goals": 0,
+      "score": [
+        0,
+        0
+      ],
+      "shots": 7,
+      "offTarget": 5,
+      "blocked": 1,
+      "onTarget": 0,
+      "saves": 0,
+      "boxShots": 5,
+      "boxGoals": 0,
+      "passes": 74,
+      "completed": 63,
+      "passAccuracy": 85.13513513513513,
+      "turnovers": 16,
+      "turnoversByTeam": [
+        11,
+        5
+      ],
+      "categories": {
+        "Receiving miscontrol": 1,
+        "Clean interception": 3,
+        "Pass out without a control attempt": 3,
+        "Opponent deflection, then recovery": 1,
+        "Heavy dribbling touch": 3,
+        "Tackled off the ball": 4,
+        "Uncollected pass near intended receiver": 1
+      },
+      "receivingAttempts": 64,
+      "receivingMiscontrols": 1,
+      "miscontrols": 15,
+      "heavyTouches": 3,
+      "longBalls": 5
+    },
+    {
+      "id": "balanced73-300-6303",
+      "archetype": "balanced73",
+      "seed": 6303,
+      "duration": 300,
+      "overall": 72.88757272727274,
+      "outfieldRetention": 67.22500000000001,
+      "goals": 3,
+      "score": [
+        3,
+        0
+      ],
+      "shots": 8,
+      "offTarget": 3,
+      "blocked": 1,
+      "onTarget": 4,
+      "saves": 1,
+      "boxShots": 7,
+      "boxGoals": 3,
+      "passes": 116,
+      "completed": 94,
+      "passAccuracy": 81.03448275862068,
+      "turnovers": 44,
+      "turnoversByTeam": [
+        20,
+        24
+      ],
+      "categories": {
+        "Clean interception": 16,
+        "Failed take-on": 4,
+        "Tackled off the ball": 16,
+        "Offside": 1,
+        "Heavy dribbling touch": 4,
+        "Uncollected pass near intended receiver": 1,
+        "Pass out without a control attempt": 1,
+        "Receiving miscontrol": 1
+      },
+      "receivingAttempts": 95,
+      "receivingMiscontrols": 6,
+      "miscontrols": 26,
+      "heavyTouches": 6,
+      "longBalls": 9
+    },
+    {
+      "id": "balanced80-180-6303",
+      "archetype": "balanced80",
+      "seed": 6303,
+      "duration": 180,
+      "overall": 80.10222727272726,
+      "outfieldRetention": 76.545,
+      "goals": 2,
+      "score": [
+        1,
+        1
+      ],
+      "shots": 4,
+      "offTarget": 2,
+      "blocked": 0,
+      "onTarget": 2,
+      "saves": 0,
+      "boxShots": 3,
+      "boxGoals": 2,
+      "passes": 90,
+      "completed": 78,
+      "passAccuracy": 86.66666666666667,
+      "turnovers": 23,
+      "turnoversByTeam": [
+        12,
+        11
+      ],
+      "categories": {
+        "Receiving miscontrol": 2,
+        "Uncollected pass near intended receiver": 1,
+        "Opponent deflection, then recovery": 1,
+        "Tackled off the ball": 10,
+        "Clean interception": 5,
+        "Heavy dribbling touch": 1,
+        "Failed take-on": 1,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 80,
+      "receivingMiscontrols": 4,
+      "miscontrols": 7,
+      "heavyTouches": 1,
+      "longBalls": 6
+    },
+    {
+      "id": "balanced80-300-6303",
+      "archetype": "balanced80",
+      "seed": 6303,
+      "duration": 300,
+      "overall": 80.10222727272726,
+      "outfieldRetention": 76.545,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 11,
+      "offTarget": 2,
+      "blocked": 2,
+      "onTarget": 6,
+      "saves": 2,
+      "boxShots": 11,
+      "boxGoals": 4,
+      "passes": 125,
+      "completed": 103,
+      "passAccuracy": 82.4,
+      "turnovers": 36,
+      "turnoversByTeam": [
+        18,
+        18
+      ],
+      "categories": {
+        "Clean interception": 14,
+        "Pass out without a control attempt": 4,
+        "Heavy dribbling touch": 4,
+        "Tackled off the ball": 10,
+        "Receiving miscontrol": 2,
+        "Failed take-on": 1,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 105,
+      "receivingMiscontrols": 5,
+      "miscontrols": 19,
+      "heavyTouches": 5,
+      "longBalls": 11
+    },
+    {
+      "id": "elitePossession-180-6303",
+      "archetype": "elitePossession",
+      "seed": 6303,
+      "duration": 180,
+      "overall": 85.71101818181818,
+      "outfieldRetention": 84.905,
+      "goals": 0,
+      "score": [
+        0,
+        0
+      ],
+      "shots": 2,
+      "offTarget": 1,
+      "blocked": 1,
+      "onTarget": 0,
+      "saves": 0,
+      "boxShots": 2,
+      "boxGoals": 0,
+      "passes": 127,
+      "completed": 117,
+      "passAccuracy": 92.1259842519685,
+      "turnovers": 11,
+      "turnoversByTeam": [
+        5,
+        6
+      ],
+      "categories": {
+        "Clean interception": 6,
+        "Tackled off the ball": 2,
+        "Receiving miscontrol": 1,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 118,
+      "receivingMiscontrols": 5,
+      "miscontrols": 6,
+      "heavyTouches": 0,
+      "longBalls": 9
+    },
+    {
+      "id": "elitePossession-300-6303",
+      "archetype": "elitePossession",
+      "seed": 6303,
+      "duration": 300,
+      "overall": 85.71101818181818,
+      "outfieldRetention": 84.905,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 7,
+      "offTarget": 2,
+      "blocked": 0,
+      "onTarget": 4,
+      "saves": 2,
+      "boxShots": 5,
+      "boxGoals": 2,
+      "passes": 164,
+      "completed": 153,
+      "passAccuracy": 93.29268292682927,
+      "turnovers": 19,
+      "turnoversByTeam": [
+        10,
+        9
+      ],
+      "categories": {
+        "Heavy dribbling touch": 3,
+        "Clean interception": 5,
+        "Receiving miscontrol": 3,
+        "Uncollected pass near intended receiver": 1,
+        "Tackled off the ball": 6,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 156,
+      "receivingMiscontrols": 6,
+      "miscontrols": 12,
+      "heavyTouches": 3,
+      "longBalls": 11
+    },
+    {
+      "id": "balanced73-180-6304",
+      "archetype": "balanced73",
+      "seed": 6304,
+      "duration": 180,
+      "overall": 73.52717272727273,
+      "outfieldRetention": 70.985,
+      "goals": 2,
+      "score": [
+        1,
+        1
+      ],
+      "shots": 8,
+      "offTarget": 5,
+      "blocked": 1,
+      "onTarget": 2,
+      "saves": 0,
+      "boxShots": 8,
+      "boxGoals": 2,
+      "passes": 80,
+      "completed": 70,
+      "passAccuracy": 87.5,
+      "turnovers": 11,
+      "turnoversByTeam": [
+        5,
+        6
+      ],
+      "categories": {
+        "Receiving miscontrol": 2,
+        "Heavy dribbling touch": 1,
+        "Uncollected pass near intended receiver": 2,
+        "Clean interception": 1,
+        "Tackled off the ball": 3,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 72,
+      "receivingMiscontrols": 4,
+      "miscontrols": 12,
+      "heavyTouches": 2,
+      "longBalls": 9
+    },
+    {
+      "id": "balanced73-300-6304",
+      "archetype": "balanced73",
+      "seed": 6304,
+      "duration": 300,
+      "overall": 73.52717272727273,
+      "outfieldRetention": 70.985,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 16,
+      "offTarget": 8,
+      "blocked": 2,
+      "onTarget": 4,
+      "saves": 0,
+      "boxShots": 16,
+      "boxGoals": 4,
+      "passes": 111,
+      "completed": 99,
+      "passAccuracy": 89.1891891891892,
+      "turnovers": 24,
+      "turnoversByTeam": [
+        9,
+        15
+      ],
+      "categories": {
+        "Tackled off the ball": 10,
+        "Pass out without a control attempt": 1,
+        "Receiving miscontrol": 1,
+        "Clean interception": 3,
+        "Heavy dribbling touch": 5,
+        "Opponent deflection, then recovery": 3,
+        "Carried ball out of play": 1
+      },
+      "receivingAttempts": 100,
+      "receivingMiscontrols": 4,
+      "miscontrols": 28,
+      "heavyTouches": 8,
+      "longBalls": 15
+    },
+    {
+      "id": "balanced80-180-6304",
+      "archetype": "balanced80",
+      "seed": 6304,
+      "duration": 180,
+      "overall": 80.1131909090909,
+      "outfieldRetention": 77.295,
+      "goals": 2,
+      "score": [
+        1,
+        1
+      ],
+      "shots": 8,
+      "offTarget": 1,
+      "blocked": 2,
+      "onTarget": 4,
+      "saves": 2,
+      "boxShots": 8,
+      "boxGoals": 2,
+      "passes": 90,
+      "completed": 77,
+      "passAccuracy": 85.55555555555556,
+      "turnovers": 16,
+      "turnoversByTeam": [
+        8,
+        8
+      ],
+      "categories": {
+        "Tackled off the ball": 4,
+        "Uncollected pass near intended receiver": 2,
+        "Receiving miscontrol": 3,
+        "Heavy dribbling touch": 1,
+        "Clean interception": 5,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 80,
+      "receivingMiscontrols": 4,
+      "miscontrols": 9,
+      "heavyTouches": 2,
+      "longBalls": 9
+    },
+    {
+      "id": "balanced80-300-6304",
+      "archetype": "balanced80",
+      "seed": 6304,
+      "duration": 300,
+      "overall": 80.1131909090909,
+      "outfieldRetention": 77.295,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 9,
+      "offTarget": 2,
+      "blocked": 3,
+      "onTarget": 3,
+      "saves": 1,
+      "boxShots": 9,
+      "boxGoals": 2,
+      "passes": 125,
+      "completed": 105,
+      "passAccuracy": 84,
+      "turnovers": 29,
+      "turnoversByTeam": [
+        16,
+        13
+      ],
+      "categories": {
+        "Uncollected pass near intended receiver": 1,
+        "Tackled off the ball": 9,
+        "Pass out without a control attempt": 2,
+        "Receiving miscontrol": 1,
+        "Opponent deflection, then recovery": 1,
+        "Clean interception": 12,
+        "Heavy dribbling touch": 2,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 106,
+      "receivingMiscontrols": 7,
+      "miscontrols": 19,
+      "heavyTouches": 4,
+      "longBalls": 12
+    },
+    {
+      "id": "elitePossession-180-6304",
+      "archetype": "elitePossession",
+      "seed": 6304,
+      "duration": 180,
+      "overall": 86.7898,
+      "outfieldRetention": 86.00500000000002,
+      "goals": 3,
+      "score": [
+        2,
+        1
+      ],
+      "shots": 7,
+      "offTarget": 1,
+      "blocked": 2,
+      "onTarget": 4,
+      "saves": 1,
+      "boxShots": 6,
+      "boxGoals": 2,
+      "passes": 111,
+      "completed": 103,
+      "passAccuracy": 92.7927927927928,
+      "turnovers": 12,
+      "turnoversByTeam": [
+        5,
+        7
+      ],
+      "categories": {
+        "Clean interception": 4,
+        "Tackled off the ball": 5,
+        "Heavy dribbling touch": 1,
+        "Opponent deflection, then recovery": 1,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 103,
+      "receivingMiscontrols": 1,
+      "miscontrols": 7,
+      "heavyTouches": 1,
+      "longBalls": 13
+    },
+    {
+      "id": "elitePossession-300-6304",
+      "archetype": "elitePossession",
+      "seed": 6304,
+      "duration": 300,
+      "overall": 86.7898,
+      "outfieldRetention": 86.00500000000002,
+      "goals": 1,
+      "score": [
+        0,
+        1
+      ],
+      "shots": 11,
+      "offTarget": 4,
+      "blocked": 2,
+      "onTarget": 4,
+      "saves": 3,
+      "boxShots": 8,
+      "boxGoals": 1,
+      "passes": 175,
+      "completed": 158,
+      "passAccuracy": 90.28571428571429,
+      "turnovers": 21,
+      "turnoversByTeam": [
+        12,
+        9
+      ],
+      "categories": {
+        "Receiving miscontrol": 2,
+        "Clean interception": 13,
+        "Tackled off the ball": 3,
+        "Pass out without a control attempt": 2,
+        "Failed take-on": 1
+      },
+      "receivingAttempts": 160,
+      "receivingMiscontrols": 4,
+      "miscontrols": 6,
+      "heavyTouches": 1,
+      "longBalls": 10
+    },
+    {
+      "id": "catalog-180-5701",
+      "archetype": "catalog",
+      "seed": 5701,
+      "duration": 180,
+      "overall": 70.36363636363636,
+      "outfieldRetention": 0,
+      "goals": 4,
+      "score": [
+        2,
+        2
+      ],
+      "shots": 9,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 4,
+      "saves": 0,
+      "boxShots": 8,
+      "boxGoals": 4,
+      "passes": 88,
+      "completed": 73,
+      "passAccuracy": 82.95454545454545,
+      "turnovers": 17,
+      "turnoversByTeam": [
+        9,
+        8
+      ],
+      "categories": {
+        "Tackled off the ball": 4,
+        "Clean interception": 8,
+        "Receiving miscontrol": 2,
+        "Pass out without a control attempt": 1,
+        "Opponent deflection, then recovery": 1,
+        "Heavy dribbling touch": 1
+      },
+      "receivingAttempts": 75,
+      "receivingMiscontrols": 6,
+      "miscontrols": 13,
+      "heavyTouches": 1,
+      "longBalls": 10
+    },
+    {
+      "id": "catalog-300-5701",
+      "archetype": "catalog",
+      "seed": 5701,
+      "duration": 300,
+      "overall": 70.36363636363636,
+      "outfieldRetention": 0,
+      "goals": 1,
+      "score": [
+        1,
+        0
+      ],
+      "shots": 7,
+      "offTarget": 3,
+      "blocked": 1,
+      "onTarget": 2,
+      "saves": 1,
+      "boxShots": 7,
+      "boxGoals": 1,
+      "passes": 120,
+      "completed": 91,
+      "passAccuracy": 75.83333333333333,
+      "turnovers": 48,
+      "turnoversByTeam": [
+        25,
+        23
+      ],
+      "categories": {
+        "Receiving miscontrol": 3,
+        "Failed take-on": 3,
+        "Tackled off the ball": 13,
+        "Clean interception": 15,
+        "Uncollected pass near intended receiver": 4,
+        "Heavy dribbling touch": 6,
+        "Opponent deflection, then recovery": 2,
+        "Pass out without a control attempt": 2
+      },
+      "receivingAttempts": 94,
+      "receivingMiscontrols": 4,
+      "miscontrols": 20,
+      "heavyTouches": 7,
+      "longBalls": 9
+    },
+    {
+      "id": "catalog-180-5702",
+      "archetype": "catalog",
+      "seed": 5702,
+      "duration": 180,
+      "overall": 70.27272727272727,
+      "outfieldRetention": 0,
+      "goals": 0,
+      "score": [
+        0,
+        0
+      ],
+      "shots": 4,
+      "offTarget": 2,
+      "blocked": 2,
+      "onTarget": 0,
+      "saves": 0,
+      "boxShots": 4,
+      "boxGoals": 0,
+      "passes": 76,
+      "completed": 66,
+      "passAccuracy": 86.84210526315789,
+      "turnovers": 15,
+      "turnoversByTeam": [
+        8,
+        7
+      ],
+      "categories": {
+        "Clean interception": 6,
+        "Tackled off the ball": 6,
+        "Heavy dribbling touch": 2,
+        "Pass out without a control attempt": 1
+      },
+      "receivingAttempts": 66,
+      "receivingMiscontrols": 1,
+      "miscontrols": 15,
+      "heavyTouches": 3,
+      "longBalls": 9
+    },
+    {
+      "id": "catalog-300-5702",
+      "archetype": "catalog",
+      "seed": 5702,
+      "duration": 300,
+      "overall": 70.27272727272727,
+      "outfieldRetention": 0,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 11,
+      "offTarget": 4,
+      "blocked": 3,
+      "onTarget": 3,
+      "saves": 1,
+      "boxShots": 9,
+      "boxGoals": 2,
+      "passes": 109,
+      "completed": 90,
+      "passAccuracy": 82.56880733944953,
+      "turnovers": 29,
+      "turnoversByTeam": [
+        13,
+        16
+      ],
+      "categories": {
+        "Clean interception": 7,
+        "Tackled off the ball": 10,
+        "Uncollected pass near intended receiver": 4,
+        "Heavy dribbling touch": 3,
+        "Pass out without a control attempt": 1,
+        "Failed take-on": 1,
+        "Receiving miscontrol": 3
+      },
+      "receivingAttempts": 93,
+      "receivingMiscontrols": 7,
+      "miscontrols": 28,
+      "heavyTouches": 3,
+      "longBalls": 12
+    },
+    {
+      "id": "catalog-180-5703",
+      "archetype": "catalog",
+      "seed": 5703,
+      "duration": 180,
+      "overall": 72.77272727272727,
+      "outfieldRetention": 0,
+      "goals": 5,
+      "score": [
+        2,
+        3
+      ],
+      "shots": 10,
+      "offTarget": 4,
+      "blocked": 1,
+      "onTarget": 5,
+      "saves": 0,
+      "boxShots": 9,
+      "boxGoals": 5,
+      "passes": 84,
+      "completed": 68,
+      "passAccuracy": 80.95238095238095,
+      "turnovers": 18,
+      "turnoversByTeam": [
+        10,
+        8
+      ],
+      "categories": {
+        "Heavy dribbling touch": 1,
+        "Clean interception": 7,
+        "Opponent deflection, then recovery": 2,
+        "Tackled off the ball": 3,
+        "Receiving miscontrol": 2,
+        "Pass out without a control attempt": 1,
+        "Uncollected pass near intended receiver": 2
+      },
+      "receivingAttempts": 70,
+      "receivingMiscontrols": 5,
+      "miscontrols": 13,
+      "heavyTouches": 2,
+      "longBalls": 8
+    },
+    {
+      "id": "catalog-300-5703",
+      "archetype": "catalog",
+      "seed": 5703,
+      "duration": 300,
+      "overall": 72.77272727272727,
+      "outfieldRetention": 0,
+      "goals": 4,
+      "score": [
+        4,
+        0
+      ],
+      "shots": 9,
+      "offTarget": 3,
+      "blocked": 0,
+      "onTarget": 6,
+      "saves": 2,
+      "boxShots": 7,
+      "boxGoals": 4,
+      "passes": 123,
+      "completed": 100,
+      "passAccuracy": 81.30081300813008,
+      "turnovers": 34,
+      "turnoversByTeam": [
+        15,
+        19
+      ],
+      "categories": {
+        "Heavy dribbling touch": 1,
+        "Clean interception": 13,
+        "Receiving miscontrol": 3,
+        "Tackled off the ball": 12,
+        "Uncollected pass near intended receiver": 3,
+        "Failed take-on": 2
+      },
+      "receivingAttempts": 103,
+      "receivingMiscontrols": 3,
+      "miscontrols": 14,
+      "heavyTouches": 2,
+      "longBalls": 16
+    },
+    {
+      "id": "catalog-180-5704",
+      "archetype": "catalog",
+      "seed": 5704,
+      "duration": 180,
+      "overall": 69.68181818181819,
+      "outfieldRetention": 0,
+      "goals": 3,
+      "score": [
+        2,
+        1
+      ],
+      "shots": 7,
+      "offTarget": 3,
+      "blocked": 1,
+      "onTarget": 3,
+      "saves": 0,
+      "boxShots": 6,
+      "boxGoals": 3,
+      "passes": 75,
+      "completed": 62,
+      "passAccuracy": 82.66666666666667,
+      "turnovers": 23,
+      "turnoversByTeam": [
+        10,
+        13
+      ],
+      "categories": {
+        "Opponent deflection, then recovery": 1,
+        "Tackled off the ball": 8,
+        "Clean interception": 7,
+        "Heavy dribbling touch": 3,
+        "Receiving miscontrol": 1,
+        "Failed take-on": 1,
+        "Uncollected pass near intended receiver": 2
+      },
+      "receivingAttempts": 63,
+      "receivingMiscontrols": 2,
+      "miscontrols": 17,
+      "heavyTouches": 4,
+      "longBalls": 8
+    },
+    {
+      "id": "catalog-300-5704",
+      "archetype": "catalog",
+      "seed": 5704,
+      "duration": 300,
+      "overall": 69.68181818181819,
+      "outfieldRetention": 0,
+      "goals": 2,
+      "score": [
+        0,
+        2
+      ],
+      "shots": 10,
+      "offTarget": 4,
+      "blocked": 2,
+      "onTarget": 3,
+      "saves": 1,
+      "boxShots": 9,
+      "boxGoals": 2,
+      "passes": 104,
+      "completed": 89,
+      "passAccuracy": 85.57692307692308,
+      "turnovers": 30,
+      "turnoversByTeam": [
+        16,
+        14
+      ],
+      "categories": {
+        "Clean interception": 9,
+        "Failed take-on": 1,
+        "Uncollected pass near intended receiver": 4,
+        "Tackled off the ball": 11,
+        "Receiving miscontrol": 1,
+        "Heavy dribbling touch": 3,
+        "Opponent deflection, then recovery": 1
+      },
+      "receivingAttempts": 90,
+      "receivingMiscontrols": 2,
+      "miscontrols": 16,
+      "heavyTouches": 8,
+      "longBalls": 8
+    }
+  ],
+  "fixedOppositionCheck": {
+    "method": "Eight additional matches: two seeds, both durations, home 80 balanced or elite possession versus a fixed 73 balanced away XI. Separate from the 32-match paired before/after sample.",
+    "summary": {
+      "balanced80": {
+        "matches": 4,
+        "squadTurnoversPerMatch": 10.25,
+        "oppositionTurnoversPerMatch": 12.75
+      },
+      "elitePossession": {
+        "matches": 4,
+        "squadTurnoversPerMatch": 8.5,
+        "oppositionTurnoversPerMatch": 11.5
+      }
+    },
+    "matches": [
+      {
+        "id": "balanced80-180-6301-vs73",
+        "archetype": "balanced80",
+        "seed": 6301,
+        "duration": 180,
+        "overall": 79.65547272727272,
+        "outfieldRetention": 77.75500000000001,
+        "goals": 6,
+        "score": [
+          5,
+          1
+        ],
+        "shots": 7,
+        "offTarget": 0,
+        "blocked": 1,
+        "onTarget": 6,
+        "saves": 0,
+        "boxShots": 6,
+        "boxGoals": 5,
+        "passes": 90,
+        "completed": 79,
+        "passAccuracy": 87.77777777777777,
+        "turnovers": 17,
+        "turnoversByTeam": [
+          6,
+          11
+        ],
+        "categories": {
+          "Tackled off the ball": 4,
+          "Uncollected pass near intended receiver": 1,
+          "Pass out without a control attempt": 1,
+          "Heavy dribbling touch": 5,
+          "Clean interception": 4,
+          "Receiving miscontrol": 1,
+          "Opponent deflection, then recovery": 1
+        },
+        "receivingAttempts": 80,
+        "receivingMiscontrols": 2,
+        "miscontrols": 19,
+        "heavyTouches": 8,
+        "longBalls": 7
+      },
+      {
+        "id": "balanced80-300-6301-vs73",
+        "archetype": "balanced80",
+        "seed": 6301,
+        "duration": 300,
+        "overall": 79.65547272727272,
+        "outfieldRetention": 77.75500000000001,
+        "goals": 5,
+        "score": [
+          3,
+          2
+        ],
+        "shots": 13,
+        "offTarget": 3,
+        "blocked": 1,
+        "onTarget": 9,
+        "saves": 4,
+        "boxShots": 13,
+        "boxGoals": 5,
+        "passes": 114,
+        "completed": 100,
+        "passAccuracy": 87.71929824561404,
+        "turnovers": 20,
+        "turnoversByTeam": [
+          10,
+          10
+        ],
+        "categories": {
+          "Clean interception": 5,
+          "Receiving miscontrol": 2,
+          "Heavy dribbling touch": 2,
+          "Opponent deflection, then recovery": 2,
+          "Uncollected pass near intended receiver": 2,
+          "Tackled off the ball": 6,
+          "Failed take-on": 1
+        },
+        "receivingAttempts": 102,
+        "receivingMiscontrols": 6,
+        "miscontrols": 19,
+        "heavyTouches": 3,
+        "longBalls": 11
+      },
+      {
+        "id": "elitePossession-180-6301-vs73",
+        "archetype": "elitePossession",
+        "seed": 6301,
+        "duration": 180,
+        "overall": 85.62292727272727,
+        "outfieldRetention": 84.67,
+        "goals": 0,
+        "score": [
+          0,
+          0
+        ],
+        "shots": 2,
+        "offTarget": 2,
+        "blocked": 0,
+        "onTarget": 0,
+        "saves": 0,
+        "boxShots": 1,
+        "boxGoals": 0,
+        "passes": 95,
+        "completed": 83,
+        "passAccuracy": 87.36842105263158,
+        "turnovers": 20,
+        "turnoversByTeam": [
+          10,
+          10
+        ],
+        "categories": {
+          "Tackled off the ball": 5,
+          "Receiving miscontrol": 5,
+          "Heavy dribbling touch": 2,
+          "Clean interception": 4,
+          "Failed take-on": 1,
+          "Pass out without a control attempt": 1,
+          "Uncollected pass near intended receiver": 2
+        },
+        "receivingAttempts": 88,
+        "receivingMiscontrols": 9,
+        "miscontrols": 21,
+        "heavyTouches": 2,
+        "longBalls": 9
+      },
+      {
+        "id": "elitePossession-300-6301-vs73",
+        "archetype": "elitePossession",
+        "seed": 6301,
+        "duration": 300,
+        "overall": 85.62292727272727,
+        "outfieldRetention": 84.67,
+        "goals": 5,
+        "score": [
+          5,
+          0
+        ],
+        "shots": 12,
+        "offTarget": 4,
+        "blocked": 3,
+        "onTarget": 5,
+        "saves": 0,
+        "boxShots": 12,
+        "boxGoals": 5,
+        "passes": 136,
+        "completed": 121,
+        "passAccuracy": 88.97058823529412,
+        "turnovers": 29,
+        "turnoversByTeam": [
+          11,
+          18
+        ],
+        "categories": {
+          "Clean interception": 10,
+          "Tackled off the ball": 9,
+          "Failed take-on": 3,
+          "Heavy dribbling touch": 2,
+          "Opponent deflection, then recovery": 1,
+          "Uncollected pass near intended receiver": 1,
+          "Receiving miscontrol": 1,
+          "Carried ball out of play": 1,
+          "Pass out without a control attempt": 1
+        },
+        "receivingAttempts": 122,
+        "receivingMiscontrols": 5,
+        "miscontrols": 19,
+        "heavyTouches": 4,
+        "longBalls": 6
+      },
+      {
+        "id": "balanced80-180-6302-vs73",
+        "archetype": "balanced80",
+        "seed": 6302,
+        "duration": 180,
+        "overall": 80.33264545454544,
+        "outfieldRetention": 77.15,
+        "goals": 0,
+        "score": [
+          0,
+          0
+        ],
+        "shots": 6,
+        "offTarget": 4,
+        "blocked": 0,
+        "onTarget": 2,
+        "saves": 2,
+        "boxShots": 6,
+        "boxGoals": 0,
+        "passes": 86,
+        "completed": 67,
+        "passAccuracy": 77.90697674418605,
+        "turnovers": 21,
+        "turnoversByTeam": [
+          11,
+          10
+        ],
+        "categories": {
+          "Receiving miscontrol": 4,
+          "Opponent deflection, then recovery": 2,
+          "Clean interception": 9,
+          "Tackled off the ball": 3,
+          "Heavy dribbling touch": 1,
+          "Failed take-on": 1,
+          "Uncollected pass near intended receiver": 1
+        },
+        "receivingAttempts": 71,
+        "receivingMiscontrols": 6,
+        "miscontrols": 18,
+        "heavyTouches": 2,
+        "longBalls": 7
+      },
+      {
+        "id": "balanced80-300-6302-vs73",
+        "archetype": "balanced80",
+        "seed": 6302,
+        "duration": 300,
+        "overall": 80.33264545454544,
+        "outfieldRetention": 77.15,
+        "goals": 3,
+        "score": [
+          3,
+          0
+        ],
+        "shots": 8,
+        "offTarget": 4,
+        "blocked": 0,
+        "onTarget": 4,
+        "saves": 1,
+        "boxShots": 8,
+        "boxGoals": 3,
+        "passes": 122,
+        "completed": 100,
+        "passAccuracy": 81.9672131147541,
+        "turnovers": 34,
+        "turnoversByTeam": [
+          14,
+          20
+        ],
+        "categories": {
+          "Failed take-on": 5,
+          "Heavy dribbling touch": 6,
+          "Clean interception": 13,
+          "Tackled off the ball": 6,
+          "Uncollected pass near intended receiver": 1,
+          "Pass out without a control attempt": 1,
+          "Opponent deflection, then recovery": 2
+        },
+        "receivingAttempts": 100,
+        "receivingMiscontrols": 2,
+        "miscontrols": 29,
+        "heavyTouches": 7,
+        "longBalls": 11
+      },
+      {
+        "id": "elitePossession-180-6302-vs73",
+        "archetype": "elitePossession",
+        "seed": 6302,
+        "duration": 180,
+        "overall": 85.7808090909091,
+        "outfieldRetention": 85.19500000000001,
+        "goals": 2,
+        "score": [
+          2,
+          0
+        ],
+        "shots": 8,
+        "offTarget": 3,
+        "blocked": 2,
+        "onTarget": 2,
+        "saves": 0,
+        "boxShots": 5,
+        "boxGoals": 2,
+        "passes": 111,
+        "completed": 104,
+        "passAccuracy": 93.69369369369369,
+        "turnovers": 11,
+        "turnoversByTeam": [
+          5,
+          6
+        ],
+        "categories": {
+          "Tackled off the ball": 6,
+          "Clean interception": 5
+        },
+        "receivingAttempts": 104,
+        "receivingMiscontrols": 3,
+        "miscontrols": 12,
+        "heavyTouches": 1,
+        "longBalls": 5
+      },
+      {
+        "id": "elitePossession-300-6302-vs73",
+        "archetype": "elitePossession",
+        "seed": 6302,
+        "duration": 300,
+        "overall": 85.7808090909091,
+        "outfieldRetention": 85.19500000000001,
+        "goals": 3,
+        "score": [
+          3,
+          0
+        ],
+        "shots": 13,
+        "offTarget": 7,
+        "blocked": 1,
+        "onTarget": 5,
+        "saves": 2,
+        "boxShots": 10,
+        "boxGoals": 2,
+        "passes": 127,
+        "completed": 117,
+        "passAccuracy": 92.1259842519685,
+        "turnovers": 20,
+        "turnoversByTeam": [
+          8,
+          12
+        ],
+        "categories": {
+          "Uncollected pass near intended receiver": 1,
+          "Clean interception": 3,
+          "Opponent deflection, then recovery": 3,
+          "Heavy dribbling touch": 2,
+          "Tackled off the ball": 10,
+          "Receiving miscontrol": 1
+        },
+        "receivingAttempts": 118,
+        "receivingMiscontrols": 8,
+        "miscontrols": 26,
+        "heavyTouches": 5,
+        "longBalls": 15
+      }
+    ]
+  }
+}

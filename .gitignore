@@ -1,0 +1,23 @@
+# Local dependencies and caches
+node_modules/
+.npm/
+.cache/
+coverage/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Original hosting helper state
+.sites-checkout/
+.sites-runtime/
+
+# Keep dist/ tracked: it is the complete editable game.

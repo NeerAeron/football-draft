@@ -1,0 +1,3642 @@
+[
+  {
+    "id": "balanced73-180-6301",
+    "seed": 6301,
+    "duration": 180,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 73.09339999999999,
+      "outfieldRetention": 69.47,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "R. Yılmaz",
+          "role": "LB",
+          "overall": 73,
+          "retention": 69.1
+        },
+        {
+          "name": "Carlos Domínguez",
+          "role": "CB",
+          "overall": 74,
+          "retention": 64.15
+        },
+        {
+          "name": "W. Riveros",
+          "role": "CB",
+          "overall": 72,
+          "retention": 58
+        },
+        {
+          "name": "B. Nieuwkoop",
+          "role": "RB",
+          "overall": 74,
+          "retention": 73
+        },
+        {
+          "name": "C. Gomes",
+          "role": "DM",
+          "overall": 73,
+          "retention": 72.5
+        },
+        {
+          "name": "J. Lepenant",
+          "role": "CM",
+          "overall": 73,
+          "retention": 73
+        },
+        {
+          "name": "Y. Kechta",
+          "role": "CM",
+          "overall": 73,
+          "retention": 74.94999999999999
+        },
+        {
+          "name": "M. Moore",
+          "role": "LW",
+          "overall": 72,
+          "retention": 70.7
+        },
+        {
+          "name": "M. Boadu",
+          "role": "ST",
+          "overall": 74,
+          "retention": 70.25
+        },
+        {
+          "name": "J. Levi",
+          "role": "RW",
+          "overall": 72,
+          "retention": 69.05000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:252208:fc26:u4",
+      "ea:262140:fc26:u4",
+      "ea:240138:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:245035:fc26:u4",
+      "ea:258619:fc26:u4",
+      "ea:263468:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:239956:fc26:u4",
+      "ea:239669:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:252208:fc26:u4",
+      "ea:262140:fc26:u4",
+      "ea:240138:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:245035:fc26:u4",
+      "ea:258619:fc26:u4",
+      "ea:263468:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:239956:fc26:u4",
+      "ea:239669:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-300-6301",
+    "seed": 6301,
+    "duration": 300,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 73.09339999999999,
+      "outfieldRetention": 69.47,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "R. Yılmaz",
+          "role": "LB",
+          "overall": 73,
+          "retention": 69.1
+        },
+        {
+          "name": "Carlos Domínguez",
+          "role": "CB",
+          "overall": 74,
+          "retention": 64.15
+        },
+        {
+          "name": "W. Riveros",
+          "role": "CB",
+          "overall": 72,
+          "retention": 58
+        },
+        {
+          "name": "B. Nieuwkoop",
+          "role": "RB",
+          "overall": 74,
+          "retention": 73
+        },
+        {
+          "name": "C. Gomes",
+          "role": "DM",
+          "overall": 73,
+          "retention": 72.5
+        },
+        {
+          "name": "J. Lepenant",
+          "role": "CM",
+          "overall": 73,
+          "retention": 73
+        },
+        {
+          "name": "Y. Kechta",
+          "role": "CM",
+          "overall": 73,
+          "retention": 74.94999999999999
+        },
+        {
+          "name": "M. Moore",
+          "role": "LW",
+          "overall": 72,
+          "retention": 70.7
+        },
+        {
+          "name": "M. Boadu",
+          "role": "ST",
+          "overall": 74,
+          "retention": 70.25
+        },
+        {
+          "name": "J. Levi",
+          "role": "RW",
+          "overall": 72,
+          "retention": 69.05000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:252208:fc26:u4",
+      "ea:262140:fc26:u4",
+      "ea:240138:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:245035:fc26:u4",
+      "ea:258619:fc26:u4",
+      "ea:263468:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:239956:fc26:u4",
+      "ea:239669:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:252208:fc26:u4",
+      "ea:262140:fc26:u4",
+      "ea:240138:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:245035:fc26:u4",
+      "ea:258619:fc26:u4",
+      "ea:263468:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:239956:fc26:u4",
+      "ea:239669:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-180-6301",
+    "seed": 6301,
+    "duration": 180,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 79.65547272727272,
+      "outfieldRetention": 77.75500000000001,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "R. Gosens",
+          "role": "LB",
+          "overall": 79,
+          "retention": 75.25
+        },
+        {
+          "name": "E. Agbadou",
+          "role": "CB",
+          "overall": 79,
+          "retention": 70.25
+        },
+        {
+          "name": "C. Carter-Vickers",
+          "role": "CB",
+          "overall": 79,
+          "retention": 72.8
+        },
+        {
+          "name": "Dodô",
+          "role": "RB",
+          "overall": 79,
+          "retention": 76.9
+        },
+        {
+          "name": "Y. Adli",
+          "role": "DM",
+          "overall": 79,
+          "retention": 81.55000000000001
+        },
+        {
+          "name": "Y. Herrera",
+          "role": "CM",
+          "overall": 81,
+          "retention": 80.55
+        },
+        {
+          "name": "Brais Méndez",
+          "role": "CM",
+          "overall": 81,
+          "retention": 83.2
+        },
+        {
+          "name": "K. Aktürkoğlu",
+          "role": "LW",
+          "overall": 79,
+          "retention": 76.45
+        },
+        {
+          "name": "Cucho",
+          "role": "ST",
+          "overall": 79,
+          "retention": 78.55
+        },
+        {
+          "name": "I. Perišić",
+          "role": "RW",
+          "overall": 81,
+          "retention": 82.05
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:223697:fc26:u4",
+      "ea:258575:fc26:u4",
+      "ea:228174:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:243627:fc26:u4",
+      "ea:234060:fc26:u4",
+      "ea:235944:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:237034:fc26:u4",
+      "ea:181458:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:223697:fc26:u4",
+      "ea:258575:fc26:u4",
+      "ea:228174:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:243627:fc26:u4",
+      "ea:234060:fc26:u4",
+      "ea:235944:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:237034:fc26:u4",
+      "ea:181458:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-300-6301",
+    "seed": 6301,
+    "duration": 300,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 79.65547272727272,
+      "outfieldRetention": 77.75500000000001,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "R. Gosens",
+          "role": "LB",
+          "overall": 79,
+          "retention": 75.25
+        },
+        {
+          "name": "E. Agbadou",
+          "role": "CB",
+          "overall": 79,
+          "retention": 70.25
+        },
+        {
+          "name": "C. Carter-Vickers",
+          "role": "CB",
+          "overall": 79,
+          "retention": 72.8
+        },
+        {
+          "name": "Dodô",
+          "role": "RB",
+          "overall": 79,
+          "retention": 76.9
+        },
+        {
+          "name": "Y. Adli",
+          "role": "DM",
+          "overall": 79,
+          "retention": 81.55000000000001
+        },
+        {
+          "name": "Y. Herrera",
+          "role": "CM",
+          "overall": 81,
+          "retention": 80.55
+        },
+        {
+          "name": "Brais Méndez",
+          "role": "CM",
+          "overall": 81,
+          "retention": 83.2
+        },
+        {
+          "name": "K. Aktürkoğlu",
+          "role": "LW",
+          "overall": 79,
+          "retention": 76.45
+        },
+        {
+          "name": "Cucho",
+          "role": "ST",
+          "overall": 79,
+          "retention": 78.55
+        },
+        {
+          "name": "I. Perišić",
+          "role": "RW",
+          "overall": 81,
+          "retention": 82.05
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:223697:fc26:u4",
+      "ea:258575:fc26:u4",
+      "ea:228174:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:243627:fc26:u4",
+      "ea:234060:fc26:u4",
+      "ea:235944:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:237034:fc26:u4",
+      "ea:181458:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:223697:fc26:u4",
+      "ea:258575:fc26:u4",
+      "ea:228174:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:243627:fc26:u4",
+      "ea:234060:fc26:u4",
+      "ea:235944:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:237034:fc26:u4",
+      "ea:181458:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-180-6301",
+    "seed": 6301,
+    "duration": 180,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 85.62292727272727,
+      "outfieldRetention": 84.67,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "Marc Cucurella",
+          "role": "LB",
+          "overall": 83,
+          "retention": 79.9
+        },
+        {
+          "name": "Marquinhos",
+          "role": "CB",
+          "overall": 86,
+          "retention": 81.55
+        },
+        {
+          "name": "S. de Vrij",
+          "role": "CB",
+          "overall": 83,
+          "retention": 78.55
+        },
+        {
+          "name": "A. Hakimi",
+          "role": "RB",
+          "overall": 87,
+          "retention": 83.75
+        },
+        {
+          "name": "J. Kimmich",
+          "role": "DM",
+          "overall": 87,
+          "retention": 87.05
+        },
+        {
+          "name": "K. De Bruyne",
+          "role": "CM",
+          "overall": 86,
+          "retention": 90.25
+        },
+        {
+          "name": "F. de Jong",
+          "role": "CM",
+          "overall": 86,
+          "retention": 89.1
+        },
+        {
+          "name": "H. Son",
+          "role": "LW",
+          "overall": 84,
+          "retention": 84.1
+        },
+        {
+          "name": "K. Mbappé",
+          "role": "ST",
+          "overall": 90,
+          "retention": 87.9
+        },
+        {
+          "name": "P. Foden",
+          "role": "RW",
+          "overall": 85,
+          "retention": 84.55000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:237692:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:237692:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-300-6301",
+    "seed": 6301,
+    "duration": 300,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 85.62292727272727,
+      "outfieldRetention": 84.67,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "Marc Cucurella",
+          "role": "LB",
+          "overall": 83,
+          "retention": 79.9
+        },
+        {
+          "name": "Marquinhos",
+          "role": "CB",
+          "overall": 86,
+          "retention": 81.55
+        },
+        {
+          "name": "S. de Vrij",
+          "role": "CB",
+          "overall": 83,
+          "retention": 78.55
+        },
+        {
+          "name": "A. Hakimi",
+          "role": "RB",
+          "overall": 87,
+          "retention": 83.75
+        },
+        {
+          "name": "J. Kimmich",
+          "role": "DM",
+          "overall": 87,
+          "retention": 87.05
+        },
+        {
+          "name": "K. De Bruyne",
+          "role": "CM",
+          "overall": 86,
+          "retention": 90.25
+        },
+        {
+          "name": "F. de Jong",
+          "role": "CM",
+          "overall": 86,
+          "retention": 89.1
+        },
+        {
+          "name": "H. Son",
+          "role": "LW",
+          "overall": 84,
+          "retention": 84.1
+        },
+        {
+          "name": "K. Mbappé",
+          "role": "ST",
+          "overall": 90,
+          "retention": 87.9
+        },
+        {
+          "name": "P. Foden",
+          "role": "RW",
+          "overall": 85,
+          "retention": 84.55000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:237692:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:237692:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-180-6302",
+    "seed": 6302,
+    "duration": 180,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 72.92994545454545,
+      "outfieldRetention": 69.305,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "F. Ortega",
+          "role": "LB",
+          "overall": 73,
+          "retention": 71.3
+        },
+        {
+          "name": "G. Michailidis",
+          "role": "CB",
+          "overall": 72,
+          "retention": 66.65
+        },
+        {
+          "name": "J. El Yamiq",
+          "role": "CB",
+          "overall": 73,
+          "retention": 60.2
+        },
+        {
+          "name": "T. Meunier",
+          "role": "RB",
+          "overall": 74,
+          "retention": 70.85
+        },
+        {
+          "name": "B. Slisz",
+          "role": "DM",
+          "overall": 73,
+          "retention": 73.5
+        },
+        {
+          "name": "Francho Serrano",
+          "role": "CM",
+          "overall": 73,
+          "retention": 71.35
+        },
+        {
+          "name": "O. Sørensen",
+          "role": "CM",
+          "overall": 73,
+          "retention": 72.8
+        },
+        {
+          "name": "R. van Bommel",
+          "role": "LW",
+          "overall": 73,
+          "retention": 69.45
+        },
+        {
+          "name": "V. Olatunji",
+          "role": "ST",
+          "overall": 72,
+          "retention": 65
+        },
+        {
+          "name": "A. Maksimović",
+          "role": "RW",
+          "overall": 72,
+          "retention": 71.95
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:242287:fc26:u4",
+      "ea:253136:fc26:u4",
+      "ea:241775:fc26:u4",
+      "ea:202371:fc26:u4",
+      "ea:243222:fc26:u4",
+      "ea:256341:fc26:u4",
+      "ea:257972:fc26:u4",
+      "ea:275592:fc26:u4",
+      "ea:252487:fc26:u4",
+      "ea:79107:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:242287:fc26:u4",
+      "ea:253136:fc26:u4",
+      "ea:241775:fc26:u4",
+      "ea:202371:fc26:u4",
+      "ea:243222:fc26:u4",
+      "ea:256341:fc26:u4",
+      "ea:257972:fc26:u4",
+      "ea:275592:fc26:u4",
+      "ea:252487:fc26:u4",
+      "ea:79107:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-300-6302",
+    "seed": 6302,
+    "duration": 300,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 72.92994545454545,
+      "outfieldRetention": 69.305,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "F. Ortega",
+          "role": "LB",
+          "overall": 73,
+          "retention": 71.3
+        },
+        {
+          "name": "G. Michailidis",
+          "role": "CB",
+          "overall": 72,
+          "retention": 66.65
+        },
+        {
+          "name": "J. El Yamiq",
+          "role": "CB",
+          "overall": 73,
+          "retention": 60.2
+        },
+        {
+          "name": "T. Meunier",
+          "role": "RB",
+          "overall": 74,
+          "retention": 70.85
+        },
+        {
+          "name": "B. Slisz",
+          "role": "DM",
+          "overall": 73,
+          "retention": 73.5
+        },
+        {
+          "name": "Francho Serrano",
+          "role": "CM",
+          "overall": 73,
+          "retention": 71.35
+        },
+        {
+          "name": "O. Sørensen",
+          "role": "CM",
+          "overall": 73,
+          "retention": 72.8
+        },
+        {
+          "name": "R. van Bommel",
+          "role": "LW",
+          "overall": 73,
+          "retention": 69.45
+        },
+        {
+          "name": "V. Olatunji",
+          "role": "ST",
+          "overall": 72,
+          "retention": 65
+        },
+        {
+          "name": "A. Maksimović",
+          "role": "RW",
+          "overall": 72,
+          "retention": 71.95
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:242287:fc26:u4",
+      "ea:253136:fc26:u4",
+      "ea:241775:fc26:u4",
+      "ea:202371:fc26:u4",
+      "ea:243222:fc26:u4",
+      "ea:256341:fc26:u4",
+      "ea:257972:fc26:u4",
+      "ea:275592:fc26:u4",
+      "ea:252487:fc26:u4",
+      "ea:79107:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:242287:fc26:u4",
+      "ea:253136:fc26:u4",
+      "ea:241775:fc26:u4",
+      "ea:202371:fc26:u4",
+      "ea:243222:fc26:u4",
+      "ea:256341:fc26:u4",
+      "ea:257972:fc26:u4",
+      "ea:275592:fc26:u4",
+      "ea:252487:fc26:u4",
+      "ea:79107:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-180-6302",
+    "seed": 6302,
+    "duration": 180,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 80.33264545454544,
+      "outfieldRetention": 77.15,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "A. Cambiaso",
+          "role": "LB",
+          "overall": 79,
+          "retention": 79.05
+        },
+        {
+          "name": "W. Singo",
+          "role": "CB",
+          "overall": 80,
+          "retention": 72.55
+        },
+        {
+          "name": "Ibañez",
+          "role": "CB",
+          "overall": 81,
+          "retention": 63.69999999999999
+        },
+        {
+          "name": "K. Laimer",
+          "role": "RB",
+          "overall": 81,
+          "retention": 78.1
+        },
+        {
+          "name": "B. André",
+          "role": "DM",
+          "overall": 80,
+          "retention": 77.25
+        },
+        {
+          "name": "P. Pogba",
+          "role": "CM",
+          "overall": 79,
+          "retention": 83.9
+        },
+        {
+          "name": "C. Gallagher",
+          "role": "CM",
+          "overall": 81,
+          "retention": 81.25
+        },
+        {
+          "name": "David Neres",
+          "role": "LW",
+          "overall": 81,
+          "retention": 81.35
+        },
+        {
+          "name": "S. Giménez",
+          "role": "ST",
+          "overall": 80,
+          "retention": 76
+        },
+        {
+          "name": "M. Kudus",
+          "role": "RW",
+          "overall": 81,
+          "retention": 78.35
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:258966:fc26:u4",
+      "ea:252802:fc26:u4",
+      "ea:247257:fc26:u4",
+      "ea:225375:fc26:u4",
+      "ea:190674:fc26:u4",
+      "ea:195864:fc26:u4",
+      "ea:238216:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:245152:fc26:u4",
+      "ea:245155:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:258966:fc26:u4",
+      "ea:252802:fc26:u4",
+      "ea:247257:fc26:u4",
+      "ea:225375:fc26:u4",
+      "ea:190674:fc26:u4",
+      "ea:195864:fc26:u4",
+      "ea:238216:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:245152:fc26:u4",
+      "ea:245155:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-300-6302",
+    "seed": 6302,
+    "duration": 300,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 80.33264545454544,
+      "outfieldRetention": 77.15,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "A. Cambiaso",
+          "role": "LB",
+          "overall": 79,
+          "retention": 79.05
+        },
+        {
+          "name": "W. Singo",
+          "role": "CB",
+          "overall": 80,
+          "retention": 72.55
+        },
+        {
+          "name": "Ibañez",
+          "role": "CB",
+          "overall": 81,
+          "retention": 63.69999999999999
+        },
+        {
+          "name": "K. Laimer",
+          "role": "RB",
+          "overall": 81,
+          "retention": 78.1
+        },
+        {
+          "name": "B. André",
+          "role": "DM",
+          "overall": 80,
+          "retention": 77.25
+        },
+        {
+          "name": "P. Pogba",
+          "role": "CM",
+          "overall": 79,
+          "retention": 83.9
+        },
+        {
+          "name": "C. Gallagher",
+          "role": "CM",
+          "overall": 81,
+          "retention": 81.25
+        },
+        {
+          "name": "David Neres",
+          "role": "LW",
+          "overall": 81,
+          "retention": 81.35
+        },
+        {
+          "name": "S. Giménez",
+          "role": "ST",
+          "overall": 80,
+          "retention": 76
+        },
+        {
+          "name": "M. Kudus",
+          "role": "RW",
+          "overall": 81,
+          "retention": 78.35
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:258966:fc26:u4",
+      "ea:252802:fc26:u4",
+      "ea:247257:fc26:u4",
+      "ea:225375:fc26:u4",
+      "ea:190674:fc26:u4",
+      "ea:195864:fc26:u4",
+      "ea:238216:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:245152:fc26:u4",
+      "ea:245155:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:258966:fc26:u4",
+      "ea:252802:fc26:u4",
+      "ea:247257:fc26:u4",
+      "ea:225375:fc26:u4",
+      "ea:190674:fc26:u4",
+      "ea:195864:fc26:u4",
+      "ea:238216:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:245152:fc26:u4",
+      "ea:245155:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-180-6302",
+    "seed": 6302,
+    "duration": 180,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 85.7808090909091,
+      "outfieldRetention": 85.19500000000001,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "Marc Cucurella",
+          "role": "LB",
+          "overall": 83,
+          "retention": 79.9
+        },
+        {
+          "name": "B. Pavard",
+          "role": "CB",
+          "overall": 84,
+          "retention": 79.2
+        },
+        {
+          "name": "S. de Vrij",
+          "role": "CB",
+          "overall": 83,
+          "retention": 78.55
+        },
+        {
+          "name": "João Cancelo",
+          "role": "RB",
+          "overall": 84,
+          "retention": 85.6
+        },
+        {
+          "name": "J. Kimmich",
+          "role": "DM",
+          "overall": 87,
+          "retention": 87.05
+        },
+        {
+          "name": "F. de Jong",
+          "role": "CM",
+          "overall": 86,
+          "retention": 89.1
+        },
+        {
+          "name": "Pedri",
+          "role": "CM",
+          "overall": 88,
+          "retention": 90.45
+        },
+        {
+          "name": "Vini Jr.",
+          "role": "LW",
+          "overall": 88,
+          "retention": 85.15
+        },
+        {
+          "name": "K. Mbappé",
+          "role": "ST",
+          "overall": 90,
+          "retention": 87.9
+        },
+        {
+          "name": "L. Messi",
+          "role": "RW",
+          "overall": 86,
+          "retention": 89.05000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:226851:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:210514:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:158023:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:226851:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:210514:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:158023:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-300-6302",
+    "seed": 6302,
+    "duration": 300,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 85.7808090909091,
+      "outfieldRetention": 85.19500000000001,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "Marc Cucurella",
+          "role": "LB",
+          "overall": 83,
+          "retention": 79.9
+        },
+        {
+          "name": "B. Pavard",
+          "role": "CB",
+          "overall": 84,
+          "retention": 79.2
+        },
+        {
+          "name": "S. de Vrij",
+          "role": "CB",
+          "overall": 83,
+          "retention": 78.55
+        },
+        {
+          "name": "João Cancelo",
+          "role": "RB",
+          "overall": 84,
+          "retention": 85.6
+        },
+        {
+          "name": "J. Kimmich",
+          "role": "DM",
+          "overall": 87,
+          "retention": 87.05
+        },
+        {
+          "name": "F. de Jong",
+          "role": "CM",
+          "overall": 86,
+          "retention": 89.1
+        },
+        {
+          "name": "Pedri",
+          "role": "CM",
+          "overall": 88,
+          "retention": 90.45
+        },
+        {
+          "name": "Vini Jr.",
+          "role": "LW",
+          "overall": 88,
+          "retention": 85.15
+        },
+        {
+          "name": "K. Mbappé",
+          "role": "ST",
+          "overall": 90,
+          "retention": 87.9
+        },
+        {
+          "name": "L. Messi",
+          "role": "RW",
+          "overall": 86,
+          "retention": 89.05000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:226851:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:210514:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:158023:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:226851:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:210514:fc26:u4",
+      "ea:212622:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:231747:fc26:u4",
+      "ea:158023:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-180-6303",
+    "seed": 6303,
+    "duration": 180,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 72.88757272727274,
+      "outfieldRetention": 67.22500000000001,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "Akieme",
+          "role": "LB",
+          "overall": 73,
+          "retention": 66.05000000000001
+        },
+        {
+          "name": "C. Kipré",
+          "role": "CB",
+          "overall": 74,
+          "retention": 59
+        },
+        {
+          "name": "J. Laporte",
+          "role": "CB",
+          "overall": 72,
+          "retention": 56.800000000000004
+        },
+        {
+          "name": "L. Kübler",
+          "role": "RB",
+          "overall": 73,
+          "retention": 64.95
+        },
+        {
+          "name": "J. Gorby",
+          "role": "DM",
+          "overall": 72,
+          "retention": 70.05
+        },
+        {
+          "name": "F. Redondo",
+          "role": "CM",
+          "overall": 72,
+          "retention": 73.75
+        },
+        {
+          "name": "Oriol Rey",
+          "role": "CM",
+          "overall": 74,
+          "retention": 74.65
+        },
+        {
+          "name": "M. Moore",
+          "role": "LW",
+          "overall": 72,
+          "retention": 70.7
+        },
+        {
+          "name": "P. Onuachu",
+          "role": "ST",
+          "overall": 74,
+          "retention": 68.35
+        },
+        {
+          "name": "A. Layouni",
+          "role": "RW",
+          "overall": 73,
+          "retention": 67.95
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:226103:fc26:u4",
+      "ea:235458:fc26:u4",
+      "ea:228290:fc26:u4",
+      "ea:208335:fc26:u4",
+      "ea:264418:fc26:u4",
+      "ea:269622:fc26:u4",
+      "ea:242279:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:212382:fc26:u4",
+      "ea:242166:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:226103:fc26:u4",
+      "ea:235458:fc26:u4",
+      "ea:228290:fc26:u4",
+      "ea:208335:fc26:u4",
+      "ea:264418:fc26:u4",
+      "ea:269622:fc26:u4",
+      "ea:242279:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:212382:fc26:u4",
+      "ea:242166:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-300-6303",
+    "seed": 6303,
+    "duration": 300,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 72.88757272727274,
+      "outfieldRetention": 67.22500000000001,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "Akieme",
+          "role": "LB",
+          "overall": 73,
+          "retention": 66.05000000000001
+        },
+        {
+          "name": "C. Kipré",
+          "role": "CB",
+          "overall": 74,
+          "retention": 59
+        },
+        {
+          "name": "J. Laporte",
+          "role": "CB",
+          "overall": 72,
+          "retention": 56.800000000000004
+        },
+        {
+          "name": "L. Kübler",
+          "role": "RB",
+          "overall": 73,
+          "retention": 64.95
+        },
+        {
+          "name": "J. Gorby",
+          "role": "DM",
+          "overall": 72,
+          "retention": 70.05
+        },
+        {
+          "name": "F. Redondo",
+          "role": "CM",
+          "overall": 72,
+          "retention": 73.75
+        },
+        {
+          "name": "Oriol Rey",
+          "role": "CM",
+          "overall": 74,
+          "retention": 74.65
+        },
+        {
+          "name": "M. Moore",
+          "role": "LW",
+          "overall": 72,
+          "retention": 70.7
+        },
+        {
+          "name": "P. Onuachu",
+          "role": "ST",
+          "overall": 74,
+          "retention": 68.35
+        },
+        {
+          "name": "A. Layouni",
+          "role": "RW",
+          "overall": 73,
+          "retention": 67.95
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:226103:fc26:u4",
+      "ea:235458:fc26:u4",
+      "ea:228290:fc26:u4",
+      "ea:208335:fc26:u4",
+      "ea:264418:fc26:u4",
+      "ea:269622:fc26:u4",
+      "ea:242279:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:212382:fc26:u4",
+      "ea:242166:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:226103:fc26:u4",
+      "ea:235458:fc26:u4",
+      "ea:228290:fc26:u4",
+      "ea:208335:fc26:u4",
+      "ea:264418:fc26:u4",
+      "ea:269622:fc26:u4",
+      "ea:242279:fc26:u4",
+      "ea:72159:fc26:u4",
+      "ea:212382:fc26:u4",
+      "ea:242166:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-180-6303",
+    "seed": 6303,
+    "duration": 180,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 80.10222727272726,
+      "outfieldRetention": 76.545,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "Nuno Tavares",
+          "role": "LB",
+          "overall": 79,
+          "retention": 72.7
+        },
+        {
+          "name": "A. Rrahmani",
+          "role": "CB",
+          "overall": 81,
+          "retention": 67.25
+        },
+        {
+          "name": "M. Simakan",
+          "role": "CB",
+          "overall": 81,
+          "retention": 71.45
+        },
+        {
+          "name": "J. Timber",
+          "role": "RB",
+          "overall": 81,
+          "retention": 77.7
+        },
+        {
+          "name": "X. Schlager",
+          "role": "DM",
+          "overall": 79,
+          "retention": 77.9
+        },
+        {
+          "name": "N. Amiri",
+          "role": "CM",
+          "overall": 80,
+          "retention": 82.4
+        },
+        {
+          "name": "Gavi",
+          "role": "CM",
+          "overall": 81,
+          "retention": 82.65
+        },
+        {
+          "name": "K. Aktürkoğlu",
+          "role": "LW",
+          "overall": 79,
+          "retention": 76.45
+        },
+        {
+          "name": "G. Scamacca",
+          "role": "ST",
+          "overall": 80,
+          "retention": 76.25
+        },
+        {
+          "name": "Lee Kang In",
+          "role": "RW",
+          "overall": 80,
+          "retention": 80.7
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:251530:fc26:u4",
+      "ea:244263:fc26:u4",
+      "ea:243854:fc26:u4",
+      "ea:251805:fc26:u4",
+      "ea:233195:fc26:u4",
+      "ea:225309:fc26:u4",
+      "ea:264240:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:226710:fc26:u4",
+      "ea:243780:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:251530:fc26:u4",
+      "ea:244263:fc26:u4",
+      "ea:243854:fc26:u4",
+      "ea:251805:fc26:u4",
+      "ea:233195:fc26:u4",
+      "ea:225309:fc26:u4",
+      "ea:264240:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:226710:fc26:u4",
+      "ea:243780:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-300-6303",
+    "seed": 6303,
+    "duration": 300,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 80.10222727272726,
+      "outfieldRetention": 76.545,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "Nuno Tavares",
+          "role": "LB",
+          "overall": 79,
+          "retention": 72.7
+        },
+        {
+          "name": "A. Rrahmani",
+          "role": "CB",
+          "overall": 81,
+          "retention": 67.25
+        },
+        {
+          "name": "M. Simakan",
+          "role": "CB",
+          "overall": 81,
+          "retention": 71.45
+        },
+        {
+          "name": "J. Timber",
+          "role": "RB",
+          "overall": 81,
+          "retention": 77.7
+        },
+        {
+          "name": "X. Schlager",
+          "role": "DM",
+          "overall": 79,
+          "retention": 77.9
+        },
+        {
+          "name": "N. Amiri",
+          "role": "CM",
+          "overall": 80,
+          "retention": 82.4
+        },
+        {
+          "name": "Gavi",
+          "role": "CM",
+          "overall": 81,
+          "retention": 82.65
+        },
+        {
+          "name": "K. Aktürkoğlu",
+          "role": "LW",
+          "overall": 79,
+          "retention": 76.45
+        },
+        {
+          "name": "G. Scamacca",
+          "role": "ST",
+          "overall": 80,
+          "retention": 76.25
+        },
+        {
+          "name": "Lee Kang In",
+          "role": "RW",
+          "overall": 80,
+          "retention": 80.7
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:251530:fc26:u4",
+      "ea:244263:fc26:u4",
+      "ea:243854:fc26:u4",
+      "ea:251805:fc26:u4",
+      "ea:233195:fc26:u4",
+      "ea:225309:fc26:u4",
+      "ea:264240:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:226710:fc26:u4",
+      "ea:243780:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:251530:fc26:u4",
+      "ea:244263:fc26:u4",
+      "ea:243854:fc26:u4",
+      "ea:251805:fc26:u4",
+      "ea:233195:fc26:u4",
+      "ea:225309:fc26:u4",
+      "ea:264240:fc26:u4",
+      "ea:258580:fc26:u4",
+      "ea:226710:fc26:u4",
+      "ea:243780:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-180-6303",
+    "seed": 6303,
+    "duration": 180,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 85.71101818181818,
+      "outfieldRetention": 84.905,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "Marc Cucurella",
+          "role": "LB",
+          "overall": 83,
+          "retention": 79.9
+        },
+        {
+          "name": "V. van Dijk",
+          "role": "CB",
+          "overall": 89,
+          "retention": 79.25
+        },
+        {
+          "name": "S. de Vrij",
+          "role": "CB",
+          "overall": 83,
+          "retention": 78.55
+        },
+        {
+          "name": "T. Alexander-Arnold",
+          "role": "RB",
+          "overall": 84,
+          "retention": 85.70000000000002
+        },
+        {
+          "name": "H. Çalhanoğlu",
+          "role": "DM",
+          "overall": 86,
+          "retention": 88.05
+        },
+        {
+          "name": "Pedri",
+          "role": "CM",
+          "overall": 88,
+          "retention": 90.45
+        },
+        {
+          "name": "K. De Bruyne",
+          "role": "CM",
+          "overall": 86,
+          "retention": 90.25
+        },
+        {
+          "name": "H. Son",
+          "role": "LW",
+          "overall": 84,
+          "retention": 84.1
+        },
+        {
+          "name": "H. Kane",
+          "role": "ST",
+          "overall": 88,
+          "retention": 87.45
+        },
+        {
+          "name": "B. Saka",
+          "role": "RW",
+          "overall": 87,
+          "retention": 85.35000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:203376:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:231281:fc26:u4",
+      "ea:208128:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:246669:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:203376:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:231281:fc26:u4",
+      "ea:208128:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:246669:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-300-6303",
+    "seed": 6303,
+    "duration": 300,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 85.71101818181818,
+      "outfieldRetention": 84.905,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "Marc Cucurella",
+          "role": "LB",
+          "overall": 83,
+          "retention": 79.9
+        },
+        {
+          "name": "V. van Dijk",
+          "role": "CB",
+          "overall": 89,
+          "retention": 79.25
+        },
+        {
+          "name": "S. de Vrij",
+          "role": "CB",
+          "overall": 83,
+          "retention": 78.55
+        },
+        {
+          "name": "T. Alexander-Arnold",
+          "role": "RB",
+          "overall": 84,
+          "retention": 85.70000000000002
+        },
+        {
+          "name": "H. Çalhanoğlu",
+          "role": "DM",
+          "overall": 86,
+          "retention": 88.05
+        },
+        {
+          "name": "Pedri",
+          "role": "CM",
+          "overall": 88,
+          "retention": 90.45
+        },
+        {
+          "name": "K. De Bruyne",
+          "role": "CM",
+          "overall": 86,
+          "retention": 90.25
+        },
+        {
+          "name": "H. Son",
+          "role": "LW",
+          "overall": 84,
+          "retention": 84.1
+        },
+        {
+          "name": "H. Kane",
+          "role": "ST",
+          "overall": 88,
+          "retention": 87.45
+        },
+        {
+          "name": "B. Saka",
+          "role": "RW",
+          "overall": 87,
+          "retention": 85.35000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:203376:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:231281:fc26:u4",
+      "ea:208128:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:246669:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:239231:fc26:u4",
+      "ea:203376:fc26:u4",
+      "ea:198176:fc26:u4",
+      "ea:231281:fc26:u4",
+      "ea:208128:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:192985:fc26:u4",
+      "ea:200104:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:246669:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-180-6304",
+    "seed": 6304,
+    "duration": 180,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 73.52717272727273,
+      "outfieldRetention": 70.985,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "S. Byram",
+          "role": "LB",
+          "overall": 72,
+          "retention": 69.2
+        },
+        {
+          "name": "J. Vásquez",
+          "role": "CB",
+          "overall": 73,
+          "retention": 62.949999999999996
+        },
+        {
+          "name": "Jorge Cuenca",
+          "role": "CB",
+          "overall": 74,
+          "retention": 66.35
+        },
+        {
+          "name": "B. Nieuwkoop",
+          "role": "RB",
+          "overall": 74,
+          "retention": 73
+        },
+        {
+          "name": "Hernani",
+          "role": "DM",
+          "overall": 74,
+          "retention": 74.35
+        },
+        {
+          "name": "M. Hartel",
+          "role": "CM",
+          "overall": 73,
+          "retention": 76.05
+        },
+        {
+          "name": "J. Bellingham",
+          "role": "CM",
+          "overall": 74,
+          "retention": 74.6
+        },
+        {
+          "name": "O. Edvardsen",
+          "role": "LW",
+          "overall": 73,
+          "retention": 69.25
+        },
+        {
+          "name": "M. Vydra",
+          "role": "ST",
+          "overall": 73,
+          "retention": 70.19999999999999
+        },
+        {
+          "name": "O. Bobb",
+          "role": "RW",
+          "overall": 73,
+          "retention": 73.9
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:208892:fc26:u4",
+      "ea:244349:fc26:u4",
+      "ea:237522:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:225475:fc26:u4",
+      "ea:233125:fc26:u4",
+      "ea:270964:fc26:u4",
+      "ea:253399:fc26:u4",
+      "ea:198331:fc26:u4",
+      "ea:277295:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:208892:fc26:u4",
+      "ea:244349:fc26:u4",
+      "ea:237522:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:225475:fc26:u4",
+      "ea:233125:fc26:u4",
+      "ea:270964:fc26:u4",
+      "ea:253399:fc26:u4",
+      "ea:198331:fc26:u4",
+      "ea:277295:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced73-300-6304",
+    "seed": 6304,
+    "duration": 300,
+    "archetype": "balanced73",
+    "summary": {
+      "overall": 73.52717272727273,
+      "outfieldRetention": 70.985,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "M. Hitz",
+          "role": "GK",
+          "overall": 74,
+          "retention": 32.4
+        },
+        {
+          "name": "S. Byram",
+          "role": "LB",
+          "overall": 72,
+          "retention": 69.2
+        },
+        {
+          "name": "J. Vásquez",
+          "role": "CB",
+          "overall": 73,
+          "retention": 62.949999999999996
+        },
+        {
+          "name": "Jorge Cuenca",
+          "role": "CB",
+          "overall": 74,
+          "retention": 66.35
+        },
+        {
+          "name": "B. Nieuwkoop",
+          "role": "RB",
+          "overall": 74,
+          "retention": 73
+        },
+        {
+          "name": "Hernani",
+          "role": "DM",
+          "overall": 74,
+          "retention": 74.35
+        },
+        {
+          "name": "M. Hartel",
+          "role": "CM",
+          "overall": 73,
+          "retention": 76.05
+        },
+        {
+          "name": "J. Bellingham",
+          "role": "CM",
+          "overall": 74,
+          "retention": 74.6
+        },
+        {
+          "name": "O. Edvardsen",
+          "role": "LW",
+          "overall": 73,
+          "retention": 69.25
+        },
+        {
+          "name": "M. Vydra",
+          "role": "ST",
+          "overall": 73,
+          "retention": 70.19999999999999
+        },
+        {
+          "name": "O. Bobb",
+          "role": "RW",
+          "overall": 73,
+          "retention": 73.9
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190243:fc26:u4",
+      "ea:208892:fc26:u4",
+      "ea:244349:fc26:u4",
+      "ea:237522:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:225475:fc26:u4",
+      "ea:233125:fc26:u4",
+      "ea:270964:fc26:u4",
+      "ea:253399:fc26:u4",
+      "ea:198331:fc26:u4",
+      "ea:277295:fc26:u4",
+      "ea:190243:fc26:u4",
+      "ea:208892:fc26:u4",
+      "ea:244349:fc26:u4",
+      "ea:237522:fc26:u4",
+      "ea:226662:fc26:u4",
+      "ea:225475:fc26:u4",
+      "ea:233125:fc26:u4",
+      "ea:270964:fc26:u4",
+      "ea:253399:fc26:u4",
+      "ea:198331:fc26:u4",
+      "ea:277295:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-180-6304",
+    "seed": 6304,
+    "duration": 180,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 80.1131909090909,
+      "outfieldRetention": 77.295,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "A. Robertson",
+          "role": "LB",
+          "overall": 81,
+          "retention": 79.75
+        },
+        {
+          "name": "K. Danso",
+          "role": "CB",
+          "overall": 79,
+          "retention": 65.95
+        },
+        {
+          "name": "C. Romero",
+          "role": "CB",
+          "overall": 81,
+          "retention": 71.14999999999999
+        },
+        {
+          "name": "Dodô",
+          "role": "RB",
+          "overall": 79,
+          "retention": 76.9
+        },
+        {
+          "name": "J. Henderson",
+          "role": "DM",
+          "overall": 79,
+          "retention": 79.05
+        },
+        {
+          "name": "M. Pašalić",
+          "role": "CM",
+          "overall": 80,
+          "retention": 81.55000000000001
+        },
+        {
+          "name": "Andrey Santos",
+          "role": "CM",
+          "overall": 79,
+          "retention": 80.5
+        },
+        {
+          "name": "David Neres",
+          "role": "LW",
+          "overall": 81,
+          "retention": 81.35
+        },
+        {
+          "name": "A. Gouiri",
+          "role": "ST",
+          "overall": 80,
+          "retention": 78.3
+        },
+        {
+          "name": "A. Elanga",
+          "role": "RW",
+          "overall": 81,
+          "retention": 78.44999999999999
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:216267:fc26:u4",
+      "ea:237985:fc26:u4",
+      "ea:232488:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:183711:fc26:u4",
+      "ea:223273:fc26:u4",
+      "ea:273018:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:240753:fc26:u4",
+      "ea:257470:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:216267:fc26:u4",
+      "ea:237985:fc26:u4",
+      "ea:232488:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:183711:fc26:u4",
+      "ea:223273:fc26:u4",
+      "ea:273018:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:240753:fc26:u4",
+      "ea:257470:fc26:u4"
+    ]
+  },
+  {
+    "id": "balanced80-300-6304",
+    "seed": 6304,
+    "duration": 300,
+    "archetype": "balanced80",
+    "summary": {
+      "overall": 80.1131909090909,
+      "outfieldRetention": 77.295,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "L. Hrádecký",
+          "role": "GK",
+          "overall": 81,
+          "retention": 35.1
+        },
+        {
+          "name": "A. Robertson",
+          "role": "LB",
+          "overall": 81,
+          "retention": 79.75
+        },
+        {
+          "name": "K. Danso",
+          "role": "CB",
+          "overall": 79,
+          "retention": 65.95
+        },
+        {
+          "name": "C. Romero",
+          "role": "CB",
+          "overall": 81,
+          "retention": 71.14999999999999
+        },
+        {
+          "name": "Dodô",
+          "role": "RB",
+          "overall": 79,
+          "retention": 76.9
+        },
+        {
+          "name": "J. Henderson",
+          "role": "DM",
+          "overall": 79,
+          "retention": 79.05
+        },
+        {
+          "name": "M. Pašalić",
+          "role": "CM",
+          "overall": 80,
+          "retention": 81.55000000000001
+        },
+        {
+          "name": "Andrey Santos",
+          "role": "CM",
+          "overall": 79,
+          "retention": 80.5
+        },
+        {
+          "name": "David Neres",
+          "role": "LW",
+          "overall": 81,
+          "retention": 81.35
+        },
+        {
+          "name": "A. Gouiri",
+          "role": "ST",
+          "overall": 80,
+          "retention": 78.3
+        },
+        {
+          "name": "A. Elanga",
+          "role": "RW",
+          "overall": 81,
+          "retention": 78.44999999999999
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:190941:fc26:u4",
+      "ea:216267:fc26:u4",
+      "ea:237985:fc26:u4",
+      "ea:232488:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:183711:fc26:u4",
+      "ea:223273:fc26:u4",
+      "ea:273018:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:240753:fc26:u4",
+      "ea:257470:fc26:u4",
+      "ea:190941:fc26:u4",
+      "ea:216267:fc26:u4",
+      "ea:237985:fc26:u4",
+      "ea:232488:fc26:u4",
+      "ea:234112:fc26:u4",
+      "ea:183711:fc26:u4",
+      "ea:223273:fc26:u4",
+      "ea:273018:fc26:u4",
+      "ea:236632:fc26:u4",
+      "ea:240753:fc26:u4",
+      "ea:257470:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-180-6304",
+    "seed": 6304,
+    "duration": 180,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 86.7898,
+      "outfieldRetention": 86.00500000000002,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "F. Dimarco",
+          "role": "LB",
+          "overall": 84,
+          "retention": 82.5
+        },
+        {
+          "name": "Marquinhos",
+          "role": "CB",
+          "overall": 86,
+          "retention": 81.55
+        },
+        {
+          "name": "A. Bastoni",
+          "role": "CB",
+          "overall": 86,
+          "retention": 80.60000000000001
+        },
+        {
+          "name": "A. Hakimi",
+          "role": "RB",
+          "overall": 87,
+          "retention": 83.75
+        },
+        {
+          "name": "Rodri",
+          "role": "DM",
+          "overall": 90,
+          "retention": 90.45
+        },
+        {
+          "name": "F. de Jong",
+          "role": "CM",
+          "overall": 86,
+          "retention": 89.1
+        },
+        {
+          "name": "Pedri",
+          "role": "CM",
+          "overall": 88,
+          "retention": 90.45
+        },
+        {
+          "name": "Vini Jr.",
+          "role": "LW",
+          "overall": 88,
+          "retention": 85.15
+        },
+        {
+          "name": "H. Kane",
+          "role": "ST",
+          "overall": 88,
+          "retention": 87.45
+        },
+        {
+          "name": "L. Messi",
+          "role": "RW",
+          "overall": 86,
+          "retention": 89.05000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:226268:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:237383:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:231866:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:158023:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:226268:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:237383:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:231866:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:158023:fc26:u4"
+    ]
+  },
+  {
+    "id": "elitePossession-300-6304",
+    "seed": 6304,
+    "duration": 300,
+    "archetype": "elitePossession",
+    "summary": {
+      "overall": 86.7898,
+      "outfieldRetention": 86.00500000000002,
+      "minimumFit": 1,
+      "players": [
+        {
+          "name": "E. Martínez",
+          "role": "GK",
+          "overall": 85,
+          "retention": 59.29999999999999
+        },
+        {
+          "name": "F. Dimarco",
+          "role": "LB",
+          "overall": 84,
+          "retention": 82.5
+        },
+        {
+          "name": "Marquinhos",
+          "role": "CB",
+          "overall": 86,
+          "retention": 81.55
+        },
+        {
+          "name": "A. Bastoni",
+          "role": "CB",
+          "overall": 86,
+          "retention": 80.60000000000001
+        },
+        {
+          "name": "A. Hakimi",
+          "role": "RB",
+          "overall": 87,
+          "retention": 83.75
+        },
+        {
+          "name": "Rodri",
+          "role": "DM",
+          "overall": 90,
+          "retention": 90.45
+        },
+        {
+          "name": "F. de Jong",
+          "role": "CM",
+          "overall": 86,
+          "retention": 89.1
+        },
+        {
+          "name": "Pedri",
+          "role": "CM",
+          "overall": 88,
+          "retention": 90.45
+        },
+        {
+          "name": "Vini Jr.",
+          "role": "LW",
+          "overall": 88,
+          "retention": 85.15
+        },
+        {
+          "name": "H. Kane",
+          "role": "ST",
+          "overall": 88,
+          "retention": 87.45
+        },
+        {
+          "name": "L. Messi",
+          "role": "RW",
+          "overall": 86,
+          "retention": 89.05000000000001
+        }
+      ]
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "possession",
+          "tempo": 2,
+          "width": 3,
+          "press": 3,
+          "fluidity": 4
+        }
+      }
+    ],
+    "profiles": [
+      "ea:202811:fc26:u4",
+      "ea:226268:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:237383:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:231866:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:158023:fc26:u4",
+      "ea:202811:fc26:u4",
+      "ea:226268:fc26:u4",
+      "ea:207865:fc26:u4",
+      "ea:237383:fc26:u4",
+      "ea:235212:fc26:u4",
+      "ea:231866:fc26:u4",
+      "ea:228702:fc26:u4",
+      "ea:251854:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:202126:fc26:u4",
+      "ea:158023:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-180-5701",
+    "archetype": "catalog",
+    "seed": 5701,
+    "duration": 180,
+    "summary": {
+      "overall": 70.36363636363636,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:243158:fc26:u4",
+      "ea:255098:fc26:u4",
+      "ea:70482:fc26:u4",
+      "ea:74242:fc26:u4",
+      "ea:248245:fc26:u4",
+      "ea:262025:fc26:u4",
+      "ea:247026:fc26:u4",
+      "ea:262525:fc26:u4",
+      "ea:233520:fc26:u4",
+      "ea:229683:fc26:u4",
+      "ea:73413:fc26:u4",
+      "ea:236568:fc26:u4",
+      "ea:224921:fc26:u4",
+      "ea:240289:fc26:u4",
+      "ea:211522:fc26:u4",
+      "ea:242055:fc26:u4",
+      "ea:236496:fc26:u4",
+      "ea:189271:fc26:u4",
+      "ea:138412:fc26:u4",
+      "ea:271265:fc26:u4",
+      "ea:240047:fc26:u4",
+      "ea:260397:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-300-5701",
+    "archetype": "catalog",
+    "seed": 5701,
+    "duration": 300,
+    "summary": {
+      "overall": 70.36363636363636,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:243158:fc26:u4",
+      "ea:255098:fc26:u4",
+      "ea:70482:fc26:u4",
+      "ea:74242:fc26:u4",
+      "ea:248245:fc26:u4",
+      "ea:262025:fc26:u4",
+      "ea:247026:fc26:u4",
+      "ea:262525:fc26:u4",
+      "ea:233520:fc26:u4",
+      "ea:229683:fc26:u4",
+      "ea:73413:fc26:u4",
+      "ea:236568:fc26:u4",
+      "ea:224921:fc26:u4",
+      "ea:240289:fc26:u4",
+      "ea:211522:fc26:u4",
+      "ea:242055:fc26:u4",
+      "ea:236496:fc26:u4",
+      "ea:189271:fc26:u4",
+      "ea:138412:fc26:u4",
+      "ea:271265:fc26:u4",
+      "ea:240047:fc26:u4",
+      "ea:260397:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-180-5702",
+    "archetype": "catalog",
+    "seed": 5702,
+    "duration": 180,
+    "summary": {
+      "overall": 70.27272727272727,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:229541:fc26:u4",
+      "ea:70448:fc26:u4",
+      "ea:222104:fc26:u4",
+      "ea:245540:fc26:u4",
+      "ea:224793:fc26:u4",
+      "ea:198861:fc26:u4",
+      "ea:275233:fc26:u4",
+      "ea:223866:fc26:u4",
+      "ea:241695:fc26:u4",
+      "ea:78295:fc26:u4",
+      "ea:77691:fc26:u4",
+      "ea:192201:fc26:u4",
+      "ea:276747:fc26:u4",
+      "ea:248133:fc26:u4",
+      "ea:256780:fc26:u4",
+      "ea:255541:fc26:u4",
+      "ea:222994:fc26:u4",
+      "ea:228336:fc26:u4",
+      "ea:269224:fc26:u4",
+      "ea:255272:fc26:u4",
+      "ea:197031:fc26:u4",
+      "ea:76803:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-300-5702",
+    "archetype": "catalog",
+    "seed": 5702,
+    "duration": 300,
+    "summary": {
+      "overall": 70.27272727272727,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:229541:fc26:u4",
+      "ea:70448:fc26:u4",
+      "ea:222104:fc26:u4",
+      "ea:245540:fc26:u4",
+      "ea:224793:fc26:u4",
+      "ea:198861:fc26:u4",
+      "ea:275233:fc26:u4",
+      "ea:223866:fc26:u4",
+      "ea:241695:fc26:u4",
+      "ea:78295:fc26:u4",
+      "ea:77691:fc26:u4",
+      "ea:192201:fc26:u4",
+      "ea:276747:fc26:u4",
+      "ea:248133:fc26:u4",
+      "ea:256780:fc26:u4",
+      "ea:255541:fc26:u4",
+      "ea:222994:fc26:u4",
+      "ea:228336:fc26:u4",
+      "ea:269224:fc26:u4",
+      "ea:255272:fc26:u4",
+      "ea:197031:fc26:u4",
+      "ea:76803:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-180-5703",
+    "archetype": "catalog",
+    "seed": 5703,
+    "duration": 180,
+    "summary": {
+      "overall": 72.77272727272727,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:163587:fc26:u4",
+      "ea:221370:fc26:u4",
+      "ea:255573:fc26:u4",
+      "ea:209063:fc26:u4",
+      "ea:275162:fc26:u4",
+      "ea:273463:fc26:u4",
+      "ea:221467:fc26:u4",
+      "ea:258775:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:240847:fc26:u4",
+      "ea:242946:fc26:u4",
+      "ea:224987:fc26:u4",
+      "ea:72245:fc26:u4",
+      "ea:261495:fc26:u4",
+      "ea:78049:fc26:u4",
+      "ea:256524:fc26:u4",
+      "ea:270613:fc26:u4",
+      "ea:178287:fc26:u4",
+      "ea:239613:fc26:u4",
+      "ea:260843:fc26:u4",
+      "ea:230666:fc26:u4",
+      "ea:269400:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-300-5703",
+    "archetype": "catalog",
+    "seed": 5703,
+    "duration": 300,
+    "summary": {
+      "overall": 72.77272727272727,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:163587:fc26:u4",
+      "ea:221370:fc26:u4",
+      "ea:255573:fc26:u4",
+      "ea:209063:fc26:u4",
+      "ea:275162:fc26:u4",
+      "ea:273463:fc26:u4",
+      "ea:221467:fc26:u4",
+      "ea:258775:fc26:u4",
+      "ea:238794:fc26:u4",
+      "ea:240847:fc26:u4",
+      "ea:242946:fc26:u4",
+      "ea:224987:fc26:u4",
+      "ea:72245:fc26:u4",
+      "ea:261495:fc26:u4",
+      "ea:78049:fc26:u4",
+      "ea:256524:fc26:u4",
+      "ea:270613:fc26:u4",
+      "ea:178287:fc26:u4",
+      "ea:239613:fc26:u4",
+      "ea:260843:fc26:u4",
+      "ea:230666:fc26:u4",
+      "ea:269400:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-180-5704",
+    "archetype": "catalog",
+    "seed": 5704,
+    "duration": 180,
+    "summary": {
+      "overall": 69.68181818181819,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:204234:fc26:u4",
+      "ea:74483:fc26:u4",
+      "ea:80380:fc26:u4",
+      "ea:225316:fc26:u4",
+      "ea:188377:fc26:u4",
+      "ea:227535:fc26:u4",
+      "ea:239894:fc26:u4",
+      "ea:262752:fc26:u4",
+      "ea:276211:fc26:u4",
+      "ea:232225:fc26:u4",
+      "ea:185068:fc26:u4",
+      "ea:244316:fc26:u4",
+      "ea:222388:fc26:u4",
+      "ea:212419:fc26:u4",
+      "ea:262930:fc26:u4",
+      "ea:245414:fc26:u4",
+      "ea:256441:fc26:u4",
+      "ea:277197:fc26:u4",
+      "ea:262236:fc26:u4",
+      "ea:274377:fc26:u4",
+      "ea:239981:fc26:u4",
+      "ea:215195:fc26:u4"
+    ]
+  },
+  {
+    "id": "catalog-300-5704",
+    "archetype": "catalog",
+    "seed": 5704,
+    "duration": 300,
+    "summary": {
+      "overall": 69.68181818181819,
+      "outfieldRetention": 0
+    },
+    "teams": [
+      {
+        "name": "Northside FC",
+        "short": "NTH",
+        "color": "#d9f580",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      },
+      {
+        "name": "Southbank FC",
+        "short": "STH",
+        "color": "#baaff0",
+        "tactics": {
+          "formation": "433",
+          "style": "balanced",
+          "tempo": 3,
+          "width": 3,
+          "press": 3,
+          "fluidity": 3
+        }
+      }
+    ],
+    "profiles": [
+      "ea:204234:fc26:u4",
+      "ea:74483:fc26:u4",
+      "ea:80380:fc26:u4",
+      "ea:225316:fc26:u4",
+      "ea:188377:fc26:u4",
+      "ea:227535:fc26:u4",
+      "ea:239894:fc26:u4",
+      "ea:262752:fc26:u4",
+      "ea:276211:fc26:u4",
+      "ea:232225:fc26:u4",
+      "ea:185068:fc26:u4",
+      "ea:244316:fc26:u4",
+      "ea:222388:fc26:u4",
+      "ea:212419:fc26:u4",
+      "ea:262930:fc26:u4",
+      "ea:245414:fc26:u4",
+      "ea:256441:fc26:u4",
+      "ea:277197:fc26:u4",
+      "ea:262236:fc26:u4",
+      "ea:274377:fc26:u4",
+      "ea:239981:fc26:u4",
+      "ea:215195:fc26:u4"
+    ]
+  }
+]

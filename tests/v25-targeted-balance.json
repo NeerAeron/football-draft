@@ -1,0 +1,340 @@
+{
+  "purpose": "Bounded before/after check for unintended match-flow changes; descriptive samples, not enforced goal rates or a win-rate calibration.",
+  "protocol": {
+    "matchesPerFormat": 6,
+    "seeds": [
+      83421,
+      83422,
+      83423,
+      83424,
+      83425,
+      83426
+    ],
+    "durations": [
+      300,
+      180
+    ],
+    "physicsHz": 60,
+    "squads": "Same random position-matched player identities, Balanced style, all four tactics at 3; each revision uses its compiled badges.",
+    "beforeCommit": "c3cd3ad1a1c5a3a0e84c150a517f704ee6e157d7"
+  },
+  "afterHashes": {
+    "dist/engine.js": "57b08481f27f29dc983f744db503ffa5d662d2205462ef9bd8fb6db6e5bb09da",
+    "dist/config.js": "105835b304a3f17d3bdf042239dc21da7c41c0ca77d54de3b021e72eba66e199",
+    "dist/data/players-fc26.json": "26d0f3658ba768c0d9c429c794fda80aaab3e90fefdcd3d2a6b1c407162f1ae3"
+  },
+  "results": {
+    "before": [
+      {
+        "summary": {
+          "duration": 300,
+          "matches": 6,
+          "meanGoals": 3.1666666666666665,
+          "meanShots": 10.5,
+          "onTargetShare": 0.3968253968253968,
+          "meanOffTarget": 4.666666666666667,
+          "boxGoalShare": 0.8421052631578947,
+          "passCompletion": 0.7214170692431562,
+          "halfBefore": 0.5231093026253233,
+          "halfAfter": 0.6731093026253232,
+          "fulltimeOutfield": 0.1375880073112465
+        },
+        "samples": [
+          {
+            "seed": 83421,
+            "score": [
+              0,
+              1
+            ],
+            "shots": 11,
+            "completed": 79,
+            "passes": 106
+          },
+          {
+            "seed": 83422,
+            "score": [
+              2,
+              0
+            ],
+            "shots": 10,
+            "completed": 83,
+            "passes": 111
+          },
+          {
+            "seed": 83423,
+            "score": [
+              2,
+              4
+            ],
+            "shots": 9,
+            "completed": 76,
+            "passes": 105
+          },
+          {
+            "seed": 83424,
+            "score": [
+              0,
+              3
+            ],
+            "shots": 8,
+            "completed": 58,
+            "passes": 89
+          },
+          {
+            "seed": 83425,
+            "score": [
+              3,
+              0
+            ],
+            "shots": 9,
+            "completed": 78,
+            "passes": 110
+          },
+          {
+            "seed": 83426,
+            "score": [
+              3,
+              1
+            ],
+            "shots": 16,
+            "completed": 74,
+            "passes": 100
+          }
+        ]
+      },
+      {
+        "summary": {
+          "duration": 180,
+          "matches": 6,
+          "meanGoals": 3,
+          "meanShots": 5.5,
+          "onTargetShare": 0.6060606060606061,
+          "meanOffTarget": 1.8333333333333333,
+          "boxGoalShare": 0.8888888888888888,
+          "passCompletion": 0.7517084282460137,
+          "halfBefore": 0.5290197555739773,
+          "halfAfter": 0.6790197555739774,
+          "fulltimeOutfield": 0.1451106071965914
+        },
+        "samples": [
+          {
+            "seed": 83421,
+            "score": [
+              1,
+              2
+            ],
+            "shots": 5,
+            "completed": 62,
+            "passes": 82
+          },
+          {
+            "seed": 83422,
+            "score": [
+              2,
+              1
+            ],
+            "shots": 4,
+            "completed": 54,
+            "passes": 71
+          },
+          {
+            "seed": 83423,
+            "score": [
+              0,
+              3
+            ],
+            "shots": 4,
+            "completed": 52,
+            "passes": 74
+          },
+          {
+            "seed": 83424,
+            "score": [
+              2,
+              1
+            ],
+            "shots": 4,
+            "completed": 54,
+            "passes": 69
+          },
+          {
+            "seed": 83425,
+            "score": [
+              3,
+              1
+            ],
+            "shots": 8,
+            "completed": 57,
+            "passes": 74
+          },
+          {
+            "seed": 83426,
+            "score": [
+              1,
+              1
+            ],
+            "shots": 8,
+            "completed": 51,
+            "passes": 69
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "summary": {
+          "duration": 300,
+          "matches": 6,
+          "meanGoals": 3.5,
+          "meanShots": 10.666666666666666,
+          "onTargetShare": 0.453125,
+          "meanOffTarget": 4.5,
+          "boxGoalShare": 0.8571428571428571,
+          "passCompletion": 0.7571189279731994,
+          "halfBefore": 0.51810285539647,
+          "halfAfter": 0.66810285539647,
+          "fulltimeOutfield": 0.1297622354635858
+        },
+        "samples": [
+          {
+            "seed": 83421,
+            "score": [
+              0,
+              1
+            ],
+            "shots": 11,
+            "completed": 76,
+            "passes": 102
+          },
+          {
+            "seed": 83422,
+            "score": [
+              0,
+              3
+            ],
+            "shots": 6,
+            "completed": 82,
+            "passes": 112
+          },
+          {
+            "seed": 83423,
+            "score": [
+              1,
+              2
+            ],
+            "shots": 11,
+            "completed": 72,
+            "passes": 88
+          },
+          {
+            "seed": 83424,
+            "score": [
+              3,
+              2
+            ],
+            "shots": 13,
+            "completed": 61,
+            "passes": 90
+          },
+          {
+            "seed": 83425,
+            "score": [
+              5,
+              2
+            ],
+            "shots": 15,
+            "completed": 78,
+            "passes": 99
+          },
+          {
+            "seed": 83426,
+            "score": [
+              2,
+              0
+            ],
+            "shots": 8,
+            "completed": 83,
+            "passes": 106
+          }
+        ]
+      },
+      {
+        "summary": {
+          "duration": 180,
+          "matches": 6,
+          "meanGoals": 2.3333333333333335,
+          "meanShots": 4.833333333333333,
+          "onTargetShare": 0.5172413793103449,
+          "meanOffTarget": 1.6666666666666667,
+          "boxGoalShare": 0.7857142857142857,
+          "passCompletion": 0.7354497354497355,
+          "halfBefore": 0.5137444602686551,
+          "halfAfter": 0.6637444602686552,
+          "fulltimeOutfield": 0.12707412008901633
+        },
+        "samples": [
+          {
+            "seed": 83421,
+            "score": [
+              1,
+              3
+            ],
+            "shots": 6,
+            "completed": 43,
+            "passes": 61
+          },
+          {
+            "seed": 83422,
+            "score": [
+              2,
+              0
+            ],
+            "shots": 6,
+            "completed": 44,
+            "passes": 56
+          },
+          {
+            "seed": 83423,
+            "score": [
+              2,
+              1
+            ],
+            "shots": 6,
+            "completed": 40,
+            "passes": 53
+          },
+          {
+            "seed": 83424,
+            "score": [
+              2,
+              1
+            ],
+            "shots": 5,
+            "completed": 49,
+            "passes": 68
+          },
+          {
+            "seed": 83425,
+            "score": [
+              0,
+              1
+            ],
+            "shots": 3,
+            "completed": 51,
+            "passes": 71
+          },
+          {
+            "seed": 83426,
+            "score": [
+              1,
+              0
+            ],
+            "shots": 3,
+            "completed": 51,
+            "passes": 69
+          }
+        ]
+      }
+    ]
+  }
+}
