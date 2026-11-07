@@ -2,7 +2,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { Match } from '../../app/core/sim/engine.js';
 import { Draft } from '../../app/core/draft/draft.js';
-import { createAIOpponent, coachAI, DIFFICULTIES } from '../../app/core/draft/opponent.js';
+import { createAIOpponent, DIFFICULTIES } from '../../app/core/draft/opponent.js';
+import { coachAI } from '../../app/core/sim/coach.js';
 import { overallRating } from '../../app/core/players/ratings.js';
 const catalog = JSON.parse(
     await readFile(new URL('../../data/players-fc26.json', import.meta.url)),

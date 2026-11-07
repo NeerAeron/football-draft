@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { Match } from '../../app/core/sim/engine.js';
 import { Draft } from '../../app/core/draft/draft.js';
-import { createAIOpponent, coachAI } from '../../app/core/draft/opponent.js';
+import { createAIOpponent } from '../../app/core/draft/opponent.js';
+import { coachAI } from '../../app/core/sim/coach.js';
 import { overallRating } from '../../app/core/players/ratings.js';
 const bytes = await readFile(new URL('../../data/players-fc26.json', import.meta.url)),
   catalog = JSON.parse(bytes);

@@ -8,7 +8,8 @@ import { FORMATIONS, formationLabel, formationLines } from '../core/players/form
 import { KITS, bestSlots } from '../core/draft/draft.js';
 import { createGameUI } from './game-ui.js';
 import { miniPitch, renderSquadList, showPlayerCard, rankPlayers } from './squad-ui.js';
-import { tacticAccess, coachAI, DIFFICULTIES } from '../core/draft/opponent.js';
+import { DIFFICULTIES } from '../core/draft/opponent.js';
+import { tacticAccess, coachAI } from '../core/sim/coach.js';
 import { Match, ATTRS, W, H, LENGTHS, clamp } from '../core/sim/engine.js';
 import { GOAL_ZONES } from '../core/sim/goal-zones.js';
 import { TAGS, STYLES, TACTICS, badgeEligible, badgeDescription } from '../core/players/traits.js';

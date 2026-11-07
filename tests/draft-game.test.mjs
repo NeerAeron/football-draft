@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { Match, Player } from '../app/core/sim/engine.js';
 import { FORMATIONS, formationLines, formationLabel } from '../app/core/players/formations.js';
 import { Draft, KITS, bestSlots } from '../app/core/draft/draft.js';
-import { DIFFICULTIES, tacticAccess } from '../app/core/draft/opponent.js';
+import { DIFFICULTIES } from '../app/core/draft/opponent.js';
+import { tacticAccess } from '../app/core/sim/coach.js';
 import {
   playerTier,
   overallRating,

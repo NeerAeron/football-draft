@@ -1,6 +1,6 @@
 import { CONFIG, normalizeConfig } from '../config/config.js';
 import { FORMATIONS } from '../players/formations.js';
-import { coachAI } from '../draft/opponent.js';
+import { coachAI } from './coach.js';
 import { goalZone, goalGeometry } from './goal-zones.js';
 import { makeIdentity, preference, footExecution } from './player-model.js';
 import { offsideSnapshot, offenceInBox, targetChance } from './rules.js';
