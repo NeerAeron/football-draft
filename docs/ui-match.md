@@ -31,6 +31,8 @@ requestMatch({
     ],
     userSides: [0],                 // sides the player controls: [0], or [0, 1] in Versus
     returnTo: '#/run',              // where "Continue" goes after full time
+    autoKickoff: true,              // skip the match screen's own pre-kickoff (a pre-match
+                                    // screen already chose view, tactics and mentality)
   },
 });
 
@@ -130,7 +132,7 @@ from kickoff (same seed); a refresh after full time shows the result again.
 
 ## Demo and tests
 
-`#/match?demo=1[&view=key|full|instant][&knockout=1][&pens=1][&seed=n]` builds a request from
+`#/match?demo=1[&view=key|full|instant][&knockout=1][&pens=1][&auto=1][&seed=n]` builds a request from
 two real club XIs (`loadCatalog()` → `clubSquads` → best XI; `buildDemoRequest` in
 `screens/match/demo.js`). `pens=1` sets `meta.forceShootout`: the match jumps straight to a
 level knockout's penalty shootout (`forceShootout`, demo/test only — never in real requests). Browser flows: `match-key`,

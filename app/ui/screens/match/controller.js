@@ -255,6 +255,7 @@ export class MatchController {
 
   async kickoff() {
     if (this.hud.get().phase !== 'pre') return;
+    clearTimeout(this.prefetchTimer);
     markMatchLive();
     const view = this.request.view;
     playCue('kickoff');

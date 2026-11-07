@@ -69,6 +69,11 @@ function NoMatch() {
 function Playing({ request, onExit, restarted }) {
   const controller = useMemo(() => new MatchController(request), [request]);
   useEffect(() => () => controller.dispose(), [controller]);
+  // A pre-match screen already set things up: start straight away (docs/ui-match.md).
+  const auto = !!request.meta?.autoKickoff;
+  useEffect(() => {
+    if (auto) controller.kickoff();
+  }, [controller, auto]);
   const phase = useStore(controller.hud, s => s.phase);
   const result = useStore(controller.hud, s => s.result);
   const [tacticsFor, setTacticsFor] = useState(null);
@@ -90,7 +95,7 @@ function Playing({ request, onExit, restarted }) {
   />`;
   if (phase === 'finished' && result)
     return html`<${Finished} result=${result} controller=${controller} />`;
-  if (phase === 'pre')
+  if (phase === 'pre' && !auto)
     return html`<${PreMatch}
         controller=${controller}
         restarted=${restarted}

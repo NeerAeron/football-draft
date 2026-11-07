@@ -270,6 +270,19 @@ const matchFlows = [
     },
   },
   {
+    name: 'match-auto',
+    viewports: ['desktop'],
+    async run({ page, step, base }) {
+      await page.goto(`${base}${MATCH}&view=full&auto=1`);
+      await step('starts without a second pre-kickoff', async () => {
+        await visible(page, '.stage__canvas', 30000);
+        if (await page.locator('[data-testid="kickoff"]').count())
+          throw new Error('pre-kickoff shown despite autoKickoff');
+        await visible(page, '[data-testid="play-pause"][aria-label="Pause"]');
+      });
+    },
+  },
+  {
     name: 'match-pens',
     async run({ page, shot, step, base }) {
       await page.goto(`${base}${MATCH}&view=full&pens=1`);

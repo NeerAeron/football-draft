@@ -42,6 +42,7 @@ export function buildDemoRequest(catalog, query = {}) {
       returnTo: '#/',
       userSides: [0],
       forceShootout: query.pens === '1',
+      autoKickoff: query.auto === '1',
     },
   });
 }
