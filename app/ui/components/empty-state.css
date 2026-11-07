@@ -1,0 +1,72 @@
+/* EmptyState */
+.empty {
+  --empty-accent: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+}
+.empty--sm {
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-4);
+}
+.empty--lg {
+  gap: var(--space-4);
+  padding: var(--space-10) var(--space-6);
+}
+.empty--volt {
+  --empty-accent: var(--volt-400);
+}
+.empty--gold {
+  --empty-accent: var(--gold-400);
+}
+.empty--coral {
+  --empty-accent: var(--coral-400);
+}
+.empty__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  color: var(--empty-accent);
+  background: radial-gradient(
+    circle at 50% 35%,
+    color-mix(in srgb, var(--empty-accent) 22%, transparent),
+    color-mix(in srgb, var(--empty-accent) 6%, transparent) 70%
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--empty-accent) 30%, transparent);
+}
+.empty--sm .empty__icon {
+  width: 44px;
+  height: 44px;
+}
+.empty--lg .empty__icon {
+  width: 84px;
+  height: 84px;
+}
+.empty__title {
+  font-size: var(--display-sm);
+}
+.empty--lg .empty__title {
+  font-size: var(--display-lg);
+}
+.empty__message {
+  max-width: 44ch;
+  color: var(--text-2);
+}
+.empty__action {
+  margin-top: var(--space-2);
+}
+.error-detail {
+  display: inline-block;
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: rgb(255 111 97 / 0.1);
+  color: var(--coral-300);
+  font-size: var(--text-xs);
+  word-break: break-word;
+}

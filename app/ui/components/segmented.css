@@ -1,0 +1,108 @@
+/* Segmented control */
+.segmented {
+  --seg-h: 44px;
+  --seg-thumb: var(--volt-400);
+  --seg-thumb-ink: var(--on-volt);
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: rgb(4 7 15 / 0.55);
+  border: 1px solid var(--line-2);
+  max-width: 100%;
+}
+.segmented--gold {
+  --seg-thumb: var(--gold-400);
+  --seg-thumb-ink: var(--on-gold);
+}
+.segmented--sm {
+  --seg-h: 34px;
+  border-radius: var(--radius-sm);
+}
+@media (pointer: coarse) {
+  .segmented--sm {
+    --seg-h: 40px;
+  }
+}
+.segmented--lg {
+  --seg-h: 56px;
+}
+.segmented--block {
+  display: flex;
+  width: 100%;
+}
+.segmented--block .segmented__item {
+  flex: 1 1 0;
+}
+.segmented__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  cursor: pointer;
+}
+.segmented__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: inherit;
+}
+.segmented__face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: calc(var(--seg-h) - 8px);
+  padding: 4px 12px;
+  border-radius: calc(var(--radius-md) - 4px);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.15;
+  text-align: center;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.segmented--sm .segmented__face {
+  padding: 3px 10px;
+  font-size: var(--text-xs);
+  border-radius: calc(var(--radius-sm) - 4px);
+}
+.segmented--lg .segmented__face {
+  font-size: var(--text-md);
+}
+.segmented__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.segmented__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.segmented__hint {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  opacity: 0.75;
+}
+.segmented__item:hover .segmented__face {
+  color: var(--text-1);
+  background: rgb(148 170 220 / 0.08);
+}
+.segmented__item.is-selected .segmented__face {
+  color: var(--seg-thumb-ink);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.22), transparent 60%), var(--seg-thumb);
+  box-shadow: 0 2px 10px -3px rgb(0 0 0 / 0.5);
+}
+.segmented__input:focus-visible + .segmented__face {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.segmented__item.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
