@@ -568,30 +568,30 @@
 }
 
 /* Odds dialog */
-.odds {
+.spin-odds {
   display: grid;
   gap: var(--space-4);
 }
-.odds__reel {
+.spin-odds__reel {
   display: grid;
   gap: var(--space-2);
 }
-.odds__title {
+.spin-odds__title {
   font-size: var(--display-xs);
 }
-.odds__landed {
+.spin-odds__landed {
   color: var(--text-2);
   font-size: var(--text-sm);
 }
-.odds__landed b {
+.spin-odds__landed b {
   color: var(--text-1);
 }
-.odds__groups {
+.spin-odds__groups {
   display: grid;
   gap: 2px;
   margin: 0;
 }
-.odds__groups li {
+.spin-odds__groups li {
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: var(--space-3);
@@ -600,7 +600,7 @@
   background: var(--surface-2);
   font-size: var(--text-sm);
 }
-.odds__count {
+.spin-odds__count {
   color: var(--text-3);
 }
 

@@ -51,11 +51,32 @@ function Outlet() {
       return;
     }
     globalThis.scrollTo?.(0, 0);
-    const heading = document.querySelector('#main h1');
-    if (heading) {
-      heading.setAttribute('tabindex', '-1');
-      heading.focus({ preventScroll: true });
-    }
+    // Screens that load data first (run hub, daily, pre-match) render their h1 a moment
+    // later: wait for it (up to 3 s) instead of leaving focus on <body>, but never take
+    // focus from something the user has focused meanwhile.
+    const main = document.getElementById('main');
+    const idle = () => [document.body, main, null].includes(document.activeElement);
+    const focusHeading = () => {
+      const heading = document.querySelector('#main h1');
+      if (!heading) return false;
+      if (idle()) {
+        heading.setAttribute('tabindex', '-1');
+        heading.focus({ preventScroll: true });
+      }
+      return true;
+    };
+    if (focusHeading() || !main) return;
+    const observer = new MutationObserver(() => focusHeading() && stop());
+    const timer = setTimeout(() => {
+      stop();
+      if (idle()) main.focus({ preventScroll: true });
+    }, 3000);
+    const stop = () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+    observer.observe(main, { childList: true, subtree: true });
+    return stop;
   }, [state, r.path, r.query]);
 
   if (state.error && state.route === r.route) throw state.error; // rendered by the ErrorBoundary below

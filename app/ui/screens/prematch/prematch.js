@@ -45,6 +45,7 @@ import {
 } from '../../components/index.js';
 import { useMedia } from '../draft/use-media.js';
 import { POOR_FIT_DROP, linkLines } from '../draft/draft-model.js';
+import { fmt1 } from '../../lib/format.js';
 
 const VIEWS = [
   { value: 'key', label: 'Key Moments', hint: '≈1 min' },
@@ -58,13 +59,14 @@ const FORMATION_OPTIONS = Object.keys(FORMATIONS).map(f => ({
 const pct = p => `${Math.round(p * 100)}%`;
 
 /** Fit tags while a slot is picked (where would he play?) or, at rest, out-of-position players. */
-function lineupHighlights(side, picked) {
+function lineupHighlights(side, picked, hide = false) {
   const rows = FORMATIONS[side.formation];
   const out = {};
   const tag = (p, role) => {
     const natural = Math.round(naturalRating(p)),
       rating = Math.round(roleRating(p, role));
     if (roleFit(p, role) >= NATURAL_FIT) return { state: 'ok', label: role };
+    if (hide) return { state: 'penalty', label: role };
     return natural - rating > POOR_FIT_DROP
       ? { state: 'neutral', label: String(rating) }
       : { state: 'penalty', label: role, from: natural, to: rating };
@@ -101,6 +103,7 @@ function Matchup({ data, strengths, children }) {
   const [a, b] = strengths;
   const p = outcomeProbabilities(a.effective, b.effective);
   const label = data.sides[0].name;
+  const hide = data.hideRatings;
   return html`<section class="matchup" aria-label="Matchup">
     <div class="matchup__sides">
       ${data.sides.map(
@@ -113,29 +116,38 @@ function Matchup({ data, strengths, children }) {
             <${SideBadge} side=${s} />
             <span class="matchup__name">${s.name}</span>
             <span class="matchup__meta">
-              <b class="num">${strengths[i].rating.toFixed(1)}</b>
+              ${!hide && html`<b class="num">${fmt1(strengths[i].rating)}</b>`}
               <span>${formationLabel(s.formation).split(' · ')[0]}</span>
             </span>
           </div>`,
       )}
       <span class="matchup__vs" aria-hidden="true">vs</span>
     </div>
-    <div
-      class="matchup__odds"
-      role="img"
-      aria-label=${`${label}: win ${pct(p.win)}, draw ${pct(p.draw)}, loss ${pct(p.loss)}`}
-    >
-      <span class="matchup__bar">
-        <i class="is-win" style=${`flex:${p.win};background:${data.sides[0].colors[0]}`}></i
-        ><i class="is-draw" style=${`flex:${p.draw}`}></i
-        ><i class="is-loss" style=${`flex:${p.loss};background:${data.sides[1].colors[0]}`}></i>
-      </span>
-      <span class="matchup__legend">
-        <span><b class="num">${pct(p.win)}</b> ${data.sides[0].short}</span>
-        <span><b class="num">${pct(p.draw)}</b> draw</span>
-        <span><b class="num">${pct(p.loss)}</b> ${data.sides[1].short}</span>
-      </span>
-    </div>
+    ${
+      hide
+        ? html`<p class="matchup__hidden">
+            <${Icon} name="eye-off" size=${16} /> Ratings hidden until the final whistle
+          </p>`
+        : html`<div
+            class="matchup__odds"
+            role="img"
+            aria-label=${`${label}: win ${pct(p.win)}, draw ${pct(p.draw)}, loss ${pct(p.loss)}`}
+          >
+            <span class="matchup__bar">
+              <i class="is-win" style=${`flex:${p.win};background:${data.sides[0].colors[0]}`}></i
+              ><i class="is-draw" style=${`flex:${p.draw}`}></i
+              ><i
+                class="is-loss"
+                style=${`flex:${p.loss};background:${data.sides[1].colors[0]}`}
+              ></i>
+            </span>
+            <span class="matchup__legend">
+              <span><b class="num">${pct(p.win)}</b> ${data.sides[0].short}</span>
+              <span><b class="num">${pct(p.draw)}</b> draw</span>
+              <span><b class="num">${pct(p.loss)}</b> ${data.sides[1].short}</span>
+            </span>
+          </div>`
+    }
     ${children && html`<div class="matchup__cta">${children}</div>`}
   </section>`;
 }
@@ -181,7 +193,7 @@ function Tactics({ side, index }) {
   </section>`;
 }
 
-function Opponent({ side, players }) {
+function Opponent({ side, players, hideRatings }) {
   const top = useMemo(
     () =>
       side.players
@@ -206,6 +218,7 @@ function Opponent({ side, players }) {
         label=${`${side.name} XI`}
         aspect="4 / 4.6"
         class="opponent__pitch"
+        hideRatings=${hideRatings}
       />
       <div class="opponent__keys">
         <span class="tactics__label">Key players</span>
@@ -221,7 +234,7 @@ function Opponent({ side, players }) {
                 />
                 <span class="opponent__name truncate">${view.name}</span>
                 <span class="opponent__pos">${view.position}</span>
-                <b class="num">${Math.round(r)}</b>
+                ${!hideRatings && html`<b class="num">${Math.round(r)}</b>`}
               </li>`,
           )}
         </ul>
@@ -230,10 +243,13 @@ function Opponent({ side, players }) {
   </section>`;
 }
 
-function Lineup({ side, index, players, title }) {
+function Lineup({ side, index, players, title, hideRatings }) {
   const [picked, setPicked] = useState(null);
   const strength = useMemo(() => lineupStrength(side.players, side.formation), [side]);
-  const highlights = useMemo(() => lineupHighlights(side, picked), [side, picked]);
+  const highlights = useMemo(
+    () => lineupHighlights(side, picked, hideRatings),
+    [side, picked, hideRatings],
+  );
   useEffect(() => setPicked(null), [side.formation, index]);
   const onSelect = slot => {
     if (picked == null) setPicked(slot);
@@ -276,6 +292,7 @@ function Lineup({ side, index, players, title }) {
       onSelect=${onSelect}
       label=${`${side.name} lineup`}
       class="draft-pitch lineup__pitch"
+      hideRatings=${hideRatings}
     />
     <p class="lineup__links">
       <${Icon} name="link" size=${14} />
@@ -407,13 +424,25 @@ export default function PrematchScreen() {
                   index=${editIndex}
                   players=${views[editIndex]}
                   title=${editable.length > 1 ? `${editSide.name}’s lineup` : 'Your lineup'}
+                  hideRatings=${data.hideRatings}
                 />`
               : null
         }
       </div>
       <div class="prematch__side">
         ${editable.length > 0 && html`<${Tactics} key=${editIndex} side=${editSide} index=${editIndex} />`}
-        ${!loading && others.map(i => html`<${Opponent} key=${i} side=${data.sides[i]} players=${views[i]} />`)}
+        ${
+          !loading &&
+          others.map(
+            i =>
+              html`<${Opponent}
+                key=${i}
+                side=${data.sides[i]}
+                players=${views[i]}
+                hideRatings=${data.hideRatings}
+              />`,
+          )
+        }
         ${viewPicker}
       </div>
       ${!wide && html`<div class="action-bar prematch__bar">${cta}</div>`}

@@ -19,6 +19,7 @@ import { teamLinks } from '../../core/draft/links.js';
 import { NATURAL_FIT } from '../../core/draft/session.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { buildMatchConfig, requestMatch, teamCode, MATCH_VIEWS } from './match-store.js';
+import { nationKit, nationTrigram } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
 export const PREMATCH_KEY = 'football-draft-prematch';
@@ -97,8 +98,11 @@ function normalizeSide(side, i) {
   const kind = KINDS.includes(side.kind) ? side.kind : i === 0 ? 'user' : 'ai';
   return {
     name: String(side.name || `Team ${i + 1}`),
-    short: side.short || teamCode(side.name || `Team ${i + 1}`),
-    colors: colors.length ? colors : DEFAULT_KITS[i],
+    short:
+      side.short ||
+      nationTrigram(side.flagCode ?? side.code) ||
+      teamCode(side.name || `Team ${i + 1}`),
+    colors: colors.length ? colors : nationKit(side.flagCode ?? side.code) || DEFAULT_KITS[i],
     flagCode: side.flagCode ?? side.code ?? null,
     kind,
     formation: side.formation,
@@ -141,6 +145,8 @@ export function normalizePrematch(input = {}) {
       returnTo: meta.returnTo || '#/',
     },
     useDefaultRules: !!input.useDefaultRules,
+    // Ball Knower: no OVRs, odds or rating numbers until the result.
+    hideRatings: !!(input.hideRatings ?? meta.hideRatings),
     view: MATCH_VIEWS.includes(input.view) ? input.view : storedView(),
   };
 }
@@ -363,6 +369,7 @@ export function kickOff({ go = true } = {}) {
       config,
       meta: {
         ...data.meta,
+        hideRatings: data.hideRatings,
         autoKickoff: true, // this screen was the pre-match: #/match starts straight away
         sides: data.sides.map(s => ({
           name: s.name,

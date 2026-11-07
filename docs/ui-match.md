@@ -55,8 +55,9 @@ if (result) {
   engine's coach run side 1's tactics; use `'pvp'` for Versus. `knockout: true` → a level score
   goes to a penalty shootout (`extraTime: true` plays 30 minutes first).
 - `tuning`: config snapshot, default the live `CONFIG` (Daily/challenges: `DEFAULT_CONFIG`).
-- Kit clash: the away side wears its secondary colour (same rule as `matchSetup`). Nations
-  without a kit colour get a default — pass `colors` for real kits.
+- Kit clash: the away side wears its secondary colour (same rule as `matchSetup`). A side
+  without `colors` but with a nation `code`/`flagCode` wears its home kit from `lib/kits.js`
+  (`nationKit`); only sides with neither get the generic default.
 - Returns `{ tuning, competition, teams, players }` round-tripped through
   `Match.importConfig` / `exportConfig` (plain JSON, exactly what the engine expects).
   `teamCode(name)` gives the 3-letter code used when `short` is missing ('Real Madrid' → 'RMA').
@@ -73,7 +74,7 @@ Views:
 
 | `view` | What the user sees | Engine |
 | --- | --- | --- |
-| `key` | Key Moments: ~30 s of highlights per half, half-time talk (mentality/tactics), second half simulated after the edits | `simulateHalf` twice in a Web Worker on `new Match(seed, 300)` |
+| `key` | Key Moments: ~30 s of highlights per half, half-time talk (mentality/tactics), second half simulated after the edits; while the first half simulates the stage shows the line-ups walking out (team sheet + progress) | `simulateHalf` twice in a Web Worker on `new Match(seed, 300)` |
 | `full` | the whole match live (3 min), 1× / 2× / 4×, skip to next moment, live mentality + tactics | `new Match(seed, duration)` stepped on the main thread |
 | `instant` | a short "simulating" beat, then the result | `simulateComplete` in a Web Worker (300 s profile) |
 

@@ -391,8 +391,8 @@ function Board({ state, draft, auto }) {
           ? spinButton
           : html`<div class="stage__row">
               <p class="stage__hint">
-                Select a player: the pitch lights up where he fits. Double-click drafts him to his
-                best slot.
+                Select a player: the pitch lights up where he fits. Double-click (or Enter again)
+                drafts him to his best slot.
               </p>
               ${rerollButton}
             </div>`);

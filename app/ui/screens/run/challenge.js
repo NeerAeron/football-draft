@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { html } from '../../lib/html.js';
 import { href, navigate } from '../../lib/router.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { dailyIdFromNumber, dailyNumber } from '../../../core/competition/daily.js';
 import { formationLabel } from '../../../core/players/formations.js';
 import { Button } from '../../components/button.js';
@@ -26,7 +26,7 @@ export default function ChallengeScreen({ query }) {
   const { challenge: c, score } = readChallengeQuery(query);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    loadCatalog().catch(() => {}); // warm up for the draft
+    loadWarmCatalog().catch(() => {}); // warm up for the draft
   }, []);
 
   if (!c)

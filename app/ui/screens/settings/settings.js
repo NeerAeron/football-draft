@@ -24,13 +24,24 @@ const SECTIONS = [
   ['credits', 'Credits & licences'],
 ];
 
+// Every key the app writes (CLAUDE.md lists them); keys that hold the same thing share a label
+// and are listed once.
 const KEY_LABELS = {
   'football-draft-sound': 'Sound settings',
   'football-draft-settings-v1': 'Advanced tuning overrides',
   'football-draft-ui': 'Interface preferences',
+  'football-draft-setup': 'Last game setup',
+  'football-draft-draft': 'Draft in progress',
+  'football-draft-prematch': 'Pre-match choices',
+  'football-draft-match-view': 'Pre-match choices',
+  'football-draft-match': 'Current match',
   'football-draft-run': 'Saved run',
-  'football-draft-daily': 'Daily streak',
+  'football-draft-run-state': 'Saved run',
+  'football-draft-daily': 'Daily streak and results',
+  'football-draft-exhibition': 'Last exhibition teams',
+  'football-draft-dev': 'Developer test options',
 };
+const keyLabels = keys => [...new Set(keys.map(k => KEY_LABELS[k] || k))];
 
 // Prose with links is built from arrays (not multi-line templates): htm drops whitespace at
 // line breaks, which would glue words to the links once Prettier rewraps the template.
@@ -226,8 +237,8 @@ function DataPanel() {
     <ul class="settings__keys" role="list">
       ${
         keys.length
-          ? keys.map(
-              k => html`<li key=${k}><${Icon} name="check" size=${14} />${KEY_LABELS[k] || k}</li>`,
+          ? keyLabels(keys).map(
+              label => html`<li key=${label}><${Icon} name="check" size=${14} />${label}</li>`,
             )
           : html`<li class="settings__empty">Nothing saved yet.</li>`
       }

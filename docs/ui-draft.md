@@ -44,6 +44,7 @@ await startDraft(context, { go = true, spin = true });  // → #/draft, first sp
 completedDraft();      // { session, context } when every pick is made (in memory), else null
 await loadDraft();     // the same after a reload (restores 'football-draft-draft'), or null
 readSavedDraft();      // sync summary { context, picks, total, complete, savedAt } | null
+                       // (lives in lib/saved.js, no catalog; Home's "Draft in progress" card)
 clearDraft();          // forget it (memory + storage)
 ```
 
@@ -82,6 +83,8 @@ openPrematch({
   competition: { mode?: 'ai' | 'pvp', difficulty: 'pro', knockout: false, extraTime? },
   meta: { context: 'run', title: 'Quarter-final', returnTo: '#/run', fixture: 'run:abc:qf' },
   useDefaultRules?: false,         // Daily/challenge: tuning = DEFAULT_CONFIG
+  hideRatings?: false,             // Ball Knower: no OVRs, odds or rating tags (also read from
+                                   // meta.hideRatings); passed on as request meta.hideRatings
   view?: 'key' | 'full' | 'instant',
 }, { go = true });                  // → #/prematch
 ```

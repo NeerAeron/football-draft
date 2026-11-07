@@ -8,7 +8,7 @@ import { navigate } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { ladderPreview } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { MODE_BASELINES } from '../../../core/draft/opponents.js';
@@ -339,7 +339,7 @@ function Setup({ mode, query }) {
 
   useEffect(() => {
     let live = true;
-    loadCatalog()
+    loadWarmCatalog()
       .then(c => live && setCatalog(c))
       .catch(() => {});
     idle(() => preloadRoutes(['/draft']));

@@ -23,6 +23,7 @@ modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dep
 | `npm run format` / `npm run lint` | Prettier write / ESLint (`--max-warnings 0`) | — |
 | `npm run verify` | everything incl. full tests + browser smoke (before pushing) | ~4 min |
 | `npm run data:fetch` / `npm run data:build` | pinned source CSV / rebuild the catalog (see below) | — |
+| `node tools/og/render.mjs` | re-render the link-preview card and app icons | — |
 
 Browser tooling uses the machine's pre-installed Playwright + Chromium (`require('playwright')`).
 Never `npm i playwright` or run `playwright install` locally (CI installs its own copy).
@@ -34,6 +35,8 @@ app/                     served statically (deploy = publish this folder); runti
   index.html             the game: import map (preact, htm), fonts → ui/main.js
   gallery.html           component gallery (design review, screenshot QA)
   config.html            Advanced tuning page → tuning/ (plain DOM, no framework)
+  manifest.webmanifest   install metadata (icons, shortcuts); og/twitter preview tags live in index.html
+  sw.js                  offline service worker, network first (registered by ui/lib/offline.js)
   core/                  pure logic: no DOM, no storage, Node-testable
     sim/                 match engine, rules, cards, periods, replay, shootout, in-match AI coach
     players/             ratings, badges, formations, club lineups, catalog codec + derived data
@@ -54,7 +57,8 @@ app/                     served statically (deploy = publish this folder); runti
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
   tuning/                tuning.js + tuning.css for config.html
   data/catalog.v3.json   compiled columnar catalog (the only JSON fetched; decode via services/catalog.js)
-  assets/                logos/ (league logos), flags/ (flag-icons SVGs, MIT), fonts/ (woff2 + OFL)
+  assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
+                         fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
@@ -68,6 +72,7 @@ tools/calibration/       manual calibration runners (write to /tmp; not run by n
                          draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results),
                          cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md)
 tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json
+tools/og/                og-image.html + render.mjs: re-renders og-image.png and the app icons
 docs/                    contracts, guides and calibration notes — index in docs/README.md
 .github/workflows/       ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
 ```
@@ -85,7 +90,9 @@ imports only `sim/`, `players/`, `config/` and `util/` — never `draft/` or `co
 Runtime URLs such as catalog asset paths (`./assets/logos/…`, `./assets/flags/…`) and worker
 modules resolve against the page in `app/`, not against the module file. Load the catalog only
 through `loadCatalog()` (`app/services/catalog.js`, browser) or `loadRuntimeCatalog()`
-(`scripts/data/catalog-file.mjs`, Node) — never fetch the JSON directly. The decoded catalog has
+(`scripts/data/catalog-file.mjs`, Node) — never fetch the JSON directly; screens that draft,
+build a run or list opponents use `loadWarmCatalog()` (`ui/lib/catalog-warm.js`: the same
+catalog, with core's rating caches filled in short slices first). The decoded catalog has
 `players`, `leagues`, `teams`, `nations` and the Maps `byId`, `byNation`, `byLeague`, `byClub`;
 club-less national-team players have `source.club === null` and appear only in nation pools.
 
@@ -132,10 +139,16 @@ club-less national-team players have `source.club === null` and appear only in n
 - **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`), `router.js`
   (hash router), `prefs.js`, `audio.js`, `motion.js`, `draft-store.js` (draft hand-off),
   `prematch-store.js` (pre-match edits → kick-off), `match-store.js` (match requests/results),
-  `run-store.js` (run/daily persistence, kits, links), `saved.js` (tolerant readers for Home),
-  `storage.js` (safe localStorage), `player-view.js`, `share-image.js`, `tiers.js`, `color.js`.
+  `run-store.js` (run/daily persistence, links), `saved.js` (tolerant readers for Home, incl.
+  `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
+  `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
+  only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
+  `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
+  (`registerOffline`: service worker + one-time warm-up of the installed app).
   Run auto-sims (`ui/screens/run/auto-sim.js`) play every remaining match with the engine in a
-  module Worker (`auto-sim-worker.js`), falling back to main-thread slices.
+  module Worker (`auto-sim-worker.js`), falling back to main-thread slices; the Daily's perfect
+  XI is computed in `ui/screens/daily/perfect-xi-worker.js` the same way. A new module worker
+  must also be listed in `WORKERS` in `ui/lib/offline.js` (so the installed app caches it).
 - **Tuning page** (`app/tuning/tuning.js`) — renders every `CONFIG_FIELDS` entry by section,
   the draft session's first-spin league/club odds, save/import/export/reset.
 
@@ -207,6 +220,9 @@ club metadata. After catalog changes, regenerate the gallery fixture
 - UI components never `innerHTML` catalog text (htm escapes interpolations). Plain-DOM code (the
   tuning page) escapes catalog text with `escapeHtml` from `core/util/text.js`.
 - UI must work at 390 px wide (touch) and 1366 px desktop; respect `prefers-reduced-motion`.
+- Screen CSS is global (every stylesheet is imported by `styles/app.css`): prefix screen classes
+  with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names like `.stage` collided.
+- Displayed numbers go through `ui/lib/format.js` ('.' decimals everywhere, whatever the locale).
 - After UI changes: `npm run shots -- --only <flow>` and look at the PNGs; update
   `tests/browser/flows.mjs` when selectors or flows change; `npm run test:browser` must pass.
 - Commit in logical steps with clear messages; run `npm run check` first.

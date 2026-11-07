@@ -86,13 +86,13 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
   const teams = meta.sides.map((s, i) => ({ ...s, name: s.name || preview.teams[i].name }));
   const summaries = useMemo(() => [0, 1].map(t => sideSummary(preview, t)), [preview]);
   const users = meta.userSides;
-  return html`<div class="prematch">
+  return html`<div class="match-pre">
     <header class="match-top">
       <${IconButton} icon="arrow-left" label="Leave match" onClick=${onExit} />
       <p class="match-top__title eyebrow">${meta.title || 'Match day'}</p>
       <span class="match-top__spacer"></span>
     </header>
-    <section class="matchup" aria-labelledby="matchup-title">
+    <section class="match-vs" aria-labelledby="matchup-title">
       <h1 id="matchup-title" class="visually-hidden">${teams[0].name} vs ${teams[1].name}</h1>
       <${SideCard}
         team=${teams[0]}
@@ -102,7 +102,7 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
         hideRatings=${meta.hideRatings}
         align="home"
       />
-      <span class="matchup__vs" aria-hidden="true">VS</span>
+      <span class="match-vs__vs" aria-hidden="true">VS</span>
       <${SideCard}
         team=${teams[1]}
         side=${meta.sides[1]}
@@ -112,12 +112,12 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
         align="away"
       />
     </section>
-    <div class="prematch__grid">
-      <section class="prematch__setup" aria-label="Match options">
-        <div class="prematch__block">
-          <h2 class="prematch__h">How do you want to watch?</h2>
+    <div class="match-pre__grid">
+      <section class="match-pre__setup" aria-label="Match options">
+        <div class="match-pre__block">
+          <h2 class="match-pre__h">How do you want to watch?</h2>
           <${Segmented}
-            class="prematch__views"
+            class="match-pre__views"
             label="Match view"
             options=${VIEW_OPTIONS}
             value=${view}
@@ -128,9 +128,9 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
         </div>
         ${users.map(
           t =>
-            html`<div class="prematch__block" key=${t}>
-              <div class="prematch__row">
-                <h2 class="prematch__h">
+            html`<div class="match-pre__block" key=${t}>
+              <div class="match-pre__row">
+                <h2 class="match-pre__h">
                   ${users.length > 1 ? `${teams[t].name} mentality` : 'Mentality'}
                 </h2>
                 <${Button}
@@ -154,7 +154,7 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
         )}
         ${
           restarted &&
-          html`<p class="prematch__note" role="status">
+          html`<p class="match-pre__note" role="status">
             The page was reloaded, so the match restarts from kick-off.
           </p>`
         }
@@ -168,7 +168,7 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
           >Kick off<//
         >
       </section>
-      <section class="prematch__lineups" aria-label="Line-ups">
+      <section class="match-pre__lineups" aria-label="Line-ups">
         ${[0, 1].map(t => html`<${Lineup} key=${t} team=${teams[t]} players=${summaries[t].players} />`)}
       </section>
     </div>

@@ -167,12 +167,12 @@ export function OddsDialog({ open, onClose, spin }) {
     size="sm"
     footer=${html`<${Button} variant="secondary" block onClick=${onClose}>Close<//>`}
   >
-    <div class="odds">
+    <div class="spin-odds">
       ${reels.map(
         r =>
-          html`<section key=${r.category} class="odds__reel">
-            <h3 class="odds__title">${r.label}</h3>
-            <p class="odds__landed">
+          html`<section key=${r.category} class="spin-odds__reel">
+            <h3 class="spin-odds__title">${r.label}</h3>
+            <p class="spin-odds__landed">
               <b>${r.landed.name}</b>${` had a ${r.landed.chance} chance — `}${
                 r.uniform
                   ? `every one of the ${r.eligible} eligible ${r.label.toLowerCase()}s is equally likely.`
@@ -181,13 +181,13 @@ export function OddsDialog({ open, onClose, spin }) {
             </p>
             ${
               !r.uniform &&
-              html`<ul class="odds__groups" role="list">
+              html`<ul class="spin-odds__groups" role="list">
                 ${r.groups.map(
                   g =>
                     html`<li key=${g.label}>
-                      <span class="odds__group">${g.label}</span>
-                      <span class="odds__count">${g.count}×</span>
-                      <span class="odds__each num">${g.chance} each</span>
+                      <span class="spin-odds__group">${g.label}</span>
+                      <span class="spin-odds__count">${g.count}×</span>
+                      <span class="spin-odds__each num">${g.chance} each</span>
                     </li>`,
                 )}
               </ul>`

@@ -13,7 +13,7 @@ import {
 } from '../core/config/config.js';
 import { catalogIndex, draftRules } from '../core/draft/pools.js';
 import { clubSquads } from '../core/players/club-lineups.js';
-import { loadCatalog } from '../services/catalog.js';
+import { loadWarmCatalog } from '../ui/lib/catalog-warm.js';
 import { BADGES } from '../core/players/traits.js';
 import { ATTRS, playerTier } from '../core/players/ratings.js';
 import { escapeHtml } from '../core/util/text.js';
@@ -195,7 +195,7 @@ function groupLabel(path) {
 }
 async function catalog() {
   if (!data) {
-    data = await loadCatalog();
+    data = await loadWarmCatalog();
     navigation(); // league and club counts
   }
   return data;

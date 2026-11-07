@@ -34,7 +34,19 @@ ui/
     audio.js              soundStore, toggleSound, setVolume, playCue (wraps services/sound.js)
     player-view.js        PlayerView shape, playerView(), makePlayerView(catalog), summaryStats()
     tiers.js color.js     tierOf/resolveTier; teamStyle/readableOn/contrastRatio
-    saved.js storage.js   saved run/daily readers; safe localStorage helpers
+    kits.js               nation home kits (NATION_KITS, nationKit, sideColors, kitColors) — use
+                          them wherever a national side is shown; never a generic default colour
+    format.js             fmt1/fmt2/int/signed1/pct — the ONLY number formatting for display
+                          ('.' decimals, ',' thousands; never toLocaleString for numbers)
+    saved.js storage.js   saved run/daily/draft readers; safe localStorage helpers
+    catalog-warm.js       loadWarmCatalog()/warmCatalog()/warmOpponents(): fill core's rating cache
+                          in ≤ 8 ms slices, then the draft index and the opponent list, each in
+                          its own task — use it (not bare loadCatalog) wherever a screen drafts,
+                          builds a run or lists opponents (no main-thread task > 200 ms)
+    offline.js            registerOffline(routes): registers app/sw.js (network first); the
+                          installed app's first launch caches every screen, font, worker, the
+                          catalog, flags and logos, then sets <html data-offline-ready>. Add new
+                          module workers to its WORKERS list. Off on localhost unless ?sw=1.
   components/             shared components: <name>.js + <name>.css, props documented on top
   shell/                  app.js (outlet, transitions, focus, errors), top-bar.js, brand.js,
                           how-to-play.js, shell.css
@@ -202,7 +214,7 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `PlayerCard` | `player`, `size` s·m·l, `tier`, `selected`, `disabled`, `hideRatings`, `onClick`, `children` (footer) |
 | `PlayerRow` | `player`, `fit`, `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
 | `FitTag` | `fit { state: best·ok·penalty·swap·blocked·neutral, label, from, to }` |
-| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `selected`, `onSelect(i)`, `hideRatings`, `names` |
+| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `names` |
 | `Meter` / `StatBar` / `StatTile` | `label value max tone(auto) size valueText delta compare hint` |
 | `Reel` | `items`, `landIndex` (decided first!), `spinKey`, `onLand`, `onTick`, `skip`, `duration`, `size` |
 | `Modal` / `Sheet` | `open`, `onClose`, `title` (required), `eyebrow`, `description`, `footer`, `size`, `dismissible` |

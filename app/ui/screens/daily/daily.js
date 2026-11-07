@@ -8,15 +8,11 @@ import { href } from '../../lib/router.js';
 import { useStore } from '../../lib/store.js';
 import { prefs } from '../../lib/prefs.js';
 import { isReducedMotion } from '../../lib/motion.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
+import { perfectXIOffThread } from './perfect-xi.js';
 import { DEFAULT_CONFIG } from '../../../core/config/config.js';
 import { createCupRun, restoreCupRun } from '../../../core/competition/cup.js';
-import {
-  dailyChallenge,
-  perfectXI,
-  perfectPercent,
-  dailyScore,
-} from '../../../core/competition/daily.js';
+import { dailyChallenge, perfectPercent, dailyScore } from '../../../core/competition/daily.js';
 import { shareText } from '../../../core/competition/share.js';
 import { formationLabel } from '../../../core/players/formations.js';
 import { Button } from '../../components/button.js';
@@ -58,6 +54,7 @@ import {
 } from '../run/run-parts.js';
 import { SharePanel } from '../run/share-panel.js';
 import { xiViews, shareCardFor } from '../run/team-view.js';
+import { fmt1, int } from '../../lib/format.js';
 
 const dateLabel = id =>
   new Date(id + 'T12:00:00Z').toLocaleDateString(undefined, {
@@ -268,7 +265,7 @@ function CountUp({ value, duration = 1200 }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value]);
-  return html`<span class="num">${n.toLocaleString()}</span>`;
+  return html`<span class="num">${int(n)}</span>`;
 }
 
 function Result({ catalog, day, entry, state, today, fresh }) {
@@ -311,9 +308,9 @@ function Result({ catalog, day, entry, state, today, fresh }) {
         title: `Daily #${day.number}`,
         hideRatings: hide,
         stats: [
-          { label: 'Points', value: entry.points.toLocaleString() },
-          { label: 'Of perfect XI', value: `${entry.perfect.toFixed(1)}%` },
-          { label: 'Team OVR', value: hide ? '??' : entry.rating.toFixed(1) },
+          { label: 'Points', value: int(entry.points) },
+          { label: 'Of perfect XI', value: `${fmt1(entry.perfect)}%` },
+          { label: 'Team OVR', value: hide ? '??' : fmt1(entry.rating) },
         ],
       }),
     [snapshot, views],
@@ -359,14 +356,14 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       </div>
       ${snapshot && html`<${PathStrip} snapshot=${snapshot} />`}
       <div class="daily-card__stats">
-        <${StatTile} label="Of perfect XI" value=${`${entry.perfect.toFixed(1)}%`} tone="gold" />
-        <${StatTile} label="Team OVR" value=${hide ? '??' : entry.rating.toFixed(1)} tone="volt" />
+        <${StatTile} label="Of perfect XI" value=${`${fmt1(entry.perfect)}%`} tone="gold" />
+        <${StatTile} label="Team OVR" value=${hide ? '??' : fmt1(entry.rating)} tone="volt" />
         <${StatTile} label="Goals" value=${`${entry.record.gf}–${entry.record.ga}`} />
       </div>
       ${
         entry.parts &&
         html`<p class="daily-card__parts text-3 text-sm">
-          ${`Matches ${entry.parts.matches} · stage ${entry.parts.stage} · OVR ${entry.parts.ovr} · perfection ${entry.parts.perfection}`}
+          ${`${int(entry.parts.matches)} results + ${int(entry.parts.stage)} stage bonus + ${int(entry.parts.ovr)} team OVR + ${int(entry.parts.perfection)} perfect XI = ${int(entry.points)} pts`}
         </p>`
       }
       <div class="daily-card__foot">
@@ -508,7 +505,7 @@ export default function DailyScreen() {
     const live = () => alive.current;
     {
       try {
-        const catalog = await loadCatalog();
+        const catalog = await loadWarmCatalog().then(warmOpponents);
         if (!live()) return;
         const today = todayDailyId();
         const day = dailyChallenge(catalog, today);
@@ -528,7 +525,9 @@ export default function DailyScreen() {
         ) {
           const user = draft.session.matchSide(0);
           const run = createCupRun(catalog, { ...day.cup, user });
-          const optimum = perfectXI(catalog, day, { formation: user.formation });
+          // The perfect XI tries every re-roll combination (~250 ms): in a worker.
+          const optimum = await perfectXIOffThread(catalog, day, { formation: user.formation });
+          if (!live()) return;
           const perfect = perfectPercent(user.rating, optimum);
           ctx.state = beginDailyAttempt(state, {
             id: today,

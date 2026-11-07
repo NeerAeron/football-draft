@@ -160,10 +160,32 @@ test('share text: emoji row, record, grade, numbers, mode flags and link', () =>
   const lines = text.split('\n');
   assert.equal(lines[0], '⚽ Football Draft · Daily #7');
   assert.equal(lines[1], '🟩🟨🟩 🟨🟥');
-  assert.equal(lines[2], '2-2-1 · Quarter-finals · C Quarter-finalists');
+  assert.equal(lines[2], '2-2-1 · C Quarter-finalists');
   assert.equal(lines[3], `XI ${side.rating.toFixed(1)} · 98.4% of perfect · 1,104 pts`);
   assert.equal(lines[4], 'Nations · Pro · 🙈 Ratings hidden');
   assert.equal(lines[5], `https://example.com/play?x=1#c=c1.d.n.${day.formation}.p.0.7`);
+  // The stage is left out when the verdict names it, kept when it does not.
+  const summaryLine = (stageLabel, grade, verdict) =>
+    shareText({
+      record: { w: 4, d: 2, l: 1 },
+      results: ['W', 'D', 'W', 'W', 'D', 'W', 'L'],
+      status: 'eliminated',
+      stageLabel,
+      grade: { grade, verdict },
+      mode: 'nations',
+      difficulty: 'pro',
+    }).split('\n')[2];
+  assert.equal(summaryLine('Final', 'A', 'Final Heartbreak'), '4-2-1 · A Final Heartbreak');
+  assert.equal(
+    summaryLine('Final', 'A', 'Heartbreak on Penalties'),
+    '4-2-1 · Final · A Heartbreak on Penalties',
+  );
+  assert.equal(summaryLine('Champions', 'A+', 'World Champions'), '4-2-1 · A+ World Champions');
+  assert.equal(summaryLine('Group stage', 'F', 'Group Stage Exit'), '4-2-1 · F Group Stage Exit');
+  assert.equal(
+    summaryLine('Round of 16', 'D', 'Out on Penalties'),
+    '4-2-1 · Round of 16 · D Out on Penalties',
+  );
   // A champion row ends with a trophy.
   assert.equal(
     resultEmoji({ results: ['W', 'W', 'W', 'W', 'W', 'D', 'W'], status: 'champion' }),

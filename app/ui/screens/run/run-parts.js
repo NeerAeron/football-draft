@@ -6,7 +6,8 @@ import { Flag } from '../../components/flag.js';
 import { Crest } from '../../components/crest.js';
 import { Icon } from '../../components/icon.js';
 import { Chip } from '../../components/chip.js';
-import { sideColors, userTeamName, roundShort, roundLabel } from '../../lib/run-store.js';
+import { userTeamName, roundShort, roundLabel } from '../../lib/run-store.js';
+import { sideColors } from '../../lib/kits.js';
 import { Trophy } from './trophy.js';
 
 // ---- teams ---------------------------------------------------------------------------------

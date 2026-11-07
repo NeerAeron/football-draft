@@ -59,6 +59,20 @@ Pages: `index.html` is the game, `config.html` the **Advanced tuning** page (eve
 and rating parameter, saved on your device, with import/export) and `gallery.html` the component
 gallery.
 
+### Install it, play offline
+
+The game is an installable web app: **Add to Home Screen** on a phone, or **Install** in a
+desktop browser. The first launch of the installed app (online) caches the whole game once (about
+2.3 MB to download, 5.6 MB on the device); after that it opens and plays without a network. In an ordinary browser tab only
+what you have used is kept. Online, every file is always fetched fresh: the service worker
+(`app/sw.js`) is network-first and its cache is only a fallback. It is not registered on
+`localhost`/`127.0.0.1` (development and tests) unless the URL has `?sw=1`.
+
+Shared links unfurl with a preview card (`app/assets/og-image.png`). Its absolute address in
+`app/index.html` (`og:url`, `og:image`, `twitter:image`) points at the GitHub Pages deployment,
+`https://neeraeron.github.io/football-draft/`; change those three tags if you host it elsewhere.
+`node tools/og/render.mjs` re-renders the card and the app icons from `tools/og/og-image.html`.
+
 ## Development
 
 Node 22 or newer. Run everything from the repository root.
@@ -88,6 +102,7 @@ app/                  the deployed site, served as-is
   index.html          the game (loads ui/main.js)
   config.html         Advanced tuning page (tuning/)
   gallery.html        component gallery
+  manifest.webmanifest, sw.js   install metadata and the offline service worker
   core/               pure logic, no DOM or storage; runs in Node
     sim/              match engine, rules, cards, periods, replay, shootouts, AI coach
     players/          ratings, badges, formations, club lineups, catalog codec
@@ -99,11 +114,12 @@ app/                  the deployed site, served as-is
   ui/                 the interface: Preact + htm (vendored), shell, components, screens
   tuning/             the Advanced tuning page script and styles
   data/               catalog.v3.json, the compiled player catalog the game fetches
-  assets/             league logos, flags, fonts
+  assets/             league logos, flags, fonts, app icons, the link-preview card
 data/                 compiler inputs and reference data (not deployed)
 scripts/              catalog compiler; scripts/data/ the data pipeline, scripts/dev/ dev tools
 tests/                node:test suites, fixtures, browser flows
 tools/calibration/    calibration runners (manual, not part of the tests)
+tools/og/             the link-preview card and app icons (HTML template + render script)
 tools/research/       StatsBomb research scripts that produced the reference data
 docs/                 API contracts, UI guides, calibration notes, development history
 ```
