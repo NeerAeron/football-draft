@@ -1,0 +1,339 @@
+/* PlayerCard — sizes scale from the card's font-size (all inner measures are em). */
+.pcard {
+  --pc-w: 168px;
+  --frame: var(--tier-starter-frame);
+  --fill: var(--tier-starter-fill);
+  --accent: var(--tier-starter);
+  --sheen: var(--tier-starter-sheen);
+  --pc-radius: 1.35em;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: var(--pc-w);
+  aspect-ratio: 5 / 7;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--pc-radius);
+  background: var(--frame);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 14px 28px -14px rgb(0 0 0 / 0.85);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: top;
+  isolation: isolate;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    filter var(--dur-base) var(--ease-out);
+}
+.pcard--s {
+  --pc-w: 112px;
+  aspect-ratio: 4 / 5;
+  font-size: 9px;
+  padding: 1.5px;
+}
+.pcard--l {
+  --pc-w: 232px;
+  font-size: 15.5px;
+  padding: 3px;
+}
+
+/* Tier frames */
+.pcard--tier-superstar {
+  --frame: var(--tier-superstar-frame);
+  --fill: var(--tier-superstar-fill);
+  --accent: var(--tier-superstar);
+  --sheen: var(--tier-superstar-sheen);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 14px 30px -12px rgb(150 120 255 / 0.55),
+    0 0 24px -6px rgb(120 220 255 / 0.35);
+}
+.pcard--tier-star {
+  --frame: var(--tier-star-frame);
+  --fill: var(--tier-star-fill);
+  --accent: var(--gold-400);
+  --sheen: var(--tier-star-sheen);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 14px 30px -12px rgb(245 200 76 / 0.4);
+}
+.pcard--tier-normal {
+  --frame: var(--tier-normal-frame);
+  --fill: var(--tier-normal-fill);
+  --accent: var(--tier-normal);
+  --sheen: var(--tier-normal-sheen);
+}
+.pcard--tier-bench {
+  --frame: var(--tier-bench-frame);
+  --fill: var(--tier-bench-fill);
+  --accent: var(--tier-bench);
+  --sheen: none;
+}
+.pcard--tier-hidden {
+  --frame: var(--tier-hidden-frame);
+  --fill: var(--tier-hidden-fill);
+  --accent: var(--tier-hidden);
+  --sheen: none;
+}
+
+.pcard__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45em;
+  width: 100%;
+  min-width: 0;
+  padding: 0.85em 0.85em 0.9em;
+  border-radius: calc(var(--pc-radius) - 2px);
+  background: var(--fill);
+  overflow: hidden;
+}
+/* floodlight glow behind the kit */
+.pcard__body::before {
+  content: '';
+  position: absolute;
+  inset: -20% -10% 40%;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    color-mix(in srgb, var(--accent) 26%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+/* foil sheen sweeping across the card */
+.pcard__body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sheen);
+  background-size: 250% 100%;
+  background-position: 120% 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.pcard--tier-superstar .pcard__body::after {
+  animation: pcard-sheen 5.5s var(--ease-in-out) infinite;
+}
+@keyframes pcard-sheen {
+  0%,
+  20% {
+    background-position: 160% 0;
+  }
+  80%,
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+.pcard__top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.3em;
+  min-height: 5.6em;
+}
+.pcard__rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.4em;
+  line-height: 0.86;
+}
+.pcard__ovr {
+  font-size: 3.05em;
+  font-weight: var(--weight-heavy);
+  color: var(--accent);
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+}
+.pcard--tier-superstar .pcard__ovr {
+  background: linear-gradient(170deg, #ffd3f0 0%, #c9b6ff 35%, #8fe3ff 65%, #c4ffd9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.5));
+}
+.pcard--tier-star .pcard__ovr {
+  background: linear-gradient(175deg, #fff3c9 0%, #f5c84c 50%, #dba52a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.5));
+}
+.pcard__pos {
+  margin-top: 0.3em;
+  font-family: var(--font-display);
+  font-size: 1.25em;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  color: var(--text-1);
+}
+.pcard__marks {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  padding-top: 0.15em;
+}
+.pcard__art {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  padding-top: 0.2em;
+}
+.kit-shirt {
+  width: 100%;
+  max-width: 6.4em;
+  height: auto;
+  filter: drop-shadow(0 0.35em 0.5em rgb(0 0 0 / 0.5));
+}
+.kit-shirt__body {
+  fill: var(--team);
+}
+.kit-shirt__shade {
+  fill: rgb(0 0 0 / 0.16);
+}
+.kit-shirt__trim {
+  fill: none;
+  stroke: var(--team-2);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.pcard__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1.5em;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.pcard__club {
+  margin-top: -0.25em;
+  color: var(--text-2);
+  font-size: 0.8em;
+  font-weight: var(--weight-medium);
+}
+.pcard__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3em 0.2em;
+  padding-top: 0.55em;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.pcard__stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25em;
+  min-width: 0;
+}
+.pcard__stat b {
+  font-size: 1.32em;
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+}
+.pcard__stat i {
+  font-style: normal;
+  font-size: 0.78em;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+.pcard__badges {
+  display: flex;
+  justify-content: center;
+  gap: 0.3em;
+  margin-top: auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.pcard__badges .chip {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pcard--l .pcard__badges {
+  flex-wrap: wrap;
+  max-height: 3.2em;
+}
+.pcard__footer {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+}
+.pcard--s .pcard__top {
+  min-height: 0;
+}
+.pcard--s .kit-shirt {
+  max-width: 5.6em;
+}
+.pcard--s .pcard__name {
+  margin-top: auto;
+  font-size: 1.55em;
+}
+
+/* States */
+.pcard--interactive {
+  cursor: pointer;
+}
+.pcard--interactive:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+.pcard--interactive:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--pc-radius);
+}
+.pcard.is-selected {
+  transform: translateY(-3px);
+  outline: 3px solid var(--volt-400);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 0 0 9px rgb(205 245 69 / 0.12),
+    0 18px 36px -12px var(--volt-glow);
+}
+.pcard__check {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--volt-400);
+  color: var(--on-volt);
+  box-shadow:
+    0 0 0 3px var(--bg),
+    0 4px 10px rgb(0 0 0 / 0.5);
+}
+.pcard--s .pcard__check {
+  width: 20px;
+  height: 20px;
+}
+.pcard.is-disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.85) brightness(0.62);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
+}
+.pcard.is-disabled:hover {
+  transform: none;
+}
