@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config/config.js';
+import { escapeHtml } from '../core/util/text.js';
 import { Draft, KITS, BUDGET_LABELS } from '../core/draft/draft.js';
 import { FORMATIONS, formationLabel } from '../core/players/formations.js';
 import { DIFFICULTIES, createAIOpponent, chooseAIFormation } from '../core/draft/opponent.js';
@@ -18,11 +19,7 @@ import { Match } from '../core/sim/engine.js';
 import { createDraftReel } from './draft-reel.js';
 import { createBudgetConfirmation } from './budget-confirmation.js';
 import { selectionSound } from '../services/sound.js';
-const esc = s =>
-  String(s ?? '').replace(
-    /[&<>"']/g,
-    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
+const esc = escapeHtml;
 const $ = s => document.querySelector(s);
 export function createGameUI({ loadCatalog, onLaunch, onScreen, onResume, onSound = () => {} }) {
   let chosenMode = 'ai',

@@ -1,4 +1,5 @@
 import { positionFamiliarity } from './ratings.js';
+import { lcg } from '../util/rng.js';
 
 export function playerInitials(player) {
   const parts =
@@ -21,11 +22,7 @@ export function randomLineups(slots, profiles, seed) {
     new Set(profiles.map(p => p.profileId)).size !== profiles.length
   )
     throw new Error('Not enough distinct player profiles');
-  let state = (seed ^ 0x9e3779b9) >>> 0;
-  const random = () => {
-    state = (Math.imul(1664525, state) + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
+  const random = lcg(seed ^ 0x9e3779b9);
   const shuffle = items => {
     const a = [...items];
     for (let i = a.length - 1; i > 0; i--) {

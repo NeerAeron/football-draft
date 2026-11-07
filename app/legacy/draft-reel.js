@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config/config.js';
+import { lcgNext, LCG_RANGE } from '../core/util/rng.js';
 // The draw is resolved by Draft; this renderer never changes its RNG or result.
 export function createDraftReel(container, renderItem) {
   let animation = null,
@@ -12,8 +13,8 @@ export function createDraftReel(container, renderItem) {
     // Separate animation state: neither the chosen result nor Draft RNG affects
     // the ordinary mix of clubs/leagues moving through the reel.
     for (let i = order.length - 1; i > 0; i--) {
-      visualSeed = (Math.imul(1664525, visualSeed) + 1013904223) >>> 0;
-      const j = Math.floor((visualSeed / 4294967296) * (i + 1));
+      visualSeed = lcgNext(visualSeed);
+      const j = Math.floor((visualSeed / LCG_RANGE) * (i + 1));
       [order[i], order[j]] = [order[j], order[i]];
     }
     return order;

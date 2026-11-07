@@ -1,6 +1,8 @@
 import { CONFIG, normalizeConfig } from '../config/config.js';
 import { FORMATIONS } from '../players/formations.js';
 import { coachAI } from './coach.js';
+import { clamp, dist, lerp } from '../util/math.js';
+import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { goalZone, goalGeometry } from './goal-zones.js';
 import { makeIdentity, preference, footExecution } from './player-model.js';
 import { offsideSnapshot, offenceInBox, targetChance } from './rules.js';
@@ -20,9 +22,7 @@ export { ATTRS } from '../players/ratings.js';
 export const W = 105,
   H = 68,
   GOAL = 7.32;
-export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const lerp = (a, b, t) => a + (b - a) * t;
+export { clamp };
 function segment(p, a, b) {
   const dx = b.x - a.x,
     dy = b.y - a.y,
@@ -343,8 +343,8 @@ export class Match {
     this.reset();
   }
   rand() {
-    this.rng = (Math.imul(1664525, this.rng) + 1013904223) >>> 0;
-    return this.rng / 4294967296;
+    this.rng = lcgNext(this.rng);
+    return this.rng / LCG_RANGE;
   }
   noise() {
     return (this.rand() + this.rand() + this.rand() - 1.5) * 2;

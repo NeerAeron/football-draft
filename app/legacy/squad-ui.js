@@ -1,3 +1,4 @@
+import { escapeHtml, foldDiacritics } from '../core/util/text.js';
 import {
   ATTRS,
   overallRating,
@@ -8,11 +9,7 @@ import {
 import { playerInitials } from '../core/players/lineups.js';
 import { TAGS, badgeDescription } from '../core/players/traits.js';
 
-const esc = s =>
-  String(s ?? '').replace(
-    /[&<>"']/g,
-    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
+const esc = escapeHtml;
 export const SUMMARY_GROUPS = [
   ['pace', 'PAC'],
   ['control', 'DRI'],
@@ -23,11 +20,7 @@ export const SUMMARY_GROUPS = [
 ].map(([id, shortLabel]) => ({ ...RATING_GROUPS.find(g => g.id === id), shortLabel }));
 export const abilitySummary = p =>
   `<span class="draft-abilities">${SUMMARY_GROUPS.map(g => `<span><abbr title="${g.id === 'control' ? 'Dribbling' : g.label}">${g.shortLabel}</abbr><b>${categoryRating(p, g)}</b></span>`).join('')}</span>`;
-const searchable = text =>
-  String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase();
+const searchable = text => foldDiacritics(text).toLocaleLowerCase();
 export function rankPlayers(players, role = '', query = '') {
   const term = searchable(query).trim();
   return players

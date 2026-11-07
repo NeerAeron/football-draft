@@ -1,9 +1,10 @@
 import { CONFIG } from '../config/config.js';
+import { lcgNext, LCG_RANGE } from '../util/rng.js';
 export function stoppageMinutes(seed, tuning = CONFIG.periods) {
   let state = (seed ^ 0x81ab27d5) >>> 0;
   const random = () => {
-    state = (Math.imul(1664525, state) + 1013904223) >>> 0;
-    return (state + 0.5) / 4294967296;
+    state = lcgNext(state);
+    return (state + 0.5) / LCG_RANGE;
   };
   const normal = () => Math.sqrt(-2 * Math.log(random())) * Math.cos(2 * Math.PI * random());
   return [

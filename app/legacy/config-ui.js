@@ -13,12 +13,9 @@ import { draftLeagues, leagueWeight, teamWeight } from '../core/draft/leagues.js
 import { clubSquads } from '../core/players/club-lineups.js';
 import { BADGES } from '../core/players/traits.js';
 import { ATTRS, overallRating, playerTier } from '../core/players/ratings.js';
+import { escapeHtml } from '../core/util/text.js';
 const $ = s => document.querySelector(s),
-  esc = x =>
-    String(x ?? '').replace(
-      /[&<>"']/g,
-      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-    );
+  esc = escapeHtml;
 let draft = loadConfig(),
   active = 'draft',
   data = null,

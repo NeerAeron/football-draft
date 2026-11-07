@@ -1,5 +1,5 @@
 // Presentation-only audio. No simulation RNG, player stats, or draft odds are used.
-const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+import { clamp } from '../core/util/math.js';
 const PREFERENCE_KEY = 'football-draft-sound';
 const MATCH_CUES = new Set([
   'shot',

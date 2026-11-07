@@ -1,6 +1,6 @@
 // IFAB Law 12: careless contact is a foul; reckless / excessive force can
 // earn yellow / red. Probabilities describe the contact, never a card quota.
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+import { clamp } from '../util/math.js';
 export function deniesGoalChance(m, offender, victim) {
   if (
     m.ball.owner !== victim.id ||

@@ -1,6 +1,6 @@
 import { CONFIG } from '../config/config.js';
+import { clamp } from '../util/math.js';
 // Numeric abilities are the simulation inputs; categories are display summaries.
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const ATTRS = {
   pace: 'Sprint speed',
   acceleration: 'Acceleration',

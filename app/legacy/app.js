@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config/config.js';
+import { escapeHtml, searchKey } from '../core/util/text.js';
 import { createGameAudio, MatchSoundEvents } from '../services/sound.js';
 import { receiptLabel } from '../core/players/player-labels.js';
 import { rateClubCatalog } from '../core/players/team-ratings.js';
@@ -137,11 +138,6 @@ const lineupLocked = () =>
   (gameMode === 'ai' && match.players[selected].team === 1) ||
   (started && match.mode !== 'halftime');
 const catalogLocked = () => gameMode !== 'sandbox' || lineupLocked() || match.elapsed > 0;
-const escapeHtml = value =>
-  String(value ?? '').replace(
-    /[&<>"']/g,
-    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
 let lastControlState = '',
   lastTacticsUI = '',
   lastTagsUI = '';
@@ -292,11 +288,6 @@ $('#playing-slot').onchange = e => {
     updateUI();
   }
 };
-const searchText = text =>
-  String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
 for (const role of POSITIONS) {
   const option = document.createElement('option');
   option.value = role;
@@ -305,7 +296,7 @@ for (const role of POSITIONS) {
 }
 function renderCatalog() {
   const p = match.players[selected],
-    query = searchText($('#catalog-search').value),
+    query = searchKey($('#catalog-search').value),
     role = $('#catalog-position').value;
   $('#catalog-context').textContent =
     `${p.role} · ${match.teams[p.team].name}${p.sentOff ? ' · Red card' : p.yellowCards ? ' · Yellow card' : ''}`;

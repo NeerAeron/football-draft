@@ -1,4 +1,5 @@
 import { CONFIG } from '../config/config.js';
+import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
 import { overallRating, positionFamiliarity, playerTier } from '../players/ratings.js';
 import { draftLeagues, leagueWeight, teamWeight, respinMultiplier } from './leagues.js';
@@ -69,8 +70,8 @@ export class Draft {
       throw Error('Not enough eligible goalkeepers for the draft');
   }
   random() {
-    this.rng = (Math.imul(1664525, this.rng) + 1013904223) >>> 0;
-    return this.rng / 4294967296;
+    this.rng = lcgNext(this.rng);
+    return this.rng / LCG_RANGE;
   }
   get complete() {
     return this.picks.every(team => team.every(Boolean));
