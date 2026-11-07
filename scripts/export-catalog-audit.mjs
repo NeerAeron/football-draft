@@ -20,8 +20,17 @@ import { FORMATIONS, formationLabel } from '../app/core/players/formations.js';
 // A reproducible, read-only export of the shipped catalog and opening draft pools.
 const output = resolve(process.argv[2] || '/tmp/football-draft-audit');
 mkdirSync(output, { recursive: true });
-const bytes = readFileSync(new URL('../data/players-fc26.json', import.meta.url)),
-  catalog = JSON.parse(bytes);
+// Reads the full catalog with provenance, which is generated rather than committed.
+let bytes;
+try {
+  bytes = readFileSync(new URL('../data/build/players-fc26.json', import.meta.url));
+} catch {
+  console.error(
+    'data/build/players-fc26.json is missing: run `npm run data:fetch && npm run data:build` first.',
+  );
+  process.exit(1);
+}
+const catalog = JSON.parse(bytes);
 const draft = new Draft(catalog, { seed: 1 }),
   opening = draft.leagueOptions(),
   weightSum = opening.reduce((n, l) => n + l.weight, 0),

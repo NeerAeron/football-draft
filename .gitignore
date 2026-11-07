@@ -24,3 +24,7 @@ Thumbs.db
 
 # Dev tool output
 .shots/
+
+# Data pipeline: downloaded source CSV and generated provenance catalog (npm run data:fetch / data:build)
+data/raw/
+data/build/

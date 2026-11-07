@@ -15,9 +15,8 @@ import { clubSquads } from '../app/core/players/club-lineups.js';
 import { clubRating } from '../app/core/players/team-ratings.js';
 import { playerTier, overallRating } from '../app/core/players/ratings.js';
 import { Match } from '../app/core/sim/engine.js';
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
+const catalog = loadRuntimeCatalog();
 const oldRatings = JSON.parse(
   readFileSync(new URL('./fixtures/ratings-v21.json', import.meta.url)),
 );

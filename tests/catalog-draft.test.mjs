@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { Match, Player } from '../app/core/sim/engine.js';
 import { BADGES, badgeEligible } from '../app/core/players/traits.js';
 import {
@@ -19,8 +19,12 @@ import {
 } from '../app/core/players/club-lineups.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { CONFIG } from '../app/core/config/config.js';
-const catalog = JSON.parse(readFileSync(new URL('../data/players-fc26.json', import.meta.url))),
-  profiles = catalog.players;
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
+const catalog = loadRuntimeCatalog(),
+  profiles = catalog.players,
+  reference = JSON.parse(
+    readFileSync(new URL('../data/catalog-reference.json', import.meta.url), 'utf8'),
+  );
 function random(seed) {
   let state = seed >>> 0;
   return () => (state = (Math.imul(state, 1664525) + 1013904223) >>> 0) / 4294967296;
@@ -42,8 +46,8 @@ test('badge ranges and eligibility hold across the full recompiled catalog; hidd
         ),
       ),
     );
-    assert.equal(p.inference.badges.length, p.tags.length);
-    assert.ok(p.inference.badges.every(b => b.evidence));
+    // The runtime keeps only source (trait/tag) evidence; inferred badges are recomputed.
+    assert.ok(p.inference.badges.every(b => p.tags.includes(b.tag) && b.confidence >= 0.8));
     assert.ok(Object.values(p.tendencies).every(v => v >= 0.05 && v <= 0.95));
     if (!counts.has(tier.name)) counts.set(tier.name, new Set());
     counts.get(tier.name).add(p.tags.length);
@@ -251,9 +255,11 @@ test('partial Sandbox lineups preserve real club members and expose empty slots 
   assert.ok(filled.length > 0);
   assert.equal(new Set(filled.map(p => p.profileId)).size, filled.length);
   assert.ok(filled.every(p => p.source.clubId === club.id && !p.vacant));
+  // Colour provenance stays in the compiler reference, not in the runtime catalog.
+  const colorSources = new Map(reference.colors.map(c => [String(c.id), c.sourceUrl]));
   for (const t of catalog.teams) {
     assert.match(t.primary, /^#[0-9a-f]{6}$/i);
     assert.match(t.secondary, /^#[0-9a-f]{6}$/i);
-    assert.ok(t.colorSource);
+    assert.ok(colorSources.get(String(t.id)));
   }
 });

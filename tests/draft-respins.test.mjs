@@ -1,13 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Draft } from '../app/core/draft/draft.js';
 import { overallRating, playerTier } from '../app/core/players/ratings.js';
 import { createAIOpponent } from '../app/core/draft/opponent.js';
 import { leagueWeight, teamWeight } from '../app/core/draft/leagues.js';
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
+const catalog = loadRuntimeCatalog();
 const random = seed => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 function reveal(d, seen) {
   const cards = d

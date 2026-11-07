@@ -14,12 +14,11 @@ import {
   playerTier,
 } from '../app/core/players/ratings.js';
 import { simulateComplete } from '../app/core/sim/replay.js';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 const fixture = parseCSV(
   readFileSync(new URL('./fixtures/fc26-sample.csv', import.meta.url), 'utf8'),
 );
-const catalog = JSON.parse(
-  readFileSync(new URL('../data/players-fc26.json', import.meta.url), 'utf8'),
-);
+const catalog = loadRuntimeCatalog();
 const setup = (seed = 77) => {
   const m = new Match(seed, 300);
   m.mode = 'play';
@@ -83,14 +82,15 @@ test('league catalog contains verified real players with reproducible provenance
   for (const l of catalog.leagues) {
     const ps = catalog.players.filter(p => p.source.leagueId === l.id);
     assert.equal(ps.length, l.playerCount);
-    assert.equal(l.playerCount, l.basePlayerCount + l.expansionPlayerCount);
     if (l.tier === 'A') assert.equal(ps.length, l.sourcePlayers);
-    else assert.ok(l.basePlayerCount <= (l.cap || 0));
   }
   assert.ok(!catalog.players.some(p => p.source.leagueId === '7'));
+  assert.equal(
+    catalog.source.sha256,
+    '4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2',
+  );
   for (const p of catalog.players) {
-    assert.equal(p.source.sha256, catalog.source.sha256);
-    assert.equal(p.source.compilerVersion, catalog.compilerVersion);
+    assert.match(p.profileId, /^ea:\d+:fc26:u4$/);
     assert.ok(p.source.clubId);
     assert.ok(!('playerType' in p));
   }

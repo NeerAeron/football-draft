@@ -1,12 +1,11 @@
 // Paired before/after evidence, not an enforced match-rate target.
 // node tools/calibration/long-ball-calibration.mjs /tmp/long-balls.json
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { randomLineups } from '../../app/core/players/lineups.js';
+import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
 const { Match } = await import(process.env.CALIBRATION_ENGINE || '../../app/core/sim/engine.js');
 
-const profiles = JSON.parse(
-  readFileSync(new URL('../../app/data/players-runtime.json', import.meta.url)),
-).players;
+const profiles = loadRuntimeCatalog().players;
 const rows = [];
 const seeds = Array.from(
   { length: Number(process.argv[4] || 3) },

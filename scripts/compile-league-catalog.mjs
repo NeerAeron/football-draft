@@ -1,9 +1,11 @@
 import { rateClubCatalog } from '../app/core/players/team-ratings.js';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { compilePlayer, parseCSV, COMPILER_VERSION, SOURCE_URL } from './compile-players.mjs';
 import { ATTRS } from '../app/core/players/ratings.js';
+import { PATHS } from './data/paths.mjs';
 
 export function compileLeagueCatalog(rows, reference, hash = null) {
   const seen = new Set();
@@ -117,13 +119,6 @@ async function main() {
   const [csv, referencePath, output, runtimeArg] = process.argv.slice(2);
   if (!csv || !referencePath || !output)
     throw Error('Usage: compile-league-catalog.mjs CSV REFERENCE OUTPUT [RUNTIME_OUTPUT]');
-  // The full catalog (with provenance) stays in the repo-root data/ folder; the
-  // runtime subset is the only file the browser fetches, so it lives in app/data/.
-  const runtimeOutput =
-    runtimeArg ||
-    (output.endsWith('players-fc26.json')
-      ? fileURLToPath(new URL('../app/data/players-runtime.json', import.meta.url))
-      : output.replace(/\.json$/, '') + '-runtime.json');
   const bytes = await readFile(csv),
     reference = JSON.parse(await readFile(referencePath, 'utf8'));
   const catalog = compileLeagueCatalog(
@@ -131,35 +126,17 @@ async function main() {
     reference,
     createHash('sha256').update(bytes).digest('hex'),
   );
+  await mkdir(dirname(output), { recursive: true });
   await writeFile(output, JSON.stringify(catalog) + '\n');
-  const runtime = {
-    ...catalog,
-    players: catalog.players.map(p => {
-      const { inference, source, ...profile } = p;
-      return {
-        ...profile,
-        source: {
-          club: source.club,
-          clubId: source.clubId,
-          leagueId: source.leagueId,
-          nationality: source.nationality,
-        },
-        inference: {
-          badges: inference.badges.map(({ tag, confidence, ability }) => ({
-            tag,
-            confidence,
-            ability,
-          })),
-        },
-      };
-    }),
-  };
-  await writeFile(runtimeOutput, JSON.stringify(runtime) + '\n');
+  // The runtime catalog (format v3) is the only catalog file the browser fetches.
+  const { writeRuntime } = await import('./data/build.mjs');
+  const { runtime } = await writeRuntime(catalog, runtimeArg || PATHS.catalog);
   console.log(
     JSON.stringify({
       players: catalog.players.length,
       teams: catalog.teams.length,
       leagues: catalog.leagues.length,
+      nations: runtime.nations.length,
       draftLeagues: catalog.leagues.filter(l => l.playerCount >= 5).length,
       keepers: catalog.players.filter(p => p.primaryPosition === 'GK').length,
       missingColors: catalog.teams.filter(t => !t.primary).length,

@@ -1,14 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Draft } from '../app/core/draft/draft.js';
 import { createAIOpponent } from '../app/core/draft/opponent.js';
 import { playerTier, overallRating } from '../app/core/players/ratings.js';
 import { createBudgetConfirmation } from '../app/legacy/budget-confirmation.js';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+const catalog = loadRuntimeCatalog();
 const random = seed => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 const opponent = createAIOpponent(catalog, 'veryeasy', random(31));
 const setup = () => new Draft(catalog, { opponent: opponent.players, funding: 'budget', seed: 43 });
