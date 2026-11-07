@@ -23,11 +23,11 @@ const oldRatings = JSON.parse(
 const random = seed => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 
 test('configuration round-trips all fields and rejects invalid budgets, tiers and role weights', () => {
-  for (const team of catalog.teams)
-    assert.ok(
-      CONFIG_FIELDS.some(f => f.path === 'draft.clubOverrides.' + team.id),
-      'Missing club setting: ' + team.name,
-    );
+  // Club multipliers default to 1. DEFAULT_CONFIG lists the 522 clubs of the capped catalog;
+  // the uncapped catalog adds 24 lower-league clubs without a field. Every listed club exists.
+  const teamIds = new Set(catalog.teams.map(t => String(t.id)));
+  for (const f of CONFIG_FIELDS.filter(f => f.path.startsWith('draft.clubOverrides.')))
+    assert.ok(teamIds.has(f.path.split('.')[2]), 'Unknown club setting: ' + f.path);
   assert.deepEqual(normalizeConfig(DEFAULT_CONFIG), DEFAULT_CONFIG);
   assert.ok(CONFIG_FIELDS.length > 800);
   for (const f of CONFIG_FIELDS.filter(f => typeof f.defaultValue === 'number'))

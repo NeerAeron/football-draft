@@ -140,6 +140,11 @@ const percentField = f =>
     'moderatelyBetter',
     'muchBetter',
   ].includes(f.key);
+// Clubs added to the catalog after DEFAULT_CONFIG listed its club multipliers use ×1.
+function clubInput(team) {
+  const field = CONFIG_FIELDS.find(f => f.path === 'draft.clubOverrides.' + team.id);
+  return field ? input(field) : '1 (default)';
+}
 function input(field) {
   const scale = percentField(field) ? 100 : 1,
     value = configValue(draft, field.path);
@@ -370,7 +375,7 @@ async function renderOdds() {
           .slice(0, clubLimit)
           .map(
             t =>
-              `<tr data-club="${t.id}"><td><strong>${t.tier} · ${esc(t.name)}</strong></td><td>${t.overall.toFixed(2)}</td><td>${t.players.length}</td><td>${input(CONFIG_FIELDS.find(f => f.path === 'draft.clubOverrides.' + t.id))}</td><td data-odds></td></tr>`,
+              `<tr data-club="${t.id}"><td><strong>${t.tier} · ${esc(t.name)}</strong></td><td>${t.overall.toFixed(2)}</td><td>${t.players.length}</td><td>${clubInput(t)}</td><td data-odds></td></tr>`,
           )
           .join(
             '',

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseCSV, compileRows, compilePlayer } from '../scripts/compile-players.mjs';
+import { compileLeagueCatalog } from '../scripts/compile-league-catalog.mjs';
 import { Match } from '../app/core/sim/engine.js';
 import {
   ATTRS,
@@ -67,31 +68,79 @@ test('compiler is deterministic and uses detailed fields even when keeper summar
       assert.ok(Number.isFinite(p.attrs[key]) && p.attrs[key] >= 1 && p.attrs[key] <= 99, key);
   }
 });
+test('league selection takes whole available leagues and only club-less internationals', () => {
+  const clubless = (row, id, nationTeam) => ({
+    ...row,
+    player_id: id,
+    club_team_id: '',
+    club_name: '',
+    league_id: '',
+    league_name: '',
+    nation_team_id: nationTeam,
+  });
+  const rows = [
+    ...fixture,
+    clubless(fixture[0], '900001', '1318'),
+    clubless(fixture[1], '900002', ''),
+  ];
+  const reference = {
+    selection: { clublessNationalTeamPlayers: true },
+    leagues: [
+      { id: '53', name: 'La Liga', tier: 'A', sourceLeagueId: '53', available: true },
+      { id: '13', name: 'Premier League', tier: 'A', sourceLeagueId: '13', available: false },
+    ],
+    clubs: [{ sourceTeamId: '243', score: 99, rank: 1, tier: 'S', optaClubId: 'x' }],
+    colors: [],
+  };
+  const catalog = compileLeagueCatalog(rows, reference, 'fixture');
+  assert.deepEqual(
+    catalog.players.map(p => p.profileId.split(':')[1]),
+    ['252371', '239053', '192119', '900001'],
+  );
+  assert.deepEqual(catalog.players[3].source.club, null);
+  assert.equal(catalog.players[3].source.leagueId, null);
+  assert.equal(catalog.selection.clublessNationalTeamPlayers, 1);
+  assert.deepEqual(
+    catalog.leagues.map(l => l.playerCount),
+    [3, 0],
+  );
+  assert.deepEqual(
+    catalog.teams.map(t => [t.name, t.playerCount]),
+    [['Real Madrid', 3]],
+  );
+  const off = compileLeagueCatalog(rows, { ...reference, selection: {} }, 'fixture');
+  assert.equal(off.players.length, 3);
+  reference.leagues[0].cap = 2;
+  assert.throws(() => compileLeagueCatalog(rows, reference), /caps/);
+});
 test('compiler rejects missing abilities, invalid stars and duplicated player IDs', () => {
   assert.throws(() => compilePlayer({ ...fixture[0], skill_dribbling: '' }, 1), /invalid/);
   assert.throws(() => compilePlayer({ ...fixture[0], weak_foot: '3.5' }, 1), /invalid/);
   assert.throws(() => compileRows([fixture[0], fixture[0]]), /Duplicate/);
 });
-test('league catalog contains verified real players with reproducible provenance', () => {
-  assert.equal(catalog.players.length, 7733);
-  assert.equal(new Set(catalog.players.map(p => p.profileId)).size, 7733);
-  assert.equal(catalog.players.filter(p => p.primaryPosition === 'GK').length, 765);
-  assert.deepEqual(catalog.selection.expansion, { outfield: 1000, goalkeepers: 100 });
+test('league catalog contains every player of every usable league plus club-less internationals', () => {
+  assert.equal(catalog.players.length, 15378);
+  assert.equal(new Set(catalog.players.map(p => p.profileId)).size, 15378);
+  assert.equal(catalog.players.filter(p => p.primaryPosition === 'GK').length, 1725);
+  assert.equal(catalog.selection.leaguePlayers, 15293);
+  assert.equal(catalog.selection.clublessNationalTeamPlayers, 85);
   assert.equal(catalog.leagues.length, 50);
   assert.equal(catalog.leagues.filter(l => l.playerCount >= 5).length, 40);
   for (const l of catalog.leagues) {
     const ps = catalog.players.filter(p => p.source.leagueId === l.id);
     assert.equal(ps.length, l.playerCount);
-    if (l.tier === 'A') assert.equal(ps.length, l.sourcePlayers);
+    assert.equal(ps.length, l.available ? l.sourcePlayers : 0, l.name);
   }
   assert.ok(!catalog.players.some(p => p.source.leagueId === '7'));
   assert.equal(
     catalog.source.sha256,
     '4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2',
   );
+  const clubless = catalog.players.filter(p => !p.source.clubId);
+  assert.equal(clubless.length, 85);
+  assert.ok(clubless.every(p => p.source.leagueId === null && p.source.club === null));
   for (const p of catalog.players) {
     assert.match(p.profileId, /^ea:\d+:fc26:u4$/);
-    assert.ok(p.source.clubId);
     assert.ok(!('playerType' in p));
   }
 });

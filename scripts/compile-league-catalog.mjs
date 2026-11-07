@@ -13,50 +13,26 @@ export function compileLeagueCatalog(rows, reference, hash = null) {
     if (seen.has(row.player_id)) throw Error(`Duplicate ${row.player_id}`);
     seen.add(row.player_id);
   }
+  // Selection policy: every player of every available league (no caps), in reference league
+  // order, best source overall first. Then, when the reference enables it, club-less players
+  // with a national-team call-up (real players whose clubs are outside the dataset): they get
+  // no club or league, so they can join nation pools but never league or club pools.
   const indexed = rows.map((row, index) => ({ row, index })),
+    byOverall = (a, b) => Number(b.row.overall) - Number(a.row.overall) || a.index - b.index,
     selected = [],
     leagues = [];
-  for (const definition of reference.leagues) {
-    const available = indexed.filter(({ row }) => row.league_id === definition.sourceLeagueId);
-    const ranked = available.sort(
-      (a, b) => Number(b.row.overall) - Number(a.row.overall) || a.index - b.index,
-    );
-    const chosen = definition.available ? ranked.slice(0, definition.cap ?? ranked.length) : [];
+  for (const { cap, ...definition } of reference.leagues) {
+    if (cap != null) throw Error(`League caps are no longer supported (${definition.name})`);
+    const chosen = definition.available
+      ? indexed.filter(({ row }) => row.league_id === definition.sourceLeagueId).sort(byOverall)
+      : [];
     selected.push(...chosen);
     leagues.push({ ...definition, playerCount: chosen.length });
   }
-  // Expansions are cumulative beyond the original league allocation. Keep that
-  // allocation intact, then take the best unused outfield players and GKs separately.
-  const expansion = { outfield: 0, goalkeepers: 0, ...reference.expansion };
-  for (const key of ['outfield', 'goalkeepers'])
-    if (!Number.isSafeInteger(expansion[key]) || expansion[key] < 0)
-      throw Error(`Invalid expansion ${key}`);
-  const selectedIds = new Set(selected.map(p => p.row.player_id)),
-    eligibleLeagues = new Set(leagues.filter(l => l.available).map(l => l.sourceLeagueId));
-  const remaining = indexed
-    .filter(({ row }) => eligibleLeagues.has(row.league_id) && !selectedIds.has(row.player_id))
-    .sort((a, b) => Number(b.row.overall) - Number(a.row.overall) || a.index - b.index);
-  const isKeeper = p => p.row.player_positions.split(',')[0].trim() === 'GK',
-    added = [];
-  for (const [key, keeper] of [
-    ['outfield', false],
-    ['goalkeepers', true],
-  ]) {
-    const candidates = remaining.filter(p => isKeeper(p) === keeper);
-    if (candidates.length < expansion[key])
-      throw Error(
-        `Not enough unused ${key}: requested ${expansion[key]}, available ${candidates.length}`,
-      );
-    added.push(...candidates.slice(0, expansion[key]));
-  }
-  selected.push(...added);
-  for (const league of leagues) {
-    league.basePlayerCount = league.playerCount;
-    league.expansionPlayerCount = added.filter(
-      p => p.row.league_id === league.sourceLeagueId,
-    ).length;
-    league.playerCount += league.expansionPlayerCount;
-  }
+  const clubless = reference.selection?.clublessNationalTeamPlayers
+    ? indexed.filter(({ row }) => !row.club_team_id && !row.league_id && row.nation_team_id)
+    : [];
+  selected.push(...clubless.sort(byOverall));
   const players = selected.map(({ row, index }) => {
     const p = compilePlayer(row, index + 1);
     p.source.sha256 = hash;
@@ -66,6 +42,7 @@ export function compileLeagueCatalog(rows, reference, hash = null) {
     ratings = new Map(reference.clubs.map(c => [String(c.sourceTeamId), c]));
   const clubs = new Map();
   for (const p of players) {
+    if (p.source.clubId == null) continue;
     const id = String(p.source.clubId);
     if (!clubs.has(id)) {
       const rating = ratings.get(id),
@@ -103,11 +80,14 @@ export function compileLeagueCatalog(rows, reference, hash = null) {
     },
     selection: {
       sourceRows: rows.length,
-      leagueCaps: { A: 'all', B: 200, C: 100, D: 50, F: 20 },
-      expansion,
+      policy:
+        'Every player of every available league, no caps; plus club-less players with a national-team call-up (no club or league: nation pools only)',
+      leaguePlayers: selected.length - clubless.length,
+      clublessNationalTeamPlayers: clubless.length,
       order:
-        'Base league allocation first; then additional outfield players and goalkeepers ranked by source overall descending, original row order breaking ties',
-      excluded: 'Missing leagues and generic Brazilian identities',
+        'Leagues in reference order, then club-less players; each by source overall descending, original row order breaking ties',
+      excluded:
+        'Leagues absent from the reference or unavailable (including the generic Brazilian Série A identities), players at clubs outside those leagues (no reviewed club metadata), and club-less players without a national-team call-up',
     },
     attributeKeys: Object.keys(ATTRS),
     leagues,

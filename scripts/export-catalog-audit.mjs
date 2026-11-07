@@ -65,7 +65,9 @@ const teams = clubs.map(c => {
     siblings = clubs.filter(t => t.leagueId === l.id),
     denominator = siblings.reduce((n, t) => n + teamWeight(t), 0);
   return {
-    ...Object.fromEntries(Object.entries(c).filter(([key]) => key !== 'players')),
+    ...Object.fromEntries(
+      Object.entries(c).filter(([key]) => !['players', 'lineups'].includes(key)),
+    ),
     goalkeepers: c.players.filter(p => p.primaryPosition === 'GK').length,
     completeXI: c.formations.length > 0,
     clubWeight: teamWeight(c),
@@ -90,7 +92,7 @@ const players = catalog.players
       overall,
       tier: tier.name,
       badgeRange: [tier.minimum, tier.capacity],
-      openingPlayerPoolAccessProbability: club.openingPlayerPoolAccessProbability,
+      openingPlayerPoolAccessProbability: club?.openingPlayerPoolAccessProbability ?? 0,
       impossibleNaturalOverallEligible: overall >= CONFIG.ai.impossibleOverall,
     };
   })
@@ -315,8 +317,8 @@ writeFileSync(
       players.map((p, i) => [
         i + 1,
         p.name,
-        p.source.club,
-        leagues.find(l => l.id === p.source.leagueId).name,
+        p.source.club ?? 'No club (national team only)',
+        leagues.find(l => l.id === p.source.leagueId)?.name ?? '—',
         [p.primaryPosition, ...p.secondaryPositions].join('/'),
         p.foot,
         p.sourceOverall,

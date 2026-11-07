@@ -247,8 +247,9 @@ test('squad assignment rejects incomplete clubs and chooses unique players by po
 });
 
 test('partial Sandbox lineups preserve real club members and expose empty slots without invented players', () => {
-  const club = clubSquads(catalog).find(c => c.players.length < 11 && c.players.length > 2),
-    lineup = partialClubLineup(club.players, '433');
+  // Every club now has a full squad (18+ players), so use six real members of one club.
+  const club = clubSquads(catalog).find(c => c.name === 'Arsenal'),
+    lineup = partialClubLineup(club.players.slice(0, 6), '433');
   assert.equal(lineup.length, 11);
   assert.ok(lineup.some(p => !p));
   const filled = lineup.filter(Boolean);
