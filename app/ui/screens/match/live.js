@@ -421,14 +421,22 @@ function Shootout({ controller, teams }) {
 function TickerLine({ controller }) {
   const h = useStore(
     controller.hud,
-    s => ({ ticker: s.ticker, skipping: s.skipping, clip: s.clip, period: s.period }),
+    s => ({
+      ticker: s.ticker,
+      skipping: s.skipping,
+      clip: s.clip,
+      period: s.period,
+      rewind: s.presenting === 'rewind',
+    }),
     shallowEqual,
   );
   const fallback = h.skipping
     ? 'Fast-forwarding to the next moment…'
-    : h.clip
-      ? `${h.period === '1H' ? 'First-half' : h.period === 'PENS' ? 'Shootout' : 'Second-half'} highlights · clip ${h.clip.n} of ${h.clip.total}`
-      : '';
+    : h.rewind
+      ? 'The build-up…'
+      : h.clip
+        ? `${h.period === '1H' ? 'First-half' : h.period === 'PENS' ? 'Shootout' : 'Second-half'} highlights · clip ${h.clip.n} of ${h.clip.total}`
+        : '';
   return html`<${Ticker} line=${h.skipping ? null : h.ticker} fallback=${fallback} />`;
 }
 

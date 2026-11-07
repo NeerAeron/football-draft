@@ -379,7 +379,7 @@ export class MatchController {
     if (this.presenting !== 'live') return;
     this.ff = { from: this.live.elapsed, stopAt: null, trigger: null, lastId: this.live.eventId };
     this.presenting = 'ff';
-    this.hud.set({ presenting: 'ff', skipping: true });
+    this.hud.set({ presenting: 'ff', skipping: true, ticker: null });
     if (this.hud.get().paused) this.setPaused(false);
     this.kick();
   }

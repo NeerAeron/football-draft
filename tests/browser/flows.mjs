@@ -620,6 +620,11 @@ export const flows = [
         const saved = await page.evaluate(() => localStorage.getItem('football-draft-match'));
         if (!/"mentality":"push"/.test(saved || '')) throw new Error('tactics not handed over');
       });
+      await step('match starts without a second pre-kickoff', async () => {
+        await visible(page, '[data-screen="match"] .stage__canvas', 30000);
+        if (await page.locator('[data-testid="kickoff"]').count())
+          throw new Error('match screen showed its own pre-kickoff');
+      });
     },
   },
   {

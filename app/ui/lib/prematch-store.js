@@ -363,6 +363,7 @@ export function kickOff({ go = true } = {}) {
       config,
       meta: {
         ...data.meta,
+        autoKickoff: true, // this screen was the pre-match: #/match starts straight away
         sides: data.sides.map(s => ({
           name: s.name,
           short: s.short,
