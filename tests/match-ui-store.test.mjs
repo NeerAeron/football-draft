@@ -118,3 +118,14 @@ test('teamCode gives broadcast codes', () => {
     ['RMA', 'ARS', 'PSG', 'MCI', 'CIV'],
   );
 });
+
+test('buildMatchConfig dresses national sides without colours in their kit', () => {
+  const config = buildMatchConfig({
+    sides: [
+      side('Your XI', ['#d9f580', '#16213a']),
+      side('Ukraine', undefined, '433', { code: 'ua' }),
+    ],
+  });
+  assert.equal(config.teams[1].color, '#ffd500');
+  assert.equal(config.teams[1].secondary, '#005bbb');
+});

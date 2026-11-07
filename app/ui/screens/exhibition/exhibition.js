@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { opponentCandidates, buildOpponent } from '../../../core/draft/opponents.js';
 import { buildSide } from '../../../core/draft/session.js';
 import { randomLineups } from '../../../core/players/lineups.js';
@@ -19,10 +19,12 @@ import { Skeleton } from '../../components/skeleton.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { openPrematch } from '../../lib/prematch-store.js';
 import { readMatchResult, clearMatch, matchStore } from '../../lib/match-store.js';
-import { sideColors, matchSideFor } from '../../lib/run-store.js';
+import { matchSideFor } from '../../lib/run-store.js';
+import { sideColors } from '../../lib/kits.js';
 import { TeamMark } from '../run/run-parts.js';
 import { xiViews } from '../run/team-view.js';
 import { PitchView } from '../../components/pitch-view.js';
+import { fmt1 } from '../../lib/format.js';
 
 const KEY = 'football-draft-exhibition';
 const PAGE = 40;
@@ -37,6 +39,8 @@ const randomSeed = () => {
 };
 
 /** A team choice: { key, kind, id, name, code, colors, rating, effective, formation, league? }. */
+const nextTask = () => new Promise(resolve => setTimeout(resolve, 0));
+
 function teamFromCandidate(c, leagues) {
   return {
     key: c.key,
@@ -118,7 +122,7 @@ function TeamSlot({ team, side, active, onActivate, onRandom }) {
             <span class="ex-slot__name">${team.name}</span>
             <span class="ex-slot__meta">${teamMeta(team)}</span>
             <span class="ex-slot__stats">
-              <span><b class="num">${team.rating.toFixed(1)}</b> OVR</span>
+              <span><b class="num">${fmt1(team.rating)}</b> OVR</span>
               <span>${formationLabel(team.formation)}</span>
             </span>`
         : html`<span class="ex-slot__plus" aria-hidden="true"
@@ -164,7 +168,7 @@ function TeamList({ items, selected, onPick, limit, onMore }) {
                   decorative
                 />`
               }
-              <span class="ex-team__rating num">${t.rating.toFixed(1)}</span>
+              <span class="ex-team__rating num">${fmt1(t.rating)}</span>
             </button>
           </li>`,
       )}
@@ -191,11 +195,15 @@ export default function ExhibitionScreen() {
 
   useEffect(() => {
     let live = true;
-    loadCatalog()
-      .then(catalog => {
+    loadWarmCatalog()
+      .then(async catalog => {
         if (!live) return;
         const leagues = new Map(catalog.leagues.map(l => [String(l.id), l]));
+        // Every club and nation XI (~170 ms once): its own task, then render in the next.
+        await nextTask();
         const list = opponentCandidates(catalog);
+        await nextTask();
+        if (!live) return;
         const byKey = new Map(list.map(c => [c.key, c]));
         const teams = list.map(c => teamFromCandidate(c, leagues));
         setData({ catalog, leagues, byKey, teams });
@@ -261,12 +269,14 @@ export default function ExhibitionScreen() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = searchKey(query.trim());
+    // A search looks through every club, nation and legend side ("Brazil" from the Clubs tab).
+    if (q)
+      return data.teams.filter(t => searchKey(`${t.name} ${t.league?.name || ''}`).includes(q));
     return data.teams.filter(t => {
       if (tab === 'club' && t.kind !== 'club') return false;
       if (tab === 'nation' && t.kind !== 'nation') return false;
       if (tab === 'boss' && t.kind !== 'boss') return false;
       if (tab === 'club' && league !== 'all' && String(t.league?.id) !== league) return false;
-      if (q && !searchKey(`${t.name} ${t.league?.name || ''}`).includes(q)) return false;
       return true;
     });
   }, [data, tab, query, league]);
@@ -382,7 +392,7 @@ export default function ExhibitionScreen() {
               const d = teams[0].effective - teams[1].effective;
               return Math.abs(d) < 0.6
                 ? 'Too close to call.'
-                : `${d > 0 ? teams[0].name : teams[1].name} are favourites by ${Math.abs(d).toFixed(1)}.`;
+                : `${d > 0 ? teams[0].name : teams[1].name} are favourites by ${fmt1(Math.abs(d))}.`;
             })()}
           </p>`
         }

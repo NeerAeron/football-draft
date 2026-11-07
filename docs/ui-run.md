@@ -11,7 +11,7 @@ render. Follow `docs/ui-guide.md` for components, tokens and flows.
 | `#/exhibition` | Exhibition picker | `screens/exhibition/exhibition.js`, `exhibition.css` |
 | `#/challenge?c=…&r=…` | challenge link landing (`#c=…` short links are redirected here by `routes.js`) | `screens/run/challenge.js` |
 
-Shared pieces: `lib/run-store.js` (persistence, Home summary, kits, prematch sides, stakes,
+Shared pieces: `lib/run-store.js` (persistence, Home summary, prematch sides, stakes,
 links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/run/auto-sim.js`
 (engine auto-sims) + `auto-sim-worker.js`, `sim-ticker.js` (`useSimTicker` results ticker), `share-panel.js`,
 `team-view.js` (XI → PlayerViews, share card data), `trophy.js`.
@@ -48,7 +48,9 @@ as the match screen's Instant view.
 Intro (date, rules, group, streak, countdown) → `startDraft({ kind: 'daily', type: 'nations',
 schedule: day.schedule, seed: day.seed, formation, rerolls, daily: id,
 useDefaultRules: true, returnTo: '/daily' })` → back on `#/daily`: `createCupRun(catalog,
-{ ...day.cup, user })`, `perfectXI` / `perfectPercent`, `beginDailyAttempt()` (the day is used
+{ ...day.cup, user })`, `perfectXI` (in a module Worker: `screens/daily/perfect-xi.js`, ~250 ms
+of best-XI search off the main thread; main-thread fallback) / `perfectPercent`,
+`beginDailyAttempt()` (the day is used
 from here on) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
 same results) → `dailyScore` → `finishDailyAttempt()` → result card (points, grade, % of
 perfect, streak, share, replays of each match via `requestMatch(…, view 'key')`).

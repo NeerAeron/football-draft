@@ -164,6 +164,31 @@ test('versus drafts alternate turns and open the pre-match with both XIs editabl
   );
   assert.equal(prematch.engineCompetition(data).mode, 'pvp');
   assert.deepEqual(prematch.kickOff({ go: false }).meta.userSides, [0, 1]);
+  assert.deepEqual(
+    data.sides.map(s => s.short),
+    ['ANN', 'BO'],
+  );
+});
+
+test('versus codes stay distinct; Ball Knower and nation kits reach the pre-match', async () => {
+  assert.deepEqual(draft.draftedShorts(['Player 1', 'Player 2']), ['P1', 'P2']);
+  assert.deepEqual(draft.draftedShorts(['Sam', 'Samir']), ['SA1', 'SA2']);
+  assert.deepEqual(draft.draftedShorts(['Me'], true), ['YOU']);
+  reset();
+  await draft.startDraft({
+    kind: 'quick',
+    type: 'nations',
+    difficulty: 'pro',
+    seed: 21,
+    options: { hideRatings: true },
+  });
+  draft.autoComplete();
+  const opponent = draft.quickOpponent();
+  await draft.finishDraft();
+  const data = prematch.prematchStore.get();
+  assert.equal(data.hideRatings, true);
+  if (opponent.code) assert.notDeepEqual(data.sides[1].colors, ['#baaff0', '#16213a']);
+  assert.equal(prematch.kickOff({ go: false }).meta.hideRatings, true);
 });
 
 test('openPrematch keeps the fixture id and meta intact (RUN-UI contract)', async () => {

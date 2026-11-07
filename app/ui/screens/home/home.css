@@ -271,13 +271,13 @@
   gap: var(--space-3);
 }
 .continue__head,
-.daily__head {
+.home-daily__head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 .continue__icon,
-.daily__icon {
+.home-daily__icon {
   display: grid;
   place-items: center;
   flex: none;
@@ -290,12 +290,12 @@
   color: var(--on-volt);
 }
 .continue__titles,
-.daily__titles {
+.home-daily__titles {
   flex: 1;
   min-width: 0;
 }
 .continue__title,
-.daily__title {
+.home-daily__title {
   font-size: var(--display-sm);
 }
 .continue__record {
@@ -303,7 +303,7 @@
   font-weight: var(--weight-heavy);
 }
 .continue__foot,
-.daily__foot {
+.home-daily__foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -314,35 +314,52 @@
   font-size: var(--text-sm);
 }
 
+.continue__record small {
+  color: var(--text-3);
+  font-size: 0.55em;
+}
+.draft-resume__bar {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.draft-resume__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--volt-400);
+}
+
 /* ---------- Daily ---------- */
-.daily {
+.home-daily {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-.daily__icon {
+.home-daily__icon {
   background: var(--tier-star-frame);
   color: var(--on-gold);
 }
-.daily__text {
+.home-daily__text {
   color: var(--text-2);
   font-size: var(--text-sm);
 }
-.daily__streak {
+.home-daily__streak {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--text-2);
   font-size: var(--text-sm);
 }
-.daily__streak .icon {
+.home-daily__streak .icon {
   color: var(--amber-400);
 }
-.daily__streak b {
+.home-daily__streak b {
   color: var(--text-1);
   font-size: 20px;
 }
-.daily__best {
+.home-daily__best {
   color: var(--text-3);
 }
 

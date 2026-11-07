@@ -7,7 +7,7 @@ import { html, cx } from '../../lib/html.js';
 import { href, navigate } from '../../lib/router.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
 import { Button } from '../../components/button.js';
 import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
@@ -60,6 +60,7 @@ import {
 import { RunEnd } from './run-end.js';
 import { xiViews, nationList, modeLabel, levelLabel } from './team-view.js';
 import { formationLabel } from '../../../core/players/formations.js';
+import { fmt1 } from '../../lib/format.js';
 
 /** The finished match for a pending fixture (by id, or the same seed in a run context). */
 function pendingResult(pending) {
@@ -125,7 +126,7 @@ function RunHeader({ snapshot, meta, nations }) {
             meta.hideRatings
               ? 'Ratings hidden'
               : [
-                  html`<b class="num" key="o">${snapshot.user.rating.toFixed(1)}</b>`,
+                  html`<b class="num" key="o">${fmt1(snapshot.user.rating)}</b>`,
                   ' OVR',
                   meta.links ? ' · Links ' : '',
                   meta.links ? html`<b class="num" key="l">${meta.links.score}</b>` : '',
@@ -151,7 +152,7 @@ function RunHeader({ snapshot, meta, nations }) {
   </header>`;
 }
 
-function DrawBanner({ snapshot }) {
+function DrawBanner({ snapshot, hideRatings }) {
   const group = snapshot.rounds.slice(0, 3).map(r => r.opponent);
   const [shown, setShown] = useState(isReducedMotion() ? 3 : 0);
   useEffect(() => {
@@ -175,7 +176,7 @@ function DrawBanner({ snapshot }) {
             <span class="draw-team__pot">Pot ${o.pot}</span>
             <${TeamMark} team=${opponentTeam(o)} size=${44} />
             <span class="draw-team__name">${o.name}</span>
-            <span class="draw-team__rating num">${o.rating.toFixed(1)}</span>
+            ${!hideRatings && html`<span class="draw-team__rating num">${fmt1(o.rating)}</span>`}
           </li>`,
       )}
     </ul>
@@ -252,7 +253,7 @@ function ResultBanner({ snapshot, before, round, entry }) {
         (ours || theirs) &&
         html`<p class="ft__scorers">
           <span>${ours}</span>
-          <${Icon} name="goal" size=${14} />
+          ${ours && theirs && html`<${Icon} name="goal" size=${14} />`}
           <span class="is-away">${theirs}</span>
         </p>`
       }
@@ -297,13 +298,13 @@ function FixtureCard({ snapshot, run, meta, onPlay, onSim, busy, inProgress }) {
       <div class="fixture__side">
         <${TeamMark} team=${{ user: true }} size=${64} />
         <span class="fixture__name">${userTeamName(snapshot.user.name)}</span>
-        ${!meta.hideRatings && html`<span class="fixture__rating num">${snapshot.user.rating.toFixed(1)}</span>`}
+        ${!meta.hideRatings && html`<span class="fixture__rating num">${fmt1(snapshot.user.rating)}</span>`}
       </div>
       <span class="fixture__v" aria-hidden="true">v</span>
       <div class="fixture__side">
         <${TeamMark} team=${team} size=${64} />
         <span class="fixture__name">${team.name}</span>
-        ${!meta.hideRatings && html`<span class="fixture__rating num">${r.opponent.rating.toFixed(1)}</span>`}
+        ${!meta.hideRatings && html`<span class="fixture__rating num">${fmt1(r.opponent.rating)}</span>`}
       </div>
     </div>
     ${
@@ -313,8 +314,8 @@ function FixtureCard({ snapshot, run, meta, onPlay, onSim, busy, inProgress }) {
           Math.abs(diff) < 0.5
             ? 'Evenly matched'
             : diff > 0
-              ? `You are ${diff.toFixed(1)} stronger on paper`
-              : `${team.name} are ${(-diff).toFixed(1)} stronger on paper`
+              ? `You are ${fmt1(diff)} stronger on paper`
+              : `${team.name} are ${fmt1(-diff)} stronger on paper`
         }
       </p>`
     }
@@ -401,7 +402,7 @@ function TeamPanel({ views, nations, meta, formation, snapshot }) {
     ${
       !meta.hideRatings &&
       html`<p class="run-xi__foot text-3 text-sm">
-        ${`Team OVR ${snapshot.user.rating.toFixed(1)} · effective ${snapshot.user.effective.toFixed(1)} with Links`}
+        ${`Team OVR ${fmt1(snapshot.user.rating)} · effective ${fmt1(snapshot.user.effective)} with Links`}
       </p>`
     }
   </section>`;
@@ -428,7 +429,7 @@ export default function RunScreen() {
     let live = true;
     (async () => {
       try {
-        const catalog = await loadCatalog();
+        const catalog = await loadWarmCatalog().then(warmOpponents);
         if (!live) return;
         let saved = loadRun(catalog);
         let flash = null;
@@ -512,6 +513,7 @@ export default function RunScreen() {
         matchSideFor(m.away, { kind: 'ai', editable: false }),
       ],
       competition: { mode: 'ai', difficulty: run.difficulty, knockout: m.knockout },
+      hideRatings: !!meta.hideRatings,
       meta: {
         context: 'run',
         title: `${roundLabel(m.round).replace('Group · ', '')} · ${m.away.name}`,
@@ -645,7 +647,7 @@ export default function RunScreen() {
                 onStop=${ticker.stop}
               />`
             : html`
-                ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} />`}
+                ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} hideRatings=${meta.hideRatings} />`}
                 ${
                   flash?.kind === 'result' &&
                   html`<${ResultBanner}

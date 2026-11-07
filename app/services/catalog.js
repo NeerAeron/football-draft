@@ -5,6 +5,7 @@ import { decodeCatalog, indexCatalog } from '../core/players/catalog-codec.js';
 import { reconcileCatalog } from '../core/players/catalog-derived.js';
 
 export const CATALOG_URL = './data/catalog.v3.json';
+const nextTask = () => new Promise(resolve => setTimeout(resolve, 0));
 let loading = null;
 
 export function loadCatalog() {
@@ -13,8 +14,14 @@ export function loadCatalog() {
       if (!response.ok) throw Error('Catalog unavailable');
       return response.json();
     })
-    .then(file => {
-      const catalog = indexCatalog(reconcileCatalog(decodeCatalog(file)));
+    .then(async file => {
+      // Decode, reconcile and index in separate tasks: each stays well under the 50–200 ms
+      // that would block a tap on a phone (one block was ~200 ms on a laptop).
+      const decoded = decodeCatalog(file);
+      await nextTask();
+      const reconciled = reconcileCatalog(decoded);
+      await nextTask();
+      const catalog = indexCatalog(reconciled);
       if (catalog.players.length < 22) throw Error('Invalid catalog');
       return catalog;
     })

@@ -5,7 +5,7 @@ import { html, cx } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
 import { href } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
-import { readSavedRun, readDailyStatus, STAGES } from '../../lib/saved.js';
+import { readSavedRun, readDailyStatus, readSavedDraft, STAGES } from '../../lib/saved.js';
 import { Button, IconButton } from '../../components/button.js';
 import { Card } from '../../components/card.js';
 import { Chip } from '../../components/chip.js';
@@ -14,6 +14,7 @@ import { Segmented } from '../../components/segmented.js';
 import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { HeroArt } from './hero-art.js';
+import { int } from '../../lib/format.js';
 
 export const DRAFT_TYPE_OPTIONS = [
   { value: 'nations', label: 'Nations' },
@@ -167,6 +168,63 @@ function ContinueCard({ run }) {
   <//>`;
 }
 
+const DRAFT_KIND = {
+  run: 'World Cup Run',
+  daily: 'Daily Challenge',
+  quick: 'Quick Match',
+  versus: 'Versus',
+};
+
+/** The draft in progress (lib/saved.js readSavedDraft): back to the board in one tap. */
+function DraftCard({ draft }) {
+  const kind = DRAFT_KIND[draft.context.kind] || 'Draft';
+  const type =
+    TYPE_LABEL[draft.context.type === 'clubAndCountry' ? 'club-country' : draft.context.type];
+  const total = draft.total || 11;
+  const pct = Math.round((draft.picks / total) * 100);
+  return html`<${Card}
+    variant="volt"
+    class="continue continue--draft"
+    as="section"
+    aria-labelledby="draft-resume-title"
+    data-testid="resume-draft-card"
+  >
+    <div class="continue__head">
+      <span class="continue__icon" aria-hidden="true"><${Icon} name="reel" size=${18} /></span>
+      <div class="continue__titles">
+        <p class="eyebrow">${draft.complete ? 'XI complete' : 'Draft in progress'}</p>
+        <h2 class="continue__title" id="draft-resume-title">${kind}</h2>
+      </div>
+      <span class="continue__record num" aria-label=${`${draft.picks} of ${total} picks made`}
+        >${draft.picks}<small>/${total}</small></span
+      >
+    </div>
+    <div
+      class="draft-resume__bar"
+      role="progressbar"
+      aria-label="Draft progress"
+      aria-valuemin="0"
+      aria-valuemax=${total}
+      aria-valuenow=${draft.picks}
+    >
+      <span style=${`width:${pct}%`}></span>
+    </div>
+    <div class="continue__foot">
+      <span class="continue__meta"
+        >${type ? `${type} draft · ` : ''}${draft.complete ? 'ready for kick-off' : `pick ${draft.picks + 1} of ${total}`}</span
+      >
+      <${Button}
+        variant="primary"
+        size="sm"
+        iconEnd="arrow-right"
+        href=${href('/draft')}
+        data-testid="resume-draft"
+        >${draft.complete ? 'Continue' : 'Resume'}<//
+      >
+    </div>
+  <//>`;
+}
+
 function DailyCard({ daily }) {
   const played = daily.playedToday;
   const date = new Date().toLocaleDateString(undefined, {
@@ -175,14 +233,14 @@ function DailyCard({ daily }) {
     month: 'short',
     timeZone: 'UTC',
   });
-  return html`<${Card} variant="gold" class="daily" as="section" aria-labelledby="daily-title">
-    <div class="daily__head">
-      <span class="daily__icon" aria-hidden="true"
+  return html`<${Card} variant="gold" class="home-daily" as="section" aria-labelledby="daily-title">
+    <div class="home-daily__head">
+      <span class="home-daily__icon" aria-hidden="true"
         ><${Icon} name="calendar-days" size=${20}
       /></span>
-      <div class="daily__titles">
+      <div class="home-daily__titles">
         <p class="eyebrow is-gold">Daily Challenge</p>
-        <h2 class="daily__title" id="daily-title">${date}</h2>
+        <h2 class="home-daily__title" id="daily-title">${date}</h2>
       </div>
       ${
         played
@@ -190,19 +248,19 @@ function DailyCard({ daily }) {
           : html`<${Chip} tone="gold" variant="outline">New<//>`
       }
     </div>
-    <p class="daily__text">
+    <p class="home-daily__text">
       ${
         daily.todayResult
-          ? `Today: ${daily.todayResult.points.toLocaleString()} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
+          ? `Today: ${int(daily.todayResult.points)} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
           : 'Same spins for everyone today. Nations draft, one attempt, auto-simmed.'
       }
     </p>
-    <div class="daily__foot">
-      <span class="daily__streak" title="Days in a row">
+    <div class="home-daily__foot">
+      <span class="home-daily__streak" title="Days in a row">
         <${Icon} name="flame" size=${18} />
         <b class="num">${daily.streak}</b>
         <span>day streak</span>
-        ${daily.best > 0 && html`<span class="daily__best">· best ${daily.best}</span>`}
+        ${daily.best > 0 && html`<span class="home-daily__best">· best ${daily.best}</span>`}
       </span>
       <${Button} variant="secondary" size="sm" iconEnd="arrow-right" href=${href('/daily')}
         >${played ? 'Results' : 'Play'}<//
@@ -259,6 +317,7 @@ export default function Home() {
     (a, b) => a.draftType === b.draftType && a.onboarded === b.onboarded,
   );
   const run = useMemo(readSavedRun, []);
+  const draft = useMemo(readSavedDraft, []);
   const daily = useMemo(readDailyStatus, []);
   useEffect(() => {
     const idle = globalThis.requestIdleCallback || (fn => setTimeout(fn, 400));
@@ -270,6 +329,7 @@ export default function Home() {
       ${!onboarded && html`<div class="home__first"><${FirstRun} /></div>`}
       <div class="home__side">
         <div class="home__cards">
+          ${draft && html`<${DraftCard} draft=${draft} />`}
           ${run && html`<${ContinueCard} run=${run} />`}
           <${DailyCard} daily=${daily} />
         </div>

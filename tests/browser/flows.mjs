@@ -227,13 +227,13 @@ const matchFlows = [
     async run({ page, shot, step, base }) {
       await page.goto(`${base}${MATCH}&view=full`);
       await kickOff(page, step);
-      await step('live canvas', () => visible(page, '.stage__canvas'));
+      await step('live canvas', () => visible(page, '.match-stage__canvas'));
       await page.waitForTimeout(2500);
       await shot('live');
       await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
       await page.waitForTimeout(2000);
       await step('keyboard pause', async () => {
-        await page.locator('.stage__canvas').click({ position: { x: 5, y: 5 } });
+        await page.locator('.match-stage__canvas').click({ position: { x: 5, y: 5 } });
         await page.keyboard.press('Space');
         await visible(page, '.stage-play');
         await page.keyboard.press('Space');
@@ -287,7 +287,7 @@ const matchFlows = [
     async run({ page, step, base }) {
       await page.goto(`${base}${MATCH}&view=full&auto=1`);
       await step('starts without a second pre-kickoff', async () => {
-        await visible(page, '.stage__canvas', 30000);
+        await visible(page, '.match-stage__canvas', 30000);
         if (await page.locator('[data-testid="kickoff"]').count())
           throw new Error('pre-kickoff shown despite autoKickoff');
         await visible(page, '[data-testid="play-pause"][aria-label="Pause"]');
@@ -367,6 +367,16 @@ export const flows = [
       await step('continue card', () => visible(page, '.continue'));
       await page.evaluate(() => document.fonts.ready);
       await shot('continue');
+      await step('draft in progress resumes from Home', async () => {
+        await page.evaluate(async () => {
+          const { startDraft } = await import('./ui/lib/draft-store.js');
+          await startDraft({ kind: 'quick', type: 'leagues', seed: 11 }, { go: false });
+        });
+        await page.reload();
+        await visible(page, '[data-testid="resume-draft-card"]');
+        await page.click('[data-testid="resume-draft"]');
+        await visible(page, '[data-screen="draft"][data-phase="pick"]');
+      });
     },
   },
   {
@@ -411,6 +421,30 @@ export const flows = [
           await visible(page, '[data-screen="placeholder"] h1');
         });
       }
+      await step('installable: manifest, icons and the share card resolve', async () => {
+        const missing = await page.evaluate(async () => {
+          const head = document.head;
+          const manifestUrl = head.querySelector('link[rel="manifest"]')?.href;
+          const manifest = await (await fetch(manifestUrl)).json();
+          const urls = [
+            ...manifest.icons.map(i => new URL(i.src, manifestUrl).href),
+            head.querySelector('link[rel="apple-touch-icon"]').href,
+            // og:image is absolute (the deployment); check the same path locally.
+            new URL(
+              new URL(head.querySelector('meta[property="og:image"]').content).pathname
+                .split('/')
+                .slice(-2)
+                .join('/'),
+              location.href,
+            ).href,
+          ];
+          const bad = [];
+          for (const url of urls) if (!(await fetch(url)).ok) bad.push(url);
+          if (!manifest.name || manifest.display !== 'standalone') bad.push('manifest fields');
+          return bad;
+        });
+        if (missing.length) throw new Error(`missing: ${missing.join(', ')}`);
+      });
     },
   },
   // ---------- DRAFT-UI: setup, draft board, pre-match ----------
@@ -520,7 +554,7 @@ export const flows = [
       await shot('rerolled');
       await step('odds popover', async () => {
         await page.click('button[aria-label="Odds of this spin"]');
-        await visible(page, 'dialog.modal[open] .odds');
+        await visible(page, 'dialog.modal[open] .spin-odds');
       });
       await shot('odds');
       await step('close odds', async () => {
@@ -633,7 +667,7 @@ export const flows = [
         if (!/"mentality":"push"/.test(saved || '')) throw new Error('tactics not handed over');
       });
       await step('match starts without a second pre-kickoff', async () => {
-        await visible(page, '[data-screen="match"] .stage__canvas', 30000);
+        await visible(page, '[data-screen="match"] .match-stage__canvas', 30000);
         if (await page.locator('[data-testid="kickoff"]').count())
           throw new Error('match screen showed its own pre-kickoff');
       });

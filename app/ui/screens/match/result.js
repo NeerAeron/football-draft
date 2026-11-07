@@ -14,6 +14,7 @@ import {
   useMedia,
 } from './hud.js';
 import { makeKits } from './renderer/kits.js';
+import { fmt1 } from '../../lib/format.js';
 
 const REMATCH_CONTEXTS = ['quick', 'versus', 'exhibition', 'demo'];
 
@@ -102,8 +103,8 @@ function PlayerSpot({ p, r, kind }) {
       </div>
       <span
         class=${cx('res-spot__rating num', p.rating >= 7.5 ? 'is-high' : p.rating < 6 ? 'is-low' : '')}
-        aria-label=${`Rating ${p.rating.toFixed(1)}`}
-        >${p.rating.toFixed(1)}</span
+        aria-label=${`Rating ${fmt1(p.rating)}`}
+        >${fmt1(p.rating)}</span
       >
     </div>
   <//>`;
@@ -151,7 +152,7 @@ function Ratings({ r }) {
                     </span>
                     <span
                       class=${cx('num res-ratings__r', p.rating >= 7.5 ? 'is-high' : p.rating < 6 ? 'is-low' : '')}
-                      >${p.rating.toFixed(1)}</span
+                      >${fmt1(p.rating)}</span
                     >
                   </li>`,
               )}
@@ -266,15 +267,15 @@ export function ResultView({ result: r, momentum, onContinue, onRematch, onHome 
             >
           <//>`
         }
+        <${Card} class="res-card">
+          <h2 class="res-card__h">Player ratings</h2>
+          <${Ratings} r=${r} />
+        <//>
       </div>
       <div class="res-col">
         <${Card} class="res-card">
           <h2 class="res-card__h">Match stats</h2>
           <${StatsTable} stats=${r.stats} teams=${r.teams} />
-        <//>
-        <${Card} class="res-card">
-          <h2 class="res-card__h">Player ratings</h2>
-          <${Ratings} r=${r} />
         <//>
       </div>
     </div>
