@@ -20,7 +20,7 @@ export const routes = [
   { path: '/play/:mode', title: 'Set up', back: '/', load: placeholder },
   { path: '/draft', title: 'Draft', back: '/', load: placeholder },
   { path: '/match', title: 'Match', back: '/', load: placeholder },
-  { path: '/run', title: 'World Cup Run', back: '/', load: placeholder },
+  { path: '/run', title: 'World Cup Run', back: '/', load: () => import('./screens/run/run.js') },
   { path: '/daily', title: 'Daily Challenge', back: '/', load: placeholder },
   { path: '/exhibition', title: 'Exhibition', back: '/', load: placeholder },
   { path: '*', title: 'Not found', back: '/', load: placeholder },
