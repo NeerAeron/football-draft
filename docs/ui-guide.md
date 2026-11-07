@@ -34,6 +34,10 @@ ui/
     audio.js              soundStore, toggleSound, setVolume, playCue (wraps services/sound.js)
     player-view.js        PlayerView shape, playerView(), makePlayerView(catalog), summaryStats()
     tiers.js color.js     tierOf/resolveTier; teamStyle/readableOn/contrastRatio
+    kits.js               nation home kits (NATION_KITS, nationKit, sideColors, kitColors) — use
+                          them wherever a national side is shown; never a generic default colour
+    format.js             fmt1/fmt2/int/signed1/pct — the ONLY number formatting for display
+                          ('.' decimals, ',' thousands; never toLocaleString for numbers)
     saved.js storage.js   saved run/daily readers; safe localStorage helpers
   components/             shared components: <name>.js + <name>.css, props documented on top
   shell/                  app.js (outlet, transitions, focus, errors), top-bar.js, brand.js,

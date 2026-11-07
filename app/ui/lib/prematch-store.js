@@ -19,6 +19,7 @@ import { teamLinks } from '../../core/draft/links.js';
 import { NATURAL_FIT } from '../../core/draft/session.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { buildMatchConfig, requestMatch, teamCode, MATCH_VIEWS } from './match-store.js';
+import { nationKit } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
 export const PREMATCH_KEY = 'football-draft-prematch';
@@ -98,7 +99,7 @@ function normalizeSide(side, i) {
   return {
     name: String(side.name || `Team ${i + 1}`),
     short: side.short || teamCode(side.name || `Team ${i + 1}`),
-    colors: colors.length ? colors : DEFAULT_KITS[i],
+    colors: colors.length ? colors : nationKit(side.flagCode ?? side.code) || DEFAULT_KITS[i],
     flagCode: side.flagCode ?? side.code ?? null,
     kind,
     formation: side.formation,

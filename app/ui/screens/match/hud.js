@@ -5,6 +5,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
 import { Flag, Crest, Icon, Confetti } from '../../components/index.js';
+import { fmt2 } from '../../lib/format.js';
 
 /** matchMedia as state (e.g. a smaller score bug on phones). */
 export function useMedia(query) {
@@ -91,7 +92,7 @@ export function MomentumChart({
 
 const STAT_ROWS = [
   ['possession', 'Possession', v => `${v}%`],
-  ['xg', 'Expected goals (xG)', v => v.toFixed(2)],
+  ['xg', 'Expected goals (xG)', v => fmt2(v)],
   ['shots', 'Shots'],
   ['onTarget', 'On target'],
   ['bigChances', 'Big chances'],

@@ -26,6 +26,7 @@ import {
   useMedia,
 } from './hud.js';
 import { MentalityControl } from './tactics.js';
+import { fmt2 } from '../../lib/format.js';
 
 const SPEED_OPTIONS = [1, 2, 4].map(v => ({ value: String(v), label: `${v}×` }));
 
@@ -98,11 +99,8 @@ function Scoreline({ controller, teams }) {
 function XgLine({ controller, teams }) {
   const xg = useStore(controller.hud, h => h.xg);
   const total = xg[0] + xg[1];
-  return html`<div
-    class="xgline"
-    aria-label=${`Expected goals ${xg[0].toFixed(2)} to ${xg[1].toFixed(2)}`}
-  >
-    <span class="xgline__v num">${xg[0].toFixed(2)}</span>
+  return html`<div class="xgline" aria-label=${`Expected goals ${fmt2(xg[0])} to ${fmt2(xg[1])}`}>
+    <span class="xgline__v num">${fmt2(xg[0])}</span>
     <span class="xgline__bar" aria-hidden="true">
       <span
         style=${{ width: `${total > 0 ? (xg[0] / total) * 100 : 50}%`, background: 'var(--home)' }}
@@ -110,7 +108,7 @@ function XgLine({ controller, teams }) {
       <span style=${{ flex: 1, background: 'var(--away)' }}></span>
     </span>
     <span class="xgline__label">xG</span>
-    <span class="xgline__v num">${xg[1].toFixed(2)}</span>
+    <span class="xgline__v num">${fmt2(xg[1])}</span>
   </div>`;
 }
 
@@ -181,7 +179,7 @@ function Halftime({ controller, teams, onTactics }) {
       </div>
       <div>
         <dt>xG</dt>
-        <dd class="num">${st[0].xg.toFixed(2)} – ${st[1].xg.toFixed(2)}</dd>
+        <dd class="num">${fmt2(st[0].xg)} – ${fmt2(st[1].xg)}</dd>
       </div>
     </dl>
     ${users.map(

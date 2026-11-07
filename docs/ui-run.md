@@ -11,7 +11,7 @@ render. Follow `docs/ui-guide.md` for components, tokens and flows.
 | `#/exhibition` | Exhibition picker | `screens/exhibition/exhibition.js`, `exhibition.css` |
 | `#/challenge?c=…&r=…` | challenge link landing (`#c=…` short links are redirected here by `routes.js`) | `screens/run/challenge.js` |
 
-Shared pieces: `lib/run-store.js` (persistence, Home summary, kits, prematch sides, stakes,
+Shared pieces: `lib/run-store.js` (persistence, Home summary, prematch sides, stakes,
 links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/run/auto-sim.js`
 (engine auto-sims) + `auto-sim-worker.js`, `sim-ticker.js` (`useSimTicker` results ticker), `share-panel.js`,
 `team-view.js` (XI → PlayerViews, share card data), `trophy.js`.

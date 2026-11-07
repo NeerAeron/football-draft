@@ -3,6 +3,7 @@
 import { performanceRating } from '../../../core/sim/replay.js';
 import { commonName } from '../../../core/players/player-labels.js';
 import { minuteLabel } from './commentary.js';
+import { fmt1 } from '../../lib/format.js';
 
 const round = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
 const pct = (a, b) => (b > 0 ? Math.round((100 * a) / b) : 0);
@@ -175,7 +176,7 @@ export function analysisChips(result, side = 0, max = 3) {
     xga = them.xg,
     won = result.winner === side,
     lost = result.winner === o,
-    f1 = v => v.toFixed(1),
+    f1 = fmt1,
     plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const chips = [];
   const add = (id, tone, label, detail, weight) => chips.push({ id, tone, label, detail, weight });
@@ -320,7 +321,7 @@ export function shareLine(result) {
     scorers.set(key, [...(scorers.get(key) || []), g.minute]);
   }
   const goals = [...scorers].map(([n, mins]) => `${n} ${mins.join(' ')}`).join(', ');
-  const motm = result.motm ? ` · MOTM ${result.motm.name} ${result.motm.rating.toFixed(1)}` : '';
+  const motm = result.motm ? ` · MOTM ${result.motm.name} ${fmt1(result.motm.rating)}` : '';
   return `⚽ ${home.name} ${result.score[0]}–${result.score[1]} ${away.name}${pens}${goals ? ` · ${goals}` : ''}${motm} · Football Draft`;
 }
 

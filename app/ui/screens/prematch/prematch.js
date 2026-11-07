@@ -45,6 +45,7 @@ import {
 } from '../../components/index.js';
 import { useMedia } from '../draft/use-media.js';
 import { POOR_FIT_DROP, linkLines } from '../draft/draft-model.js';
+import { fmt1 } from '../../lib/format.js';
 
 const VIEWS = [
   { value: 'key', label: 'Key Moments', hint: '≈1 min' },
@@ -113,7 +114,7 @@ function Matchup({ data, strengths, children }) {
             <${SideBadge} side=${s} />
             <span class="matchup__name">${s.name}</span>
             <span class="matchup__meta">
-              <b class="num">${strengths[i].rating.toFixed(1)}</b>
+              <b class="num">${fmt1(strengths[i].rating)}</b>
               <span>${formationLabel(s.formation).split(' · ')[0]}</span>
             </span>
           </div>`,

@@ -19,10 +19,12 @@ import { Skeleton } from '../../components/skeleton.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { openPrematch } from '../../lib/prematch-store.js';
 import { readMatchResult, clearMatch, matchStore } from '../../lib/match-store.js';
-import { sideColors, matchSideFor } from '../../lib/run-store.js';
+import { matchSideFor } from '../../lib/run-store.js';
+import { sideColors } from '../../lib/kits.js';
 import { TeamMark } from '../run/run-parts.js';
 import { xiViews } from '../run/team-view.js';
 import { PitchView } from '../../components/pitch-view.js';
+import { fmt1 } from '../../lib/format.js';
 
 const KEY = 'football-draft-exhibition';
 const PAGE = 40;
@@ -118,7 +120,7 @@ function TeamSlot({ team, side, active, onActivate, onRandom }) {
             <span class="ex-slot__name">${team.name}</span>
             <span class="ex-slot__meta">${teamMeta(team)}</span>
             <span class="ex-slot__stats">
-              <span><b class="num">${team.rating.toFixed(1)}</b> OVR</span>
+              <span><b class="num">${fmt1(team.rating)}</b> OVR</span>
               <span>${formationLabel(team.formation)}</span>
             </span>`
         : html`<span class="ex-slot__plus" aria-hidden="true"
@@ -164,7 +166,7 @@ function TeamList({ items, selected, onPick, limit, onMore }) {
                   decorative
                 />`
               }
-              <span class="ex-team__rating num">${t.rating.toFixed(1)}</span>
+              <span class="ex-team__rating num">${fmt1(t.rating)}</span>
             </button>
           </li>`,
       )}
@@ -382,7 +384,7 @@ export default function ExhibitionScreen() {
               const d = teams[0].effective - teams[1].effective;
               return Math.abs(d) < 0.6
                 ? 'Too close to call.'
-                : `${d > 0 ? teams[0].name : teams[1].name} are favourites by ${Math.abs(d).toFixed(1)}.`;
+                : `${d > 0 ? teams[0].name : teams[1].name} are favourites by ${fmt1(Math.abs(d))}.`;
             })()}
           </p>`
         }

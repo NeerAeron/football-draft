@@ -14,6 +14,7 @@ import { Segmented } from '../../components/segmented.js';
 import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { HeroArt } from './hero-art.js';
+import { int } from '../../lib/format.js';
 
 export const DRAFT_TYPE_OPTIONS = [
   { value: 'nations', label: 'Nations' },
@@ -193,7 +194,7 @@ function DailyCard({ daily }) {
     <p class="home-daily__text">
       ${
         daily.todayResult
-          ? `Today: ${daily.todayResult.points.toLocaleString()} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
+          ? `Today: ${int(daily.todayResult.points)} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
           : 'Same spins for everyone today. Nations draft, one attempt, auto-simmed.'
       }
     </p>

@@ -16,6 +16,7 @@ import { CONFIG } from '../../core/config/config.js';
 import { Match } from '../../core/sim/engine.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { matchSetup, applyMatchSetup } from '../../core/draft/session.js';
+import { nationKit } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
 export const MATCH_KEY = 'football-draft-match';
@@ -110,11 +111,13 @@ function normalizeSide(side, i) {
   if (!Array.isArray(side.players) || side.players.length !== 11 || side.players.some(p => !p))
     throw new RangeError(`Side ${i + 1} needs eleven players in formation slot order`);
   const [color, secondary] = side.colors ?? [side.color, side.secondary];
+  // National sides have no catalog colours: their home kit comes from lib/kits.js.
+  const kit = (!color && nationKit(side.code ?? side.flagCode)) || DEFAULT_KITS[i];
   return {
     name: side.name || `Team ${i + 1}`,
     short: side.short || initials(side.name),
-    color: color || DEFAULT_KITS[i][0],
-    secondary: secondary || DEFAULT_KITS[i][1],
+    color: color || kit[0],
+    secondary: secondary || (color ? DEFAULT_KITS[i][1] : kit[1]),
     formation: side.formation,
     kind: side.kind ?? null,
     id: side.id ?? null,

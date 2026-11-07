@@ -4,8 +4,9 @@ import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
 import { PitchView, Meter, Icon, Flag, LeagueLogo, Crest } from '../../components/index.js';
 import { linkLines } from './draft-model.js';
+import { fmt1, signed1 } from '../../lib/format.js';
 
-const fmt = v => (v == null ? '–' : v.toFixed(1));
+const fmt = v => fmt1(v);
 
 /** Pick progress: one pip per slot, filled as players arrive. */
 export function Progress({ filled, total = 11, label }) {
@@ -61,7 +62,7 @@ export function TeamSummary({
         sub=${
           !hideRatings && delta != null
             ? html`<span class=${cx('delta', delta >= 0 ? 'is-up' : 'is-down')}
-                >${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}</span
+                >${signed1(delta)}</span
               >`
             : null
         }

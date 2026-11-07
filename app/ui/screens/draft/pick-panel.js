@@ -6,6 +6,7 @@ import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
 import { PlayerCard, FitTag, Flag, Button, IconButton, Sheet } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
+import { fmt1, signed1 } from '../../lib/format.js';
 
 function Effects({ team, preview, hideRatings }) {
   if (!preview) return null;
@@ -17,11 +18,11 @@ function Effects({ team, preview, hideRatings }) {
       !hideRatings &&
       html`<li class="pick-effects__item">
         <span class="pick-effects__label">Team OVR</span>
-        <b class="num">${preview.rating.toFixed(1)}</b>
+        <b class="num">${fmt1(preview.rating)}</b>
         ${
           delta != null &&
           html`<span class=${cx('delta', delta >= 0 ? 'is-up' : 'is-down')}
-            >${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}</span
+            >${signed1(delta)}</span
           >`
         }
       </li>`

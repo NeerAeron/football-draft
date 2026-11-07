@@ -26,6 +26,7 @@ import {
   modeLabel,
   levelLabel,
 } from './team-view.js';
+import { fmt1 } from '../../lib/format.js';
 
 /** One line on how the run ended: "Beat England 2–1 in the final" / "Lost 1–2 to Croatia". */
 export function endLine(snapshot) {
@@ -68,7 +69,7 @@ function celebrate(snapshot, meta, onCelebrated) {
   if (giant)
     achievement({
       title: 'Giant Killer',
-      description: `Knocked over ${giant.opponent.name}, rated ${giant.opponent.rating.toFixed(1)}.`,
+      description: `Knocked over ${giant.opponent.name}, rated ${fmt1(giant.opponent.rating)}.`,
       icon: 'swords',
     });
   onCelebrated?.();
@@ -152,7 +153,7 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
       <${StatTile} label="Clean sheets" value=${cleanSheets} />
       <${StatTile}
         label="Team OVR"
-        value=${meta.hideRatings ? '??' : snapshot.user.rating.toFixed(1)}
+        value=${meta.hideRatings ? '??' : fmt1(snapshot.user.rating)}
         tone="volt"
       />
     </div>
@@ -179,7 +180,7 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
                     <p class="pott__name">${pottView.name}</p>
                     <p class="pott__line">
                       ${[
-                        html`<b class="num" key="a">${pott.average?.toFixed(1)}</b>`,
+                        html`<b class="num" key="a">${fmt1(pott.average)}</b>`,
                         ' avg rating · ',
                         html`<b class="num" key="g">${pott.goals}</b>`,
                         pott.goals === 1 ? ' goal · ' : ' goals · ',

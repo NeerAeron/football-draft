@@ -4,6 +4,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
+import { sideColors } from '../../lib/kits.js';
 import { resolveTier } from '../../lib/tiers.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
@@ -21,8 +22,9 @@ import {
 } from '../../components/index.js';
 import { quickOpponent, difficultyLabel } from '../../lib/draft-store.js';
 import { linkLines } from './draft-model.js';
+import { fmt1 } from '../../lib/format.js';
 
-const fmt = v => (v == null ? '–' : Number(v).toFixed(1));
+const fmt = v => fmt1(v);
 const pct = p => `${Math.round(p * 100)}%`;
 
 const NEXT = {
@@ -89,10 +91,7 @@ function XiSummary({ team, players, hideRatings, small }) {
 
 function OpponentReveal({ opponent, mine, hideRatings }) {
   const p = outcomeProbabilities(mine, opponent.effective);
-  return html`<div
-    class="opp-reveal"
-    style=${teamStyle([opponent.color || '#baaff0', opponent.secondary || '#16213a'])}
-  >
+  return html`<div class="opp-reveal" style=${teamStyle(sideColors(opponent))}>
     <p class="eyebrow is-gold">Your opponent</p>
     <div class="opp-reveal__crest">
       ${

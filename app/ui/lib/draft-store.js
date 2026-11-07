@@ -30,6 +30,7 @@ import { pickOpponent } from '../../core/draft/opponents.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { loadCatalog } from '../../services/catalog.js';
+import { sideColors } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
 export const DRAFT_KEY = 'football-draft-draft';
@@ -449,7 +450,7 @@ export function prematchPayload() {
       draftedSide(0, 'user'),
       {
         name: opp.name,
-        colors: opp.color ? [opp.color, opp.secondary] : undefined,
+        colors: sideColors(opp),
         flagCode: opp.code || null,
         kind: 'ai',
         formation: opp.formation,

@@ -58,6 +58,7 @@ import {
 } from '../run/run-parts.js';
 import { SharePanel } from '../run/share-panel.js';
 import { xiViews, shareCardFor } from '../run/team-view.js';
+import { fmt1, int } from '../../lib/format.js';
 
 const dateLabel = id =>
   new Date(id + 'T12:00:00Z').toLocaleDateString(undefined, {
@@ -268,7 +269,7 @@ function CountUp({ value, duration = 1200 }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value]);
-  return html`<span class="num">${n.toLocaleString()}</span>`;
+  return html`<span class="num">${int(n)}</span>`;
 }
 
 function Result({ catalog, day, entry, state, today, fresh }) {
@@ -311,9 +312,9 @@ function Result({ catalog, day, entry, state, today, fresh }) {
         title: `Daily #${day.number}`,
         hideRatings: hide,
         stats: [
-          { label: 'Points', value: entry.points.toLocaleString() },
-          { label: 'Of perfect XI', value: `${entry.perfect.toFixed(1)}%` },
-          { label: 'Team OVR', value: hide ? '??' : entry.rating.toFixed(1) },
+          { label: 'Points', value: int(entry.points) },
+          { label: 'Of perfect XI', value: `${fmt1(entry.perfect)}%` },
+          { label: 'Team OVR', value: hide ? '??' : fmt1(entry.rating) },
         ],
       }),
     [snapshot, views],
@@ -359,8 +360,8 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       </div>
       ${snapshot && html`<${PathStrip} snapshot=${snapshot} />`}
       <div class="daily-card__stats">
-        <${StatTile} label="Of perfect XI" value=${`${entry.perfect.toFixed(1)}%`} tone="gold" />
-        <${StatTile} label="Team OVR" value=${hide ? '??' : entry.rating.toFixed(1)} tone="volt" />
+        <${StatTile} label="Of perfect XI" value=${`${fmt1(entry.perfect)}%`} tone="gold" />
+        <${StatTile} label="Team OVR" value=${hide ? '??' : fmt1(entry.rating)} tone="volt" />
         <${StatTile} label="Goals" value=${`${entry.record.gf}–${entry.record.ga}`} />
       </div>
       ${
