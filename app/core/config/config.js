@@ -61,8 +61,27 @@ export const DEFAULT_CONFIG = {
       D: 0.5,
       F: 0.25,
     },
+    // Clubs: one spin lands a league, then a club. Both legs are tier-weighted (shown on the
+    // reels); with flat odds ~half of all picks were duds (no option >= 75) because 429 of
+    // the 546 clubs are C/D/F.
     clubs: {
       minimumPlayers: 11,
+      leagueTierWeights: {
+        A: 12,
+        B: 4,
+        C: 1,
+        D: 0.5,
+        F: 0.25,
+      },
+      // By club tier (S >= 82 … F: median of the best ten; see teamTiers).
+      tierWeights: {
+        S: 4,
+        A: 3,
+        B: 2,
+        C: 1,
+        D: 0.5,
+        F: 0.25,
+      },
     },
     // Re-rolls per drafter by difficulty.
     rerolls: {
@@ -863,6 +882,8 @@ const DRAFT_FIELDS = {
   'draft.nations.squadAttackers': ['Call-ups: at least attackers', 0, 15, 1],
   'draft.leagueTierWeights.': [null, 0, 20, 0.05],
   'draft.clubs.minimumPlayers': ['Spinnable club: minimum players', 1, 30, 1],
+  'draft.clubs.tierWeights.': [null, 0, 20, 0.05],
+  'draft.clubs.leagueTierWeights.': [null, 0, 50, 0.05],
   'draft.rerolls.': [null, 0, 5, 1],
   'draft.ladder.': [null, -15, 15, 0.5],
   'draft.links.': [null, 1, 11, 1],
@@ -976,6 +997,11 @@ const CROSS_FIELD_RULES = [
     reset: ['draft.leagueTierWeights'],
     ok: c => Object.values(c.draft.leagueTierWeights).some(v => v > 0),
   },
+  ...['draft.clubs.leagueTierWeights', 'draft.clubs.tierWeights'].map(path => ({
+    message: 'At least one tier must have a positive draw weight.',
+    reset: [path],
+    ok: c => Object.values(at(c, path)).some(v => v > 0),
+  })),
   {
     message: 'Bench and F must start at zero to cover every rating.',
     reset: ['playerTiers', 'teamTiers'],

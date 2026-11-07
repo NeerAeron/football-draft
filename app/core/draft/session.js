@@ -280,7 +280,9 @@ export class DraftSession {
     const clubOk = c => !exclude.has(c.id) && this.#valid('club', c.id, side);
     const leagues = this.#land(
       this.#reel('league', ix.leagues.map(leagueMeta), o =>
-        ix.leagueById.get(o.id).spinnableClubs.some(clubOk) ? tierWeight(o.tier) : 0,
+        ix.leagueById.get(o.id).spinnableClubs.some(clubOk)
+          ? (this.rules.clubs.leagueTierWeights?.[o.tier] ?? tierWeight(o.tier))
+          : 0,
       ),
       forcedId === null ? null : (ix.clubs.get(forcedId)?.leagueId ?? null),
     );
@@ -296,7 +298,7 @@ export class DraftSession {
           secondary: c.secondary,
           leagueId: c.leagueId,
         })),
-        o => (clubOk(ix.clubs.get(o.id)) ? 1 : 0),
+        o => (clubOk(ix.clubs.get(o.id)) ? (this.rules.clubs.tierWeights?.[o.tier] ?? 1) : 0),
       ),
       forcedId,
     );
@@ -733,8 +735,8 @@ export function buildSide({
       role: rows[i][2],
       chem: round3(summary.players[i].chem),
     })),
-    rating: round1(rating),
-    effective: round1(rating + summary.chem),
+    rating: Math.round(rating * 100) / 100,
+    effective: Math.round((rating + summary.chem) * 100) / 100,
     links: {
       score: summary.score,
       maxScore: summary.maxScore,
