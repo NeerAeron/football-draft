@@ -10,10 +10,16 @@
 // Engine vs model by gap: −8…−4 19/15/66 vs 21/19/60, +4…+8 59/25/17 vs 63/18/19, +8…+13
 // 80/14/6 vs 78/13/9. No home or coach constant (the AI coach's level moves the user's edge by
 // at most ±1 rating point, with no trend), and Poisson draws match (16.4% vs 16.9%).
-// Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.01 per
-// rating point.
+// Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
+// rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 
-export const MATCH_MODEL = { goals: 1.82, slope: 0.0525, maxGoals: 9, kick: 0.75, kickSlope: 0.01 };
+export const MATCH_MODEL = {
+  goals: 1.82,
+  slope: 0.0525,
+  maxGoals: 9,
+  kick: 0.75,
+  kickSlope: 0.005,
+};
 
 /** Expected goals [a, b] for two effective ratings. */
 export function expectedGoals(ratingA, ratingB, model = MATCH_MODEL) {

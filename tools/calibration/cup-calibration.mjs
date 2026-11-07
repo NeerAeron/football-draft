@@ -233,8 +233,10 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
         shootout: m.knockout && draw ? { winner: r.winner === 0 ? 'user' : 'opponent' } : null,
       });
     } else {
+      // As CupRun.simulateNext: the user's knockout ties carry KNOCKOUT_EDGE.
       const random = env.lcg(m.seed),
-        res = env.simulateResult(m.home.effective, m.away.effective, random, {
+        edge = m.knockout ? env.KNOCKOUT_EDGE : 0,
+        res = env.simulateResult(m.home.effective + edge, m.away.effective, random, {
           knockout: m.knockout,
           model,
         });
@@ -276,6 +278,7 @@ function gamesReport(env, rows) {
     for (const x of g) {
       const p = env.outcomeProbabilities(x.ratings[0], x.ratings[1]);
       if (x.score[0] > x.score[1]) w++;
+      // (model columns: no knockout edge — the comparison that sets KNOCKOUT_EDGE)
       else if (x.score[0] === x.score[1]) d++;
       ew += p.win;
       ed += p.draw;
