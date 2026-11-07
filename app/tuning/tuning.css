@@ -1,8 +1,65 @@
+/* Advanced tuning page (config.html): standalone styles, no dependency on the game UI. */
 :root {
+  color-scheme: dark;
+  --bg: #101615;
+  --panel: #17201e;
+  --border: #2c3832;
+  --text: #ecf0e9;
+  --muted: #a1afa5;
   --accent: #d9f580;
+  --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+* {
+  box-sizing: border-box;
 }
 body {
-  background: #101615;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+select,
+input[type='checkbox'] {
+  cursor: pointer;
+}
+button {
+  color: inherit;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+button:hover {
+  filter: brightness(1.1);
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+.import-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+[hidden] {
+  display: none !important;
+}
+select {
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #202b24;
+  padding: 8px;
+  font-size: 13px;
+}
+main {
+  margin: 0 auto;
 }
 button,
 .import-button {
@@ -361,6 +418,11 @@ button,
   }
   .config-row {
     min-height: 62px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
   }
 }
 @media (prefers-reduced-motion: no-preference) {

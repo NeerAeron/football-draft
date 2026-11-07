@@ -199,12 +199,6 @@ function AdvancedPanel() {
         title="Advanced tuning"
         text="Engine, draft and rating parameters for experiments."
       />
-      <${LinkRow}
-        href="./legacy.html"
-        icon="rotate-ccw-clock"
-        title="Classic version"
-        text="The previous interface, kept until the new one is complete."
-      />
     </div>
   <//>`;
 }

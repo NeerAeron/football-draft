@@ -278,7 +278,6 @@ export default function Home() {
     </div>
     <footer class="container home__footer">
       <nav class="home__links" aria-label="More">
-        <a href="./legacy.html">Classic version</a>
         <a href=${href('/settings', {}, { section: 'credits' })}>Credits & licences</a>
         <a href="./config.html">Advanced tuning</a>
       </nav>
