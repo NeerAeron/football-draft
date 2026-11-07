@@ -8,7 +8,7 @@ const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
 export class RestartMethods {
   startRestart(type, team, x, y, timer) {
     timer ??=
-      type === 'Goal kick' ? 1.7 : type === 'Corner' ? 2.1 : type === 'Throw-in' ? 1.15 : 1.2;
+      type === 'Goal kick' ? 1.7 : type === 'Corner' ? 2.8 : type === 'Throw-in' ? 1.15 : 1.2;
     if (!KICKOFFS.has(type)) timer *= this.tuning.gameplay.restartSetup;
     // A side holding a lead takes its time over restarts; one chasing hurries.
     const lean = this.settings(team).lean;
@@ -59,7 +59,7 @@ export class RestartMethods {
         .sort((a, c) => dist(a, b) - dist(c, b))[0];
     this.restart = { type, team, x, y, timer, taker: taker.id };
     if (!['Goal', 'Second half', 'Extra time', 'Penalty', 'Free kick', 'Offside'].includes(type))
-      this.addEvent(`${type} · ${this.teams[team].name}`, team, 'restart');
+      this.addEvent(`${type} · ${this.teams[team].name}`, team, 'restart', { restart: type });
     this.planTimer = 0;
     for (const p of this.activePlayers) {
       p.rethinkAt = 0;
@@ -73,21 +73,6 @@ export class RestartMethods {
             .filter(p => p.team !== team && p.role !== 'GK')
             .sort((a, b) => dist(a, this.ball) - dist(b, this.ball))
             .slice(0, 3)
-        : [];
-    const cornerAttack =
-      type === 'Corner'
-        ? this.activePlayers
-            .filter(p => p.team === team && p.role !== 'GK' && p.id !== taker.id)
-            .sort(
-              (a, c) =>
-                c.skill('heading') * 0.6 +
-                c.skill('strength') * 0.25 +
-                c.skill('shooting') * 0.15 -
-                (a.skill('heading') * 0.6 +
-                  a.skill('strength') * 0.25 +
-                  a.skill('shooting') * 0.15),
-            )
-            .slice(0, 5)
         : [];
     for (const p of this.activePlayers) {
       p.cooldown = 0;
@@ -107,15 +92,6 @@ export class RestartMethods {
           p.team,
         );
         p.ty = this.direction(p.team) > 0 ? by : H - by;
-      }
-      if (type === 'Corner' && p.role !== 'GK' && p.id !== taker.id) {
-        if (p.team !== team || cornerAttack.includes(p)) {
-          p.tx = this.abs(team === p.team ? 89 + this.rand() * 10 : 9 + this.rand() * 8, p.team);
-          p.ty = 18 + this.rand() * 32;
-        } else {
-          p.tx = this.abs(55 + (p.slot % 2) * 12, p.team);
-          p.ty = 20 + (p.slot % 3) * 14;
-        }
       }
       if (type === 'Penalty') {
         if (p.team !== team && p.role === 'GK') {
@@ -137,8 +113,85 @@ export class RestartMethods {
         p.ty = y + Math.sin(angle) * 9.3 + Math.cos(angle) * (wallIndex - 1);
       }
     }
+    if (type === 'Corner') this.setupCorner(team, taker, y);
     taker.tx = x - this.direction(team) * 0.6;
     taker.ty = clamp(y, 1, 67);
+  }
+  // Corner routine: near-post flick-on, far-post header or a ball to the
+  // edge. The best headers take the box spots (the best of all attacks the
+  // routine's zone); the defenders' best headers mark them goal-side and the
+  // rest hold zones. The aerial duel at the delivery decides it.
+  setupCorner(team, taker, cornerY) {
+    const near = cornerY < 34 ? -1 : 1,
+      aerial = q =>
+        q.skill('heading') * 0.6 + q.skill('strength') * 0.25 + q.tendency('aerial') * 10,
+      longShot = q => q.skill('longShots') * 0.6 + q.skill('shooting') * 0.4;
+    const attackers = this.activePlayers
+      .filter(p => p.team === team && p.role !== 'GK' && p.id !== taker.id)
+      .sort((a, c) => aerial(c) - aerial(a) || a.id - c.id);
+    const box = attackers.slice(0, 5),
+      rest = attackers.slice(5);
+    const shooter = [...attackers.slice(2)].sort(
+      (a, c) => longShot(c) - longShot(a) || a.id - c.id,
+    )[0];
+    const routine = this.chooseWeighted([
+      ['near post', 1],
+      ['far post', 1.2],
+      ['edge', shooter ? 0.25 + clamp((longShot(shooter) - 70) / 40, 0, 0.4) : 0],
+    ]);
+    const spots = {
+      'near post': [99.6, 34 + near * 2.6],
+      'far post': [98.6, 34 - near * 3.4],
+      six: [100.4, 34 - near * 0.4],
+      spot: [94, 34 + near],
+      edge: [87.5, 34 - near * 2],
+    };
+    const order =
+      routine === 'near post'
+        ? ['near post', 'far post', 'six', 'spot', 'edge']
+        : ['far post', 'near post', 'six', 'spot', 'edge'];
+    const place = (p, [x, y]) => {
+      p.tx = this.abs(x, team);
+      p.ty = y;
+    };
+    const spotOf = new Map(box.map((p, i) => [p, spots[order[i]]]));
+    let target = box[0];
+    if (routine === 'edge' && shooter) {
+      // The shooter takes the edge spot; whoever held it takes his place.
+      const holder = box.find(p => spotOf.get(p) === spots.edge && p !== shooter);
+      if (holder) spotOf.set(holder, spotOf.get(shooter) ?? [92, 34 - near * 4]);
+      spotOf.set(shooter, spots.edge);
+      target = shooter;
+    }
+    for (const [p, spot] of spotOf) place(p, spot);
+    rest.filter(p => p !== target).forEach((p, i) => place(p, [i ? 67 : 58, i % 2 ? 22 : 46]));
+    const defenders = this.activePlayers
+      .filter(p => p.team !== team && p.role !== 'GK')
+      .sort((a, c) => aerial(c) - aerial(a) || a.id - c.id);
+    const marked = box.slice(0, 4);
+    defenders.forEach((d, i) => {
+      if (i < marked.length) {
+        const a = marked[i];
+        d.tx = a.tx + this.direction(team) * 0.8;
+        d.ty = a.ty + (34 - a.ty) * 0.15;
+        d.markId = a.id;
+      } else {
+        const zones = [
+          [103.2, 34 + near * 3],
+          [99.5, 34],
+          [88, 34],
+          [80, 24],
+          [80, 44],
+          [72, 34],
+        ];
+        place(d, zones[Math.min(i - marked.length, zones.length - 1)]);
+      }
+    });
+    Object.assign(this.restart, {
+      routine,
+      target: target?.id ?? null,
+      aim: target ? { x: target.tx, y: target.ty } : null,
+    });
   }
   stepRestart(dt) {
     const r = this.restart;
@@ -172,6 +225,14 @@ export class RestartMethods {
         }
       }
     }
+    // Corner positions are a set piece: everyone completes the walk to his spot.
+    if (r.type === 'Corner')
+      for (const p of this.activePlayers)
+        if (p.id !== taker.id && p.role !== 'GK') {
+          p.x = p.tx;
+          p.y = p.ty;
+          p.vx = p.vy = 0;
+        }
     taker.x = clamp(r.x - this.direction(r.team) * 0.5, 0.5, 104.5);
     taker.y = clamp(r.y, 0.5, 67.5);
     taker.vx = taker.vy = 0;
@@ -201,6 +262,26 @@ export class RestartMethods {
       return;
     }
     if (r.type === 'Corner') {
+      const target = r.target != null ? this.players[r.target] : null;
+      if (target && !target.sentOff && r.aim) {
+        // Deliver to the routine's zone; the runner attacks it.
+        const edge = r.routine === 'edge',
+          aim = edge ? { x: target.x, y: target.y } : r.aim;
+        this.pass(
+          taker,
+          {
+            r: target,
+            aim,
+            d: dist(taker, aim),
+            delivery: edge ? 'pass' : 'cross',
+            loft: !edge,
+            risk: 0.3,
+            chance: 0.5,
+          },
+          r.type,
+        );
+        return;
+      }
       const box = opts.filter(o => this.inBox(o.r)).sort((a, b) => b.score - a.score)[0];
       if (box) {
         this.pass(taker, { ...box, delivery: 'cross' }, r.type);

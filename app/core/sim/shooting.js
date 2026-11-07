@@ -70,7 +70,7 @@ export class ShootingMethods {
           (1 + pressure * 0.5) *
           balance) /
           foot.quality) *
-        (header ? 1.18 : 1) *
+        (header ? 1.7 : 1) *
         (p.has('finisher') && box ? 0.93 : 1) *
         (1 + (1 - spatial.openness) * 0.4) *
         clamp(1 / Math.sqrt(spatial.quality), 0.9, 1.2);
@@ -78,7 +78,7 @@ export class ShootingMethods {
       angle = Math.atan2(ty - p.y, goalX - p.x);
     const speed =
       (14 + p.skill('power') * 0.22 + this.rand() * 1.5) *
-      (header ? 0.65 : shotType === 'Placed finish' ? 0.82 : 1) *
+      (header ? 0.58 : shotType === 'Placed finish' ? 0.82 : 1) *
       (header ? 1 : Math.sqrt(foot.quality)) *
       this.tuning.gameplay.shotPower;
     const flight = d / speed,

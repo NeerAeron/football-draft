@@ -303,8 +303,10 @@ export class MovementMethods {
       q.tendency('aerial') * 12 +
       (q.has('aerial') ? 5 : 0);
     const home = q => this.inBox(q, 1 - q.team);
+    // First contact helps a little; defenders facing the ball in front of
+    // their own goal (or rising with the keeper behind them) help a lot.
     const wins = sigmoid(
-      (power(p) - power(rival)) / 9 + 0.3 + (home(p) ? 0.25 : 0) - (home(rival) ? 0.25 : 0),
+      (power(p) - power(rival)) / 9 + 0.15 + (home(p) ? 0.85 : 0) - (home(rival) ? 0.85 : 0),
     );
     if (this.rand() < wins) return false;
     const height = this.ball.z;
@@ -339,7 +341,7 @@ export class MovementMethods {
       b.vy = side * (3 + this.rand() * 3);
       b.vz = 2 + this.rand();
     } else {
-      b.vx = out * (7 + this.rand() * 6 + d.skill('heading') * 0.03);
+      b.vx = out * (9 + this.rand() * 6 + d.skill('heading') * 0.03);
       b.vy = side * (2 + this.rand() * 4);
       b.vz = 3 + this.rand() * 3;
     }
