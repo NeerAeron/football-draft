@@ -17,6 +17,7 @@ import {
   isKeeper,
   catalogIndex,
 } from '../../core/draft/pools.js';
+import { opponentCandidates } from '../../core/draft/opponents.js';
 import { loadCatalog } from '../../services/catalog.js';
 
 const SLICE_MS = 8;
@@ -79,6 +80,7 @@ export function warmCatalog(catalog) {
     });
     await yieldToMain();
     catalogIndex(catalog);
+    await yieldToMain();
     return catalog;
   })().catch(error => {
     warmed.delete(catalog);
@@ -88,5 +90,36 @@ export function warmCatalog(catalog) {
   return job;
 }
 
-/** loadCatalog() then warmCatalog(): the catalog, ready for drafts, runs and opponent lists. */
-export const loadWarmCatalog = () => loadCatalog().then(warmCatalog);
+const opponents = new WeakMap();
+/**
+ * Every club/nation XI the opponent ladder and the cup draw choose from (core
+ * opponentCandidates, cached by core): ~170 ms once, in a task of its own. Await it before
+ * creating a run so that work is not added to the run screen's first render.
+ */
+export function warmOpponents(catalog) {
+  if (!catalog?.players) return Promise.resolve(catalog);
+  let job = opponents.get(catalog);
+  if (!job) {
+    job = warmCatalog(catalog)
+      .then(yieldToMain)
+      .then(() => opponentCandidates(catalog))
+      // Resolve in a fresh task: the caller's next step (a render) must not join this one.
+      .then(yieldToMain)
+      .then(() => catalog);
+    opponents.set(catalog, job);
+  }
+  return job;
+}
+
+/**
+ * loadCatalog() then warmCatalog(): the catalog, ready for drafts. The opponent list warms
+ * up afterwards when the browser is idle (runs, quick-match opponents, exhibition).
+ */
+export const loadWarmCatalog = () =>
+  loadCatalog()
+    .then(warmCatalog)
+    .then(catalog => {
+      const idle = globalThis.requestIdleCallback || (fn => setTimeout(fn, 200));
+      idle(() => warmOpponents(catalog).catch(() => {}));
+      return catalog;
+    });

@@ -38,7 +38,11 @@ ui/
                           them wherever a national side is shown; never a generic default colour
     format.js             fmt1/fmt2/int/signed1/pct — the ONLY number formatting for display
                           ('.' decimals, ',' thousands; never toLocaleString for numbers)
-    saved.js storage.js   saved run/daily readers; safe localStorage helpers
+    saved.js storage.js   saved run/daily/draft readers; safe localStorage helpers
+    catalog-warm.js       loadWarmCatalog()/warmCatalog()/warmOpponents(): fill core's rating cache
+                          in ≤ 8 ms slices, then the draft index and the opponent list, each in
+                          its own task — use it (not bare loadCatalog) wherever a screen drafts,
+                          builds a run or lists opponents (no main-thread task > 200 ms)
   components/             shared components: <name>.js + <name>.css, props documented on top
   shell/                  app.js (outlet, transitions, focus, errors), top-bar.js, brand.js,
                           how-to-play.js, shell.css

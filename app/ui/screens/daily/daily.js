@@ -8,15 +8,11 @@ import { href } from '../../lib/router.js';
 import { useStore } from '../../lib/store.js';
 import { prefs } from '../../lib/prefs.js';
 import { isReducedMotion } from '../../lib/motion.js';
-import { loadWarmCatalog } from '../../lib/catalog-warm.js';
+import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
+import { perfectXIOffThread } from './perfect-xi.js';
 import { DEFAULT_CONFIG } from '../../../core/config/config.js';
 import { createCupRun, restoreCupRun } from '../../../core/competition/cup.js';
-import {
-  dailyChallenge,
-  perfectXI,
-  perfectPercent,
-  dailyScore,
-} from '../../../core/competition/daily.js';
+import { dailyChallenge, perfectPercent, dailyScore } from '../../../core/competition/daily.js';
 import { shareText } from '../../../core/competition/share.js';
 import { formationLabel } from '../../../core/players/formations.js';
 import { Button } from '../../components/button.js';
@@ -509,7 +505,7 @@ export default function DailyScreen() {
     const live = () => alive.current;
     {
       try {
-        const catalog = await loadWarmCatalog();
+        const catalog = await loadWarmCatalog().then(warmOpponents);
         if (!live()) return;
         const today = todayDailyId();
         const day = dailyChallenge(catalog, today);
@@ -529,7 +525,9 @@ export default function DailyScreen() {
         ) {
           const user = draft.session.matchSide(0);
           const run = createCupRun(catalog, { ...day.cup, user });
-          const optimum = perfectXI(catalog, day, { formation: user.formation });
+          // The perfect XI tries every re-roll combination (~250 ms): in a worker.
+          const optimum = await perfectXIOffThread(catalog, day, { formation: user.formation });
+          if (!live()) return;
           const perfect = perfectPercent(user.rating, optimum);
           ctx.state = beginDailyAttempt(state, {
             id: today,
