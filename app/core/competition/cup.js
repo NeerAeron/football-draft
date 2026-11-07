@@ -422,7 +422,10 @@ export class CupRun {
   heldYouBack(count = 1) {
     const rows = this.#playerStats(),
       rated = rows.some(r => r.matches);
-    const mean = rows.reduce((s, r) => s + r.slotRating, 0) / rows.length;
+    // Compared with the Team OVR every screen shows (user.rating), not a second average.
+    const team = Number.isFinite(this.user.rating)
+      ? this.user.rating
+      : rows.reduce((s, r) => s + r.slotRating, 0) / rows.length;
     return rows
       .filter(r => !rated || r.matches)
       .sort(
@@ -437,8 +440,8 @@ export class CupRun {
         reason:
           r.familiarity < 0.95
             ? `Out of position at ${r.role}: ${r.slotRating} (natural ${r.natural})`
-            : r.slotRating <= mean - 3
-              ? `Weakest link: ${r.slotRating} OVR vs team ${round2(mean)}`
+            : r.slotRating <= team - 3
+              ? `Weakest link: ${r.slotRating} OVR vs Team OVR ${team.toFixed(1)}`
               : rated
                 ? `Lowest match rating: ${r.average}`
                 : `Lowest rating in the XI: ${r.slotRating}`,

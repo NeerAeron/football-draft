@@ -261,6 +261,12 @@ test('Player of the Tournament and Held you back from match ratings', () => {
   assert.equal(held[0].average, 5.1);
   assert.ok(typeof held[0].reason === 'string' && held[0].reason.length > 5);
   assert.equal(held.length, 2);
+  // A "weakest link" is measured against the Team OVR the screens show, with one decimal.
+  for (const h of run.heldYouBack(11).filter(h => h.reason.startsWith('Weakest link')))
+    assert.equal(
+      h.reason,
+      `Weakest link: ${h.slotRating} OVR vs Team OVR ${run.user.rating.toFixed(1)}`,
+    );
 });
 
 test('serialize/restore round-trips a run mid-tournament', () => {
