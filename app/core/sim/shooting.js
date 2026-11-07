@@ -143,9 +143,11 @@ export class ShootingMethods {
       spread,
       penalty ? 0.99 : clamp(1 - spread * 0.055, 0.55, 0.98),
     );
-    stat.xg += penalty
-      ? 0.74
-      : clamp((spatial.rate * (0.55 + skill)) / (1 + pressure * 0.45), 0.005, 0.7);
+    // Presentation-only shot insight; reads geometry, never the RNG.
+    const quality = this.shotQuality(p, header, penalty),
+      { situation, setPiece } = this.situation(p.team, penalty);
+    stat.xg += quality.xg;
+    this.addMomentumShot(p.team, quality.xg);
     p.cooldown = 0.65;
     p.action = shotType;
     p.think = 0.5;
@@ -166,9 +168,28 @@ export class ShootingMethods {
         outcome: 'in flight',
         foot: foot.foot,
         penalty,
+        xg: quality.xg,
+        bigChance: quality.bigChance,
+        oneOnOne: quality.oneOnOne,
+        distance: quality.distance,
+        situation,
+        setPiece,
+        direct: !!context.restart,
+        assistId: b.assist,
       },
     );
-    b.shotRecord = { team: p.team, player: p.id, eventId: e.id, status: null, penalty };
+    b.shotRecord = {
+      team: p.team,
+      player: p.id,
+      eventId: e.id,
+      status: null,
+      penalty,
+      xg: quality.xg,
+      bigChance: quality.bigChance,
+      oneOnOne: quality.oneOnOne,
+      situation,
+      setPiece,
+    };
     this.flair(
       'shot',
       p,

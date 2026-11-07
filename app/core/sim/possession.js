@@ -57,6 +57,7 @@ export class PossessionMethods {
       if (b.owner !== null && this.players[b.owner].team !== p.team)
         this.players[b.owner].stats.turnovers++;
       this.possessionStart = this.elapsed;
+      this.startChain(p.team, p.x, null, true);
       if (
         this.keeperRelease &&
         this.keeperRelease.team !== p.team &&

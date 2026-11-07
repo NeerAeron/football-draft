@@ -13,10 +13,15 @@ const KEEPER_TECHNIQUE = new Set([
   'composure',
   'vision',
 ]);
+// Links (chemistry) bonus, 0..2 rating points added to every skill. The draft
+// computes it from club / nation / league links; matches default to 0.
+export const normalizeChem = value =>
+  Number.isFinite(value) ? Math.max(0, Math.min(2, value)) : 0;
 export class Player {
   constructor(data) {
     Object.assign(this, data);
     this.attrs = normalizeAttributes(data.attrs);
+    this.chem = normalizeChem(data.chem);
     this.primaryPosition = data.primaryPosition || data.role;
     this.secondaryPositions = [...(data.secondaryPositions || [])];
     this.intent = 'shape';
@@ -32,7 +37,10 @@ export class Player {
       this.role === 'GK' && this.primaryPosition === 'GK' && KEEPER_TECHNIQUE.has(key);
     const value = this.attrs[keeperTechnique ? 'goalkeeping' : key];
     return clamp(
-      70 + (value - 70) * (this.tuning || CONFIG).gameplay.qualityImpact + badgeBoost(this, key),
+      70 +
+        (value - 70) * (this.tuning || CONFIG).gameplay.qualityImpact +
+        badgeBoost(this, key) +
+        this.chem,
       1,
       99,
     );

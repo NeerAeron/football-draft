@@ -101,14 +101,21 @@ export class BallMethods {
         const effectiveSave = clamp(prob * this.tuning.gameplay.saveAbility, 0.01, 0.995);
         if (this.rand() < effectiveSave) {
           this.resolveShot(onTarget ? 'saved' : 'off target');
+          let save = null;
           if (onTarget && b.shotRecord) {
             this.stats[p.team].saves++;
             p.stats.saves++;
-            this.addEvent(`${p.name.split(' ').pop()} makes the save.`, p.team, 'save', {
+            save = this.addEvent(`${p.name.split(' ').pop()} makes the save.`, p.team, 'save', {
               playerId: p.id,
               chance: effectiveSave,
               chanceLabel: 'save',
               strength: clamp(speed / 38, 0, 1),
+              shotEventId: b.shotRecord.eventId,
+              shooterId: b.shotRecord.player,
+              xg: b.shotRecord.xg,
+              bigChance: b.shotRecord.bigChance,
+              difficulty: clamp(1 - effectiveSave, 0, 1),
+              saveType: 'catch',
             });
           }
           b.penaltyTaker = null;
@@ -131,6 +138,7 @@ export class BallMethods {
             b.kicker = p.id;
             b.age = 0;
             p.cooldown = 0.6;
+            if (save) save.saveType = this.reboundDanger(p) ? 'parry into danger' : 'parry';
           }
           return;
         }
@@ -157,6 +165,10 @@ export class BallMethods {
           this.addEvent(`${p.name.split(' ').pop()} blocks the shot.`, p.team, 'block', {
             playerId: p.id,
             strength: 0.4,
+            shotEventId: b.shotRecord?.eventId ?? null,
+            shooterId: b.shotRecord?.player ?? null,
+            xg: b.shotRecord?.xg ?? null,
+            bigChance: b.shotRecord?.bigChance ?? false,
           });
           return;
         }
@@ -288,7 +300,15 @@ export class BallMethods {
         b.vy += this.noise() * 2;
         b.kind = 'loose';
         b.previous = null;
-        this.addEvent('Off the woodwork!', b.shotTeam, 'post', { strength: 0.8 });
+        const record = b.shotRecord;
+        this.addEvent('Off the woodwork!', b.shotTeam, 'post', {
+          strength: 0.8,
+          playerId: record?.player ?? null,
+          shotEventId: record?.eventId ?? null,
+          xg: record?.xg ?? null,
+          bigChance: record?.bigChance ?? false,
+          frame: Math.abs(crossY - 34) < GOAL / 2 - 0.05 ? 'bar' : 'post',
+        });
         return;
       }
       if (Math.abs(crossY - 34) < GOAL / 2 && crossZ < 2.44) {
@@ -303,7 +323,8 @@ export class BallMethods {
           );
           return;
         }
-        this.resolveShot(this.ball.shotRecord?.team === team ? 'goal' : 'off target');
+        const record = b.shotRecord?.team === team ? b.shotRecord : null;
+        this.resolveShot(record ? 'goal' : 'off target');
         this.score[team]++;
         const scorer = this.players[b.goalCredit?.shooter ?? b.owner ?? b.kicker],
           ownGoal = scorer && scorer.team !== team,
@@ -344,6 +365,7 @@ export class BallMethods {
         if (origin.box) this.stats[team].boxGoals++;
         if (Math.abs(origin.y - 34) <= 9.16) this.stats[team].centralGoals++;
         else this.stats[team].wideGoals++;
+        const play = record || this.situation(team);
         const event = this.addEvent(
           `${scorer && !ownGoal ? scorer.name.split(' ').pop() : this.teams[team].name} scores${ownGoal ? ' · own goal' : ''}${assist ? ' · ' + assist.name.split(' ').pop() + ' assist' : ''}!`,
           team,
@@ -364,6 +386,15 @@ export class BallMethods {
                 : 'Finish'),
             origin,
             ownGoal: !!ownGoal,
+            shotEventId: record?.eventId ?? null,
+            xg: record?.xg ?? null,
+            bigChance: record?.bigChance ?? false,
+            oneOnOne: record?.oneOnOne ?? false,
+            situation: play.situation,
+            setPiece: play.setPiece,
+            penalty: !!record?.penalty,
+            scoreAfter: [...this.score],
+            story: this.goalStory(team, ownGoal ? null : scorer?.id, !!ownGoal),
           },
         );
         this.goalHistory.push(event);
@@ -376,6 +407,7 @@ export class BallMethods {
         this.startRestart('Goal', 1 - team, 52.5, 34, 2.5);
         return;
       }
+      this.nearMiss(crossY, crossZ);
       this.resolveShot('off target');
       const defending = this.direction(0) === (right ? -1 : 1) ? 0 : 1;
       if (b.lastTouch === defending)

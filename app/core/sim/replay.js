@@ -37,7 +37,49 @@ export function snapshot(m) {
     mode: m.mode,
     phase: m.phase,
     restart: { ...m.restart },
+    momentumSamples: m.momentum?.samples.length ?? 0,
   };
+}
+// How much a non-goal moment deserves a highlight slot: chance quality (xG),
+// save difficulty and drama, not a flat priority per event type.
+export function highlightScore(e) {
+  const xg = e.xg ?? 0,
+    big = e.bigChance ? 1.5 : 0,
+    strength = e.strength || 0;
+  switch (e.type) {
+    case 'shot':
+      return (
+        2.5 +
+        xg * 10 +
+        big +
+        (e.outcome === 'post' ? 1.5 : e.outcome === 'saved' ? 1 : e.outcome === 'blocked' ? 0.3 : 0)
+      );
+    case 'save':
+      return 3 + (e.difficulty ?? 0.5) * 5 + xg * 6 + big;
+    case 'post':
+      return 5 + xg * 6 + big;
+    case 'near-miss':
+      return 3.5 + xg * 8 + big;
+    case 'block':
+      return 2.5 + xg * 6 + big;
+    case 'red':
+      return 8;
+    case 'penalty':
+      return 7;
+    case 'yellow':
+      return 1.5;
+    case 'shootout':
+      return 6 + (e.decisive ? 4 : 0);
+    case 'cross':
+    case 'cutback':
+    case 'through':
+      return 2 + strength * 1.5;
+    case 'dribble':
+    case 'tackle':
+      return 1.5 + strength * 1.5;
+    default:
+      return 0;
+  }
 }
 export function selectHighlights(events, duration, budget = 60) {
   budget = Math.min(budget, duration);
@@ -59,28 +101,11 @@ export function selectHighlights(events, duration, budget = 60) {
       end: clamp(e.elapsed - perGoal * 0.67, 0, duration - perGoal) + perGoal,
     })),
   );
-  const priorities = {
-    red: 8,
-    yellow: 2,
-    penalty: 7,
-    post: 6,
-    shot: 6,
-    save: 5,
-    dribble: 3,
-    tackle: 3,
-    cross: 4,
-    cutback: 4,
-    through: 4,
-    block: 4,
-  };
   const candidates = events
-    .filter(e => priorities[e.type])
-    .sort(
-      (a, b) =>
-        priorities[b.type] +
-          (b.strength || 0) * 1.5 -
-          (priorities[a.type] + (a.strength || 0) * 1.5) || a.elapsed - b.elapsed,
-    );
+    .map(e => ({ e, score: highlightScore(e) }))
+    .filter(c => c.score > 0)
+    .sort((a, b) => b.score - a.score || a.e.elapsed - b.e.elapsed)
+    .map(c => c.e);
   for (const e of candidates) {
     const remaining = budget - total(clips);
     if (remaining < 0.05) break;
@@ -225,6 +250,18 @@ export function applyReplayFrame(target, recording, viewTime) {
   target.events = recording.result.events
     .filter(e => e.elapsed <= sourceTime)
     .map(e => (e.resolvedAt > sourceTime ? { ...e, outcome: 'in flight' } : e));
+  const momentum = recording.result.momentum;
+  if (momentum) {
+    // The recorded series up to this frame (re-sliced only when it grows).
+    const count = a.momentumSamples ?? 0,
+      shown = target.momentum?.samples;
+    if (shown?.length !== count || (count && shown[0] !== momentum.samples[0]))
+      target.momentum = {
+        step: momentum.step,
+        samples: momentum.samples.slice(0, count),
+        current: momentum.samples[count - 1]?.values ?? [0, 0],
+      };
+  }
   target.ballTrail = [];
   for (let n = Math.max(0, index - 7); n <= index; n++) {
     const ball = recording.frames[n].ball;

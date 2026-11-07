@@ -21,7 +21,7 @@ import {
   freshStats,
   install,
 } from './constants.js';
-import { Player } from './player.js';
+import { Player, normalizeChem } from './player.js';
 import { PossessionMethods } from './possession.js';
 import { PassingMethods } from './passing.js';
 import { ShootingMethods } from './shooting.js';
@@ -32,6 +32,7 @@ import { MovementMethods } from './movement.js';
 import { FoulMethods } from './fouls.js';
 import { BallMethods } from './ball.js';
 import { RestartMethods } from './restarts.js';
+import { InsightMethods, MENTALITIES } from './insights.js';
 
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
@@ -48,7 +49,15 @@ export class Match {
       { name: 'Southbank FC', short: 'STH', color: '#baaff0' },
     ].map(t => ({
       ...t,
-      tactics: { formation: '433', style: 'balanced', tempo: 3, width: 3, press: 3, fluidity: 3 },
+      tactics: {
+        formation: '433',
+        style: 'balanced',
+        tempo: 3,
+        width: 3,
+        press: 3,
+        fluidity: 3,
+        mentality: 'balanced',
+      },
     }));
     const oldKeys = [
       'pace',
@@ -272,6 +281,8 @@ export class Match {
     this.restart.team = this.kickoffTeam;
     this.restart.taker = this.kickoffTeam * 11 + 9;
     this.addEvent('Kickoff. A new match begins.', this.kickoffTeam, 'kickoff');
+    this.shootout = null;
+    this.resetInsights();
   }
   addEvent(text, team, type = 'play', extra = {}) {
     const e = {
@@ -318,6 +329,7 @@ export class Match {
       foot: p.foot,
       weakFoot: p.weakFoot,
       tendencies: { ...p.tendencies },
+      chem: p.chem,
     };
   }
   exportConfig() {
@@ -337,7 +349,14 @@ export class Match {
     this.tuning = normalizeConfig(c.tuning || this.tuning);
     this.profile = { ...this.tuning.formats[this.duration] };
     this.competition = { mode: 'sandbox', difficulty: 'medium', ...c.competition };
-    this.teams = c.teams.map(t => ({ ...t, tactics: { fluidity: 3, ...t.tactics } }));
+    this.teams = c.teams.map(t => ({
+      ...t,
+      tactics: {
+        fluidity: 3,
+        ...t.tactics,
+        mentality: MENTALITIES.includes(t.tactics?.mentality) ? t.tactics.mentality : 'balanced',
+      },
+    }));
     this.players.forEach((p, i) => {
       const data = c.players[i];
       p.tuning = this.tuning;
@@ -351,6 +370,7 @@ export class Match {
       p.foot = data.foot === 'left' ? 'left' : 'right';
       p.weakFoot = data.weakFoot ?? p.weakFoot;
       p.tendencies = { ...p.tendencies, ...data.tendencies };
+      p.chem = normalizeChem(data.chem);
       this.setTags(p.id, data.tags || []);
     });
     this.reset();
@@ -458,13 +478,17 @@ export class Match {
     this.ball.x = 52.5;
     this.ball.y = 34;
   }
+  // Returns true when applied, false when the lineup is locked, undefined when invalid.
+  // Mentality ('push' | 'balanced' | 'hold') is a tactic like any other: it is
+  // exported with the config and never draws from the match RNG.
   setTactic(team, key, value) {
     if (key === 'formation' && this.lineupFixed()) return false;
     if ((key === 'formation' && !FORMATIONS[value]) || (key === 'style' && !STYLES[value])) return;
+    if (key === 'mentality' && !MENTALITIES.includes(value)) return;
     if (['tempo', 'width', 'press', 'fluidity'].includes(key))
       value = clamp(Math.round(Number(value)), 1, 5);
     if (
-      !['formation', 'style', 'tempo', 'width', 'press', 'fluidity'].includes(key) ||
+      !['formation', 'style', 'tempo', 'width', 'press', 'fluidity', 'mentality'].includes(key) ||
       (typeof value === 'number' && !Number.isFinite(value))
     )
       return;
@@ -473,6 +497,7 @@ export class Match {
       this.activePlayers.filter(p => p.team === team).forEach(p => (p.role = this.formation(p)[2]));
     this.planTimer = 0;
     for (const p of this.activePlayers) if (p.team === team) p.rethinkAt = 0;
+    return true;
   }
   flair(type, p, duration, extra = {}, force = false) {
     if (!force && this.elapsed - this.lastFlair < 1.1) return;
@@ -535,6 +560,7 @@ export class Match {
       this.mode = 'fulltime';
       this.phase = 'Full time';
       for (const p of this.activePlayers) p.vx = p.vy = 0;
+      this.finalizeStory();
       this.addEvent('Full-time. The final whistle.', null, 'full');
     }
   }
@@ -543,6 +569,7 @@ export class Match {
     this.half = 2;
     this.periodStart = this.elapsed;
     this.time = 2700;
+    this.momentumNext = 2700 + this.momentum.step;
     const team = 1 - this.kickoffTeam;
     for (const p of this.activePlayers) {
       p.runs = 0;
@@ -595,6 +622,7 @@ export class Match {
     this.elapsed += dt;
     this.time = (this.half - 1) * 2700 + ((this.elapsed - this.periodStart) / this.duration) * 5400;
     this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+    this.trackMomentum(dt);
     if (
       this.elapsed - this.periodStart >= this.duration / 2 &&
       !this.addedAnnounced[this.half - 1]
@@ -661,4 +689,5 @@ install(
   FoulMethods,
   BallMethods,
   RestartMethods,
+  InsightMethods,
 );

@@ -179,6 +179,7 @@ export class RestartMethods {
     this.ball.kind = r.type === 'Goal kick' ? 'held' : 'dribble';
     this.mode = 'play';
     this.lastTeam = r.team;
+    this.startChain(r.team, r.x, r.type);
     taker.hold = 0.2;
     taker.possessionAt = this.elapsed;
     this.planTimer = 0;
