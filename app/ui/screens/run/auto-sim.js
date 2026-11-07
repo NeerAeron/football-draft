@@ -1,0 +1,134 @@
+// Auto-simulation for "Sim rest of run" and the Daily Challenge: plays a match config with the
+// real engine (same seed + config ⇒ the same result as the match screen's Instant view) and
+// summarises it in the match screen's result shape (docs/ui-match.md, the fields the RUN
+// screens use). Framework-free.
+//
+// Until MATCH-UI's worker client (app/services/sim-client.js) is on main, the engine runs
+// here on the main thread in short time slices so the ticker keeps animating. Swap point:
+// autoSimulate() — replace the loop with `createSimClient().complete(config, seed)`.
+import { Match } from '../../../core/sim/engine.js';
+import { performanceRating } from '../../../core/sim/replay.js';
+import { PERIOD_END } from '../../../core/sim/periods.js';
+import { readJSON } from '../../lib/storage.js';
+
+/** Real seconds of the recorded profile (Instant / Key Moments use the same). */
+export const AUTO_DURATION = 300;
+const SLICE_MS = 14;
+
+/**
+ * Dev/test switch: localStorage 'football-draft-dev' = { fastSim: true } makes auto-sims use
+ * the core's fast rating model instead of the engine (browser flows; never on by default).
+ */
+export const fastSimEnabled = () => !!readJSON('football-draft-dev', null)?.fastSim;
+
+/** "67'" / "45+2'" for an event's clock. */
+export function minuteLabel(time, half) {
+  const end = PERIOD_END[(half || 1) - 1] ?? 5400;
+  return time >= end
+    ? `${end / 60}+${Math.floor((time - end) / 60) + 1}'`
+    : `${Math.min(end / 60, Math.floor(time / 60) + 1)}'`;
+}
+
+const yieldToUi = () =>
+  new Promise(resolve => {
+    if (typeof MessageChannel === 'function') {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => {
+        channel.port1.close();
+        resolve();
+      };
+      channel.port2.postMessage(0);
+    } else setTimeout(resolve, 0);
+  });
+
+/** Goal events of a (running or finished) match, oldest first. */
+export function goalList(m) {
+  return m.events
+    .filter(e => e.type === 'goal')
+    .reverse()
+    .map(e => ({
+      team: e.team,
+      playerId: e.playerId,
+      player: e.playerId != null ? (m.players[e.playerId]?.name ?? null) : null,
+      minute: minuteLabel(e.time, e.half),
+      ownGoal: !!e.ownGoal,
+      penalty: !!e.penalty,
+      scoreAfter: e.scoreAfter ? [...e.scoreAfter] : null,
+    }));
+}
+
+/** A finished engine Match → result (subset of docs/ui-match.md's shape). */
+export function summarizeMatch(m, { id = null, seed = null } = {}) {
+  const players = m.players.map(p => ({
+    id: p.id,
+    profileId: p.profileId ?? p.sourcePlayerId ?? null,
+    team: p.team,
+    slot: p.slot,
+    name: p.name,
+    role: p.role,
+    rating: Math.round(performanceRating(p, m) * 10) / 10,
+    goals: p.stats?.goals | 0,
+    assists: p.stats?.assists | 0,
+  }));
+  const shootout =
+    m.shootout?.winner != null ? { score: [...m.shootout.score], winner: m.shootout.winner } : null;
+  const winner = m.winner();
+  const [h, a] = m.score;
+  const motm = [...players].sort(
+    (x, y) => y.rating - x.rating || y.goals - x.goals || y.assists - x.assists,
+  )[0];
+  return {
+    id,
+    seed,
+    view: 'auto',
+    teams: m.teams.map(t => ({ name: t.name, short: t.short, color: t.color })),
+    score: [h, a],
+    shootout,
+    winner: winner ?? null,
+    outcomes: [h > a ? 'W' : h < a ? 'L' : 'D', a > h ? 'W' : a < h ? 'L' : 'D'],
+    xg: (m.stats || []).map(s => Math.round((s?.xg || 0) * 100) / 100),
+    goals: goalList(m),
+    players,
+    motm: motm ? { ...motm } : null,
+  };
+}
+
+/**
+ * Simulate a config with the engine. onProgress(fraction 0–1, live) is called between slices
+ * with live = { minute, score: [h, a], goals } for a ticker; cancelled() → resolves null.
+ */
+export async function autoSimulate(
+  config,
+  seed,
+  { id = null, onProgress = () => {}, cancelled = () => false } = {},
+) {
+  const m = new Match(seed >>> 0, AUTO_DURATION);
+  m.importConfig(config);
+  let goalsSeen = -1,
+    live = null;
+  while (!m.finished) {
+    const until = performance.now() + SLICE_MS;
+    do m.step(1 / 60);
+    while (!m.finished && performance.now() < until);
+    if (cancelled()) return null;
+    const goals = m.goalHistory?.length ?? 0;
+    if (goals !== goalsSeen || !live) {
+      goalsSeen = goals;
+      live = { goals: goalList(m) };
+    }
+    live = {
+      ...live,
+      minute: m.mode === 'shootout' ? 'Pens' : minuteLabel(m.time, m.half),
+      score: [...m.score],
+      shootout: m.shootout ? [...m.shootout.score] : null,
+    };
+    onProgress(Math.min(1, m.elapsed / m.expectedDuration()), live);
+    await yieldToUi();
+  }
+  return summarizeMatch(m, { id, seed });
+}
+
+/** Simulate a stored match request (#/match hand-off) — used by tests and the fallback flow. */
+export function simulateRequest(request, options) {
+  return autoSimulate(request.config, request.seed, { ...options, id: request.id });
+}
