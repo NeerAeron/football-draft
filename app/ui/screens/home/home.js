@@ -5,7 +5,7 @@ import { html, cx } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
 import { href } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
-import { readSavedRun, readDailyStatus, STAGES, todayKey } from '../../lib/saved.js';
+import { readSavedRun, readDailyStatus, STAGES } from '../../lib/saved.js';
 import { Button, IconButton } from '../../components/button.js';
 import { Card } from '../../components/card.js';
 import { Chip } from '../../components/chip.js';
@@ -129,6 +129,7 @@ function Hero({ type }) {
 
 function ContinueCard({ run }) {
   const stage = STAGES.find(s => s.id === run.stage);
+  const done = run.complete;
   return html`<${Card}
     variant="volt"
     class="continue"
@@ -138,8 +139,10 @@ function ContinueCard({ run }) {
     <div class="continue__head">
       <span class="continue__icon" aria-hidden="true"><${Icon} name="play" size=${18} /></span>
       <div class="continue__titles">
-        <p class="eyebrow">Run in progress</p>
-        <h2 class="continue__title" id="continue-title">${stage?.label || 'World Cup Run'}</h2>
+        <p class="eyebrow">${done ? 'Last run' : 'Run in progress'}</p>
+        <h2 class="continue__title" id="continue-title">
+          ${done ? run.verdict || (run.status === 'champion' ? 'Champions' : 'Run over') : stage?.label || 'World Cup Run'}
+        </h2>
       </div>
       <span
         class="continue__record num"
@@ -147,23 +150,30 @@ function ContinueCard({ run }) {
         >${run.record.w}–${run.record.d}–${run.record.l}</span
       >
     </div>
-    <${RunPath} stage=${run.stage} perfect=${false} />
+    ${!done && html`<${RunPath} stage=${run.stage} perfect=${false} />`}
     <div class="continue__foot">
       <span class="continue__meta"
         >${TYPE_LABEL[run.type] || 'Nations'} draft${run.team ? ` · ${run.team}` : ''}</span
       >
-      <${Button} variant="primary" size="sm" iconEnd="arrow-right" href=${href('/run')}>Continue<//>
+      <${Button}
+        variant=${done ? 'secondary' : 'primary'}
+        size="sm"
+        iconEnd="arrow-right"
+        href=${href('/run')}
+        data-testid="continue-run"
+        >${done ? 'Results' : 'Continue'}<//
+      >
     </div>
   <//>`;
 }
 
 function DailyCard({ daily }) {
-  const today = todayKey();
-  const played = daily.lastPlayed === today;
+  const played = daily.playedToday;
   const date = new Date().toLocaleDateString(undefined, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   });
   return html`<${Card} variant="gold" class="daily" as="section" aria-labelledby="daily-title">
     <div class="daily__head">
@@ -181,7 +191,11 @@ function DailyCard({ daily }) {
       }
     </div>
     <p class="daily__text">
-      Same spins for everyone today. Nations draft, one attempt, auto-simmed.
+      ${
+        daily.todayResult
+          ? `Today: ${daily.todayResult.points.toLocaleString()} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
+          : 'Same spins for everyone today. Nations draft, one attempt, auto-simmed.'
+      }
     </p>
     <div class="daily__foot">
       <span class="daily__streak" title="Days in a row">
