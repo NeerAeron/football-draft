@@ -20,7 +20,12 @@ export class ShootingMethods {
         ['Driven shot', 0.25],
       ];
     return [
-      ['Placed finish', d < 16 ? 1.2 + p.skill('composure') / 100 : 0.12],
+      // Signature finishes are preferences: finishers place it, curve and power
+      // badge holders reach for their trademark strike.
+      [
+        'Placed finish',
+        d < 16 ? 1.2 + p.skill('composure') / 100 + (p.has('finisher') ? 0.8 : 0) : 0.12,
+      ],
       ['Driven shot', 1.1],
       ['Power shot', 0.25 + p.skill('power') * 0.006 + (p.has('power') ? 1.4 : 0)],
       ['Curler', (d > 10 ? 0.12 : 0.015) + (p.has('curve') && d > 10 ? 1.4 : 0)],
@@ -72,6 +77,7 @@ export class ShootingMethods {
           foot.quality) *
         (header ? 1.7 : 1) *
         (p.has('finisher') && box ? 0.93 : 1) *
+        (shotType === 'Curler' && p.has('curve') ? 0.88 : 1) *
         (1 + (1 - spatial.openness) * 0.4) *
         clamp(1 / Math.sqrt(spatial.quality), 0.9, 1.2);
     const ty = aimY + this.noise() * spread,

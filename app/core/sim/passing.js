@@ -259,7 +259,10 @@ export class PassingMethods {
                 ambition *
                 (1 - patient * 0.18) *
                 this.profile.directness +
-              goalAccess * (p.has('creator') ? 1.35 : 1)) -
+              goalAccess *
+                (p.has('creator') ? 1.35 : 1) *
+                // E7: teammates look for an elite finisher in a scoring position.
+                (1 + clamp((r.skill('shooting') - 82) / 8, 0, 1) * 0.45)) -
           (1 - completion) * turnoverCost +
           Math.min(space, 6) * 0.07 +
           clamp(margin, -2, 1) * 0.35;
