@@ -1,7 +1,7 @@
 import { CONFIG } from '../config/config.js';
 import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import { overallRating, positionFamiliarity, playerTier } from '../players/ratings.js';
+import { overallRating, playerTier } from '../players/ratings.js';
 import { draftLeagues, leagueWeight, teamWeight, respinMultiplier } from './leagues.js';
 // Private draft pacing. Each resolved player-pool draw counts once per tier,
 // regardless of how many matching players it shows or how often it re-renders.

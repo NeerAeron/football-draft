@@ -34,7 +34,7 @@ const args = argv.includes('--') ? argv.slice(0, argv.indexOf('--')) : argv;
 const fast = args.includes('--fast');
 const grepIndex = args.indexOf('--grep');
 const grep = grepIndex >= 0 ? args[grepIndex + 1] : null;
-const words = args.filter((a, i) => !a.startsWith('--') && i !== grepIndex + 1);
+const words = args.filter((a, i) => !a.startsWith('--') && (grepIndex < 0 || i !== grepIndex + 1));
 
 const files = [];
 (function walk(dir) {

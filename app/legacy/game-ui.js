@@ -13,7 +13,7 @@ import {
 } from './squad-ui.js';
 export { miniPitch } from './squad-ui.js';
 import { TAGS, badgeDescription } from '../core/players/traits.js';
-import { clubSquads, assignClubLineup, partialClubLineup } from '../core/players/club-lineups.js';
+import { clubSquads, partialClubLineup } from '../core/players/club-lineups.js';
 import { randomLineups } from '../core/players/lineups.js';
 import { Match } from '../core/sim/engine.js';
 import { createDraftReel } from './draft-reel.js';

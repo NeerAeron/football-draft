@@ -153,8 +153,7 @@ test('elite odds reduction only affects S/A clubs in A leagues and stays continu
   }
 });
 test('league and club drafts always finish, including late keeper picks and D/F bypass', () => {
-  let bypass = 0,
-    clubs = 0;
+  let clubs = 0;
   for (const seed of [8931, 8932, 8933, 8910, 8955]) {
     const d = new Draft(catalog, { seed, formations: ['352', '541'] });
     while (!d.complete) {
@@ -165,7 +164,6 @@ test('league and club drafts always finish, including late keeper picks and D/F 
         clubs++;
       } else {
         assert.equal(d.spinTeam(), null);
-        bypass++;
       }
       const pool = d.available(),
         outfield = pool.filter(p => p.primaryPosition !== 'GK'),

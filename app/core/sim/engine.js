@@ -15,7 +15,6 @@ import {
   positionFamiliarity,
   passingAbility,
   shootingAbility,
-  playerTier,
 } from '../players/ratings.js';
 export { ATTRS } from '../players/ratings.js';
 // Flow: deterministic, fixed-step, continuous 11v11 football simulation.

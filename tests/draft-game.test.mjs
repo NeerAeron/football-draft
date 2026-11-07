@@ -1,17 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Match, Player } from '../app/core/sim/engine.js';
+import { Match } from '../app/core/sim/engine.js';
 import { FORMATIONS, formationLines, formationLabel } from '../app/core/players/formations.js';
 import { Draft, KITS, bestSlots } from '../app/core/draft/draft.js';
 import { DIFFICULTIES } from '../app/core/draft/opponent.js';
 import { tacticAccess } from '../app/core/sim/coach.js';
-import {
-  playerTier,
-  overallRating,
-  normalizeAttributes,
-  POSITIONS,
-} from '../app/core/players/ratings.js';
+import { playerTier, overallRating, POSITIONS } from '../app/core/players/ratings.js';
 import { preference } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';
 const catalog = JSON.parse(readFileSync(new URL('../data/players-fc26.json', import.meta.url))),

@@ -3,15 +3,14 @@ import { escapeHtml, searchKey } from '../core/util/text.js';
 import { createGameAudio, MatchSoundEvents } from '../services/sound.js';
 import { receiptLabel } from '../core/players/player-labels.js';
 import { rateClubCatalog } from '../core/players/team-ratings.js';
-import { normalizeBadges } from '../core/players/badges.js';
-import { compileBadges } from '../core/players/badges.js';
+import { normalizeBadges, compileBadges } from '../core/players/badges.js';
 import { FORMATIONS, formationLabel, formationLines } from '../core/players/formations.js';
 import { KITS, bestSlots } from '../core/draft/draft.js';
 import { createGameUI } from './game-ui.js';
 import { miniPitch, renderSquadList, showPlayerCard, rankPlayers } from './squad-ui.js';
 import { DIFFICULTIES } from '../core/draft/opponent.js';
 import { tacticAccess, coachAI } from '../core/sim/coach.js';
-import { Match, ATTRS, W, H, LENGTHS, clamp } from '../core/sim/engine.js';
+import { Match, ATTRS, LENGTHS, clamp } from '../core/sim/engine.js';
 import { GOAL_ZONES } from '../core/sim/goal-zones.js';
 import { TAGS, STYLES, TACTICS, badgeEligible, badgeDescription } from '../core/players/traits.js';
 import {
@@ -22,12 +21,8 @@ import {
 } from '../core/sim/replay.js';
 import {
   overallRating,
-  OVERALL_WEIGHTS,
   RATING_GROUPS,
   categoryRating,
-  roleAbility,
-  calibratedRoleAbility,
-  OVERALL_OFFSETS,
   positionFamiliarity,
   POSITIONS,
   teamRatings,

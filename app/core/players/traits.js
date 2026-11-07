@@ -93,7 +93,6 @@ export const BADGES = [
   ],
 ].map(([id, label, description, group, boosts]) => ({ id, label, description, group, boosts }));
 export const TAGS = BADGES; // Legacy tag field now contains badges only.
-const badges = new Map(BADGES.map(b => [b.id, b]));
 // Hot path: called for every skill lookup during simulation. Per-player sums
 // are cached and revalidated against the tag list and the boost table object;
 // the attribute cap is read live because it can be tuned during a match.

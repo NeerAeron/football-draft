@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CONFIG,
   DEFAULT_CONFIG,
   CONFIG_FIELDS,
   normalizeConfig,

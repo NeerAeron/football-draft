@@ -7,7 +7,6 @@ import {
   POSITIONS,
   normalizeAttributes,
   overallRating,
-  playerTier,
 } from '../app/core/players/ratings.js';
 import { makeIdentity } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';

@@ -7,7 +7,6 @@ import {
   ATTRS,
   OVERALL_WEIGHTS,
   overallRating,
-  roleAbility,
   calibratedRoleAbility,
   positionFamiliarity,
   passingAbility,

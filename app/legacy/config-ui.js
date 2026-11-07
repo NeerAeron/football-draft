@@ -1,5 +1,4 @@
 import {
-  CONFIG,
   DEFAULT_CONFIG,
   CONFIG_FIELDS,
   loadConfig,
@@ -348,7 +347,7 @@ async function renderOdds() {
     await catalog();
     if (selected !== active) return;
     setRuntimeConfig(draft);
-    const { leagues, total } = oddsData();
+    const { leagues } = oddsData();
     if (active === 'leagues') {
       const query = $('#config-search').value.toLowerCase(),
         rows = data.leagues.filter(l => (l.name + ' ' + l.id).toLowerCase().includes(query));
