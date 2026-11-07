@@ -221,7 +221,7 @@ function ModeTiles() {
 }
 
 function FirstRun() {
-  return html`<section class="home-first card" aria-labelledby="first-title">
+  return html`<section class="home-first card card--pad-md" aria-labelledby="first-title">
     <div class="home-first__head">
       <div>
         <p class="eyebrow">New here?</p>

@@ -33,6 +33,7 @@
 }
 .pcard--s {
   --pc-w: 112px;
+  aspect-ratio: 4 / 5;
   font-size: 9px;
   padding: 1.5px;
 }
@@ -278,6 +279,9 @@
 }
 .pcard--s .pcard__top {
   min-height: 0;
+}
+.pcard--s .kit-shirt {
+  max-width: 5.6em;
 }
 .pcard--s .pcard__name {
   margin-top: auto;

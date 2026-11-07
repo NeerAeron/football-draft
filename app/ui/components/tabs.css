@@ -26,6 +26,9 @@
   white-space: nowrap;
   transition: color var(--dur-fast) var(--ease-out);
 }
+.tabs--block .tabs__list {
+  display: flex;
+}
 .tabs--block .tabs__tab {
   flex: 1 1 0;
 }
@@ -51,6 +54,8 @@
   box-shadow: 0 0 12px var(--volt-glow);
 }
 .tabs--pill .tabs__list {
+  display: inline-flex;
+  max-width: 100%;
   padding: 3px;
   border-radius: var(--radius-pill);
   background: rgb(4 7 15 / 0.55);

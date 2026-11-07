@@ -107,7 +107,7 @@ export function Modal({
             />`
           }
         </header>
-        <div class="modal__body">${children}</div>
+        ${children != null && children !== false && html`<div class="modal__body">${children}</div>`}
         ${footer && html`<footer class="modal__footer">${footer}</footer>`}
       </div>`
     }

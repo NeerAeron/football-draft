@@ -12,7 +12,13 @@
 import { html, cx } from '../lib/html.js';
 import { Icon } from './icon.js';
 
-const DEFAULT_LABEL = { best: 'Best', ok: 'Fits', swap: 'Swap', blocked: 'Blocked' };
+const DEFAULT_LABEL = {
+  best: 'Best',
+  ok: 'Fits',
+  swap: 'Swap',
+  blocked: 'Blocked',
+  penalty: 'Off pos',
+};
 
 /** Plain-text description, for aria-labels. */
 export function fitText(fit, hideRatings = false) {

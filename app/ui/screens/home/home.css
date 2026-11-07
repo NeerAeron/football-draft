@@ -116,9 +116,6 @@
   color: var(--text-3);
   font-size: var(--text-sm);
 }
-.home-hero__seg .segmented__item {
-  flex: 1 1 auto;
-}
 @media (max-width: 559px) {
   .home-hero__cta {
     --btn-px: var(--space-5);
@@ -222,7 +219,8 @@
 .run-path__legend {
   display: flex;
   align-items: baseline;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  white-space: nowrap;
   color: var(--text-3);
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
@@ -235,7 +233,7 @@
 .run-path__perfect,
 .run-path__record {
   margin-left: auto;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }
 .run-path__perfect b {
   color: var(--gold-400);

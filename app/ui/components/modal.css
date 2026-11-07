@@ -52,6 +52,10 @@
   gap: var(--space-3);
   padding: var(--space-5) var(--space-5) var(--space-3);
 }
+.modal__header:last-child,
+.modal__header:has(+ .modal__footer) {
+  padding-bottom: var(--space-5);
+}
 .modal__titles {
   display: flex;
   flex-direction: column;

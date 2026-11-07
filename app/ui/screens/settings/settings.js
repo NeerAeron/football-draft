@@ -278,7 +278,7 @@ export default function Settings({ query = {} }) {
   return html`<div class="screen settings" data-screen="settings">
     <div class="container settings__layout">
       <aside class="settings__aside">
-        <h1 class="settings__title">Settings</h1>
+        <h1 class="settings__title sr-only-mobile">Settings</h1>
         <nav class="settings__nav" aria-label="Settings sections">
           ${SECTIONS.map(([id, label]) => html`<a key=${id} href=${`#/settings?section=${id}`}>${label}</a>`)}
         </nav>

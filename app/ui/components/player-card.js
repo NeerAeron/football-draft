@@ -3,7 +3,8 @@
  *
  * Props:
  *   player       PlayerView (see lib/player-view.js): name, position, ovr, nation, club, league,
- *                stats (six), badges
+ *                stats (six), badges. Top-right marks: nation flag + league logo (club Crest
+ *                when there is no league logo); the kit shows the club colours.
  *   size         's' (112px: rating, flag, kit, name) | 'm' (168px: + six stats, 1 badge)
  *                | 'l' (232px: + club · league line, 3 badges)                    default 'm'
  *   tier         override the tier ('Superstar' | 'Star' | 'Starter' | 'Normal' | 'Bench');
@@ -20,7 +21,7 @@ import { resolveTier } from '../lib/tiers.js';
 import { teamStyle } from '../lib/color.js';
 import { surname } from '../lib/player-view.js';
 import { Flag } from './flag.js';
-import { Crest } from './crest.js';
+import { Crest, LeagueLogo } from './crest.js';
 import { Chip } from './chip.js';
 import { Icon } from './icon.js';
 
@@ -97,14 +98,21 @@ export function PlayerCard({
             html`<${Flag} code=${p.nation.code} name=${p.nation.name} size=${mark} decorative />`
           }
           ${
-            p.club &&
-            html`<${Crest}
-              name=${p.club.name}
-              short=${p.club.short}
-              colors=${p.club.colors}
-              size=${mark}
-              decorative
-            />`
+            p.league?.logo
+              ? html`<${LeagueLogo}
+                  src=${p.league.logo}
+                  name=${p.league.name}
+                  size=${mark}
+                  decorative
+                />`
+              : p.club &&
+                html`<${Crest}
+                  name=${p.club.name}
+                  short=${p.club.short}
+                  colors=${p.club.colors}
+                  size=${mark}
+                  decorative
+                />`
           }
         </span>
       </span>

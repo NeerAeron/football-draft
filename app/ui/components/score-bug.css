@@ -137,3 +137,8 @@
   --pulse-color: rgb(255 111 97 / 0.6);
   animation: pulse-ring 1.4s var(--ease-out) infinite;
 }
+@media (max-width: 559px) {
+  .scorebug--lg .scorebug__full {
+    display: none;
+  }
+}
