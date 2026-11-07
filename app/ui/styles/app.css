@@ -35,6 +35,9 @@
 @import url('../screens/home/home.css') layer(screens);
 @import url('../screens/settings/settings.css') layer(screens);
 @import url('../screens/placeholder/placeholder.css') layer(screens);
+@import url('../screens/setup/setup.css') layer(screens);
+@import url('../screens/draft/draft.css') layer(screens);
+@import url('../screens/prematch/prematch.css') layer(screens);
 @import url('../screens/run/run.css') layer(screens);
 @import url('../screens/daily/daily.css') layer(screens);
 @import url('../screens/exhibition/exhibition.css') layer(screens);

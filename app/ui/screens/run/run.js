@@ -16,8 +16,8 @@ import { PitchView } from '../../components/pitch-view.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { toast } from '../../components/toast.js';
-import { completedDraft, clearDraft } from '../../lib/draft-store.js';
-import { openPrematch } from '../../lib/prematch-store.js';
+import { completedDraft, clearDraft, loadDraft } from '../../lib/draft-store.js';
+import { openPrematch, engineCompetition } from '../../lib/prematch-store.js';
 import {
   buildMatchConfig,
   readMatchResult,
@@ -84,10 +84,14 @@ function matchInProgress(pending) {
   );
 }
 /** Engine config for a run fixture (auto-sim; the match screen builds the same via prematch). */
-export function fixtureConfig(m, tuning) {
+export function fixtureConfig(m, difficulty, tuning) {
   return buildMatchConfig({
     sides: [matchSideFor(m.home, { kind: 'user' }), matchSideFor(m.away)],
-    competition: { mode: 'ai', difficulty: 'medium', knockout: m.knockout },
+    // Same engine competition as the pre-match screen builds (AI coach level by difficulty).
+    competition: engineCompetition({
+      sides: [{ kind: 'user' }, { kind: 'ai' }],
+      competition: { mode: 'ai', difficulty, knockout: m.knockout },
+    }),
     ...(tuning ? { tuning } : {}),
   });
 }
@@ -428,8 +432,9 @@ export default function RunScreen() {
         if (!live) return;
         let saved = loadRun(catalog);
         let flash = null;
-        const draft = completedDraft();
-        if (draft && (draft.context?.kind ?? 'run') === 'run') {
+        // In memory right after the draft; restored from storage after a reload.
+        const draft = completedDraft() ?? (await loadDraft());
+        if (draft?.session?.complete && draft.context?.kind === 'run') {
           const { run, meta } = createRunFromDraft(catalog, draft);
           saveRun(run, meta, { pending: null, log: [] });
           clearDraft();
@@ -506,7 +511,7 @@ export default function RunScreen() {
         matchSideFor(m.home, { kind: 'user', editable: true }),
         matchSideFor(m.away, { kind: 'ai', editable: false }),
       ],
-      competition: { mode: 'ai', difficulty: 'medium', knockout: m.knockout },
+      competition: { mode: 'ai', difficulty: run.difficulty, knockout: m.knockout },
       meta: {
         context: 'run',
         title: `${roundLabel(m.round).replace('Group · ', '')} · ${m.away.name}`,
@@ -522,7 +527,7 @@ export default function RunScreen() {
     setState(s => ({ ...s, phase: 'sim', flash: null }));
     try {
       await ticker.start(c.run, {
-        configFor: m => fixtureConfig(m),
+        configFor: m => fixtureConfig(m, c.run.difficulty),
         idFor: m => fixtureId(c.meta, m.round),
         onDone: (m, result, snapshot) => {
           c.log = withLog(c.log, result ? logEntry(m.round, result) : null);

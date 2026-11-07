@@ -153,7 +153,8 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
   const mode = modeOf(context.type ?? session.mode);
   const difficulty = context.difficulty ?? options.difficulty ?? 'pro';
   const seed = context.seed ?? options.seed ?? 1;
-  const defaultRules = !!(options.useDefaultRules || context.useDefaultRules || context.challenge);
+  const challenge = context.meta?.challenge ?? context.challenge ?? null;
+  const defaultRules = !!(options.useDefaultRules || context.useDefaultRules || challenge);
   const user = session.matchSide(0);
   const run = createCupRun(catalog, {
     mode,
@@ -173,7 +174,7 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
     hideRatings: !!(context.options?.hideRatings ?? options.hideRatings),
     uniqueNations: !!(context.options?.uniqueNations ?? options.uniqueNations),
     defaultRules,
-    challenge: context.challenge ? sanitizeChallenge(context.challenge) : null,
+    challenge: challenge ? sanitizeChallenge(challenge) : null,
     links: user.links ? { score: user.links.score, maxScore: user.links.maxScore } : null,
     startedAt: new Date(now).toISOString(),
   };

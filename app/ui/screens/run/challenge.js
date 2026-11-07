@@ -86,11 +86,14 @@ export default function ChallengeScreen({ query }) {
         seed: c.seed,
         options: { hideRatings: c.hideRatings, uniqueNations: c.uniqueNations },
         useDefaultRules: true,
-        challenge: {
-          token: query.c,
-          by: score
-            ? `${score.w}-${score.d}-${score.l}${score.grade ? ' · ' + score.grade : ''}`
-            : null,
+        // draft-store keeps `meta` as is; the run reads meta.challenge (createRunFromDraft).
+        meta: {
+          challenge: {
+            token: query.c,
+            by: score
+              ? `${score.w}-${score.d}-${score.l}${score.grade ? ' · ' + score.grade : ''}`
+              : null,
+          },
         },
         returnTo: kind.returnTo,
       });

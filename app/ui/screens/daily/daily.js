@@ -27,7 +27,7 @@ import { PitchView } from '../../components/pitch-view.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { Confetti } from '../../components/confetti.js';
-import { completedDraft, clearDraft, startDraft } from '../../lib/draft-store.js';
+import { completedDraft, clearDraft, startDraft, loadDraft } from '../../lib/draft-store.js';
 import { buildMatchConfig, requestMatch, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
   readDaily,
@@ -517,9 +517,11 @@ export default function DailyScreen() {
         const held = matchStore.get()?.request;
         if (held?.id?.startsWith('daily:')) clearMatch(held.id);
         const ctx = { catalog, day, today, state };
-        const draft = completedDraft();
+        // In memory right after the draft; restored from storage after a reload.
+        const draft = completedDraft() ?? (await loadDraft());
         if (
-          draft?.context?.kind === 'daily' &&
+          draft?.session?.complete &&
+          draft.context?.kind === 'daily' &&
           (draft.context.daily ?? today) === today &&
           !state.results[today] &&
           state.current?.id !== today
@@ -544,7 +546,7 @@ export default function DailyScreen() {
           simulate(ctx, run);
           return;
         }
-        if (draft?.context?.kind === 'daily') clearDraft();
+        if (draft?.session?.complete && draft.context?.kind === 'daily') clearDraft();
         if (state.current?.id === today) {
           const run = restoreCupRun(catalog, state.current.run);
           if (run.complete) finish(ctx, run);
@@ -582,7 +584,7 @@ export default function DailyScreen() {
       difficulty: day.difficulty,
       formation: day.formation,
       seed: day.seed,
-      schedule: day.draft,
+      schedule: day.schedule,
       rerolls: day.rerolls,
       daily: day.id,
       useDefaultRules: true,
