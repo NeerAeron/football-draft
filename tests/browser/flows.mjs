@@ -963,4 +963,41 @@ export const flows = [
       await shot('gameplay');
     },
   },
+  {
+    // Offline play (app/sw.js + ui/lib/offline.js): one online visit, then without a network
+    // the game still loads, drafts and plays a match. ?sw=1 enables the worker on loopback.
+    name: 'offline',
+    viewports: ['desktop'],
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      await step('first visit caches the game', async () => {
+        await page.goto(`${base}?sw=1#/`);
+        await visible(page, '[data-screen="home"]');
+        await page.waitForSelector('html[data-offline-ready]', {
+          state: 'attached',
+          timeout: 30000,
+        });
+      });
+      await page.context().setOffline(true);
+      try {
+        await step('reload offline', async () => {
+          await page.reload();
+          await visible(page, '[data-screen="home"]');
+        });
+        await step('draft offline', async () => {
+          await startFromSetup(page, base, '?sw=1#/play/quick?type=nations&seed=8');
+          await page.evaluate(() => (location.hash = '#/draft?auto=1'));
+          await visible(page, 'dialog.complete-sheet[open]', 30000);
+          await page.click('[data-testid="draft-continue"]');
+          await visible(page, '[data-testid="opponent-name"]');
+          await page.click('[data-testid="draft-continue"]');
+          await visible(page, '[data-screen="prematch"] .lineup__pitch');
+        });
+        await shot('prematch-offline');
+        await step('play a match offline', () => finishMatch(page));
+      } finally {
+        await page.context().setOffline(false);
+      }
+    },
+  },
 ];
