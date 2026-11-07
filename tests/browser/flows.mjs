@@ -404,6 +404,13 @@ export const flows = [
         await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
       });
       await shot('board');
+      await step('finish (auto) → both XIs → pre-match', async () => {
+        await page.goto(`${base}#/draft?auto=1`);
+        await visible(page, 'dialog.complete-sheet[open]');
+        await page.click('[data-testid="draft-continue"]');
+        await visible(page, '[data-screen="prematch"] .pm-switch');
+      });
+      await shot('prematch');
     },
   },
   {

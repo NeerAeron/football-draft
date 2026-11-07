@@ -991,6 +991,21 @@
   text-align: center;
   animation: reveal-pop var(--dur-slower) var(--ease-spring) both;
 }
+@media (max-width: 719px) {
+  .complete-grid .opp-reveal {
+    order: -1;
+  }
+  .reveal__title {
+    font-size: var(--display-sm);
+  }
+  .reveal {
+    column-gap: var(--space-2);
+    padding-top: 0;
+  }
+  .stage {
+    gap: var(--space-2);
+  }
+}
 .opp-reveal__crest {
   filter: drop-shadow(0 10px 22px rgb(0 0 0 / 0.55));
 }

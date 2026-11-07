@@ -104,13 +104,13 @@ function Media({ head, size = 64 }) {
   return html`<${Crest} ...${head.crest} size=${size} shape="shield" decorative />`;
 }
 
-function RevealCard({ spin, poolSize, onOdds, fresh }) {
+function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
   const head = spinHeadline(spin, poolSize);
   return html`<div
     class=${cx('reveal', head.big && 'is-big', fresh && 'is-fresh')}
     data-testid="spin-result"
   >
-    <span class="reveal__media"><${Media} head=${head} /></span>
+    <span class="reveal__media"><${Media} head=${head} size=${compact ? 52 : 64} /></span>
     <span class="reveal__text">
       <span class="reveal__cat">
         ${CATEGORY_LABEL[spin.category]}${spin.reroll ? ` · re-roll ${spin.reroll}` : ''}
@@ -202,7 +202,16 @@ export function OddsDialog({ open, onClose, spin }) {
  * SpinStage props: snap (session snapshot), animate (token or null), onLanded(),
  * onAutoPick(), turnName (versus), actions (desktop: Spin / Re-roll buttons in the card).
  */
-export function SpinStage({ snap, animate, onLanded, onAutoPick, turnName, fresh, actions }) {
+export function SpinStage({
+  snap,
+  animate,
+  onLanded,
+  onAutoPick,
+  turnName,
+  fresh,
+  actions,
+  compact,
+}) {
   const [odds, setOdds] = useState(false);
   const spin = snap.spin;
   const category = snap.category;
@@ -243,6 +252,7 @@ export function SpinStage({ snap, animate, onLanded, onAutoPick, turnName, fresh
               poolSize=${snap.pool.length}
               onOdds=${() => setOdds(true)}
               fresh=${fresh}
+              compact=${compact}
             />`
           : html`<${IdlePanel}
               category=${category}

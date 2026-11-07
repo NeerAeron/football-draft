@@ -403,6 +403,7 @@ function Board({ state, draft, auto }) {
     onAutoPick=${doAutoPick}
     turnName=${turnName}
     actions=${stageActions}
+    compact=${!wide}
   />`;
   const pool =
     snap.phase === 'pick' &&

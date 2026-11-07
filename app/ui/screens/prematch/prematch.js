@@ -126,9 +126,9 @@ function Matchup({ data, strengths, children }) {
       aria-label=${`${label}: win ${pct(p.win)}, draw ${pct(p.draw)}, loss ${pct(p.loss)}`}
     >
       <span class="matchup__bar">
-        <i class="is-win" style=${`flex:${p.win}`}></i
+        <i class="is-win" style=${`flex:${p.win};background:${data.sides[0].colors[0]}`}></i
         ><i class="is-draw" style=${`flex:${p.draw}`}></i
-        ><i class="is-loss" style=${`flex:${p.loss}`}></i>
+        ><i class="is-loss" style=${`flex:${p.loss};background:${data.sides[1].colors[0]}`}></i>
       </span>
       <span class="matchup__legend">
         <span><b class="num">${pct(p.win)}</b> ${data.sides[0].short}</span>
@@ -406,7 +406,7 @@ export default function PrematchScreen() {
                   side=${editSide}
                   index=${editIndex}
                   players=${views[editIndex]}
-                  title=${editable.length > 1 ? `${editSide.name} lineup` : 'Your lineup'}
+                  title=${editable.length > 1 ? `${editSide.name}’s lineup` : 'Your lineup'}
                 />`
               : null
         }
