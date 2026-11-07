@@ -2,7 +2,17 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['node_modules/', 'app/data/', 'app/assets/', 'app/ui/vendor/', 'data/', '.shots/'] },
+  {
+    ignores: [
+      '.claude/',
+      'node_modules/',
+      'app/data/',
+      'app/assets/',
+      'app/ui/vendor/',
+      'data/',
+      '.shots/',
+    ],
+  },
   js.configs.recommended,
   {
     files: ['app/**/*.js'],
