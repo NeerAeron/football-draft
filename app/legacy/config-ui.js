@@ -1,6 +1,8 @@
 import {
   DEFAULT_CONFIG,
   CONFIG_FIELDS,
+  configField,
+  overrideField,
   loadConfig,
   saveConfig,
   normalizeConfig,
@@ -140,14 +142,9 @@ const percentField = f =>
     'moderatelyBetter',
     'muchBetter',
   ].includes(f.key);
-// Clubs added to the catalog after DEFAULT_CONFIG listed its club multipliers use ×1.
-function clubInput(team) {
-  const field = CONFIG_FIELDS.find(f => f.path === 'draft.clubOverrides.' + team.id);
-  return field ? input(field) : '1 (default)';
-}
 function input(field) {
   const scale = percentField(field) ? 100 : 1,
-    value = configValue(draft, field.path);
+    value = configValue(draft, field.path) ?? field.defaultValue;
   if (typeof field.defaultValue === 'boolean')
     return `<input type="checkbox" data-setting="${field.path}" ${value ? 'checked' : ''} aria-label="${esc(field.label)}">`;
   if (typeof field.defaultValue === 'string')
@@ -158,7 +155,7 @@ function bindInputs() {
   document.querySelectorAll('[data-setting]').forEach(
     node =>
       (node.oninput = () => {
-        const field = CONFIG_FIELDS.find(f => f.path === node.dataset.setting);
+        const field = configField(node.dataset.setting);
         if (node.type === 'number' && (!node.validity.valid || node.value === '')) {
           status('Check the value for ' + field.label + '.', true);
           return;
@@ -201,9 +198,16 @@ function navigation() {
   const query = $('#config-search').value.trim().toLowerCase();
   $('#config-navigation').innerHTML = sections
     .map(([id, label, , match]) => {
-      const count = CONFIG_FIELDS.filter(
-        f => match(f.path) && (!query || (f.path + ' ' + f.label).toLowerCase().includes(query)),
-      ).length;
+      const count =
+        id === 'leagues'
+          ? (data?.leagues.length ?? '')
+          : id === 'clubs'
+            ? (data?.teams.length ?? '')
+            : CONFIG_FIELDS.filter(
+                f =>
+                  match(f.path) &&
+                  (!query || (f.path + ' ' + f.label).toLowerCase().includes(query)),
+              ).length;
       return `<button type="button" data-section="${id}" class="${id === active ? 'active' : ''}">${label}<small>${count}</small></button>`;
     })
     .join('');
@@ -354,7 +358,7 @@ async function renderOdds() {
       $('#config-fields').innerHTML =
         `<div class="config-table"><table><thead><tr><th>League</th><th>Players</th><th>Multiplier</th><th>Draw chance</th></tr></thead><tbody>${rows
           .map(l => {
-            const f = CONFIG_FIELDS.find(f => f.path === 'draft.leagueOverrides.' + l.id);
+            const f = overrideField('league', l.id);
             return `<tr data-league="${l.id}"><td><strong>${l.tier} · ${esc(l.name)}</strong></td><td>${l.playerCount}</td><td>${input(f)}</td><td data-odds></td></tr>`;
           })
           .join('')}</tbody></table></div>`;
@@ -375,7 +379,7 @@ async function renderOdds() {
           .slice(0, clubLimit)
           .map(
             t =>
-              `<tr data-club="${t.id}"><td><strong>${t.tier} · ${esc(t.name)}</strong></td><td>${t.overall.toFixed(2)}</td><td>${t.players.length}</td><td>${clubInput(t)}</td><td data-odds></td></tr>`,
+              `<tr data-club="${t.id}"><td><strong>${t.tier} · ${esc(t.name)}</strong></td><td>${t.overall.toFixed(2)}</td><td>${t.players.length}</td><td>${input(overrideField('club', t.id))}</td><td data-odds></td></tr>`,
           )
           .join(
             '',
@@ -446,6 +450,8 @@ $('#config-reset-section').onclick = () => {
   const match = sections.find(s => s[0] === active)[3];
   for (const f of CONFIG_FIELDS.filter(f => match(f.path)))
     setConfigValue(draft, f.path, f.defaultValue);
+  if (active === 'leagues') draft.draft.leagueOverrides = {};
+  if (active === 'clubs') draft.draft.clubOverrides = {};
   try {
     setRuntimeConfig(draft);
     render();

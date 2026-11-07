@@ -1,4 +1,5 @@
 // One set of named tuning inputs, shared by every game mode.
+import { V8_DEFAULT_SIGNATURE } from './v8-defaults.js';
 export const DEFAULT_CONFIG = {
   draft: {
     leagueWeights: {
@@ -34,583 +35,90 @@ export const DEFAULT_CONFIG = {
       star: 3,
       starter: 3,
     },
-    leagueOverrides: {
-      13: 1,
-      19: 1,
-      53: 1,
-      31: 1,
-      16: 1,
-      7: 1,
-      4: 1,
-      353: 1,
-      308: 1,
-      14: 1,
-      66: 1,
-      1: 1,
-      'opta:2hsidwomhjsaaytdy9u5niyi4': 1,
-      336: 1,
-      41: 1,
-      10: 1,
-      39: 1,
-      2018: 1,
-      68: 1,
-      319: 1,
-      317: 1,
-      189: 1,
-      54: 1,
-      337: 1,
-      80: 1,
-      335: 1,
-      63: 1,
-      338: 1,
-      'opta:3ab1uwtoyjopdj1y1fynyy9jg': 1,
-      20: 1,
-      'opta:8o5tv5viv4hy1qg9jp94k7ayb': 1,
-      56: 1,
-      318: 1,
-      64: 1,
-      'opta:byu00jvt1j6csyv4y1lkt2fm2': 1,
-      2020: 1,
-      50: 1,
-      32: 1,
-      350: 1,
-      2017: 1,
-      17: 1,
-      2019: 1,
-      'opta:2xg0qvif1rh7du6wmk2eleku3': 1,
-      83: 1,
-      330: 1,
-      60: 1,
-      'opta:1mpjd0vbxbtu9zw89yj09xk3z': 1,
-      'opta:1eruend45vd20g9hbrpiggs5u': 1,
-      'opta:8k1xcsyvxapl4jlsluh3eomre': 1,
-      'opta:57nu0wygurzkp6fuy5hhrtaa2': 1,
-    },
-    clubOverrides: {
-      111713: 1,
-      113147: 1,
-      114554: 1,
-      200: 1,
-      110069: 1,
-      294: 1,
-      1894: 1,
-      1929: 1,
-      1931: 1,
-      111657: 1,
-      112124: 1,
-      110078: 1,
-      1815: 1,
-      115494: 1,
-      1958: 1,
-      111659: 1,
-      110752: 1,
-      110750: 1,
-      110321: 1,
-      111139: 1,
-      1933: 1,
-      110075: 1,
-      1804: 1,
-      1932: 1,
-      1917: 1,
-      110072: 1,
-      114147: 1,
-      9: 1,
-      10: 1,
-      1: 1,
-      11: 1,
-      5: 1,
-      13: 1,
-      2: 1,
-      106: 1,
-      18: 1,
-      7: 1,
-      19: 1,
-      14: 1,
-      1808: 1,
-      144: 1,
-      1799: 1,
-      8: 1,
-      1925: 1,
-      1943: 1,
-      1796: 1,
-      110: 1,
-      21: 1,
-      22: 1,
-      32: 1,
-      112172: 1,
-      36: 1,
-      10029: 1,
-      1824: 1,
-      25: 1,
-      169: 1,
-      23: 1,
-      38: 1,
-      175: 1,
-      1831: 1,
-      28: 1,
-      100409: 1,
-      31: 1,
-      110329: 1,
-      111235: 1,
-      243: 1,
-      241: 1,
-      240: 1,
-      448: 1,
-      449: 1,
-      483: 1,
-      450: 1,
-      457: 1,
-      479: 1,
-      453: 1,
-      461: 1,
-      480: 1,
-      1860: 1,
-      110062: 1,
-      452: 1,
-      481: 1,
-      463: 1,
-      1853: 1,
-      468: 1,
-      110827: 1,
-      44: 1,
-      48: 1,
-      47: 1,
-      52: 1,
-      45: 1,
-      110374: 1,
-      46: 1,
-      39: 1,
-      189: 1,
-      111974: 1,
-      54: 1,
-      1745: 1,
-      347: 1,
-      206: 1,
-      55: 1,
-      111434: 1,
-      110556: 1,
-      1842: 1,
-      110738: 1,
-      50: 1,
-      73: 1,
-      219: 1,
-      69: 1,
-      66: 1,
-      111817: 1,
-      72: 1,
-      65: 1,
-      74: 1,
-      76: 1,
-      1809: 1,
-      64: 1,
-      378: 1,
-      1530: 1,
-      71: 1,
-      68: 1,
-      57: 1,
-      217: 1,
-      1738: 1,
-      231: 1,
-      673: 1,
-      2014: 1,
-      230: 1,
-      229: 1,
-      674: 1,
-      110724: 1,
-      100087: 1,
-      681: 1,
-      670: 1,
-      232: 1,
-      680: 1,
-      1750: 1,
-      15005: 1,
-      537: 1,
-      132231: 1,
-      110580: 1,
-      111022: 1,
-      101083: 1,
-      1876: 1,
-      1877: 1,
-      110395: 1,
-      101085: 1,
-      110093: 1,
-      110396: 1,
-      112670: 1,
-      111019: 1,
-      101088: 1,
-      111706: 1,
-      110953: 1,
-      111020: 1,
-      110404: 1,
-      1013: 1,
-      113044: 1,
-      111711: 1,
-      111716: 1,
-      101084: 1,
-      111710: 1,
-      111708: 1,
-      111715: 1,
-      112689: 1,
-      115472: 1,
-      112713: 1,
-      111707: 1,
-      112965: 1,
-      236: 1,
-      237: 1,
-      234: 1,
-      1896: 1,
-      744: 1,
-      1888: 1,
-      1891: 1,
-      112809: 1,
-      1438: 1,
-      1900: 1,
-      717: 1,
-      112513: 1,
-      1887: 1,
-      10020: 1,
-      112516: 1,
-      131463: 1,
-      114510: 1,
-      718: 1,
-      1794: 1,
-      94: 1,
-      88: 1,
-      95: 1,
-      1792: 1,
-      1800: 1,
-      97: 1,
-      17: 1,
-      1790: 1,
-      1947: 1,
-      91: 1,
-      109: 1,
-      1795: 1,
-      15: 1,
-      1952: 1,
-      89: 1,
-      1806: 1,
-      1919: 1,
-      12: 1,
-      1807: 1,
-      1960: 1,
-      1801: 1,
-      3: 1,
-      1951: 1,
-      873: 1,
-      110746: 1,
-      110745: 1,
-      1871: 1,
-      114326: 1,
-      301: 1,
-      420: 1,
-      110747: 1,
-      111091: 1,
-      111097: 1,
-      111088: 1,
-      111086: 1,
-      110749: 1,
-      110206: 1,
-      112510: 1,
-      1569: 1,
-      111083: 1,
-      111082: 1,
-      819: 1,
-      1516: 1,
-      269: 1,
-      1786: 1,
-      271: 1,
-      1788: 1,
-      272: 1,
-      270: 1,
-      1443: 1,
-      822: 1,
-      1447: 1,
-      15006: 1,
-      101100: 1,
-      101106: 1,
-      101099: 1,
-      112992: 1,
-      918: 1,
-      300: 1,
-      919: 1,
-      417: 1,
-      298: 1,
-      920: 1,
-      2041: 1,
-      922: 1,
-      112199: 1,
-      418: 1,
-      131491: 1,
-      1463: 1,
-      1756: 1,
-      1757: 1,
-      113459: 1,
-      1523: 1,
-      247: 1,
-      246: 1,
-      1906: 1,
-      1910: 1,
-      245: 1,
-      1908: 1,
-      1903: 1,
-      100632: 1,
-      100646: 1,
-      1914: 1,
-      1913: 1,
-      634: 1,
-      1904: 1,
-      100634: 1,
-      645: 1,
-      1915: 1,
-      1971: 1,
-      112893: 1,
-      112996: 1,
-      101112: 1,
-      697: 1,
-      113149: 1,
-      114162: 1,
-      691: 1,
-      689: 1,
-      131439: 1,
-      111928: 1,
-      112885: 1,
-      693: 1,
-      114640: 1,
-      113018: 1,
-      111140: 1,
-      112606: 1,
-      695: 1,
-      112828: 1,
-      687: 1,
-      111651: 1,
-      694: 1,
-      111144: 1,
-      112134: 1,
-      114161: 1,
-      696: 1,
-      688: 1,
-      111065: 1,
-      111138: 1,
-      698: 1,
-      110986: 1,
-      114581: 1,
-      110981: 1,
-      112908: 1,
-      114615: 1,
-      325: 1,
-      326: 1,
-      327: 1,
-      436: 1,
-      101033: 1,
-      111339: 1,
-      101032: 1,
-      110776: 1,
-      101037: 1,
-      101025: 1,
-      101014: 1,
-      131174: 1,
-      748: 1,
-      113142: 1,
-      111117: 1,
-      741: 1,
-      101020: 1,
-      101026: 1,
-      266: 1,
-      267: 1,
-      110468: 1,
-      211: 1,
-      263: 1,
-      896: 1,
-      324: 1,
-      10032: 1,
-      894: 1,
-      900: 1,
-      898: 1,
-      897: 1,
-      322: 1,
-      1862: 1,
-      110770: 1,
-      1715: 1,
-      1968: 1,
-      472: 1,
-      100888: 1,
-      242: 1,
-      1861: 1,
-      456: 1,
-      462: 1,
-      573: 1,
-      244: 1,
-      459: 1,
-      110839: 1,
-      467: 1,
-      1854: 1,
-      110832: 1,
-      1867: 1,
-      10846: 1,
-      100852: 1,
-      15012: 1,
-      111008: 1,
-      101108: 1,
-      112716: 1,
-      111329: 1,
-      111006: 1,
-      209: 1,
-      191: 1,
-      256: 1,
-      252: 1,
-      254: 1,
-      111822: 1,
-      110720: 1,
-      15040: 1,
-      15009: 1,
-      2017: 1,
-      780: 1,
-      110980: 1,
-      15029: 1,
-      110975: 1,
-      111328: 1,
-      112531: 1,
-      110977: 1,
-      280: 1,
-      278: 1,
-      393: 1,
-      1884: 1,
-      111325: 1,
-      101110: 1,
-      115536: 1,
-      112868: 1,
-      112615: 1,
-      1832: 1,
-      160: 1,
-      166: 1,
-      576: 1,
-      485: 1,
-      171: 1,
-      110502: 1,
-      34: 1,
-      10030: 1,
-      531: 1,
-      159: 1,
-      110588: 1,
-      110636: 1,
-      29: 1,
-      165: 1,
-      110500: 1,
-      580: 1,
-      503: 1,
-      320: 1,
-      433: 1,
-      708: 1,
-      711: 1,
-      700: 1,
-      710: 1,
-      112072: 1,
-      702: 1,
-      113458: 1,
-      111594: 1,
-      319: 1,
-      113892: 1,
-      111705: 1,
-      100135: 1,
-      1874: 1,
-      111010: 1,
-      111334: 1,
-      111013: 1,
-      111014: 1,
-      111011: 1,
-      114598: 1,
-      78: 1,
-      86: 1,
-      77: 1,
-      80: 1,
-      81: 1,
-      181: 1,
-      621: 1,
-      100805: 1,
-      79: 1,
-      83: 1,
-      82: 1,
-      180: 1,
-      111811: 1,
-      1837: 1,
-      1843: 1,
-      205: 1,
-      110741: 1,
-      110908: 1,
-      1848: 1,
-      110740: 1,
-      112494: 1,
-      110915: 1,
-      2038: 1,
-      1744: 1,
-      112493: 1,
-      111433: 1,
-      110912: 1,
-      1746: 1,
-      607: 1,
-      112139: 1,
-      605: 1,
-      112387: 1,
-      112391: 1,
-      111674: 1,
-      112883: 1,
-      113057: 1,
-      131798: 1,
-      112096: 1,
-      112393: 1,
-      113037: 1,
-      112390: 1,
-      113222: 1,
-      113060: 1,
-      131735: 1,
-      115892: 1,
-      113217: 1,
-      110968: 1,
-      131795: 1,
-      132375: 1,
-      112667: 1,
-      379: 1,
-      70: 1,
-      1819: 1,
-      1805: 1,
-      1814: 1,
-      111273: 1,
-      111276: 1,
-      62: 1,
-      1823: 1,
-      1816: 1,
-      58: 1,
-      110990: 1,
-      110991: 1,
-      114611: 1,
-      110989: 1,
-      2055: 1,
-      1474: 1,
-      982: 1,
-      1473: 1,
-      2056: 1,
-      980: 1,
-      1477: 1,
-      112555: 1,
-      1478: 1,
-      112258: 1,
-      112115: 1,
-      112558: 1,
-      110816: 1,
-      100761: 1,
-      110751: 1,
-      310: 1,
-      308: 1,
-      100757: 1,
-      1961: 1,
-      1923: 1,
-      1926: 1,
-      1793: 1,
-      1939: 1,
-      4: 1,
-    },
+    // Sparse per-league / per-club odds multipliers for the legacy Draft (missing = 1).
+    leagueOverrides: {},
+    clubOverrides: {},
     eliteClubBoost: 0.8,
+    // ---- Draft session (core/draft/session.js). The legacy Draft reads only the keys above. ----
+    // Nations: the field is the strongest eligible nations (>= minimumPlayers and
+    // >= minimumGoalkeepers), shown in pots; each spin offers the best available call-ups.
+    nations: {
+      fieldSize: 48,
+      potSize: 12,
+      minimumPlayers: 23,
+      minimumGoalkeepers: 2,
+      squadSize: 23,
+      squadGoalkeepers: 3,
+      squadDefenders: 7,
+      squadMidfielders: 7,
+      squadAttackers: 4,
+    },
+    // Leagues (and the league leg of Clubs): flat odds per league tier.
+    leagueTierWeights: {
+      A: 4,
+      B: 2,
+      C: 1,
+      D: 0.5,
+      F: 0.25,
+    },
+    // Clubs: one spin lands a league, then a club. Both legs are tier-weighted (shown on the
+    // reels); with flat odds ~half of all picks were duds (no option >= 75) because 429 of
+    // the 546 clubs are C/D/F.
+    clubs: {
+      minimumPlayers: 11,
+      leagueTierWeights: {
+        A: 12,
+        B: 4,
+        C: 1,
+        D: 0.5,
+        F: 0.25,
+      },
+      // By club tier (S >= 82 … F: median of the best ten; see teamTiers).
+      tierWeights: {
+        S: 4,
+        A: 3,
+        B: 2,
+        C: 1,
+        D: 0.5,
+        F: 0.25,
+      },
+    },
+    // Re-rolls per drafter by difficulty.
+    rerolls: {
+      amateur: 2,
+      semipro: 2,
+      pro: 1,
+      worldclass: 1,
+      legendary: 0,
+    },
+    // Opponent strength vs the mode's typical drafted XI (effective rating, links included).
+    ladder: {
+      amateur: -7,
+      semipro: -3.5,
+      pro: 0,
+      worldclass: 4,
+      legendary: 7,
+    },
+    // Links: a player's level is the sum of club / nation / league levels (teammates sharing
+    // it, the player included, reaching each threshold), capped at 3. chem = level / 3 * maxChem.
+    links: {
+      club: {
+        level1: 2,
+        level2: 5,
+        level3: 8,
+      },
+      nation: {
+        level1: 2,
+        level2: 5,
+        level3: 8,
+      },
+      league: {
+        level1: 3,
+        level2: 5,
+        level3: 8,
+      },
+      maxChem: 2,
+    },
   },
   playerTiers: {
     Superstar: {
@@ -1207,15 +715,37 @@ export const DEFAULT_CONFIG = {
   },
 };
 const STORAGE_KEY = 'football-draft-settings-v1';
-const SETTINGS_VERSION = 8;
+// 9: only differences from the defaults are stored; league/club overrides are sparse maps.
+const SETTINGS_VERSION = 9;
 const clone = x => JSON.parse(JSON.stringify(x));
 const at = (o, path) => path.split('.').reduce((a, k) => a?.[k], o);
 const put = (o, path, value) => {
   const keys = path.split('.');
   let next = o;
-  for (const key of keys.slice(0, -1)) next = next[key];
+  for (const key of keys.slice(0, -1)) next = next[key] ??= {};
   next[keys.at(-1)] = value;
 };
+// Sparse id -> multiplier maps (missing = 1). They are not part of CONFIG_FIELDS; the config
+// page builds one field per catalog league/club with overrideField().
+const SPARSE_MAPS = { 'draft.leagueOverrides': 'League', 'draft.clubOverrides': 'Club' };
+const OVERRIDE_RANGE = [0, 10, 0.05];
+const isPlainObject = x => !!x && typeof x === 'object' && !Array.isArray(x);
+/** A config field for one league/club odds multiplier (kind 'league' or 'club'). */
+export function overrideField(kind, id) {
+  const path = `draft.${kind}Overrides.${id}`;
+  if (!SPARSE_MAPS[`draft.${kind}Overrides`]) throw Error('Unknown override kind: ' + kind);
+  const [min, max, step] = OVERRIDE_RANGE;
+  return { path, key: String(id), defaultValue: 1, min, max, step, label: 'Multiplier' };
+}
+/** The field for any settings path: a CONFIG_FIELDS entry or a sparse override entry. */
+export function configField(path) {
+  const field = CONFIG_FIELDS.find(f => f.path === path);
+  if (field) return field;
+  const map = Object.keys(SPARSE_MAPS).find(m => path.startsWith(m + '.'));
+  return map
+    ? overrideField(map === 'draft.leagueOverrides' ? 'league' : 'club', path.slice(map.length + 1))
+    : null;
+}
 const labels = {
   controlQuality: 'Ball-control stat influence',
   passingQuality: 'Passing stat influence',
@@ -1338,6 +868,43 @@ const ranges = {
   secondaryDistance: [0, 0.2, 0.005],
   unfamiliarFit: [0.2, 0.8, 0.01],
 };
+// Draft-session settings (draft.nations / leagueTierWeights / clubs / rerolls / ladder / links):
+// [label, min, max, step] by path prefix, longest match wins.
+const DRAFT_FIELDS = {
+  'draft.nations.fieldSize': ['Nations in the field', 8, 64, 1],
+  'draft.nations.potSize': ['Nations per pot', 1, 64, 1],
+  'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
+  'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
+  'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
+  'draft.nations.squadGoalkeepers': ['Call-ups: goalkeepers', 1, 5, 1],
+  'draft.nations.squadDefenders': ['Call-ups: at least defenders', 0, 15, 1],
+  'draft.nations.squadMidfielders': ['Call-ups: at least midfielders', 0, 15, 1],
+  'draft.nations.squadAttackers': ['Call-ups: at least attackers', 0, 15, 1],
+  'draft.leagueTierWeights.': [null, 0, 20, 0.05],
+  'draft.clubs.minimumPlayers': ['Spinnable club: minimum players', 1, 30, 1],
+  'draft.clubs.tierWeights.': [null, 0, 20, 0.05],
+  'draft.clubs.leagueTierWeights.': [null, 0, 50, 0.05],
+  'draft.rerolls.': [null, 0, 5, 1],
+  'draft.ladder.': [null, -15, 15, 0.5],
+  'draft.links.': [null, 1, 11, 1],
+  'draft.links.maxChem': ['Maximum link boost (attribute points)', 0, 4, 0.25],
+};
+const LEVEL_LABELS = {
+  amateur: 'Amateur',
+  semipro: 'Semi-pro',
+  pro: 'Pro',
+  worldclass: 'World Class',
+  legendary: 'Legendary',
+  level1: 'Level 1 at … players',
+  level2: 'Level 2 at … players',
+  level3: 'Level 3 at … players',
+};
+const draftField = path => {
+  const key = Object.keys(DRAFT_FIELDS)
+    .filter(k => path === k || (k.endsWith('.') && path.startsWith(k)))
+    .sort((a, b) => b.length - a.length)[0];
+  return key ? DRAFT_FIELDS[key] : null;
+};
 const walk = (o, prefix = '') =>
   Object.entries(o).flatMap(([key, value]) => {
     const path = prefix ? prefix + '.' + key : key;
@@ -1362,6 +929,8 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   if (f.path.startsWith('draft.budget.') && typeof f.defaultValue === 'number')
     [min, max, step] = [0, 11, 1];
   if (f.path.startsWith('draft.respins.')) [min, max, step] = [0, 5, 1];
+  const session = draftField(f.path);
+  if (session) [, min, max, step] = session;
   if (f.path.startsWith('playerTiers.') || f.path.startsWith('teamTiers.'))
     [min, max, step] = [0, f.key.startsWith('badge') ? 10 : 99, 1];
   if (f.path.startsWith('ratings.roleWeights.')) [min, max, step] = [0, 100, 0.01];
@@ -1390,6 +959,8 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   return {
     ...f,
     label:
+      session?.[0] ||
+      (session && LEVEL_LABELS[f.key]) ||
       labels[f.key] ||
       f.key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase()),
     min,
@@ -1397,7 +968,115 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
     step,
   };
 });
-export function normalizeConfig(input = {}) {
+// Whole-config rules that single fields cannot express. In lenient mode (loading saved
+// settings) a broken rule resets only the named groups to their defaults, with a warning.
+const CROSS_FIELD_RULES = [
+  {
+    message: 'Badge minimum cannot exceed its maximum.',
+    reset: ['playerTiers'],
+    ok: c => Object.values(c.playerTiers).every(t => t.badgeMinimum <= t.badgeMaximum),
+  },
+  {
+    message: 'Player tier thresholds must descend.',
+    reset: ['playerTiers'],
+    ok: c =>
+      Object.values(c.playerTiers).every((t, i, rows) => !i || rows[i - 1].minimum > t.minimum),
+  },
+  {
+    message: 'Team tier thresholds must descend.',
+    reset: ['teamTiers'],
+    ok: c => Object.values(c.teamTiers).every((v, i, rows) => !i || rows[i - 1] > v),
+  },
+  {
+    message: 'At least one league tier must have a positive draw weight.',
+    reset: ['draft.leagueWeights'],
+    ok: c => Object.values(c.draft.leagueWeights).some(v => v > 0),
+  },
+  {
+    message: 'At least one league tier must have a positive draw weight.',
+    reset: ['draft.leagueTierWeights'],
+    ok: c => Object.values(c.draft.leagueTierWeights).some(v => v > 0),
+  },
+  ...['draft.clubs.leagueTierWeights', 'draft.clubs.tierWeights'].map(path => ({
+    message: 'At least one tier must have a positive draw weight.',
+    reset: [path],
+    ok: c => Object.values(at(c, path)).some(v => v > 0),
+  })),
+  {
+    message: 'Bench and F must start at zero to cover every rating.',
+    reset: ['playerTiers', 'teamTiers'],
+    ok: c => c.playerTiers.Bench.minimum === 0 && c.teamTiers.F === 0,
+  },
+  {
+    message: 'Medium re-spin improvement must exceed slight improvement.',
+    reset: ['draft.respinBoosts'],
+    ok: c =>
+      c.draft.respinBoosts.clubSlightGap < c.draft.respinBoosts.clubMediumGap &&
+      c.draft.respinBoosts.leagueSlightSteps < c.draft.respinBoosts.leagueMediumSteps,
+  },
+  {
+    message: 'Call-up minimums cannot exceed the call-up size.',
+    reset: ['draft.nations'],
+    ok: ({ draft: { nations: n } }) =>
+      n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
+  },
+  {
+    message: 'Link thresholds must rise from level 1 to level 3.',
+    reset: ['draft.links'],
+    ok: c =>
+      ['club', 'nation', 'league'].every(
+        k =>
+          c.draft.links[k].level1 <= c.draft.links[k].level2 &&
+          c.draft.links[k].level2 <= c.draft.links[k].level3,
+      ),
+  },
+  {
+    message: 'Minimum added time exceeds maximum.',
+    reset: ['periods'],
+    ok: c => c.periods.minimum <= Math.min(c.periods.firstHalfMaximum, c.periods.secondHalfMaximum),
+  },
+  {
+    message: 'Position familiarity base and bonus must total at most 1.',
+    reset: ['ratings.familiarityBase', 'ratings.familiarityBonus'],
+    ok: c => c.ratings.familiarityBase + c.ratings.familiarityBonus <= 1.001,
+  },
+  ...Object.keys(DEFAULT_CONFIG.ratings.roleWeights).map(role => ({
+    message: role + ' needs a positive overall weight.',
+    reset: ['ratings.roleWeights.' + role],
+    ok: c => Object.values(c.ratings.roleWeights[role]).reduce((s, v) => s + v, 0) > 0,
+  })),
+];
+// Why a value cannot be used for a field, or '' when it can.
+function fieldProblem(field, value) {
+  if (typeof field.defaultValue === 'boolean')
+    return typeof value === 'boolean' ? '' : field.label + ' must be on or off.';
+  if (typeof field.defaultValue === 'number') {
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value < field.min ||
+      value > field.max
+    )
+      return field.path + ' must be between ' + field.min + ' and ' + field.max + '.';
+    if (field.step === 1 && !Number.isInteger(value))
+      return field.label + ' must be a whole number.';
+    return '';
+  }
+  return ['S', 'A', 'B', 'C', 'D', 'F'].includes(value) ? '' : 'Choose a valid team tier.';
+}
+/**
+ * Validate a (possibly partial) settings object against DEFAULT_CONFIG and return a complete
+ * configuration. Missing fields take their defaults; unknown keys are ignored.
+ * Strict (default): the first invalid value throws (the config page shows the message).
+ * Lenient ({ lenient: true }, used when loading saved settings): an invalid value is dropped
+ * with a warning and only that field (or the group a cross-field rule names) falls back.
+ */
+export function normalizeConfig(input = {}, { lenient = false, warn = defaultWarn } = {}) {
+  if (!isPlainObject(input)) {
+    if (!lenient) throw Error('Settings must be an object.');
+    warn('Ignoring settings that are not an object.');
+    input = {};
+  }
   // Upgrade the old shared club bias once; preserve customized odds and unrelated settings.
   if (typeof input?.draft?.clubDoubleEvery === 'number') {
     const old = input.draft,
@@ -1431,194 +1110,253 @@ export function normalizeConfig(input = {}) {
   for (const field of CONFIG_FIELDS) {
     const value = at(input, field.path);
     if (value === undefined) continue;
-    if (typeof field.defaultValue === 'boolean') {
-      if (typeof value !== 'boolean') throw Error(field.label + ' must be on or off.');
-      put(out, field.path, value);
-    } else if (typeof field.defaultValue === 'number') {
-      if (
-        typeof value !== 'number' ||
-        !Number.isFinite(value) ||
-        value < field.min ||
-        value > field.max
-      )
-        throw Error(field.path + ' must be between ' + field.min + ' and ' + field.max + '.');
-      if (field.step === 1 && !Number.isInteger(value))
-        throw Error(field.label + ' must be a whole number.');
-      put(out, field.path, value);
-    } else {
-      if (!['S', 'A', 'B', 'C', 'D', 'F'].includes(value)) throw Error('Choose a valid team tier.');
-      put(out, field.path, value);
+    const problem = fieldProblem(field, value);
+    if (!problem) put(out, field.path, value);
+    else if (!lenient) throw Error(problem);
+    else warn(`Ignoring saved setting ${field.path}=${JSON.stringify(value)}: ${problem}`);
+  }
+  for (const path of Object.keys(SPARSE_MAPS)) {
+    const source = at(input, path);
+    if (source === undefined) continue;
+    if (!isPlainObject(source)) {
+      if (!lenient) throw Error(path + ' must map ids to multipliers.');
+      warn(`Ignoring saved setting ${path}: not an id map.`);
+      continue;
+    }
+    const target = at(out, path);
+    for (const [id, value] of Object.entries(source)) {
+      const field = overrideField(path === 'draft.leagueOverrides' ? 'league' : 'club', id),
+        problem = fieldProblem(field, value);
+      if (problem) {
+        if (!lenient) throw Error(problem);
+        warn(`Ignoring saved setting ${field.path}=${JSON.stringify(value)}: ${problem}`);
+      } else if (value !== 1) target[id] = value;
     }
   }
-  const tierRows = Object.values(out.playerTiers);
-  for (let i = 0; i < tierRows.length; i++) {
-    const t = tierRows[i];
-    if (t.badgeMinimum > t.badgeMaximum) throw Error('Badge minimum cannot exceed its maximum.');
-    if (i && tierRows[i - 1].minimum <= t.minimum)
-      throw Error('Player tier thresholds must descend.');
-  }
-  const teams = Object.values(out.teamTiers);
-  if (teams.some((v, i) => i && teams[i - 1] <= v))
-    throw Error('Team tier thresholds must descend.');
-  if (Object.values(out.draft.leagueWeights).every(v => v <= 0))
-    throw Error('At least one league tier must have a positive draw weight.');
-  if (out.playerTiers.Bench.minimum !== 0 || out.teamTiers.F !== 0)
-    throw Error('Bench and F must start at zero to cover every rating.');
-  if (
-    out.draft.respinBoosts.clubSlightGap >= out.draft.respinBoosts.clubMediumGap ||
-    out.draft.respinBoosts.leagueSlightSteps >= out.draft.respinBoosts.leagueMediumSteps
-  )
-    throw Error('Medium re-spin improvement must exceed slight improvement.');
-  if (out.periods.minimum > Math.min(out.periods.firstHalfMaximum, out.periods.secondHalfMaximum))
-    throw Error('Minimum added time exceeds maximum.');
-  if (out.ratings.familiarityBase + out.ratings.familiarityBonus > 1.001)
-    throw Error('Position familiarity base and bonus must total at most 1.');
-  for (const [role, weights] of Object.entries(out.ratings.roleWeights))
-    if (Object.values(weights).reduce((s, v) => s + v, 0) <= 0)
-      throw Error(role + ' needs a positive overall weight.');
+  for (const rule of CROSS_FIELD_RULES)
+    if (!rule.ok(out)) {
+      if (!lenient) throw Error(rule.message);
+      warn(`Resetting ${rule.reset.join(', ')} to defaults: ${rule.message}`);
+      for (const path of rule.reset) put(out, path, clone(at(DEFAULT_CONFIG, path)));
+    }
   return out;
 }
-export function loadConfig() {
+function defaultWarn(...args) {
+  globalThis.console?.warn?.('[settings]', ...args);
+}
+function defaultStorage() {
   try {
-    const saved = JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEY) || '{}');
-    const version = saved?._settingsVersion ?? 0;
-    // Moderate only unchanged device defaults. Explicit custom settings and
-    // imported match configurations keep their chosen influence values.
-    if (version < 8)
-      for (const [key, old] of Object.entries({
-        qualityImpact: 1.08,
-        controlQuality: 1.4,
-        passingQuality: 1.6,
-        defensiveQuality: 1,
-        creativeQuality: 1,
-      }))
-        if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-    if (version < 7)
-      for (const [key, old] of [
-        ['receptionError', 0.75],
-        ['difficultReceptionError', 1.05],
-      ])
-        if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-    if (version < 6)
-      for (const key of ['longBallPreference', 'clearanceWillingness'])
-        if (saved?.gameplay?.[key] === 1) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-    if (version < 5) {
-      for (const [key, old] of [
-        ['receptionError', 0.18],
-        ['difficultReceptionError', 0.55],
-        ['tackleSuccess', 0.94],
-        ['shotFrequency', 1.24],
-      ])
-        if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-      for (const [duration, old] of [
-        [180, -0.5],
-        [300, -0.27],
-      ])
-        if (saved?.formats?.[duration]?.saveBoost === old)
-          saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
-    }
-    if (version < 4 && saved?.gameplay?.tackleSuccess === 1)
-      saved.gameplay.tackleSuccess = DEFAULT_CONFIG.gameplay.tackleSuccess;
-    if (version < 4)
-      for (const [duration, old] of [
-        [180, -0.6],
-        [300, -0.37],
-      ])
-        if (saved?.formats?.[duration]?.saveBoost === old)
-          saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
-    if (version < 3 && saved?.ai?.impossibleOverall === 82)
-      saved.ai.impossibleOverall = DEFAULT_CONFIG.ai.impossibleOverall;
-    if (
-      version < 1 &&
-      [
-        { A: 36, B: 10.5, C: 3, D: 0.8, F: 0.2 },
-        { A: 32, B: 10, C: 3, D: 0.8, F: 0.2 },
-      ].some(old =>
-        Object.entries(old).every(
-          ([tier, weight]) => saved?.draft?.leagueWeights?.[tier] === weight,
-        ),
-      )
-    )
-      saved.draft.leagueWeights = { ...DEFAULT_CONFIG.draft.leagueWeights };
-    if (version < 2) {
-      if (saved?.playerTiers?.Superstar?.minimum === 83) saved.playerTiers.Superstar.minimum = 85;
-      if (saved?.draft?.leagueWeights?.A === 39)
-        saved.draft.leagueWeights.A = DEFAULT_CONFIG.draft.leagueWeights.A;
-      if (saved?.display?.receiptLabelDuration === 2.5)
-        saved.display.receiptLabelDuration = DEFAULT_CONFIG.display.receiptLabelDuration;
-      // Migrate only unchanged role defaults, leaving custom weights and replays intact.
-      const priorWeights = {
-        GK: 3070697025,
-        CB: 3528548659,
-        LB: 917603,
-        RB: 917603,
-        DM: 4285413286,
-        CM: 3983548147,
-        AM: 1207724980,
-        LW: 2493809455,
-        RW: 2493809455,
-        LM: 3102840154,
-        RM: 3102840154,
-        ST: 3884776852,
-      };
-      const priorOffsets = {
-        GK: 0,
-        CB: 2.5,
-        LB: 2,
-        RB: 2,
-        DM: 1.75,
-        CM: 0.5,
-        AM: 2,
-        LM: 3,
-        RM: 3,
-        LW: 1,
-        RW: 1,
-        ST: 1.5,
-      };
-      const signature = weights =>
-        [
-          ...Object.keys(weights)
-            .sort()
-            .map(k => k + ':' + weights[k])
-            .join(','),
-        ].reduce((hash, c) => (Math.imul(hash, 31) + c.charCodeAt(0)) >>> 0, 0);
-      for (const role of Object.keys(priorWeights)) {
-        const weights = saved?.ratings?.roleWeights?.[role];
-        if (weights && signature(weights) === priorWeights[role])
-          saved.ratings.roleWeights[role] = clone(DEFAULT_CONFIG.ratings.roleWeights[role]);
-        if (saved?.ratings?.roleOffsets?.[role] === priorOffsets[role])
-          saved.ratings.roleOffsets[role] = DEFAULT_CONFIG.ratings.roleOffsets[role];
-      }
-    }
-    // Upgrade unchanged device defaults, while replay imports retain their original physics.
-    if (saved?.display?.commentaryInterval !== undefined && saved.gameplay) {
-      for (const [key, old] of Object.entries({
-        movementSpeed: 1.03,
-        acceleration: 1.03,
-        shotFrequency: 1.12,
-        passSpeed: 1,
-      }))
-        if (saved.gameplay[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-    }
-    return normalizeConfig(saved);
+    return globalThis.localStorage ?? null;
   } catch {
+    return null; // e.g. storage blocked by the browser
+  }
+}
+const fnv1a = text => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  return h;
+};
+let v8Defaults = null;
+// Settings saved before version 9 were full snapshots: drop every leaf that still holds its
+// version-8 default, so it follows the current default instead of pinning the old one.
+function dropUntouchedV8Defaults(saved) {
+  v8Defaults ??= new Set(V8_DEFAULT_SIGNATURE.match(/.{7}/g).map(h => parseInt(h, 36)));
+  (function prune(o, prefix) {
+    for (const [key, value] of Object.entries(o)) {
+      const path = prefix ? prefix + '.' + key : key;
+      if (SPARSE_MAPS[path]) continue;
+      if (isPlainObject(value)) {
+        prune(value, path);
+        if (!Object.keys(value).length) delete o[key];
+      } else if (v8Defaults.has(fnv1a(path + '=' + JSON.stringify(value)))) delete o[key];
+    }
+  })(saved, '');
+}
+/** Only the settings that differ from `base` (sparse; sparse override maps keep non-1 entries). */
+export function configDiff(value, base = DEFAULT_CONFIG) {
+  const diff = {};
+  for (const field of CONFIG_FIELDS) {
+    const v = at(value, field.path);
+    if (v !== undefined && v !== at(base, field.path)) put(diff, field.path, v);
+  }
+  for (const path of Object.keys(SPARSE_MAPS))
+    for (const [id, v] of Object.entries(at(value, path) || {}))
+      if (v !== (at(base, path)?.[id] ?? 1)) put(diff, path + '.' + id, v);
+  return diff;
+}
+// Version upgrades of saved settings, oldest format first. Each rewrites only unchanged old
+// defaults; customised values and imported match configurations keep their chosen values.
+function migrateSaved(saved) {
+  const version = saved?._settingsVersion ?? 0;
+  delete saved._settingsVersion;
+  // Moderate only unchanged device defaults. Explicit custom settings and
+  // imported match configurations keep their chosen influence values.
+  if (version < 8)
+    for (const [key, old] of Object.entries({
+      qualityImpact: 1.08,
+      controlQuality: 1.4,
+      passingQuality: 1.6,
+      defensiveQuality: 1,
+      creativeQuality: 1,
+    }))
+      if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
+  if (version < 7)
+    for (const [key, old] of [
+      ['receptionError', 0.75],
+      ['difficultReceptionError', 1.05],
+    ])
+      if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
+  if (version < 6)
+    for (const key of ['longBallPreference', 'clearanceWillingness'])
+      if (saved?.gameplay?.[key] === 1) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
+  if (version < 5) {
+    for (const [key, old] of [
+      ['receptionError', 0.18],
+      ['difficultReceptionError', 0.55],
+      ['tackleSuccess', 0.94],
+      ['shotFrequency', 1.24],
+    ])
+      if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
+    for (const [duration, old] of [
+      [180, -0.5],
+      [300, -0.27],
+    ])
+      if (saved?.formats?.[duration]?.saveBoost === old)
+        saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
+  }
+  if (version < 4 && saved?.gameplay?.tackleSuccess === 1)
+    saved.gameplay.tackleSuccess = DEFAULT_CONFIG.gameplay.tackleSuccess;
+  if (version < 4)
+    for (const [duration, old] of [
+      [180, -0.6],
+      [300, -0.37],
+    ])
+      if (saved?.formats?.[duration]?.saveBoost === old)
+        saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
+  if (version < 3 && saved?.ai?.impossibleOverall === 82)
+    saved.ai.impossibleOverall = DEFAULT_CONFIG.ai.impossibleOverall;
+  if (
+    version < 1 &&
+    [
+      { A: 36, B: 10.5, C: 3, D: 0.8, F: 0.2 },
+      { A: 32, B: 10, C: 3, D: 0.8, F: 0.2 },
+    ].some(old =>
+      Object.entries(old).every(([tier, weight]) => saved?.draft?.leagueWeights?.[tier] === weight),
+    )
+  )
+    saved.draft.leagueWeights = { ...DEFAULT_CONFIG.draft.leagueWeights };
+  if (version < 2) {
+    if (saved?.playerTiers?.Superstar?.minimum === 83) saved.playerTiers.Superstar.minimum = 85;
+    if (saved?.draft?.leagueWeights?.A === 39)
+      saved.draft.leagueWeights.A = DEFAULT_CONFIG.draft.leagueWeights.A;
+    if (saved?.display?.receiptLabelDuration === 2.5)
+      saved.display.receiptLabelDuration = DEFAULT_CONFIG.display.receiptLabelDuration;
+    // Migrate only unchanged role defaults, leaving custom weights and replays intact.
+    const priorWeights = {
+      GK: 3070697025,
+      CB: 3528548659,
+      LB: 917603,
+      RB: 917603,
+      DM: 4285413286,
+      CM: 3983548147,
+      AM: 1207724980,
+      LW: 2493809455,
+      RW: 2493809455,
+      LM: 3102840154,
+      RM: 3102840154,
+      ST: 3884776852,
+    };
+    const priorOffsets = {
+      GK: 0,
+      CB: 2.5,
+      LB: 2,
+      RB: 2,
+      DM: 1.75,
+      CM: 0.5,
+      AM: 2,
+      LM: 3,
+      RM: 3,
+      LW: 1,
+      RW: 1,
+      ST: 1.5,
+    };
+    const signature = weights =>
+      [
+        ...Object.keys(weights)
+          .sort()
+          .map(k => k + ':' + weights[k])
+          .join(','),
+      ].reduce((hash, c) => (Math.imul(hash, 31) + c.charCodeAt(0)) >>> 0, 0);
+    for (const role of Object.keys(priorWeights)) {
+      const weights = saved?.ratings?.roleWeights?.[role];
+      if (weights && signature(weights) === priorWeights[role])
+        saved.ratings.roleWeights[role] = clone(DEFAULT_CONFIG.ratings.roleWeights[role]);
+      if (saved?.ratings?.roleOffsets?.[role] === priorOffsets[role])
+        saved.ratings.roleOffsets[role] = DEFAULT_CONFIG.ratings.roleOffsets[role];
+    }
+  }
+  // Upgrade unchanged device defaults, while replay imports retain their original physics.
+  if (saved?.display?.commentaryInterval !== undefined && saved.gameplay) {
+    for (const [key, old] of Object.entries({
+      movementSpeed: 1.03,
+      acceleration: 1.03,
+      shotFrequency: 1.12,
+      passSpeed: 1,
+    }))
+      if (saved.gameplay[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
+  }
+  if (version < 9) dropUntouchedV8Defaults(saved);
+  return saved;
+}
+/**
+ * Load saved settings. Never throws: unreadable storage or JSON falls back to the defaults, and
+ * an invalid saved value is dropped field by field with a console warning.
+ */
+export function loadConfig({ storage = defaultStorage(), warn = defaultWarn } = {}) {
+  let saved = {};
+  try {
+    const raw = storage?.getItem(STORAGE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch (e) {
+    warn('Saved settings could not be read; using the defaults.', e?.message || e);
+  }
+  if (!isPlainObject(saved)) {
+    warn('Ignoring saved settings that are not an object.');
+    saved = {};
+  }
+  try {
+    migrateSaved(saved);
+    return normalizeConfig(saved, { lenient: true, warn });
+  } catch (e) {
+    warn('Saved settings are unusable; using the defaults.', e?.message || e);
     return clone(DEFAULT_CONFIG);
   }
 }
-export function saveConfig(value) {
+/** Validate strictly (throws on an invalid value), store only the differences from the defaults. */
+export function saveConfig(value, { storage = defaultStorage(), warn = defaultWarn } = {}) {
   const next = normalizeConfig(value);
-  globalThis.localStorage?.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ ...next, _settingsVersion: SETTINGS_VERSION }),
-  );
+  try {
+    storage?.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...configDiff(next), _settingsVersion: SETTINGS_VERSION }),
+    );
+  } catch (e) {
+    warn('Settings could not be saved on this device.', e?.message || e);
+  }
   return next;
 }
 export const CONFIG = loadConfig();
-function copyInto(target, source) {
+function copyInto(target, source, prefix = '') {
   for (const [key, value] of Object.entries(source)) {
-    if (value && typeof value === 'object') {
+    const path = prefix ? prefix + '.' + key : key;
+    if (SPARSE_MAPS[path]) {
+      // Replace the whole map: entries missing from the source are back at the default (1).
       target[key] ??= {};
-      copyInto(target[key], value);
+      for (const id of Object.keys(target[key])) if (!(id in value)) delete target[key][id];
+      Object.assign(target[key], value);
+    } else if (value && typeof value === 'object') {
+      target[key] ??= {};
+      copyInto(target[key], value, path);
     } else target[key] = value;
   }
 }
