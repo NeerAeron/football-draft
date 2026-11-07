@@ -1,28 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
-import { FORMATIONS, formationLines, formationLabel } from '../app/core/players/formations.js';
-import { Draft, KITS, bestSlots } from '../app/core/draft/draft.js';
-import { DIFFICULTIES } from '../app/core/draft/opponent.js';
+import { FORMATIONS, formationLabel } from '../app/core/players/formations.js';
 import { tacticAccess } from '../app/core/sim/coach.js';
-import { playerTier, overallRating, POSITIONS } from '../app/core/players/ratings.js';
+import { playerTier, POSITIONS } from '../app/core/players/ratings.js';
 import { preference } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
-const catalog = loadRuntimeCatalog(),
-  profiles = catalog.players;
-function choosePick(d) {
-  d.spinLeague();
-  d.spinTeam();
-  const player = d
-    .available()
-    .sort(
-      (a, b) =>
-        overallRating(b, false, b.primaryPosition) - overallRating(a, false, a.primaryPosition),
-    )[0];
-  return { player, slot: d.bestSlot(player) };
-}
-
+const profiles = loadRuntimeCatalog().players;
+// In-match AI coach levels (competition.difficulty), as the pre-match screen maps them.
+const COACH_LEVELS = ['veryeasy', 'easy', 'medium', 'hard', 'impossible'];
 test('all formation variations have eleven usable roles and run without invalid motion', () => {
   assert.equal(Object.keys(FORMATIONS).length, 21);
   assert.equal(new Set(Object.keys(FORMATIONS).map(formationLabel)).size, 21);
@@ -34,7 +21,6 @@ test('all formation variations have eleven usable roles and run without invalid 
     assert.ok(
       rows.every(([x, y, role]) => x > 0 && x < 105 && y > 0 && y < 68 && POSITIONS.includes(role)),
     );
-    assert.equal(formationLines(id).flat().length, 10);
     const m = new Match(16, 180);
     m.setTactic(0, 'formation', id);
     m.setTactic(1, 'formation', id);
@@ -76,47 +62,6 @@ test('tier boundaries use natural overall and enforce the same tag cap in source
   }
   for (const p of profiles) assert.ok(p.tags.length <= playerTier(p).capacity);
   assert.ok(profiles.some(p => p.tags.length > 5));
-});
-test('draft alternates turns, excludes duplicates, fills eleven slots per side, and survives varied formations', () => {
-  const d = new Draft(catalog, { seed: 42, formations: ['352', '541'] }),
-    first = d.first;
-  while (!d.complete) {
-    assert.equal(d.turn, (first + d.history.length) % 2);
-    const choice = choosePick(d);
-    assert.ok(choice);
-    assert.equal(d.pick(choice.slot, choice.player.profileId), true);
-    assert.equal(d.pick(choice.slot, choice.player.profileId), false);
-  }
-  assert.equal(d.history.length, 22);
-  assert.equal(d.used.size, 22);
-  assert.ok(d.picks.every(team => team.every(Boolean)));
-  assert.ok(d.picks.every(team => team[0].primaryPosition === 'GK'));
-  assert.equal(d.pick(0, profiles[0].profileId), false);
-});
-test('coin toss is deterministic per seed and both teams can pick first', () => {
-  const first = Array.from(
-    { length: 100 },
-    (_, i) => new Draft(catalog, { seed: Math.imul(i + 1, 0x9e3779b9) }).first,
-  );
-  assert.ok(first.filter(n => n === 1).length > 35 && first.filter(n => n === 1).length < 65);
-  assert.equal(new Draft(catalog, { seed: 93 }).first, new Draft(catalog, { seed: 93 }).first);
-  assert.equal(KITS.length, 12);
-  assert.equal(new Set(KITS.map(k => k.primary + k.secondary)).size, 12);
-});
-test('lineup optimization preserves all drafted identities and never reduces total role overall', () => {
-  const d = new Draft(catalog, { seed: 77 });
-  while (!d.complete) {
-    const c = choosePick(d);
-    d.pick(c.slot, c.player.profileId);
-  }
-  const team = d.picks[0],
-    shape = '532',
-    score = ps =>
-      ps.reduce((sum, p, i) => sum + overallRating(p, false, FORMATIONS[shape][i][2]), 0),
-    fit = bestSlots(team, shape);
-  assert.deepEqual(fit.map(p => p.profileId).sort(), team.map(p => p.profileId).sort());
-  assert.ok(score(fit) >= score(team));
-  assert.equal(fit[0].primaryPosition, 'GK');
 });
 test('PvP tactics remain locked during a manual pause and unlock only at halftime; AI control stays separate', () => {
   for (const team of [0, 1]) {
@@ -273,7 +218,7 @@ test('difficulty has no execution, aiming, pace, power or reaction modifiers', (
       Object.fromEntries(Object.keys(p.attrs).map(k => [k, p.skill(k)])),
     );
   for (const mode of ['sandbox', 'pvp', 'ai'])
-    for (const difficulty of Object.keys(DIFFICULTIES)) {
+    for (const difficulty of COACH_LEVELS) {
       config.competition = { mode, difficulty };
       m.importConfig(config);
       assert.deepEqual(

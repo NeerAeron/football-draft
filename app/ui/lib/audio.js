@@ -25,8 +25,7 @@ function sync() {
 
 export function getAudio() {
   if (!audio) {
-    // createGameAudio installs the unlock + visibility listeners. The new UI never uses
-    // [data-sound-toggle] attributes, so its legacy DOM binding is a no-op here.
+    // createGameAudio installs the unlock + visibility listeners.
     audio = createGameAudio();
     sync();
   }

@@ -98,7 +98,6 @@ export class GameAudio {
       if (this.context.state !== 'running') this.context.resume().catch(() => {});
     } catch {
       this.available = false;
-      this.refreshControls();
     }
   }
   save() {
@@ -118,7 +117,6 @@ export class GameAudio {
     }
     this.applyVolume();
     this.save();
-    this.refreshControls();
   }
   setVolume(volume) {
     if (!Number.isFinite(volume)) return;
@@ -128,34 +126,12 @@ export class GameAudio {
     else this.unlock();
     this.applyVolume();
     this.save();
-    this.refreshControls();
   }
   applyVolume() {
     if (this.context && this.master) {
       const now = this.context.currentTime;
       this.master.gain.cancelScheduledValues(now);
       this.master.gain.setTargetAtTime(this.muted ? 0 : this.volume, now, 0.015);
-    }
-  }
-  refreshControls() {
-    const on = this.available && !this.muted && this.volume > 0;
-    for (const button of this.document?.querySelectorAll('[data-sound-toggle]') || []) {
-      button.disabled = !this.available;
-      button.setAttribute('aria-pressed', String(on));
-      button.setAttribute(
-        'aria-label',
-        this.available ? (on ? 'Mute sound' : 'Enable sound') : 'Sound unavailable',
-      );
-      button.title = this.available ? (on ? 'Mute sound' : 'Enable sound') : 'Sound unavailable';
-      button.dataset.muted = String(!on);
-      const label = button.querySelector('[data-sound-label]');
-      if (label) label.textContent = on ? 'Sound on' : 'Sound off';
-    }
-    for (const input of this.document?.querySelectorAll('[data-sound-volume]') || []) {
-      input.disabled = !this.available;
-      input.value = Math.round(this.volume * 100);
-      input.style.setProperty('--fraction', this.volume);
-      input.setAttribute('aria-valuetext', `${Math.round(this.volume * 100)} percent`);
     }
   }
   stop() {
@@ -341,7 +317,6 @@ export class GameAudio {
     } catch {
       this.stop();
       this.available = false;
-      this.refreshControls();
     }
   }
 }
@@ -354,10 +329,5 @@ export function createGameAudio(options) {
   doc.addEventListener('visibilitychange', () => {
     if (doc.hidden) sound.stop();
   });
-  for (const button of doc.querySelectorAll('[data-sound-toggle]'))
-    button.addEventListener('click', () => sound.setMuted(!sound.muted));
-  for (const input of doc.querySelectorAll('[data-sound-volume]'))
-    input.addEventListener('input', () => sound.setVolume(Number(input.value) / 100));
-  sound.refreshControls();
   return sound;
 }

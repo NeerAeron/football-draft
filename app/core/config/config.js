@@ -1,45 +1,10 @@
 // One set of named tuning inputs, shared by every game mode.
 import { V8_DEFAULT_SIGNATURE } from './v8-defaults.js';
 export const DEFAULT_CONFIG = {
+  // Draft session (core/draft/session.js, pools.js, opponents.js, links.js).
   draft: {
-    leagueWeights: {
-      A: 36,
-      B: 11,
-      C: 3,
-      D: 0.8,
-      F: 0.2,
-    },
-    leagueOptaSlope: 0.006,
-    leagueOptaLimit: 0.1,
-    clubDoubleEvery: {
-      A: 5,
-      B: 3.5,
-      C: 2.5,
-    },
+    // A league needs this many players to be drawn (Leagues, Clubs, Club & Country).
     minimumLeaguePlayers: 5,
-    respins: {
-      league: 1,
-      team: 1,
-    },
-    respinBoosts: {
-      slightlyBetter: 0.2,
-      moderatelyBetter: 0.15,
-      muchBetter: 0.05,
-      clubSlightGap: 3,
-      clubMediumGap: 7,
-      leagueSlightSteps: 1,
-      leagueMediumSteps: 2,
-    },
-    budget: {
-      superstar: 2,
-      star: 3,
-      starter: 3,
-    },
-    // Sparse per-league / per-club odds multipliers for the legacy Draft (missing = 1).
-    leagueOverrides: {},
-    clubOverrides: {},
-    eliteClubBoost: 0.8,
-    // ---- Draft session (core/draft/session.js). The legacy Draft reads only the keys above. ----
     // Nations: the field is the strongest eligible nations (>= minimumPlayers and
     // >= minimumGoalkeepers), shown in pots; each spin offers the best available call-ups.
     nations: {
@@ -156,24 +121,8 @@ export const DEFAULT_CONFIG = {
     F: 0,
   },
   ai: {
-    tiers: {
-      veryeasy: 'C',
-      easy: 'B',
-      medium: 'A',
-      hard: 'S',
-    },
+    // Club and national best XIs: minimum position familiarity per slot.
     minimumFit: 0.85,
-    impossibleOverall: 84,
-    impossibleFit: 0.97,
-    impossibleCandidatesPerRole: 5,
-    impossibleRandomness: 60,
-    formationNoise: {
-      veryeasy: 4,
-      easy: 3,
-      medium: 1.2,
-      hard: 0.3,
-      impossible: 0,
-    },
     coachInterval: 6,
     coach: {
       counterPace: 80,
@@ -711,16 +660,11 @@ export const DEFAULT_CONFIG = {
       },
     },
   },
-  display: {
-    playerRadius: 1.08,
-    ballRadius: 1,
-    spinnerDuration: 1600,
-    receiptLabelDuration: 1.25,
-    receiptLabelHold: 0.5,
-  },
 };
 const STORAGE_KEY = 'football-draft-settings-v1';
-// 9: only differences from the defaults are stored; league/club overrides are sparse maps.
+// 9: only differences from the defaults are stored. Keys that are no longer settings (the
+// pre-overhaul draft's budget, re-spin and league/club odds, its AI opponent and display
+// settings) are ignored on load and dropped on the next save.
 const SETTINGS_VERSION = 9;
 const clone = x => JSON.parse(JSON.stringify(x));
 const at = (o, path) => path.split('.').reduce((a, k) => a?.[k], o);
@@ -730,26 +674,10 @@ const put = (o, path, value) => {
   for (const key of keys.slice(0, -1)) next = next[key] ??= {};
   next[keys.at(-1)] = value;
 };
-// Sparse id -> multiplier maps (missing = 1). They are not part of CONFIG_FIELDS; the config
-// page builds one field per catalog league/club with overrideField().
-const SPARSE_MAPS = { 'draft.leagueOverrides': 'League', 'draft.clubOverrides': 'Club' };
-const OVERRIDE_RANGE = [0, 10, 0.05];
 const isPlainObject = x => !!x && typeof x === 'object' && !Array.isArray(x);
-/** A config field for one league/club odds multiplier (kind 'league' or 'club'). */
-export function overrideField(kind, id) {
-  const path = `draft.${kind}Overrides.${id}`;
-  if (!SPARSE_MAPS[`draft.${kind}Overrides`]) throw Error('Unknown override kind: ' + kind);
-  const [min, max, step] = OVERRIDE_RANGE;
-  return { path, key: String(id), defaultValue: 1, min, max, step, label: 'Multiplier' };
-}
-/** The field for any settings path: a CONFIG_FIELDS entry or a sparse override entry. */
+/** The CONFIG_FIELDS entry for a settings path, or null. */
 export function configField(path) {
-  const field = CONFIG_FIELDS.find(f => f.path === path);
-  if (field) return field;
-  const map = Object.keys(SPARSE_MAPS).find(m => path.startsWith(m + '.'));
-  return map
-    ? overrideField(map === 'draft.leagueOverrides' ? 'league' : 'club', path.slice(map.length + 1))
-    : null;
+  return CONFIG_FIELDS.find(f => f.path === path) || null;
 }
 const labels = {
   controlQuality: 'Ball-control stat influence',
@@ -764,14 +692,6 @@ const labels = {
   bookedFoulRisk: 'Booked player foul-risk multiplier',
   bookedRiskAversion: 'Booked player risky-challenge avoidance',
   qualityImpact: 'Attribute difference impact (1 = original)',
-  slightlyBetter: 'Slightly better re-spin boost',
-  moderatelyBetter: 'Moderately better re-spin boost',
-  muchBetter: 'Much better re-spin boost',
-  clubSlightGap: 'Slight club improvement: max OVR gain',
-  clubMediumGap: 'Medium club improvement: max OVR gain',
-  leagueSlightSteps: 'Slight league improvement: max tier gain',
-  leagueMediumSteps: 'Medium league improvement: max tier gain',
-  lower: 'Normal / Bench',
   movementSpeed: 'Player speed',
   acceleration: 'Acceleration',
   shotFrequency: 'Shooting willingness',
@@ -798,18 +718,8 @@ const labels = {
   runsInBehind: 'Runs in behind the defensive line',
   crossWillingness: 'Crossing willingness',
   keeperRange: 'Keeper rating influence',
-  clubDoubleEvery: 'Club odds double every… OVR',
-  clubRatingCenter: 'Club weight reference OVR',
-  leagueOptaSlope: 'League strength adjustment per point',
-  leagueOptaLimit: 'Maximum league strength adjustment',
   minimumLeaguePlayers: 'Minimum league player pool',
-  eliteClubBoost: 'Top-club extra strength (A leagues)',
-  receiptLabelHold: 'Player name hold (seconds)',
   minimumFit: 'Club XI minimum position fit',
-  impossibleOverall: 'Impossible minimum OVR',
-  impossibleFit: 'Impossible minimum position fit',
-  impossibleCandidatesPerRole: 'Impossible candidates per role',
-  impossibleRandomness: 'Impossible selection randomness',
   halftimeRecovery: 'Half-time stamina recovery',
   halftimeVariation: 'Recovery variation',
   drain: 'Match stamina usage',
@@ -818,10 +728,6 @@ const labels = {
   firstHalfMean: 'First-half added time mean',
   secondHalfMean: 'Second-half added time mean',
   standardDeviation: 'Added time variation',
-  playerRadius: 'Player circle size',
-  ballRadius: 'Ball circle size',
-  spinnerDuration: 'Spinner duration (ms)',
-  receiptLabelDuration: 'Player name duration (seconds)',
   storedTendencyWeight: 'Source tendency contribution',
   attributeCap: 'Total badge boost per attribute',
   shotUrge: 'Box shooting willingness',
@@ -843,33 +749,14 @@ const ranges = {
   redSeverity: [0, 3, 0.01],
   bookedFoulRisk: [0, 1, 0.01],
   bookedRiskAversion: [0, 1, 0.01],
-  slightlyBetter: [0, 1, 0.01],
-  moderatelyBetter: [0, 1, 0.01],
-  muchBetter: [0, 1, 0.01],
-  clubSlightGap: [0.5, 20, 0.5],
-  clubMediumGap: [1, 30, 0.5],
-  leagueSlightSteps: [1, 3, 1],
-  leagueMediumSteps: [2, 4, 1],
-  clubDoubleEvery: [1, 20, 0.5],
-  clubRatingCenter: [1, 99, 1],
-  leagueOptaSlope: [0, 0.05, 0.001],
-  leagueOptaLimit: [0, 0.5, 0.01],
   minimumLeaguePlayers: [1, 20, 1],
   minimumFit: [0.6, 1, 0.01],
-  impossibleFit: [0.6, 1, 0.01],
-  impossibleOverall: [60, 94, 1],
-  impossibleCandidatesPerRole: [1, 20, 1],
-  impossibleRandomness: [0, 100, 1],
   coachInterval: [1, 30, 1],
   halftimeRecovery: [0, 0.4, 0.01],
   halftimeVariation: [0, 2, 0.05],
   firstHalfMean: [0, 10, 0.25],
   secondHalfMean: [0, 10, 0.25],
   standardDeviation: [0, 4, 0.1],
-  spinnerDuration: [300, 4000, 50],
-  receiptLabelDuration: [1, 5, 0.25],
-  receiptLabelHold: [0, 3, 0.05],
-  eliteClubBoost: [0, 1, 0.05],
   storedTendencyWeight: [0, 1, 0.05],
   attributeCap: [0, 15, 1],
   familiarityBase: [0.4, 0.9, 0.01],
@@ -924,10 +811,7 @@ const walk = (o, prefix = '') =>
   });
 export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   let [min, max, step] = ranges[f.key] || [0, 100, 0.01];
-  if (
-    f.path.startsWith('gameplay.') ||
-    ['drain', 'sprintDrain', 'sprintRecovery', 'playerRadius', 'ballRadius'].includes(f.key)
-  )
+  if (f.path.startsWith('gameplay.') || ['drain', 'sprintDrain', 'sprintRecovery'].includes(f.key))
     [min, max, step] = [0.5, 2, 0.01];
   if (
     [
@@ -942,11 +826,6 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   if (['controlQuality', 'passingQuality', 'defensiveQuality', 'creativeQuality'].includes(f.key))
     [min, max, step] = [0, 2, 0.01];
   if (['routinePassError', 'difficultPassError'].includes(f.key)) [min, max, step] = [0, 4, 0.01];
-  if (f.path.includes('Overrides.')) [min, max, step] = [0, 10, 0.05];
-  if (f.path.startsWith('draft.clubDoubleEvery.')) [min, max, step] = [1, 20, 0.5];
-  if (f.path.startsWith('draft.budget.') && typeof f.defaultValue === 'number')
-    [min, max, step] = [0, 11, 1];
-  if (f.path.startsWith('draft.respins.')) [min, max, step] = [0, 5, 1];
   const session = draftField(f.path);
   if (session) [, min, max, step] = session;
   if (f.path.startsWith('playerTiers.') || f.path.startsWith('teamTiers.'))
@@ -1007,11 +886,6 @@ const CROSS_FIELD_RULES = [
   },
   {
     message: 'At least one league tier must have a positive draw weight.',
-    reset: ['draft.leagueWeights'],
-    ok: c => Object.values(c.draft.leagueWeights).some(v => v > 0),
-  },
-  {
-    message: 'At least one league tier must have a positive draw weight.',
     reset: ['draft.leagueTierWeights'],
     ok: c => Object.values(c.draft.leagueTierWeights).some(v => v > 0),
   },
@@ -1024,13 +898,6 @@ const CROSS_FIELD_RULES = [
     message: 'Bench and F must start at zero to cover every rating.',
     reset: ['playerTiers', 'teamTiers'],
     ok: c => c.playerTiers.Bench.minimum === 0 && c.teamTiers.F === 0,
-  },
-  {
-    message: 'Medium re-spin improvement must exceed slight improvement.',
-    reset: ['draft.respinBoosts'],
-    ok: c =>
-      c.draft.respinBoosts.clubSlightGap < c.draft.respinBoosts.clubMediumGap &&
-      c.draft.respinBoosts.leagueSlightSteps < c.draft.respinBoosts.leagueMediumSteps,
   },
   {
     message: 'Call-up minimums cannot exceed the call-up size.',
@@ -1068,23 +935,20 @@ const CROSS_FIELD_RULES = [
 function fieldProblem(field, value) {
   if (typeof field.defaultValue === 'boolean')
     return typeof value === 'boolean' ? '' : field.label + ' must be on or off.';
-  if (typeof field.defaultValue === 'number') {
-    if (
-      typeof value !== 'number' ||
-      !Number.isFinite(value) ||
-      value < field.min ||
-      value > field.max
-    )
-      return field.path + ' must be between ' + field.min + ' and ' + field.max + '.';
-    if (field.step === 1 && !Number.isInteger(value))
-      return field.label + ' must be a whole number.';
-    return '';
-  }
-  return ['S', 'A', 'B', 'C', 'D', 'F'].includes(value) ? '' : 'Choose a valid team tier.';
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    value < field.min ||
+    value > field.max
+  )
+    return field.path + ' must be between ' + field.min + ' and ' + field.max + '.';
+  if (field.step === 1 && !Number.isInteger(value)) return field.label + ' must be a whole number.';
+  return '';
 }
 /**
  * Validate a (possibly partial) settings object against DEFAULT_CONFIG and return a complete
- * configuration. Missing fields take their defaults; unknown keys are ignored.
+ * configuration. Missing fields take their defaults; unknown keys (including settings that
+ * no longer exist) are ignored silently.
  * Strict (default): the first invalid value throws (the config page shows the message).
  * Lenient ({ lenient: true }, used when loading saved settings): an invalid value is dropped
  * with a warning and only that field (or the group a cross-field rule names) falls back.
@@ -1095,35 +959,6 @@ export function normalizeConfig(input = {}, { lenient = false, warn = defaultWar
     warn('Ignoring settings that are not an object.');
     input = {};
   }
-  // Upgrade the old shared club bias once; preserve customized odds and unrelated settings.
-  if (typeof input?.draft?.clubDoubleEvery === 'number') {
-    const old = input.draft,
-      formerWeights = { A: 32, B: 10, C: 3, D: 0.8, F: 0.2 };
-    const clubDoubleEvery =
-      old.clubDoubleEvery === 6
-        ? { ...DEFAULT_CONFIG.draft.clubDoubleEvery }
-        : Object.fromEntries(['A', 'B', 'C'].map(t => [t, old.clubDoubleEvery]));
-    const leagueWeights = Object.entries(formerWeights).every(
-      ([t, v]) => old.leagueWeights?.[t] === v,
-    )
-      ? { ...DEFAULT_CONFIG.draft.leagueWeights }
-      : old.leagueWeights;
-    input = { ...input, draft: { ...old, clubDoubleEvery, leagueWeights } };
-  }
-  // Legacy shared lower-tier budgets become explicit upper-tier caps; lower
-  // tiers now fill any remaining place, regardless of unused expensive slots.
-  const legacy = input?.draft?.budget;
-  if (legacy && legacy.starter === undefined && Number.isInteger(legacy.lower)) {
-    const wasDefault = legacy.superstar === 2 && legacy.star === 5 && legacy.lower === 4;
-    const budget = wasDefault
-      ? { ...DEFAULT_CONFIG.draft.budget }
-      : {
-          superstar: legacy.superstar,
-          star: legacy.star,
-          starter: Math.min(DEFAULT_CONFIG.draft.budget.starter, legacy.lower),
-        };
-    input = { ...input, draft: { ...input.draft, budget } };
-  }
   const out = clone(DEFAULT_CONFIG);
   for (const field of CONFIG_FIELDS) {
     const value = at(input, field.path);
@@ -1132,24 +967,6 @@ export function normalizeConfig(input = {}, { lenient = false, warn = defaultWar
     if (!problem) put(out, field.path, value);
     else if (!lenient) throw Error(problem);
     else warn(`Ignoring saved setting ${field.path}=${JSON.stringify(value)}: ${problem}`);
-  }
-  for (const path of Object.keys(SPARSE_MAPS)) {
-    const source = at(input, path);
-    if (source === undefined) continue;
-    if (!isPlainObject(source)) {
-      if (!lenient) throw Error(path + ' must map ids to multipliers.');
-      warn(`Ignoring saved setting ${path}: not an id map.`);
-      continue;
-    }
-    const target = at(out, path);
-    for (const [id, value] of Object.entries(source)) {
-      const field = overrideField(path === 'draft.leagueOverrides' ? 'league' : 'club', id),
-        problem = fieldProblem(field, value);
-      if (problem) {
-        if (!lenient) throw Error(problem);
-        warn(`Ignoring saved setting ${field.path}=${JSON.stringify(value)}: ${problem}`);
-      } else if (value !== 1) target[id] = value;
-    }
   }
   for (const rule of CROSS_FIELD_RULES)
     if (!rule.ok(out)) {
@@ -1182,7 +999,6 @@ function dropUntouchedV8Defaults(saved) {
   (function prune(o, prefix) {
     for (const [key, value] of Object.entries(o)) {
       const path = prefix ? prefix + '.' + key : key;
-      if (SPARSE_MAPS[path]) continue;
       if (isPlainObject(value)) {
         prune(value, path);
         if (!Object.keys(value).length) delete o[key];
@@ -1190,16 +1006,13 @@ function dropUntouchedV8Defaults(saved) {
     }
   })(saved, '');
 }
-/** Only the settings that differ from `base` (sparse; sparse override maps keep non-1 entries). */
+/** Only the settings that differ from `base`. */
 export function configDiff(value, base = DEFAULT_CONFIG) {
   const diff = {};
   for (const field of CONFIG_FIELDS) {
     const v = at(value, field.path);
     if (v !== undefined && v !== at(base, field.path)) put(diff, field.path, v);
   }
-  for (const path of Object.keys(SPARSE_MAPS))
-    for (const [id, v] of Object.entries(at(value, path) || {}))
-      if (v !== (at(base, path)?.[id] ?? 1)) put(diff, path + '.' + id, v);
   return diff;
 }
 // Version upgrades of saved settings, oldest format first. Each rewrites only unchanged old
@@ -1251,24 +1064,8 @@ function migrateSaved(saved) {
     ])
       if (saved?.formats?.[duration]?.saveBoost === old)
         saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
-  if (version < 3 && saved?.ai?.impossibleOverall === 82)
-    saved.ai.impossibleOverall = DEFAULT_CONFIG.ai.impossibleOverall;
-  if (
-    version < 1 &&
-    [
-      { A: 36, B: 10.5, C: 3, D: 0.8, F: 0.2 },
-      { A: 32, B: 10, C: 3, D: 0.8, F: 0.2 },
-    ].some(old =>
-      Object.entries(old).every(([tier, weight]) => saved?.draft?.leagueWeights?.[tier] === weight),
-    )
-  )
-    saved.draft.leagueWeights = { ...DEFAULT_CONFIG.draft.leagueWeights };
   if (version < 2) {
     if (saved?.playerTiers?.Superstar?.minimum === 83) saved.playerTiers.Superstar.minimum = 85;
-    if (saved?.draft?.leagueWeights?.A === 39)
-      saved.draft.leagueWeights.A = DEFAULT_CONFIG.draft.leagueWeights.A;
-    if (saved?.display?.receiptLabelDuration === 2.5)
-      saved.display.receiptLabelDuration = DEFAULT_CONFIG.display.receiptLabelDuration;
     // Migrate only unchanged role defaults, leaving custom weights and replays intact.
     const priorWeights = {
       GK: 3070697025,
@@ -1364,17 +1161,11 @@ export function saveConfig(value, { storage = defaultStorage(), warn = defaultWa
   return next;
 }
 export const CONFIG = loadConfig();
-function copyInto(target, source, prefix = '') {
+function copyInto(target, source) {
   for (const [key, value] of Object.entries(source)) {
-    const path = prefix ? prefix + '.' + key : key;
-    if (SPARSE_MAPS[path]) {
-      // Replace the whole map: entries missing from the source are back at the default (1).
+    if (value && typeof value === 'object') {
       target[key] ??= {};
-      for (const id of Object.keys(target[key])) if (!(id in value)) delete target[key][id];
-      Object.assign(target[key], value);
-    } else if (value && typeof value === 'object') {
-      target[key] ??= {};
-      copyInto(target[key], value, path);
+      copyInto(target[key], value);
     } else target[key] = value;
   }
 }
