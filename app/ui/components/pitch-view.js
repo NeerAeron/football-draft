@@ -35,14 +35,14 @@ import { Crest } from './crest.js';
 import { FitTag, fitText } from './fit-tag.js';
 
 const LINE_GAP = 5; // metres between formation lines before they are drawn as separate rows
-const TOP_BOTTOM = [90, 11]; // % top of the GK line and of the most advanced line
+const TOP_BOTTOM = [89, 11]; // % top of the GK line and of the most advanced line
 
 /**
  * Lay out formation rows ([x length 0–105, y width 0–68, role]) on a portrait pitch.
  * Lines (clusters of similar x) are spaced evenly so tokens never collide; small x offsets
  * within a line are kept so wing-backs still sit a little higher than centre-backs.
  */
-export function layoutSlots(rows = []) {
+export function layoutSlots(rows = [], [bottom, top] = TOP_BOTTOM) {
   const order = rows.map((r, i) => i).sort((a, b) => rows[a][0] - rows[b][0]);
   const lines = [];
   for (const i of order) {
@@ -50,7 +50,6 @@ export function layoutSlots(rows = []) {
     if (last && rows[i][0] - rows[last[last.length - 1]][0] <= LINE_GAP) last.push(i);
     else lines.push([i]);
   }
-  const [bottom, top] = TOP_BOTTOM;
   const step = lines.length > 1 ? (bottom - top) / (lines.length - 1) : 0;
   const out = [];
   lines.forEach((line, li) => {
@@ -143,7 +142,11 @@ export function PitchView({
   class: className,
 }) {
   const source = rows || FORMATIONS[formation] || FORMATIONS['433'];
-  const slots = useMemo(() => layoutSlots(source), [source]);
+  // Squatter pitches than 4:5 (sheets, pre-match previews) lift the keeper's row so his
+  // name label stays inside the pitch.
+  const [aw, ah] = String(aspect).split('/').map(Number);
+  const squat = aw > 0 && ah > 0 && aw / ah > 0.82;
+  const slots = useMemo(() => layoutSlots(source, squat ? [86, 11] : TOP_BOTTOM), [source, squat]);
   const refs = useRef([]);
   const interactive = typeof onSelect === 'function';
   const usable = i => highlights[i]?.state !== 'blocked';

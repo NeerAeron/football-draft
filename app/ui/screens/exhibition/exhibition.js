@@ -269,12 +269,14 @@ export default function ExhibitionScreen() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = searchKey(query.trim());
+    // A search looks through every club, nation and legend side ("Brazil" from the Clubs tab).
+    if (q)
+      return data.teams.filter(t => searchKey(`${t.name} ${t.league?.name || ''}`).includes(q));
     return data.teams.filter(t => {
       if (tab === 'club' && t.kind !== 'club') return false;
       if (tab === 'nation' && t.kind !== 'nation') return false;
       if (tab === 'boss' && t.kind !== 'boss') return false;
       if (tab === 'club' && league !== 'all' && String(t.league?.id) !== league) return false;
-      if (q && !searchKey(`${t.name} ${t.league?.name || ''}`).includes(q)) return false;
       return true;
     });
   }, [data, tab, query, league]);

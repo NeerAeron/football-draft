@@ -267,15 +267,15 @@ export function ResultView({ result: r, momentum, onContinue, onRematch, onHome 
             >
           <//>`
         }
+        <${Card} class="res-card">
+          <h2 class="res-card__h">Player ratings</h2>
+          <${Ratings} r=${r} />
+        <//>
       </div>
       <div class="res-col">
         <${Card} class="res-card">
           <h2 class="res-card__h">Match stats</h2>
           <${StatsTable} stats=${r.stats} teams=${r.teams} />
-        <//>
-        <${Card} class="res-card">
-          <h2 class="res-card__h">Player ratings</h2>
-          <${Ratings} r=${r} />
         <//>
       </div>
     </div>

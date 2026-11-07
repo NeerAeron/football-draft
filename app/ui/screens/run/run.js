@@ -253,7 +253,7 @@ function ResultBanner({ snapshot, before, round, entry }) {
         (ours || theirs) &&
         html`<p class="ft__scorers">
           <span>${ours}</span>
-          <${Icon} name="goal" size=${14} />
+          ${ours && theirs && html`<${Icon} name="goal" size=${14} />`}
           <span class="is-away">${theirs}</span>
         </p>`
       }
