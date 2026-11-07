@@ -7,7 +7,7 @@
 // as an installed app (display-mode standalone), the first launch warms the whole game once:
 // the files loaded before the worker took control, the catalog with its flags and league
 // logos, every lazy screen module and every font face — then <html data-offline-ready> is set
-// and the game opens and plays without a network (~4 MB, once).
+// and the game opens and plays without a network (~2.3 MB download, once).
 // Skipped on loopback hosts (dev server, browser tests) unless the page URL has ?sw=1, which
 // also forces the warm-up; and wherever service workers are unavailable (insecure origins).
 const LOOPBACK = /^(localhost|127\.0\.0\.1|\[::1\])$/;
