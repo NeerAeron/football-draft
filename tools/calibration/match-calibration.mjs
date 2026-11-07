@@ -18,7 +18,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-
 async function main() {
   const args = process.argv.slice(2),
     flag = name => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
