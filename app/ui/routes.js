@@ -40,7 +40,13 @@ export const routes = [
     back: '/',
     load: () => import('./screens/prematch/prematch.js'),
   },
-  { path: '/match', title: 'Match', back: '/', load: placeholder },
+  {
+    path: '/match',
+    title: 'Match',
+    back: '/',
+    immersive: true,
+    load: () => import('./screens/match/match.js'),
+  },
   { path: '/run', title: 'World Cup Run', back: '/', load: () => import('./screens/run/run.js') },
   {
     path: '/daily',

@@ -31,6 +31,8 @@ requestMatch({
     ],
     userSides: [0],                 // sides the player controls: [0], or [0, 1] in Versus
     returnTo: '#/run',              // where "Continue" goes after full time
+    autoKickoff: true,              // skip the match screen's own pre-kickoff (a pre-match
+                                    // screen already chose view, tactics and mentality)
   },
 });
 
@@ -94,6 +96,7 @@ Stored when the match finishes (and persisted, so a refresh shows it again):
   outcomes: ['W' | 'D' | 'L', …],        // per side by the score: a shootout win is a 'D'
   extraTime: false, abandoned: null | team,
   xg: [h, a],
+  momentum: [0.12, -0.3, …],             // per match minute, home − away (−1…1)
   stats: [{ possession /* % */, shots, onTarget, xg, bigChances, passes, completed,
             passAccuracy /* % */, saves, tackles, fouls, yellowCards, redCards, offsides,
             corners, woodwork }, …],
@@ -129,9 +132,10 @@ from kickoff (same seed); a refresh after full time shows the result again.
 
 ## Demo and tests
 
-`#/match?demo=1[&view=key|full|instant][&knockout=1][&pens=1][&seed=n]` builds a request from
-two real club XIs (`loadCatalog()` → `clubSquads` → best XI). `pens=1` jumps a level knockout
-straight to the penalty shootout (shootout scene tests). Browser flows: `match-key`,
+`#/match?demo=1[&view=key|full|instant][&knockout=1][&pens=1][&auto=1][&seed=n]` builds a request from
+two real club XIs (`loadCatalog()` → `clubSquads` → best XI; `buildDemoRequest` in
+`screens/match/demo.js`). `pens=1` sets `meta.forceShootout`: the match jumps straight to a
+level knockout's penalty shootout (`forceShootout`, demo/test only — never in real requests). Browser flows: `match-key`,
 `match-full`, `match-instant`, `match-pens` in `tests/browser/flows.mjs`.
 
 ## Off-main-thread simulation (`app/services/sim-client.js`)
@@ -147,3 +151,20 @@ job.cancel();                                     // promise resolves to null
 
 Results equal the in-thread `simulateComplete` / `simulateHalf` (same code; the Match is
 structured-cloned and rehydrated). Recorded frames are trimmed to the highlight clips.
+
+## The screen (`app/ui/screens/match/`)
+
+| File | Role |
+| --- | --- |
+| `match.js` | route entry: demo/request → pre-kickoff, live view or stored result; leave confirmation |
+| `controller.js` | `MatchController`: Match objects, RAF loop (runs only while something moves), Key Moments reels from the worker (half 1 is prefetched while the pre-kickoff is open), Full-mode ring buffer (12 s) for goal replays and "Next moment" (fast-forward, then the build-up at 1×), commentary, sound (`MatchSoundEvents`), throttled HUD store |
+| `renderer/` | pure canvas renderer `draw(ctx, view, state)`: cached Floodlit-night pitch layer, kit tokens with numbers, ball height/shadow, shot/pass trails, labels only for carrier + receiver, goal flash; landscape or portrait (rotated) with a shootout camera |
+| `commentary.js`, `report.js`, `demo.js` | pure helpers (Node-tested): event lines, result summary, analysis chips, share line, demo request |
+| `prematch.js`, `live.js`, `hud.js`, `tactics.js`, `result.js` | Preact views |
+
+Controls: Space play/pause, ←/→ (or ↓/↑) speed 1×/2×/4×, N next moment (Full) / next clip (Key
+Moments). Mentality (Push / Balanced / Hold) is live in Full and at half-time in Key Moments; the
+tactics sheet follows `tacticAccess` (formation only at half-time in AI/Versus matches). Goals
+(and the deciding penalty) get a celebration banner, team-colour confetti and a slow-motion
+replay (reduced motion: a static banner, no confetti, no replay, no camera moves). Screen
+readers hear goals only (`aria-live`, never per tick).
