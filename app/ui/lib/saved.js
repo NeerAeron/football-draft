@@ -59,12 +59,18 @@ export function readDailyStatus(now = new Date()) {
   const today = dailyKey(now);
   // A streak is alive while the last attempt was today or yesterday.
   const alive = lastPlayed && (lastPlayed === today || lastPlayed === previousDayKey(today));
+  const entry = daily.results && typeof daily.results === 'object' ? daily.results[today] : null;
   return {
     streak: alive ? daily.streak | 0 : 0,
     best: daily.best | 0,
     lastPlayed,
     playedToday: lastPlayed === today,
     lastResult: typeof daily.lastResult === 'string' ? daily.lastResult : null,
+    // Today's finished attempt (points, grade) when there is one.
+    todayResult:
+      entry && typeof entry === 'object' && Number.isFinite(entry.points)
+        ? { points: entry.points, grade: typeof entry.grade === 'string' ? entry.grade : null }
+        : null,
   };
 }
 
