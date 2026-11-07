@@ -168,9 +168,10 @@ export class PassingMethods {
           if (q.team !== p.team) space = Math.min(space, dist(q, aim));
         const box = this.inBox({ x: aim.x, y: aim.y, team: p.team }),
           wide = Math.abs(p.y - 34) > 14 && this.rel(p.x, p.team) > 70;
+        // From the byline zone a flat or backward ball into the box is a cutback.
         const delivery =
           wide && box
-            ? this.rel(p.x, p.team) > 95
+            ? this.rel(p.x, p.team) > 95 || (this.rel(p.x, p.team) > 86 && progress < 1)
               ? 'cutback'
               : 'cross'
             : progress > 9 && this.formation(r)[0] > 60 && this.rel(aim.x, p.team) > line - 3
@@ -385,6 +386,25 @@ export class PassingMethods {
       pressure = this.pressure(p),
       tac = this.settings(p.team);
     if (depth > 38 || pressure < 0.45) return null;
+    // Pinned near his own byline with an attacker on him and no clean exit, a
+    // defender puts the ball out behind: concede the corner, not the chance.
+    if (
+      depth < 12 &&
+      Math.abs(p.y - 34) > 6 &&
+      pressure > 0.6 &&
+      !opts.some(o => o.chance > 0.7 && o.margin > 0.3 && o.risk < 0.4)
+    ) {
+      const aim = { x: this.abs(-3, p.team), y: p.y + (p.y < 34 ? -2 : 2) };
+      return {
+        r: opts[0]?.r ?? this.activePlayers.find(q => q.team === p.team && q.id !== p.id),
+        aim,
+        d: dist(p, aim),
+        delivery: 'clearance',
+        loft: false,
+        risk: 0,
+        conceding: true,
+      };
+    }
     const craft =
       0.4 * p.skill('shortPassing') +
       0.2 * p.skill('control') +
@@ -546,6 +566,29 @@ export class PassingMethods {
                   : 'Playing long'
                 : 'Passing';
     r.aim(tx, ty, 'receive', 'Moving to receive');
+    // A cross struck while a defender is closing the crosser down can be blocked.
+    if ((delivery === 'cross' || delivery === 'cutback') && !restart) {
+      for (const q of this.activePlayers) {
+        if (q.team === p.team || q.role === 'GK' || q.stun > 0) continue;
+        const ahead = (q.x - p.x) * Math.cos(angle) + (q.y - p.y) * Math.sin(angle),
+          side = Math.abs(-(q.x - p.x) * Math.sin(angle) + (q.y - p.y) * Math.cos(angle));
+        if (ahead > 0.3 && ahead < 2.2 && side < 1.1) {
+          const block = clamp(
+            0.25 +
+              (q.skill('defending') - p.skill('crossing')) * 0.006 +
+              (q.has('ballwinner') ? 0.05 : 0),
+            0.08,
+            0.5,
+          );
+          if (this.rand() < block) {
+            b.x = q.x;
+            b.y = q.y;
+            this.blockCross(q);
+          }
+          break;
+        }
+      }
+    }
     r.rethinkAt = 0;
     this.planTimer = 0;
     p.runs =

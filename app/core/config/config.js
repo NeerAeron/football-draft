@@ -233,7 +233,7 @@ export const DEFAULT_CONFIG = {
     bookedRiskAversion: 0.88,
   },
   stamina: {
-    drain: 1,
+    drain: 0.55,
     sprintDrain: 1,
     sprintRecovery: 1,
     halftimeRecovery: 0.15,

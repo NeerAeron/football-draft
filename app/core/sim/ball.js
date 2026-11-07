@@ -80,7 +80,7 @@ export class BallMethods {
         if (this.rand() < 0.35 + p.skill('defending') * 0.003) {
           this.resolveShot('blocked');
           // A block either kills the shot or deflects it on, often behind for a corner.
-          if (this.rand() < 0.45) {
+          if (this.rand() < 0.55) {
             const keep = 0.35 + this.rand() * 0.3;
             b.vx *= keep;
             b.vy = b.vy * keep + this.noise() * 4;
@@ -93,6 +93,8 @@ export class BallMethods {
           b.kind = 'loose';
           b.lastTouch = p.team;
           b.kicker = p.id;
+          b.deflectedBy = p.id;
+          b.deflectedAt = this.elapsed;
           b.age = 0;
           b.indirect = null;
           b.penaltyTaker = null;
@@ -140,6 +142,10 @@ export class BallMethods {
           p.cooldown = 0.15;
           continue;
         }
+        if ((b.delivery === 'cross' || b.delivery === 'cutback') && b.age < 0.35 && b.z < 1.6) {
+          this.blockCross(p);
+          return;
+        }
       }
       // Measure sideways reach from the flight line. Distance to this frame's
       // short segment wrongly labels a centered, approaching pass a stretch.
@@ -159,12 +165,21 @@ export class BallMethods {
       const settled = (b.kind === 'loose' || b.missedReceiver) && height < 0.3 && speed < 3.2;
       const control = settled ? 1 - (1 - baseControl) * 0.12 : baseControl;
       if (this.rand() < control) {
-        if (teammate && height > 1.15 && this.contestAerial(p)) return;
+        if (height > 1.15 && p.role !== 'GK') {
+          if (this.contestAerial(p)) return;
+          if (!teammate && this.inBox(p, 1 - p.team)) {
+            this.headClear(p);
+            return;
+          }
+        }
         const aerial =
           teammate &&
           height > 0.45 &&
           this.inBox(p) &&
-          this.rand() < (0.25 + p.tendency('shoot') * 0.6) * (height > 1.15 ? 0.9 : 1);
+          this.rand() <
+            (height > 1.15
+              ? 0.35 + Math.max(p.tendency('shoot'), p.tendency('aerial')) * 0.5
+              : 0.25 + p.tendency('shoot') * 0.6);
         if (!teammate && b.kind === 'pass')
           this.addEvent(`${p.name.split(' ').pop()} intercepts.`, p.team, 'intercept', {
             playerId: p.id,

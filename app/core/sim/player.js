@@ -61,6 +61,7 @@ export class Player {
     // keeps one object shape (fast, monomorphic property access in hot loops).
     this.feintTarget = null;
     this.actionSince = 0;
+    this.bylineAt = null;
     this._stamp = 0;
     this._skills = null;
     this._tendencies = null;

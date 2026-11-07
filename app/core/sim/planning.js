@@ -467,6 +467,21 @@ export class PlanningMethods {
       y = 25 + (p.slot % 3) * 9;
       intent = 'run';
       action = 'Attacking the delivery';
+    } else if (
+      base >= 30 &&
+      base < 60 &&
+      role !== 'DM' &&
+      br > 74 &&
+      Math.abs(b.y - 34) > 11 &&
+      p.tendency('hold') < 0.6 &&
+      p.tendency('advance') > 0.42 &&
+      owner?.role !== 'GK'
+    ) {
+      // Late run to the edge / penalty spot: the cutback zone.
+      x = Math.max(x, p.has('latearrival') ? 90 : 87.5);
+      y = 34 + (p.slot % 2 ? 4.5 : -4.5);
+      intent = 'run';
+      action = 'Arriving late in the box';
     }
     if (role === 'ST' && br > 84) {
       const attack = p.tendency('timing') * p.tendency('shoot');

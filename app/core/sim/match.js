@@ -240,6 +240,8 @@ export class Match {
       kind: 'loose',
       age: 0,
       offside: false,
+      deflectedBy: null,
+      deflectedAt: -10,
     };
     for (const p of this.players) {
       p.stats = freshStats();

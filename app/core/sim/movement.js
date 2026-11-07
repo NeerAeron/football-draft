@@ -240,10 +240,18 @@ export class MovementMethods {
       b.age = 0;
       b.lastTouch = q.team;
       b.offsideState = null;
-      const escape = this.carryTarget(q),
-        angle = Math.atan2(escape.y - q.y, escape.x - q.x);
-      b.vx = Math.cos(angle) * (1.3 + this.rand() * 1.5);
-      b.vy = Math.sin(angle) * (1.3 + this.rand() * 1.5);
+      // A tackle at the defender's own byline often squirts behind.
+      const byline = this.rel(q.x, q.team) < 7 && Math.abs(q.y - 34) > 7;
+      if (byline && this.rand() < 0.4) {
+        b.vx = -this.direction(q.team) * (2.5 + this.rand() * 2);
+        b.vy = (this.rand() - 0.5) * 3;
+        b.lastTouch = q.team;
+      } else {
+        const escape = this.carryTarget(q),
+          angle = Math.atan2(escape.y - q.y, escape.x - q.x);
+        b.vx = Math.cos(angle) * (1.3 + this.rand() * 1.5);
+        b.vy = Math.sin(angle) * (1.3 + this.rand() * 1.5);
+      }
       b.vz = model.hard ? 1.1 : 0.3;
       q.action = 'Collecting the tackle';
       q.cooldown = 0.1;
@@ -252,10 +260,21 @@ export class MovementMethods {
     }
     return false;
   }
+  // Aerial duel for a high ball that reached p first. Heading, strength and
+  // aerial tendency decide it; defenders in front of their own goal read the
+  // flight better. Returns true when the duel ended p's touch (a foul, or the
+  // rival won the header), false when p wins and plays on.
   contestAerial(p) {
-    const rival = this.activePlayers
-      .filter(q => q.team !== p.team && q.role !== 'GK' && q.cooldown <= 0 && dist(q, p) < 1.35)
-      .sort((a, b) => dist(a, p) - dist(b, p))[0];
+    let rival = null,
+      nearest = 2.1;
+    for (const q of this.activePlayers) {
+      if (q.team === p.team || q.role === 'GK' || q.cooldown > 0 || q.stun > 0) continue;
+      const d = dist(q, p);
+      if (d < nearest) {
+        nearest = d;
+        rival = q;
+      }
+    }
     if (!rival) return false;
     const model = this.challengeModel(p, rival);
     rival.cooldown = 0.7;
@@ -263,6 +282,91 @@ export class MovementMethods {
       this.awardFoul(rival, p);
       return true;
     }
-    return false;
+    const power = q =>
+      q.skill('heading') * 0.6 +
+      q.skill('strength') * 0.3 +
+      q.tendency('aerial') * 12 +
+      (q.has('aerial') ? 5 : 0);
+    const home = q => this.inBox(q, 1 - q.team);
+    const wins = sigmoid(
+      (power(p) - power(rival)) / 9 + 0.3 + (home(p) ? 0.25 : 0) - (home(rival) ? 0.25 : 0),
+    );
+    if (this.rand() < wins) return false;
+    const height = this.ball.z;
+    this.flair('header', rival, 0.6, { label: 'WON IN THE AIR', strength: 0.45 });
+    if (home(rival)) this.headClear(rival);
+    else if (this.inBox(rival) && this.own(rival)) this.shoot(rival, { aerialHeight: height });
+    else if (this.own(rival)) rival.hold = 0;
+    return true;
+  }
+  // A defender heads a high ball away from goal; a glancing one goes behind.
+  headClear(d) {
+    const b = this.ball,
+      out = this.direction(d.team),
+      side = b.y >= 34 ? 1 : -1;
+    b.kind = 'loose';
+    b.owner = null;
+    b.target = null;
+    b.lastTouch = d.team;
+    b.kicker = d.id;
+    b.deflectedBy = d.id;
+    b.deflectedAt = this.elapsed;
+    b.age = 0;
+    b.indirect = null;
+    b.penaltyTaker = null;
+    b.restartTaker = null;
+    b.offsideState = null;
+    const glancing =
+      Math.abs(b.y - 34) > 5 &&
+      this.rand() < 0.24 + clamp((72 - d.skill('heading')) / 100, 0, 0.15);
+    if (glancing) {
+      b.vx = -out * (3 + this.rand() * 2.5);
+      b.vy = side * (3 + this.rand() * 3);
+      b.vz = 2 + this.rand();
+    } else {
+      b.vx = out * (7 + this.rand() * 6 + d.skill('heading') * 0.03);
+      b.vy = side * (2 + this.rand() * 4);
+      b.vz = 3 + this.rand() * 3;
+    }
+    b.z = Math.max(b.z, 1.6);
+    d.cooldown = 0.5;
+    d.action = 'Heading clear';
+    this.planTimer = 0;
+  }
+  // A cross struck into a defender standing near the crosser: it deflects,
+  // often behind for a corner.
+  blockCross(d) {
+    const b = this.ball,
+      out = this.direction(d.team);
+    b.kind = 'loose';
+    b.owner = null;
+    b.target = null;
+    b.lastTouch = d.team;
+    b.kicker = d.id;
+    b.deflectedBy = d.id;
+    b.deflectedAt = this.elapsed;
+    b.age = 0;
+    b.offsideState = null;
+    b.restartTaker = null;
+    if (this.rand() < 0.65) {
+      b.vx = -out * (4 + this.rand() * 4);
+      b.vy = b.vy * 0.3 + this.noise() * 2;
+    } else {
+      b.vx *= -0.25;
+      b.vy = this.noise() * 4;
+    }
+    b.vz = 1.5 + this.rand() * 1.5;
+    d.cooldown = 0.3;
+    d.stats.blocks++;
+    this.addEvent(`${d.name.split(' ').pop()} blocks the cross.`, d.team, 'block', {
+      playerId: d.id,
+      strength: 0.35,
+      cross: true,
+      shotEventId: null,
+      shooterId: null,
+      xg: null,
+      bigChance: false,
+    });
+    this.planTimer = 0;
   }
 }

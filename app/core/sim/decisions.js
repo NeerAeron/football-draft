@@ -53,6 +53,24 @@ export class DecisionMethods {
         (!judgment ||
           (o.chance > 0.3 + judgment * 0.35 && o.score > best.score - (2.4 - judgment * 1.8))),
     );
+    // Final-third flow: a carrier at the byline delivers (cross / cutback) or
+    // recycles within about a second; no corner-flag stalls.
+    const byline = rx > 88 && Math.abs(p.y - 34) > 9;
+    if (byline) p.bylineAt ??= this.elapsed;
+    if (byline && (this.elapsed - p.bylineAt > 0.55 || p.hold > 1.4)) {
+      const dir = this.direction(p.team);
+      let forced = null,
+        recycle = null;
+      for (const o of opts) {
+        if ((o.delivery === 'cross' || o.delivery === 'cutback') && o.margin > -0.9 && o.risk < 1.6)
+          forced ??= o;
+        else if ((o.aim.x - p.x) * dir < -3 && o.chance > 0.55) recycle ??= o;
+      }
+      if (forced || recycle || best) {
+        this.pass(p, forced || recycle || best);
+        return;
+      }
+    }
     if (
       wide &&
       rx > 73 &&
@@ -60,9 +78,10 @@ export class DecisionMethods {
       p.hold > 0.28 &&
       (p.has('crosser') ||
         p.has('byline') ||
-        rx > 89 ||
+        rx > 84 ||
         tac.style === 'wings' ||
-        delivery.score > 3.5)
+        delivery.score > 3 ||
+        this.boxRunners(p.team) >= 2)
     ) {
       this.pass(p, delivery);
       return;
@@ -119,12 +138,16 @@ export class DecisionMethods {
             0.035,
             0.9,
           )
-        : 0.1 *
-          (specialist ? 2 : 1) *
-          (spatial.central ? 1 : 0.4) *
-          clamp((35 - dGoal) / 10, 0.15, 1);
+        : // From outside the box: likelier the closer and more central the shot,
+          // for specialists, and with fewer bodies in the way (blocked shots
+          // are part of the game; a crowd in front is not a hard veto).
+          0.3 *
+          (specialist ? 1.6 : 1) *
+          (spatial.central ? 1 : 0.5) *
+          clamp((32 - dGoal) / 12, 0.08, 1) *
+          0.55 ** blocks;
       if (spatial.zone === 'deep_central') urge *= this.profile.deepUrge;
-      if (!box && (blocks > (specialist ? 1 : 0) || pressure > 1 || p.hold < 0.27)) urge = 0;
+      if (!box && (blocks > 3 || pressure > 1.1 || p.hold < 0.2)) urge = 0;
       if (
         this.rand() <
         urge *
@@ -215,6 +238,13 @@ export class DecisionMethods {
     }
     if (p.animation?.type !== 'feint')
       p.action = pressure > 0.5 ? 'Protecting the ball' : 'Driving into space';
+  }
+  // Teammates (outfield) currently inside the opponent's box.
+  boxRunners(team) {
+    let n = 0;
+    for (const q of this.activePlayers)
+      if (q.team === team && q.role !== 'GK' && this.inBox(q)) n++;
+    return n;
   }
   carryTarget(p) {
     const br = this.rel(p.x, p.team),

@@ -6,7 +6,7 @@
 //   node tools/calibration/match-calibration.mjs --compare /tmp/before.json /tmp/after.json
 //   node tools/calibration/match-calibration.mjs --summary /tmp/after.json
 //
-// Options: --matches N (default 128), --workers N (default 3), --engine <app dir> (another
+// Options: --matches N (default 128), --workers N (default 3), --duration 180|300 (subset), --engine <app dir> (another
 // checkout's app/ folder, e.g. from `git archive <commit> app | tar -x -C /tmp/before`, for
 // paired before/after runs on identical specs), --tuning <json file> (patch over the tuning).
 // Specs: club XIs from the runtime catalog across all tiers (close, moderate and big OVR gaps,
@@ -30,7 +30,8 @@ async function main() {
     workers = Number(flag('--workers') || 3),
     engine = flag('--engine') || ROOT + 'app',
     tuning = flag('--tuning') ? JSON.parse(readFileSync(flag('--tuning'), 'utf8')) : null;
-  const specs = await buildSpecs(count);
+  const only = Number(flag('--duration')) || null,
+    specs = (await buildSpecs(count)).filter(s => !only || s.duration === only);
   const started = performance.now(),
     results = [];
   await Promise.all(

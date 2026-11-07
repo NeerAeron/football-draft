@@ -136,7 +136,7 @@ export class KeeperMethods {
       const behind = -out * (1.5 + this.rand() * 2.5),
         crossing = b.y + (b.vy * depth) / Math.abs(behind);
       b.vx =
-        this.rand() < 0.6 && Math.abs(crossing - 34) > GOAL / 2 + 0.8
+        this.rand() < 0.75 && Math.abs(crossing - 34) > GOAL / 2 + 0.8
           ? behind
           : out * (0.5 + this.rand() * 2);
     } else {
@@ -148,6 +148,8 @@ export class KeeperMethods {
     b.kind = 'loose';
     b.lastTouch = g.team;
     b.kicker = g.id;
+    b.deflectedBy = g.id;
+    b.deflectedAt = this.elapsed;
     b.age = 0;
     g.cooldown = 0.6;
     return type === 'parry' && this.reboundDanger(g) ? 'parry into danger' : type;

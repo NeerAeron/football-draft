@@ -250,6 +250,7 @@ test('higher stamina preserves more match energy under the same work', () => {
       m.move(p, 1 / 60);
     }
   }
-  assert.ok(high.energy > low.energy + 0.05);
-  assert.ok(high.energy < 0.85);
+  // Same work, clearly less energy spent (relative, independent of the drain scale).
+  assert.ok(1 - low.energy > (1 - high.energy) * 1.15);
+  assert.ok(high.energy < 0.97);
 });

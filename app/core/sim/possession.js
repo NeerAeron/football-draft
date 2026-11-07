@@ -114,6 +114,7 @@ export class PossessionMethods {
     b.penaltyKick = false;
     p.beatChain = [];
     p.finishUntil = 0;
+    p.bylineAt = null;
     p.hold = 0;
     p.receivedAt = this.elapsed;
     p.possessionAt = this.elapsed;
@@ -238,7 +239,10 @@ export class PossessionMethods {
     if (p.sentOff || p.stun > 0) return false;
     // In a shootout only the keeper may touch the kick; no follow-ups.
     if (this.mode === 'shootout' && p.id !== this.shootoutState?.kick?.keeperId) return false;
-    if (p.id === b.kicker && b.age < 0.45 && ['pass', 'shot'].includes(b.kind)) return false;
+    if (p.id === b.kicker && b.age < 0.45 && (b.kind === 'pass' || b.kind === 'shot')) return false;
+    // A ball someone has just parried, blocked or headed away is not theirs to
+    // collect again a frame later.
+    if (p.id === b.deflectedBy && this.elapsed - b.deflectedAt < 0.3) return false;
     // A tackle cooldown is not a ban on taking a loose ball. Keep a separate,
     // short first-touch recovery, with an escape for a ball settled at the feet.
     const settled =
