@@ -88,7 +88,7 @@ export function parseSeed(value) {
  * Fill defaults and validate a draft context:
  *   { kind: 'run'|'quick'|'versus'|'daily', type, difficulty, formation,
  *     options: { hideRatings, uniqueNations }, seed, schedule?, rerolls?, useDefaultRules?,
- *     names?: [p1, p2], kits?: [kitId, kitId], returnTo? }
+ *     names?: [p1, p2], kits?: [kitId, kitId], returnTo?, daily?, meta? (kept as is) }
  * `type` accepts the UI ids (nations · leagues · clubs · club-country) and the core mode ids.
  */
 export function normalizeContext(context = {}) {
@@ -121,6 +121,7 @@ export function normalizeContext(context = {}) {
     kits: kind === 'versus' ? kits : [kits[0]],
     returnTo: typeof context.returnTo === 'string' ? context.returnTo : null,
     ...(context.daily != null ? { daily: context.daily } : {}),
+    ...(context.meta && typeof context.meta === 'object' ? { meta: context.meta } : {}),
   };
 }
 

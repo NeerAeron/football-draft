@@ -39,7 +39,8 @@ await startDraft(context, { go = true, spin = true });  // → #/draft, first sp
 //             options: { hideRatings, uniqueNations }, seed,
 //             schedule?, rerolls?, useDefaultRules?,          // daily: pass day.draft's values
 //             names?: [p1, p2], kits?: ['volt', 'sky'],        // versus (KIT_COLORS ids)
-//             returnTo? }                                      // run/daily: where Continue goes
+//             returnTo?, daily?, meta? }                       // run/daily: where Continue goes;
+//                                                              // daily/meta are kept as given
 completedDraft();      // { session, context } when every pick is made (in memory), else null
 await loadDraft();     // the same after a reload (restores 'football-draft-draft'), or null
 readSavedDraft();      // sync summary { context, picks, total, complete, savedAt } | null
