@@ -17,6 +17,72 @@ const seed = (page, entries) =>
 
 const ONBOARDED = { 'football-draft-ui': { onboarded: true } };
 
+// ---------- RUN-UI helpers (#/run, #/daily, #/exhibition, #/challenge) ----------
+
+/** Auto-sims use the fast rating model (screens/run/auto-sim.js) so the flows stay quick. */
+const FAST_SIM = { 'football-draft-dev': { fastSim: true } };
+
+/**
+ * Finish a draft started with startDraft(): on DRAFT-UI's board auto-complete it
+ * (#/draft?auto=1) and press Continue on the completion sheet, which returns to the run/daily
+ * screen (context.returnTo); then wait for `until` there.
+ */
+async function completeDraft(page, until) {
+  await page.waitForFunction(() => /^#\/(draft|run|daily)/.test(location.hash), null, {
+    timeout: 15000,
+  });
+  if (await page.evaluate(() => location.hash.startsWith('#/draft'))) {
+    await visible(page, '[data-screen="draft"][data-phase]');
+    await page.evaluate(() => (location.hash = '#/draft?auto=1'));
+    const go = 'dialog.complete-sheet[open] [data-testid="draft-continue"]';
+    await visible(page, go);
+    await page.click(go);
+  }
+  await visible(page, until, 30000);
+}
+
+/**
+ * Play the requested match: pre-match → Kick off, match screen → Instant → Continue. While
+ * #/match is still a placeholder, simulate the stored request in the page with the same
+ * engine and come back the way Continue does.
+ */
+async function finishMatch(page) {
+  await page.waitForFunction(() => /^#\/(match|prematch)/.test(location.hash), null, {
+    timeout: 15000,
+  });
+  if (await page.evaluate(() => location.hash.startsWith('#/prematch'))) {
+    const kickOff = page.locator('[data-screen="prematch"] [data-testid="kick-off"]');
+    await kickOff.waitFor({ state: 'visible', timeout: 15000 });
+    await kickOff.click();
+    await page.waitForFunction(() => location.hash.startsWith('#/match'), null, {
+      timeout: 15000,
+    });
+  }
+  await visible(page, '[data-screen="match"], [data-screen="placeholder"]');
+  if (await page.locator('[data-screen="match"]').isVisible()) {
+    const instant = page.getByRole('button', { name: /instant/i }).first();
+    if (await instant.isVisible().catch(() => false)) await instant.click();
+    const go = page.getByRole('button', { name: /continue/i }).first();
+    await go.waitFor({ state: 'visible', timeout: 90000 });
+    await go.click();
+    return;
+  }
+  await page.evaluate(async () => {
+    const store = await import('./ui/lib/match-store.js');
+    const { simulateRequest } = await import('./ui/screens/run/auto-sim.js');
+    const request = store.currentRequest();
+    store.saveMatchResult(await simulateRequest(request));
+    location.hash = request.meta.returnTo;
+  });
+}
+
+/** Start a seeded draft through the draft store (DRAFT-UI contract). */
+const startDraftIn = (page, context) =>
+  page.evaluate(async c => {
+    const { startDraft } = await import('./ui/lib/draft-store.js');
+    await startDraft(c);
+  }, context);
+
 // ---------- DRAFT-UI helpers (draft board) ----------
 
 /** Wait until the board shows `n` picks for the side on the clock. */
@@ -235,7 +301,7 @@ export const flows = [
     viewports: ['mobile'],
     async run({ page, step, base }) {
       await seed(page, ONBOARDED);
-      for (const path of ['match', 'run', 'daily', 'exhibition', 'nope']) {
+      for (const path of ['match', 'nope']) {
         await step(`#/${path}`, async () => {
           await page.goto(`${base}#/${path}`);
           await visible(page, '[data-screen="placeholder"] h1');
@@ -507,6 +573,167 @@ export const flows = [
         await visible(page, 'dialog.modal--sheet[open]');
       });
       if (viewport === 'mobile') await shot('sheet');
+    },
+  },
+  // ---------- RUN-UI: World Cup Run, Daily Challenge, Exhibition, challenge links ----------
+  {
+    name: 'run',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await step('empty hub', async () => {
+        await page.goto(`${base}#/run`);
+        await visible(page, '[data-screen="run"] [data-testid="start-run"]');
+      });
+      await step('draft (seeded) → arrival', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await startDraftIn(page, {
+          kind: 'run',
+          type: 'nations',
+          difficulty: 'pro',
+          formation: '433',
+          seed: 42,
+          returnTo: '/run',
+        });
+        await completeDraft(page, '[data-testid="next-fixture"]');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('arrival', { fullPage: viewport === 'mobile' });
+      await step('play matchday 1', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await finishMatch(page);
+      });
+      await step('result banner + record', async () => {
+        await visible(page, '[data-testid="result-banner"]', 60000);
+        const record = await page.textContent('.run-head__wdl');
+        if (!/^\d–\d–\d$/.test(record.trim())) throw new Error(`record reads ${record}`);
+      });
+      await shot('after-match');
+      await step('home continues the run', async () => {
+        await page.goto(base);
+        await visible(page, '[data-testid="continue-run"]');
+        await page.click('[data-testid="continue-run"]');
+        await visible(page, '[data-testid="next-fixture"]');
+      });
+      await step('sim rest of run', async () => {
+        await page.click('[data-testid="sim-rest"]');
+        await visible(page, '[data-testid="run-end"]', 120000);
+      });
+      await shot('end');
+      if (viewport === 'desktop') await shot('end-full', { fullPage: true });
+      await step('share text + challenge link', async () => {
+        const text = await page.textContent('[data-testid="share-text"]');
+        if (!/World Cup Run/.test(text) || !/#\/challenge\?c=c1\.c\.n\.433\.p\./.test(text))
+          throw new Error(`unexpected share text: ${text}`);
+        if (!text.includes(new URL(base).host)) throw new Error('share link is not this page');
+      });
+      await step('end survives a reload', async () => {
+        await page.reload();
+        await visible(page, '[data-testid="run-end"]');
+      });
+    },
+  },
+  {
+    name: 'daily',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      // An old, broken streak (seeded once: the reload below must keep today's attempt).
+      await page.addInitScript(() => {
+        if (!localStorage.getItem('football-draft-daily'))
+          localStorage.setItem(
+            'football-draft-daily',
+            JSON.stringify({ streak: 2, best: 5, lastPlayed: '2000-01-01' }),
+          );
+      });
+      await page.goto(`${base}#/daily`);
+      await step('intro', () => visible(page, '[data-testid="start-daily"]', 30000));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('intro', { fullPage: true });
+      await step('draft with auto picks', async () => {
+        await page.click('[data-testid="start-daily"]');
+        await completeDraft(page, '[data-testid="daily-sim"], [data-testid="daily-result"]');
+      });
+      await step('auto-sim to the result', () =>
+        visible(page, '[data-testid="daily-result"]', 120000),
+      );
+      await shot('result');
+      await shot('result-full', { fullPage: true });
+      await step('share text', async () => {
+        const text = await page.textContent('[data-testid="share-text"]');
+        if (!/Daily #\d+/.test(text) || !/[🟩🟨🟥]/u.test(text) || !/pts/.test(text))
+          throw new Error(`unexpected share text: ${text}`);
+      });
+      await step('one attempt per day', async () => {
+        await page.reload();
+        await visible(page, '[data-testid="daily-result"]');
+        if (await page.locator('[data-testid="start-daily"]').count())
+          throw new Error('the daily can be started twice');
+        const saved = await page.evaluate(() =>
+          JSON.parse(localStorage.getItem('football-draft-daily')),
+        );
+        if (saved.streak !== 1 || saved.best !== 5) throw new Error('streak not updated');
+      });
+    },
+  },
+  {
+    name: 'exhibition',
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      await page.goto(`${base}#/exhibition`);
+      await step('picker', async () => {
+        await visible(page, '[data-screen="exhibition"] .ex-team');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('picker');
+      await step('pick a national team', async () => {
+        await page.getByRole('tab', { name: /Nations/ }).click();
+        await page.fill('.ex-search input', 'braz');
+        await page.locator('.ex-team', { hasText: 'Brazil' }).first().click();
+        const away = await page.textContent('[data-testid="slot-1"]');
+        if (!/Brazil/.test(away)) throw new Error(`away slot reads ${away}`);
+      });
+      await step('random XI', async () => {
+        await page.click('[data-testid="slot-0"]');
+        await page.getByRole('tab', { name: /Random/ }).click();
+        await page.click('[data-testid="roll-random"]');
+        await page.waitForFunction(() =>
+          /Random XI/.test(document.querySelector('[data-testid="slot-0"]').textContent),
+        );
+      });
+      await shot('matchup');
+      await step('kick off → result', async () => {
+        await page.click('[data-testid="kick-off"]');
+        await finishMatch(page);
+        await visible(page, '[data-testid="exhibition-last"]', 60000);
+      });
+      await shot('result');
+    },
+  },
+  {
+    name: 'challenge-link',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await step('short link lands on the challenge', async () => {
+        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+        await visible(page, '[data-screen="challenge"] [data-testid="accept-challenge"]');
+      });
+      await step('shared link with a result', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=5-1-1.bp`);
+        await visible(page, '[data-screen="challenge"] .friend-score');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('landing');
+      await step('accept → same draft → run', async () => {
+        await page.click('[data-testid="accept-challenge"]');
+        await completeDraft(page, '[data-testid="next-fixture"]');
+        const eyebrow = await page.textContent('.run-head .eyebrow');
+        if (!/Challenge/.test(eyebrow)) throw new Error(`not marked as a challenge: ${eyebrow}`);
+      });
+      await shot('run');
+      await step('broken link', async () => {
+        await page.goto(`${base}#/challenge?c=nope`);
+        await visible(page, '[data-screen="challenge"] h1');
+      });
     },
   },
   {
