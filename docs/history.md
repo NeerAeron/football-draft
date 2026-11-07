@@ -1,3 +1,5 @@
+> Pre-overhaul development log: the README as it stood before the Phase 0 restructure, kept verbatim (paths and some claims are out of date; see the top-level README.md).
+
 # Football Draft Challenge
 
 A dependency-free draft and continuous 11v11 soccer game. Serve `app/` over HTTP; no build, account, database or external runtime API is required.
