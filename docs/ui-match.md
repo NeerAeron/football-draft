@@ -151,3 +151,20 @@ job.cancel();                                     // promise resolves to null
 
 Results equal the in-thread `simulateComplete` / `simulateHalf` (same code; the Match is
 structured-cloned and rehydrated). Recorded frames are trimmed to the highlight clips.
+
+## The screen (`app/ui/screens/match/`)
+
+| File | Role |
+| --- | --- |
+| `match.js` | route entry: demo/request → pre-kickoff, live view or stored result; leave confirmation |
+| `controller.js` | `MatchController`: Match objects, RAF loop (runs only while something moves), Key Moments reels from the worker (half 1 is prefetched while the pre-kickoff is open), Full-mode ring buffer (12 s) for goal replays and "Next moment" (fast-forward, then the build-up at 1×), commentary, sound (`MatchSoundEvents`), throttled HUD store |
+| `renderer/` | pure canvas renderer `draw(ctx, view, state)`: cached Floodlit-night pitch layer, kit tokens with numbers, ball height/shadow, shot/pass trails, labels only for carrier + receiver, goal flash; landscape or portrait (rotated) with a shootout camera |
+| `commentary.js`, `report.js`, `demo.js` | pure helpers (Node-tested): event lines, result summary, analysis chips, share line, demo request |
+| `prematch.js`, `live.js`, `hud.js`, `tactics.js`, `result.js` | Preact views |
+
+Controls: Space play/pause, ←/→ (or ↓/↑) speed 1×/2×/4×, N next moment (Full) / next clip (Key
+Moments). Mentality (Push / Balanced / Hold) is live in Full and at half-time in Key Moments; the
+tactics sheet follows `tacticAccess` (formation only at half-time in AI/Versus matches). Goals
+(and the deciding penalty) get a celebration banner, team-colour confetti and a slow-motion
+replay (reduced motion: a static banner, no confetti, no replay, no camera moves). Screen
+readers hear goals only (`aria-live`, never per tick).
