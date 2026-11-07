@@ -140,8 +140,6 @@ function input(field) {
     value = configValue(draft, field.path) ?? field.defaultValue;
   if (typeof field.defaultValue === 'boolean')
     return `<input type="checkbox" data-setting="${field.path}" ${value ? 'checked' : ''} aria-label="${esc(field.label)}">`;
-  if (typeof field.defaultValue === 'string')
-    return `<select data-setting="${field.path}" aria-label="${esc(field.label)}">${['S', 'A', 'B', 'C', 'D', 'F'].map(t => `<option${value === t ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
   return `<input type="number" data-setting="${field.path}" value="${Number((value * scale).toFixed(4))}" min="${field.min * scale}" max="${field.max * scale}" step="${Math.abs((value - field.min) / field.step - Math.round((value - field.min) / field.step)) > 1e-7 ? 'any' : field.step * scale}" aria-label="${esc(field.path.startsWith('badges.boosts.') ? ATTRS[field.key] || field.label : field.label)}">`;
 }
 function bindInputs() {
