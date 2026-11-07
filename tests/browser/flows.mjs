@@ -407,6 +407,57 @@ export const flows = [
     },
   },
   {
+    name: 'prematch',
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      await step('quick draft, auto-completed', async () => {
+        await startFromSetup(page, base, '#/play/quick?type=nations&seed=3&difficulty=semipro');
+        await page.goto(`${base}#/draft?auto=1`);
+        await visible(page, 'dialog.complete-sheet[open]');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await shot('complete');
+      await step('opponent reveal', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await visible(page, '[data-testid="opponent-name"]');
+      });
+      await shot('opponent');
+      await step('to the pre-match', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await visible(page, '[data-screen="prematch"] .lineup__pitch');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await shot('prematch');
+      await step('swap two players', async () => {
+        const names = () =>
+          page.$$eval('.lineup__pitch .pitch-slot', els =>
+            els.map(e => e.getAttribute('aria-label')).join('|'),
+          );
+        const before = await names();
+        await page.click('.lineup__pitch .pitch-slot[data-slot="9"]');
+        await page.click('.lineup__pitch .pitch-slot[data-slot="10"]');
+        await page.waitForFunction(
+          prev =>
+            [...document.querySelectorAll('.lineup__pitch .pitch-slot')]
+              .map(e => e.getAttribute('aria-label'))
+              .join('|') !== prev,
+          before,
+        );
+      });
+      await step('change a tactic', async () => {
+        await page.click('.tactics__mentality label:has-text("Push")');
+        await page.selectOption('[data-testid="formation-select"]', '442');
+      });
+      await shot('edited');
+      await step('kick off', async () => {
+        await page.click('[data-testid="kick-off"]');
+        await page.waitForFunction(() => location.hash === '#/match');
+        const saved = await page.evaluate(() => localStorage.getItem('football-draft-match'));
+        if (!/"mentality":"push"/.test(saved || '')) throw new Error('tactics not handed over');
+      });
+    },
+  },
+  {
     name: 'gallery',
     async run({ page, shot, step, base, viewport }) {
       await page.goto(`${base}gallery.html`);

@@ -24,7 +24,12 @@ export const routes = [
     load: () => import('./screens/setup/setup.js'),
   },
   { path: '/draft', title: 'Draft', back: '/', load: () => import('./screens/draft/draft.js') },
-  { path: '/prematch', title: 'Pre-match', back: '/', load: placeholder },
+  {
+    path: '/prematch',
+    title: 'Pre-match',
+    back: '/',
+    load: () => import('./screens/prematch/prematch.js'),
+  },
   { path: '/match', title: 'Match', back: '/', load: placeholder },
   { path: '/run', title: 'World Cup Run', back: '/', load: placeholder },
   { path: '/daily', title: 'Daily Challenge', back: '/', load: placeholder },

@@ -26,9 +26,9 @@ export const VIEW_KEY = 'football-draft-match-view';
 const FORMAT = 1;
 const KINDS = ['user', 'ai', 'p2'];
 export const MENTALITIES = [
-  { value: 'push', label: 'Push', hint: 'More bodies forward' },
+  { value: 'push', label: 'Push', hint: 'Go for it' },
   { value: 'balanced', label: 'Balanced', hint: 'Stay in shape' },
-  { value: 'hold', label: 'Hold', hint: 'Protect the lead' },
+  { value: 'hold', label: 'Hold', hint: 'Sit deeper' },
 ];
 export const TACTIC_DEFAULTS = {
   style: 'balanced',

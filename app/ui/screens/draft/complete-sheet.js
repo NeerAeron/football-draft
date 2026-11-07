@@ -4,6 +4,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
+import { resolveTier } from '../../lib/tiers.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
@@ -31,13 +32,36 @@ const NEXT = {
   versus: { label: 'To the pre-match', icon: 'arrow-right' },
 };
 
+function Stars({ players, hideRatings }) {
+  const top = players
+    .filter(Boolean)
+    .sort((a, b) => b.ovr - a.ovr)
+    .slice(0, 3);
+  return html`<div class="xi-stars">
+    <span class="xi-stars__title">${hideRatings ? 'Your spine' : 'Your stars'}</span>
+    <ol class="xi-stars__list" role="list">
+      ${top.map(
+        p =>
+          html`<li key=${p.id}>
+            <${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${24} decorative />
+            <span class="xi-stars__name truncate">${p.name}</span>
+            <span class="xi-stars__pos">${p.position}</span>
+            ${!hideRatings && html`<b class=${cx('num', `tier-text-${tierClass(p)}`)}>${p.ovr}</b>`}
+          </li>`,
+      )}
+    </ol>
+  </div>`;
+}
+const tierClass = p => resolveTier(p.tier, p.ovr).id;
+
 function XiSummary({ team, players, hideRatings, small }) {
-  return html`<div class=${cx('xi-summary', small && 'is-small')}>
+  return html`<div class=${cx('xi-summary', small ? 'is-small' : 'is-solo')}>
     <div class="xi-summary__head" style=${teamStyle([team.color, team.secondary])}>
       <span class="xi-summary__kit" aria-hidden="true"></span>
       <span class="xi-summary__name">${team.name}</span>
       <span class="xi-summary__formation">${formationLabel(team.formation)}</span>
     </div>
+    ${!small && html`<${Stars} players=${players} hideRatings=${hideRatings} />`}
     <div class="xi-summary__stats">
       <span
         ><small>OVR</small
@@ -57,7 +81,7 @@ function XiSummary({ team, players, hideRatings, small }) {
       links=${linkLines(team.links.pairs)}
       hideRatings=${hideRatings}
       label=${`${team.name} XI`}
-      aspect=${small ? '4 / 4.6' : '4 / 4.4'}
+      aspect=${small ? '4 / 4.6' : '4 / 4.7'}
       class="xi-summary__pitch"
     />
   </div>`;
