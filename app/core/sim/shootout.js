@@ -4,7 +4,7 @@
 // deterministic: the coin toss and dives draw from the match RNG only.
 // Methods are installed on Match.prototype by match.js. See docs/engine-events.md.
 import { clamp, lerp } from '../util/math.js';
-import { W, H, GOAL } from './constants.js';
+import { W, H, GOAL, hypot } from './constants.js';
 import { PERIOD_START } from './periods.js';
 
 const SETUP = 1.5; // real seconds to place the ball and the kicker
@@ -250,7 +250,7 @@ export class ShootoutMethods {
       return saved ? 'saved' : k.hitPost ? 'post' : 'missed';
     }
     const elapsed = this.elapsed - k.kickedAt,
-      stopped = b.z < 0.05 && Math.hypot(b.vx, b.vy) < 0.8 && elapsed > 0.5;
+      stopped = b.z < 0.05 && hypot(b.vx, b.vy) < 0.8 && elapsed > 0.5;
     if (b.y < 0 || b.y > H || b.x < W - 25 || stopped || elapsed > FLIGHT_LIMIT)
       return saved ? 'saved' : k.hitPost ? 'post' : 'missed';
     return null;

@@ -21,7 +21,7 @@ import {
   freshStats,
   install,
 } from './constants.js';
-import { Player, normalizeChem } from './player.js';
+import { Player, normalizeChem, beginStepCache, endStepCache } from './player.js';
 import { PossessionMethods } from './possession.js';
 import { PassingMethods } from './passing.js';
 import { ShootingMethods } from './shooting.js';
@@ -33,7 +33,11 @@ import { FoulMethods } from './fouls.js';
 import { BallMethods } from './ball.js';
 import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
+
+const MENTALITY_LEAN = { push: 1, balanced: 0, hold: -1 };
 import { ShootoutMethods } from './shootout.js';
+import { KeeperMethods } from './keeper.js';
+import { hypot } from './constants.js';
 
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
@@ -128,6 +132,10 @@ export class Match {
         ),
       );
     this.competition = { mode: 'sandbox', difficulty: 'medium' };
+    this._costCache = null;
+    this._costBuffer = null;
+    this._planPass = 0;
+    this._coverTop = null;
     for (const p of this.players) this.setTags(p.id, p.tags);
     this.reset();
   }
@@ -234,6 +242,8 @@ export class Match {
       kind: 'loose',
       age: 0,
       offside: false,
+      deflectedBy: null,
+      deflectedAt: -10,
     };
     for (const p of this.players) {
       p.stats = freshStats();
@@ -304,13 +314,17 @@ export class Match {
     return e;
   }
   settings(team) {
-    const t = this.teams[team].tactics;
+    const t = this.teams[team].tactics,
+      lean = MENTALITY_LEAN[t.mentality] ?? 0;
+    // Mentality leans the whole side: push = higher line, more bodies forward;
+    // hold = deeper block, fewer runners, patient possession.
     return {
       ...t,
+      lean,
       pressing: (t.press - 1) * 25,
       widthValue: (t.width - 1) * 25,
-      line: t.style === 'bus' ? 12 : t.style === 'press' ? 72 : 50,
-      attacking: t.style === 'bus' ? 25 : t.style === 'counter' ? 65 : 50,
+      line: (t.style === 'bus' ? 12 : t.style === 'press' ? 72 : 50) + lean * (lean > 0 ? 8 : 10),
+      attacking: (t.style === 'bus' ? 25 : t.style === 'counter' ? 65 : 50) + lean * 20,
     };
   }
   setTags(id, tags) {
@@ -504,6 +518,14 @@ export class Match {
     for (const p of this.activePlayers) if (p.team === team) p.rethinkAt = 0;
     return true;
   }
+  // Expire visual effects in place (no per-step allocation).
+  ageEffects(dt) {
+    const effects = this.effects;
+    let n = 0;
+    for (let i = 0; i < effects.length; i++)
+      if ((effects[i].life -= dt) > 0) effects[n++] = effects[i];
+    effects.length = n;
+  }
   flair(type, p, duration, extra = {}, force = false) {
     if (!force && this.elapsed - this.lastFlair < 1.1) return;
     this.lastFlair = this.elapsed;
@@ -606,6 +628,14 @@ export class Match {
     return true;
   }
   step(dt) {
+    beginStepCache();
+    try {
+      this.stepInner(dt);
+    } finally {
+      endStepCache();
+    }
+  }
+  stepInner(dt) {
     if (this.finished) return;
     if (this.mode === 'halftime') {
       if (!this.pauseAtHalf) this.resumeHalf();
@@ -614,7 +644,7 @@ export class Match {
     if (this.mode === 'shootout') {
       dt = Math.min(dt, 0.05);
       this.elapsed += dt;
-      this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+      this.ageEffects(dt);
       this.stepShootout(dt);
       return;
     }
@@ -626,7 +656,7 @@ export class Match {
     this.elapsed += dt;
     this.time =
       PERIOD_START[this.half - 1] + ((this.elapsed - this.periodStart) / this.duration) * 5400;
-    this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+    this.ageEffects(dt);
     this.trackMomentum(dt);
     if (
       this.elapsed - this.periodStart >= this.duration * PERIOD_SHARE[this.half - 1] &&
@@ -643,8 +673,8 @@ export class Match {
     const pendingPenalty =
       (this.mode === 'restart' && this.restart.type === 'Penalty') ||
       (this.ball.penaltyKick &&
-        ['shot', 'loose'].includes(this.ball.kind) &&
-        Math.hypot(this.ball.vx, this.ball.vy) > 0.5);
+        (this.ball.kind === 'shot' || this.ball.kind === 'loose') &&
+        hypot(this.ball.vx, this.ball.vy) > 0.5);
     const settling =
       (this.ball.kind === 'shot' && this.ball.age < 3) ||
       (this.mode === 'restart' && this.restart.type === 'Goal' && this.restart.timer > 0.1);
@@ -696,4 +726,5 @@ install(
   RestartMethods,
   InsightMethods,
   ShootoutMethods,
+  KeeperMethods,
 );

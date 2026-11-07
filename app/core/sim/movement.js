@@ -1,24 +1,41 @@
 // Movement and contact: player motion, stamina, challenges, duels.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist } from '../util/math.js';
+import { clamp } from '../util/math.js';
 import { offenceInBox } from './rules.js';
-import { sigmoid } from './constants.js';
+import { sigmoid, dist, hypot } from './constants.js';
+
+const URGENT = new Set([
+  'press',
+  'cover',
+  'recover',
+  'receive',
+  'intercept',
+  'sweep',
+  'dribble',
+  'track',
+  'reset',
+]);
 
 export class MovementMethods {
   move(p, dt, restart = false) {
     if (p.sentOff) return;
     let dx = p.tx - p.x,
       dy = p.ty - p.y;
-    for (const q of this.activePlayers) {
-      if (q.id === p.id) continue;
-      const d = dist(p, q);
-      if (d > 0.01 && d < 1.55) {
-        const force = (1.55 - d) * (q.team === p.team ? 2 : 0.55);
-        dx += ((p.x - q.x) / d) * force;
-        dy += ((p.y - q.y) / d) * force;
+    const players = this.activePlayers;
+    for (let i = 0; i < players.length; i++) {
+      const q = players[i],
+        ox = p.x - q.x,
+        oy = p.y - q.y;
+      if (q === p || ox > 1.55 || ox < -1.55 || oy > 1.55 || oy < -1.55) continue;
+      const d2 = ox * ox + oy * oy;
+      if (d2 > 0.0001 && d2 < 2.4025) {
+        const d = Math.sqrt(d2),
+          force = (1.55 - d) * (q.team === p.team ? 2 : 0.55);
+        dx += (ox / d) * force;
+        dy += (oy / d) * force;
       }
     }
-    const d = Math.hypot(dx, dy),
+    const d = hypot(dx, dy),
       carrying = this.ball.owner === p.id && this.ball.kind !== 'held';
     const owner =
       !restart && p.intent === 'press' && this.ball.owner !== null
@@ -31,23 +48,13 @@ export class MovementMethods {
       : 0;
     const motion = jockey ? this.carrierMotion(p, carrier) : carrier;
     const urgent =
-      [
-        'press',
-        'cover',
-        'recover',
-        'receive',
-        'intercept',
-        'sweep',
-        'dribble',
-        'track',
-        'reset',
-      ].includes(p.intent) ||
-      (p.intent === 'mark' && (d > 3 || Math.hypot(p.vx, p.vy) > p.topSpeed() * 0.55)) ||
+      URGENT.has(p.intent) ||
+      (p.intent === 'mark' && (d > 3 || hypot(p.vx, p.vy) > p.topSpeed() * 0.55)) ||
       (p.intent === 'run' && d > 5) ||
       (carrying && d > 4 && p.tendency('advance') > 0.48);
     if (p.sprint < 0.08) p.sprintRest = Math.max(p.sprintRest, 1.8);
     p.sprintRest = Math.max(0, p.sprintRest - dt);
-    const trackingRun = jockey > 0 && Math.hypot(carrier.vx, carrier.vy) > p.topSpeed() * 0.65;
+    const trackingRun = jockey > 0 && hypot(carrier.vx, carrier.vy) > p.topSpeed() * 0.65;
     const sprint = urgent && p.sprint > 0.16 && p.sprintRest === 0 && (d > 2 || trackingRun);
     let max =
       p.topSpeed(carrying) *
@@ -60,7 +67,7 @@ export class MovementMethods {
             : 0.7);
     if (p.stun > 0) max *= 0.2;
     const mark =
-      !restart && ['mark', 'track'].includes(p.intent) && p.markId != null
+      !restart && (p.intent === 'mark' || p.intent === 'track') && p.markId != null
         ? this.players[p.markId]
         : null;
     // A moving mark is not a stationary arrival point. Match their velocity
@@ -70,15 +77,15 @@ export class MovementMethods {
         (mark?.vx || 0) + (motion?.vx || 0) * jockey + (d > 0.02 ? (dx / d) * targetSpeed : 0),
       followY =
         (mark?.vy || 0) + (motion?.vy || 0) * jockey + (d > 0.02 ? (dy / d) * targetSpeed : 0);
-    const followScale = Math.min(1, max / (Math.hypot(followX, followY) || 1)),
+    const followScale = Math.min(1, max / (hypot(followX, followY) || 1)),
       vx = followX * followScale,
       vy = followY * followScale;
     const accel = p.acceleration() * (0.72 + p.energy * 0.28) * dt,
-      dv = Math.hypot(vx - p.vx, vy - p.vy),
+      dv = hypot(vx - p.vx, vy - p.vy),
       weight = Math.min(1, accel / (dv || 1));
     p.vx += (vx - p.vx) * weight;
     p.vy += (vy - p.vy) * weight;
-    const speed = Math.hypot(p.vx, p.vy);
+    const speed = hypot(p.vx, p.vy);
     p.stats.distance += speed * dt;
     p.x = clamp(p.x + p.vx * dt, 0.5, 104.5);
     p.y = clamp(p.y + p.vy * dt, 0.5, 67.5);
@@ -111,17 +118,32 @@ export class MovementMethods {
       (1.12 - stamina * 0.33) *
       (p.has('engine') ? 0.96 : 1) *
       (restart ? 0.65 : 1) *
-      (this.half === 2 ? 1.1 : this.half > 2 ? 1.2 : 1);
+      (this.half === 2 ? 1.1 : this.half > 2 ? 1.2 : 1) *
+      this.tacticalLoad(p);
     p.energy = clamp(p.energy - drain * lowReserve * this.tuning.stamina.drain, 0.001, 1);
     p.cooldown = Math.max(0, p.cooldown - dt);
     p.stun = Math.max(0, p.stun - dt);
     p.feintCooldown = Math.max(0, p.feintCooldown - dt);
     if (p.animation && this.elapsed - p.animation.start > p.animation.duration) p.animation = null;
   }
+  // E5: tactics cost energy. Out of possession the press level (and the press
+  // style) sets the effort, in possession the tempo; pushing for a goal costs a
+  // little more, holding saves a little. Balanced settings cost exactly 1.
+  tacticalLoad(p) {
+    const t = this.teams[p.team].tactics,
+      attacking = this.lastTeam === p.team && this.ball.owner !== null;
+    const lean = t.mentality === 'push' ? 1 : t.mentality === 'hold' ? -1 : 0;
+    return (
+      (attacking
+        ? 1 + (t.tempo - 3) * 0.07
+        : 1 + (t.press - 3) * 0.11 + (t.style === 'press' ? 0.08 : 0)) *
+      (1 + lean * 0.05)
+    );
+  }
   challengeModel(p, q) {
     const bearing =
       ((q.x - p.x) * Math.cos(p.facing) + (q.y - p.y) * Math.sin(p.facing)) / (dist(p, q) || 1);
-    const closing = Math.hypot(q.vx - p.vx, q.vy - p.vy),
+    const closing = hypot(q.vx - p.vx, q.vy - p.vy),
       behind = Math.max(0, -bearing),
       reach = dist(q, this.ball);
     const fatigue = 1 - q.energy,
@@ -233,10 +255,18 @@ export class MovementMethods {
       b.age = 0;
       b.lastTouch = q.team;
       b.offsideState = null;
-      const escape = this.carryTarget(q),
-        angle = Math.atan2(escape.y - q.y, escape.x - q.x);
-      b.vx = Math.cos(angle) * (1.3 + this.rand() * 1.5);
-      b.vy = Math.sin(angle) * (1.3 + this.rand() * 1.5);
+      // A tackle at the defender's own byline often squirts behind.
+      const byline = this.rel(q.x, q.team) < 7 && Math.abs(q.y - 34) > 7;
+      if (byline && this.rand() < 0.4) {
+        b.vx = -this.direction(q.team) * (2.5 + this.rand() * 2);
+        b.vy = (this.rand() - 0.5) * 3;
+        b.lastTouch = q.team;
+      } else {
+        const escape = this.carryTarget(q),
+          angle = Math.atan2(escape.y - q.y, escape.x - q.x);
+        b.vx = Math.cos(angle) * (1.3 + this.rand() * 1.5);
+        b.vy = Math.sin(angle) * (1.3 + this.rand() * 1.5);
+      }
       b.vz = model.hard ? 1.1 : 0.3;
       q.action = 'Collecting the tackle';
       q.cooldown = 0.1;
@@ -245,10 +275,21 @@ export class MovementMethods {
     }
     return false;
   }
+  // Aerial duel for a high ball that reached p first. Heading, strength and
+  // aerial tendency decide it; defenders in front of their own goal read the
+  // flight better. Returns true when the duel ended p's touch (a foul, or the
+  // rival won the header), false when p wins and plays on.
   contestAerial(p) {
-    const rival = this.activePlayers
-      .filter(q => q.team !== p.team && q.role !== 'GK' && q.cooldown <= 0 && dist(q, p) < 1.35)
-      .sort((a, b) => dist(a, p) - dist(b, p))[0];
+    let rival = null,
+      nearest = 2.1;
+    for (const q of this.activePlayers) {
+      if (q.team === p.team || q.role === 'GK' || q.cooldown > 0 || q.stun > 0) continue;
+      const d = dist(q, p);
+      if (d < nearest) {
+        nearest = d;
+        rival = q;
+      }
+    }
     if (!rival) return false;
     const model = this.challengeModel(p, rival);
     rival.cooldown = 0.7;
@@ -256,6 +297,93 @@ export class MovementMethods {
       this.awardFoul(rival, p);
       return true;
     }
-    return false;
+    const power = q =>
+      q.skill('heading') * 0.6 +
+      q.skill('strength') * 0.3 +
+      q.tendency('aerial') * 12 +
+      (q.has('aerial') ? 5 : 0);
+    const home = q => this.inBox(q, 1 - q.team);
+    // First contact helps a little; defenders facing the ball in front of
+    // their own goal (or rising with the keeper behind them) help a lot.
+    const wins = sigmoid(
+      (power(p) - power(rival)) / 9 + 0.15 + (home(p) ? 0.85 : 0) - (home(rival) ? 0.85 : 0),
+    );
+    if (this.rand() < wins) return false;
+    const height = this.ball.z;
+    this.flair('header', rival, 0.6, { label: 'WON IN THE AIR', strength: 0.45 });
+    if (home(rival)) this.headClear(rival);
+    else if (this.inBox(rival) && this.own(rival)) this.shoot(rival, { aerialHeight: height });
+    else if (this.own(rival)) rival.hold = 0;
+    return true;
+  }
+  // A defender heads a high ball away from goal; a glancing one goes behind.
+  headClear(d) {
+    const b = this.ball,
+      out = this.direction(d.team),
+      side = b.y >= 34 ? 1 : -1;
+    b.kind = 'loose';
+    b.owner = null;
+    b.target = null;
+    b.lastTouch = d.team;
+    b.kicker = d.id;
+    b.deflectedBy = d.id;
+    b.deflectedAt = this.elapsed;
+    b.age = 0;
+    b.indirect = null;
+    b.penaltyTaker = null;
+    b.restartTaker = null;
+    b.offsideState = null;
+    const glancing =
+      Math.abs(b.y - 34) > 5 &&
+      this.rand() < 0.24 + clamp((72 - d.skill('heading')) / 100, 0, 0.15);
+    if (glancing) {
+      b.vx = -out * (3 + this.rand() * 2.5);
+      b.vy = side * (3 + this.rand() * 3);
+      b.vz = 2 + this.rand();
+    } else {
+      b.vx = out * (9 + this.rand() * 6 + d.skill('heading') * 0.03);
+      b.vy = side * (2 + this.rand() * 4);
+      b.vz = 3 + this.rand() * 3;
+    }
+    b.z = Math.max(b.z, 1.6);
+    d.cooldown = 0.5;
+    d.action = 'Heading clear';
+    this.planTimer = 0;
+  }
+  // A cross struck into a defender standing near the crosser: it deflects,
+  // often behind for a corner.
+  blockCross(d) {
+    const b = this.ball,
+      out = this.direction(d.team);
+    b.kind = 'loose';
+    b.owner = null;
+    b.target = null;
+    b.lastTouch = d.team;
+    b.kicker = d.id;
+    b.deflectedBy = d.id;
+    b.deflectedAt = this.elapsed;
+    b.age = 0;
+    b.offsideState = null;
+    b.restartTaker = null;
+    if (this.rand() < 0.65) {
+      b.vx = -out * (4 + this.rand() * 4);
+      b.vy = b.vy * 0.3 + this.noise() * 2;
+    } else {
+      b.vx *= -0.25;
+      b.vy = this.noise() * 4;
+    }
+    b.vz = 1.5 + this.rand() * 1.5;
+    d.cooldown = 0.3;
+    d.stats.blocks++;
+    this.addEvent(`${d.name.split(' ').pop()} blocks the cross.`, d.team, 'block', {
+      playerId: d.id,
+      strength: 0.35,
+      cross: true,
+      shotEventId: null,
+      shooterId: null,
+      xg: null,
+      bigChance: false,
+    });
+    this.planTimer = 0;
   }
 }

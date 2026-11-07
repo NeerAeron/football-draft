@@ -66,6 +66,7 @@ export class FoulMethods {
       if (standIn) {
         standIn.emergencyKeeper = true;
         standIn.role = 'GK';
+        standIn._stamp = 0;
         standIn.action = 'Taking over in goal';
       }
     }

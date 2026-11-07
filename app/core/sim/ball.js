@@ -1,9 +1,9 @@
 // Ball flight: contacts, saves, blocks, receptions, bounds and goals.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
+import { clamp, lerp } from '../util/math.js';
 import { goalZone } from './goal-zones.js';
 import { offsideSnapshot } from './rules.js';
-import { W, H, GOAL, segment } from './constants.js';
+import { W, H, GOAL, segment, dist, hypot } from './constants.js';
 
 export class BallMethods {
   moveBall(dt) {
@@ -20,7 +20,7 @@ export class BallMethods {
     b.vz -= 9.81 * dt;
     if (b.z === 0) {
       b.vz = Math.abs(b.vz) > 0.9 ? -b.vz * 0.3 : 0;
-      const speed = Math.hypot(b.vx, b.vy),
+      const speed = hypot(b.vx, b.vy),
         drag = Math.max(0, 1 - ((b.kind === 'pass' ? b.roll || 3.8 : 2) * dt) / (speed || 1));
       b.vx *= drag;
       b.vy *= drag;
@@ -28,8 +28,7 @@ export class BallMethods {
     if (
       b.kind === 'pass' &&
       b.destination &&
-      ((b.x - b.destination.x) * b.vx + (b.y - b.destination.y) * b.vy > 0 ||
-        Math.hypot(b.vx, b.vy) < 5)
+      ((b.x - b.destination.x) * b.vx + (b.y - b.destination.y) * b.vy > 0 || hypot(b.vx, b.vy) < 5)
     ) {
       b.missedReceiver = true;
       this.planTimer = 0;
@@ -47,9 +46,7 @@ export class BallMethods {
       .filter(
         o =>
           o.d <
-          (this.canHandle(o.p) && incomingGoal
-            ? 1.3 + o.p.skill('goalkeeping') * 0.011
-            : this.collectionReach(o.p)),
+          (this.canHandle(o.p) && incomingGoal ? this.keeperReach(o.p) : this.collectionReach(o.p)),
       )
       .sort((a, c) => a.t - c.t || a.d - c.d);
     if (b.kind === 'shot' && b.offsideState) {
@@ -74,74 +71,7 @@ export class BallMethods {
       if (this.checkOffside(p)) return;
       if (this.checkRestartTouch(p)) return;
       if (this.canHandle(p) && incomingGoal && p.team !== flightTeam) {
-        if (b.saver === p.id) continue;
-        b.saver = p.id;
-        const speed = Math.hypot(b.vx, b.vy),
-          lateral = Math.abs((p.x - b.x) * b.vy - (p.y - b.y) * b.vx) / (speed || 1),
-          onTarget = this.projectedOnTarget();
-        const prob = clamp(
-          0.34 +
-            p.skill('goalkeeping') * 0.0063 -
-            lateral * 0.14 -
-            Math.max(0, speed - 25) * 0.016 +
-            this.profile.saveBoost +
-            (b.penaltyKick ? -0.08 - this.profile.saveBoost : 0) +
-            (b.shotRecord ? 0 : 0.18 + Math.max(0, 24 - speed) * 0.015) +
-            (p.has('gkoneonone') && b.shotOrigin && dist(p, b.shotOrigin) < 16 ? 0.035 : 0),
-          0.04,
-          b.shotRecord ? 0.95 : 0.995,
-        );
-        p.action = 'Diving';
-        p.animation = {
-          type: 'dive',
-          start: this.elapsed,
-          duration: 0.6,
-          angle: Math.atan2(b.y - p.y, b.x - p.x),
-        };
-        const effectiveSave = clamp(prob * this.tuning.gameplay.saveAbility, 0.01, 0.995);
-        if (this.rand() < effectiveSave) {
-          this.resolveShot(onTarget ? 'saved' : 'off target');
-          let save = null;
-          if (onTarget && b.shotRecord && !b.shotRecord.shootout) {
-            this.stats[p.team].saves++;
-            p.stats.saves++;
-            save = this.addEvent(`${p.name.split(' ').pop()} makes the save.`, p.team, 'save', {
-              playerId: p.id,
-              chance: effectiveSave,
-              chanceLabel: 'save',
-              strength: clamp(speed / 38, 0, 1),
-              shotEventId: b.shotRecord.eventId,
-              shooterId: b.shotRecord.player,
-              xg: b.shotRecord.xg,
-              bigChance: b.shotRecord.bigChance,
-              difficulty: clamp(1 - effectiveSave, 0, 1),
-              saveType: 'catch',
-            });
-          }
-          b.penaltyTaker = null;
-          b.restartTaker = null;
-          b.indirect = null;
-          if (
-            this.rand() <
-            0.48 + p.skill('goalkeeping') * 0.003 + (p.has('safehands') ? 0.1 : 0)
-          ) {
-            this.own(p, true);
-            p.hold = 0;
-            if (onTarget) this.flair('catch', p, 0.55, { label: 'SAVED', strength: 0.35 });
-          } else {
-            if (onTarget) this.flair('parry', p, 0.7, { label: 'PARRIED', strength: 0.65 });
-            b.vx *= -0.2;
-            b.vy = (b.y > p.y ? 1 : -1) * (4 + this.rand() * 6);
-            b.vz = 2;
-            b.kind = 'loose';
-            b.lastTouch = p.team;
-            b.kicker = p.id;
-            b.age = 0;
-            p.cooldown = 0.6;
-            if (save) save.saveType = this.reboundDanger(p) ? 'parry into danger' : 'parry';
-          }
-          return;
-        }
+        if (this.keeperSave(p)) return;
         continue;
       }
       if (b.z > 1.6 + p.skill('heading') * 0.007) continue;
@@ -149,12 +79,22 @@ export class BallMethods {
         if (p.team === b.shotTeam) continue;
         if (this.rand() < 0.35 + p.skill('defending') * 0.003) {
           this.resolveShot('blocked');
-          b.vx *= -0.22;
-          b.vy += this.noise() * 6;
-          b.vz = 1.5;
+          // A block either kills the shot or deflects it on, often behind for a corner.
+          if (this.rand() < 0.55) {
+            const keep = 0.35 + this.rand() * 0.3;
+            b.vx *= keep;
+            b.vy = b.vy * keep + this.noise() * 4;
+            b.vz = 0.8 + this.rand() * 2;
+          } else {
+            b.vx *= -0.22;
+            b.vy += this.noise() * 6;
+            b.vz = 1.5;
+          }
           b.kind = 'loose';
           b.lastTouch = p.team;
           b.kicker = p.id;
+          b.deflectedBy = p.id;
+          b.deflectedAt = this.elapsed;
           b.age = 0;
           b.indirect = null;
           b.penaltyTaker = null;
@@ -176,7 +116,7 @@ export class BallMethods {
         continue;
       }
       const height = b.z,
-        speed = Math.hypot(b.vx, b.vy),
+        speed = hypot(b.vx, b.vy),
         teammate = b.kind === 'pass' && b.kicker !== null && this.players[b.kicker].team === p.team;
       if (!teammate && b.kind === 'pass' && p.role !== 'GK') {
         const facing = (Math.cos(p.facing) * -b.vx + Math.sin(p.facing) * -b.vy) / (speed || 1);
@@ -202,6 +142,10 @@ export class BallMethods {
           p.cooldown = 0.15;
           continue;
         }
+        if ((b.delivery === 'cross' || b.delivery === 'cutback') && b.age < 0.35 && b.z < 1.6) {
+          this.blockCross(p);
+          return;
+        }
       }
       // Measure sideways reach from the flight line. Distance to this frame's
       // short segment wrongly labels a centered, approaching pass a stretch.
@@ -221,12 +165,21 @@ export class BallMethods {
       const settled = (b.kind === 'loose' || b.missedReceiver) && height < 0.3 && speed < 3.2;
       const control = settled ? 1 - (1 - baseControl) * 0.12 : baseControl;
       if (this.rand() < control) {
-        if (teammate && height > 1.15 && this.contestAerial(p)) return;
+        if (height > 1.15 && p.role !== 'GK') {
+          if (this.contestAerial(p)) return;
+          if (!teammate && this.inBox(p, 1 - p.team)) {
+            this.headClear(p);
+            return;
+          }
+        }
         const aerial =
           teammate &&
           height > 0.45 &&
           this.inBox(p) &&
-          this.rand() < (0.25 + p.tendency('shoot') * 0.6) * (height > 1.15 ? 0.9 : 1);
+          this.rand() <
+            (height > 1.15
+              ? 0.35 + Math.max(p.tendency('shoot'), p.tendency('aerial')) * 0.5
+              : 0.25 + p.tendency('shoot') * 0.6);
         if (!teammate && b.kind === 'pass')
           this.addEvent(`${p.name.split(' ').pop()} intercepts.`, p.team, 'intercept', {
             playerId: p.id,

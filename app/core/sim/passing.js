@@ -1,10 +1,25 @@
 // Passing: option scoring, lane risk, flight, keeper distribution, clearances, pass execution.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
+import { clamp, lerp } from '../util/math.js';
 import { footExecution } from './player-model.js';
 import { offsideSnapshot } from './rules.js';
-import { passingAbility, shootingAbility } from '../players/ratings.js';
-import { segment, sigmoid, skillError } from './constants.js';
+import { shootingAbility } from '../players/ratings.js';
+import { segment, sigmoid, skillError, dist, hypot } from './constants.js';
+
+// players/ratings.js passingAbility, without allocating per call (hot path).
+function passingAbility(p, distance, delivery = 'pass') {
+  if (delivery === 'cross') return p.skill('crossing') * 0.8 + p.skill('longPassing') * 0.2;
+  if (delivery === 'cutback') return p.skill('shortPassing') * 0.7 + p.skill('crossing') * 0.3;
+  const long = clamp((distance - 16) / 20, 0, 1);
+  return p.skill('shortPassing') * (1 - long) + p.skill('longPassing') * long;
+}
+
+const LANE_SAMPLES = [0.18, 0.36, 0.54, 0.72, 0.9],
+  LANE_X = new Float64Array(5),
+  LANE_Y = new Float64Array(5),
+  LANE_T = new Float64Array(5),
+  LANE_Z = new Float64Array(5),
+  LANE_POINT = { x: 0, y: 0 };
 
 export class PassingMethods {
   receiverMargin(p, r, aim, loft = false) {
@@ -63,25 +78,35 @@ export class PassingMethods {
       start = this.ball.owner === p.id && this.ball.kind === 'held' ? 1.65 : 0.12,
       landing = delivery === 'cross' ? 1.65 : 0.45;
     const craft = passingAbility(p, length, delivery) * 0.65 + p.vision() * 0.35;
+    // The five sample points along the lane, their flight times and ball heights
+    // do not depend on the defender: compute them once per lane.
+    for (let i = 0; i < 5; i++) {
+      const f = LANE_SAMPLES[i],
+        flight = this.flightTime(length, loft, f);
+      LANE_X[i] = lerp(p.x, end.x, f);
+      LANE_Y[i] = lerp(p.y, end.y, f);
+      LANE_T[i] = flight;
+      // Use the launch arc, so midfield traffic can be cleared but defenders
+      // near takeoff and landing still have a realistic interception chance.
+      LANE_Z[i] = !loft
+        ? 0
+        : delivery === 'cross'
+          ? 9.81 * total * 0.46 * flight - 4.905 * flight * flight
+          : lerp(start, landing, f) + 4.905 * total * total * f * (1 - f);
+    }
+    const point = LANE_POINT;
     let risk = 0;
     for (const q of this.activePlayers) {
       if (q.team === p.team) continue;
+      const reaction = 0.1 + (100 - q.pressAwareness()) * 0.002,
+        reach = delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007;
       let threat = 0;
-      for (const f of [0.18, 0.36, 0.54, 0.72, 0.9]) {
-        const point = { x: lerp(p.x, end.x, f), y: lerp(p.y, end.y, f) },
-          flight = this.flightTime(length, loft, f),
-          reaction = 0.1 + (100 - q.pressAwareness()) * 0.002;
-        // Use the launch arc, so midfield traffic can be cleared but defenders
-        // near takeoff and landing still have a realistic interception chance.
-        if (loft) {
-          const height =
-            delivery === 'cross'
-              ? 9.81 * total * 0.46 * flight - 4.905 * flight * flight
-              : lerp(start, landing, f) + 4.905 * total * total * f * (1 - f);
-          if (height > (delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007)) continue;
-        }
+      for (let i = 0; i < 5; i++) {
+        if (loft && LANE_Z[i] > reach) continue;
+        point.x = LANE_X[i];
+        point.y = LANE_Y[i];
         const arrival = q.arrival(point) + reaction;
-        threat = Math.max(threat, sigmoid((flight - arrival + 0.04) * 5));
+        threat = Math.max(threat, sigmoid((LANE_T[i] - arrival + 0.04) * 5));
       }
       const disguise =
         1 -
@@ -143,9 +168,10 @@ export class PassingMethods {
           if (q.team !== p.team) space = Math.min(space, dist(q, aim));
         const box = this.inBox({ x: aim.x, y: aim.y, team: p.team }),
           wide = Math.abs(p.y - 34) > 14 && this.rel(p.x, p.team) > 70;
+        // From the byline zone a flat or backward ball into the box is a cutback.
         const delivery =
           wide && box
-            ? this.rel(p.x, p.team) > 95
+            ? this.rel(p.x, p.team) > 95 || (this.rel(p.x, p.team) > 86 && progress < 1)
               ? 'cutback'
               : 'cross'
             : progress > 9 && this.formation(r)[0] > 60 && this.rel(aim.x, p.team) > line - 3
@@ -160,8 +186,7 @@ export class PassingMethods {
         if (!Number.isFinite(this.flightTime(d, loft))) continue;
         const goalAccess = box
           ? (0.6 + this.location({ x: aim.x, y: aim.y, team: p.team }).quality * 0.95) *
-            (0.65 +
-              shootingAbility(r, Math.hypot(105 - this.rel(aim.x, p.team), 34 - aim.y)) * 0.007)
+            (0.65 + shootingAbility(r, hypot(105 - this.rel(aim.x, p.team), 34 - aim.y)) * 0.007)
           : clamp((this.rel(aim.x, p.team) - 60) / 30, 0, 1) * 0.7;
         const foot = footExecution(p, Math.atan2(aim.y - p.y, aim.x - p.x));
         const ability = passingAbility(p, d, delivery),
@@ -216,7 +241,8 @@ export class PassingMethods {
           p.tendency('advance') * 0.1 +
           (tac.tempo - 3) * 0.009 +
           (counter ? 0.09 * identity : 0) -
-          (tac.style === 'possession' ? 0.013 * identity : 0);
+          (tac.style === 'possession' ? 0.013 * identity : 0) +
+          tac.lean * 0.02;
         const judgment =
           1 +
           clamp((p.vision() + p.skill('composure') - 140) * 0.006, 0, 0.35) +
@@ -224,7 +250,8 @@ export class PassingMethods {
         const turnoverCost =
           (held ? 7 : 4.8 + Math.max(0, 55 - this.rel(p.x, p.team)) * 0.035) *
           (1.25 - p.tendency('risk') * 0.55) *
-          judgment;
+          judgment *
+          (1 - tac.lean * 0.12);
         let score =
           completion *
             (2 +
@@ -232,7 +259,10 @@ export class PassingMethods {
                 ambition *
                 (1 - patient * 0.18) *
                 this.profile.directness +
-              goalAccess * (p.has('creator') ? 1.35 : 1)) -
+              goalAccess *
+                (p.has('creator') ? 1.35 : 1) *
+                // E7: teammates look for an elite finisher in a scoring position.
+                (1 + clamp((r.skill('shooting') - 82) / 8, 0, 1) * 0.45)) -
           (1 - completion) * turnoverCost +
           Math.min(space, 6) * 0.07 +
           clamp(margin, -2, 1) * 0.35;
@@ -361,6 +391,25 @@ export class PassingMethods {
       pressure = this.pressure(p),
       tac = this.settings(p.team);
     if (depth > 38 || pressure < 0.45) return null;
+    // Pinned near his own byline with an attacker on him and no clean exit, a
+    // defender puts the ball out behind: concede the corner, not the chance.
+    if (
+      depth < 12 &&
+      Math.abs(p.y - 34) > 6 &&
+      pressure > 0.6 &&
+      !opts.some(o => o.chance > 0.7 && o.margin > 0.3 && o.risk < 0.4)
+    ) {
+      const aim = { x: this.abs(-3, p.team), y: p.y + (p.y < 34 ? -2 : 2) };
+      return {
+        r: opts[0]?.r ?? this.activePlayers.find(q => q.team === p.team && q.id !== p.id),
+        aim,
+        d: dist(p, aim),
+        delivery: 'clearance',
+        loft: false,
+        risk: 0,
+        conceding: true,
+      };
+    }
     const craft =
       0.4 * p.skill('shortPassing') +
       0.2 * p.skill('control') +
@@ -437,7 +486,7 @@ export class PassingMethods {
     );
     const rawError =
       (((0.16 + (100 - ability) * 0.03 + 0.035 * clamp((ability - 78) / 20, 0, 1)) *
-        (1 + pressure * 0.45 + Math.max(0, tempo - 3) * 0.07 + (1 - p.energy) * 0.5) *
+        (1 + pressure * 0.45 + Math.max(0, tempo - 3) * 0.07 + (1 - p.energy) * 0.3) *
         Math.max(0.6, d / 24)) /
         foot.quality) *
       this.profile.deliveryError *
@@ -447,7 +496,7 @@ export class PassingMethods {
     const error = Math.min(rawError, 0.8 + d * 0.08 + pressure * 0.3);
     const tx = clamp(aim.x + this.noise() * error, 0.1, 104.9),
       ty = aim.y + this.noise() * error,
-      length = Math.hypot(tx - p.x, ty - p.y),
+      length = hypot(tx - p.x, ty - p.y),
       angle = Math.atan2(ty - p.y, tx - p.x);
     const speed = this.passSpeed(length, loft);
     const restartType = p.goalKickExempt
@@ -522,6 +571,29 @@ export class PassingMethods {
                   : 'Playing long'
                 : 'Passing';
     r.aim(tx, ty, 'receive', 'Moving to receive');
+    // A cross struck while a defender is closing the crosser down can be blocked.
+    if ((delivery === 'cross' || delivery === 'cutback') && !restart) {
+      for (const q of this.activePlayers) {
+        if (q.team === p.team || q.role === 'GK' || q.stun > 0) continue;
+        const ahead = (q.x - p.x) * Math.cos(angle) + (q.y - p.y) * Math.sin(angle),
+          side = Math.abs(-(q.x - p.x) * Math.sin(angle) + (q.y - p.y) * Math.cos(angle));
+        if (ahead > 0.3 && ahead < 2.2 && side < 1.1) {
+          const block = clamp(
+            0.25 +
+              (q.skill('defending') - p.skill('crossing')) * 0.006 +
+              (q.has('ballwinner') ? 0.05 : 0),
+            0.08,
+            0.5,
+          );
+          if (this.rand() < block) {
+            b.x = q.x;
+            b.y = q.y;
+            this.blockCross(q);
+          }
+          break;
+        }
+      }
+    }
     r.rethinkAt = 0;
     this.planTimer = 0;
     p.runs =

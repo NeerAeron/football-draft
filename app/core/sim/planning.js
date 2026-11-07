@@ -1,11 +1,12 @@
 // Planning: every player picks a target (keeper, carrier, press, marking, support runs).
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
-import { H, segment } from './constants.js';
+import { clamp, lerp } from '../util/math.js';
+import { H, GOAL, segment, dist, hypot } from './constants.js';
 
 export class PlanningMethods {
   plan() {
     this._costCache = (this._costBuffer ??= new Float64Array(484)).fill(NaN);
+    this._planPass = (this._planPass ?? 0) + 1;
     try {
       this.planInner();
     } finally {
@@ -87,6 +88,23 @@ export class PlanningMethods {
       }))
       .sort((a, b) => a.time - b.time);
     const oppLine = enemies.map(q => this.rel(q.x, t)).sort((a, b) => b - a)[1] || 96;
+    // A high cross dropping into our box: the two quickest defenders attack it.
+    let crossers = null;
+    const drop = b.destination;
+    if (
+      !has &&
+      b.kind === 'pass' &&
+      !b.missedReceiver &&
+      (b.delivery === 'cross' || b.vz > 2) &&
+      drop &&
+      this.inBox({ x: drop.x, y: drop.y, team: 1 - t })
+    )
+      crossers = team
+        .filter(p => p.role !== 'GK' && p.stun <= 0)
+        .map(p => ({ p, time: p.arrival(drop) }))
+        .sort((a, b) => a.time - b.time)
+        .slice(0, 2)
+        .map(o => o.p.id);
     const c = {
       t,
       dir,
@@ -103,6 +121,8 @@ export class PlanningMethods {
       freeBall,
       loose,
       oppLine,
+      crossers,
+      drop,
     };
     for (const p of team) {
       const [base, by, role] = this.formation(p);
@@ -114,7 +134,8 @@ export class PlanningMethods {
         p.id !== defence?.press &&
         p.id !== defence?.cover &&
         !(b.kind === 'pass' && b.target === p.id) &&
-        !(freeBall && loose[0]?.p.id === p.id)
+        !(freeBall && loose[0]?.p.id === p.id) &&
+        !crossers?.includes(p.id)
       )
         continue;
       p.rethinkAt =
@@ -141,6 +162,12 @@ export class PlanningMethods {
     }
     if (role === 'GK') {
       this.planKeeper(p, c);
+      return;
+    }
+    if (c.crossers?.includes(p.id)) {
+      const goal = this.abs(0, p.team),
+        toward = Math.sign(goal - c.drop.x);
+      p.aim(c.drop.x + toward * 0.5, c.drop.y, 'intercept', 'Attacking the cross');
       return;
     }
     if (owner?.id === p.id) {
@@ -175,7 +202,11 @@ export class PlanningMethods {
       return;
     }
     x = clamp(2.5 + br * 0.035, 2.5, 6);
-    y = clamp(34 + ((b.y - 34) * x) / Math.max(br, 6), 28, 40);
+    // Narrow the angle, but stay inside the frame: a keeper outside his near
+    // post leaves the far post empty. Shade toward a cross's landing point.
+    y = clamp(34 + ((b.y - 34) * x) / Math.max(br, 6), 34 - GOAL / 2 + 0.6, 34 + GOAL / 2 - 0.6);
+    if (b.kind === 'pass' && b.z > 0.8 && b.destination && this.rel(b.destination.x, t) < 17)
+      y = lerp(y, clamp(b.destination.y, 30.5, 37.5), 0.45);
     if (b.kind === 'shot' && b.shotTeam !== t && p.penaltyDive?.until > this.elapsed) {
       p.aim(this.abs(0.25, t), p.penaltyDive.y, 'save', 'Diving for the penalty');
       return;
@@ -196,6 +227,20 @@ export class PlanningMethods {
         p.aim(this.abs(x, t), y, 'save', 'Tracking the shot');
         return;
       }
+    }
+    // Come for a high cross dropping into the six-yard area and claim it.
+    const drop = b.kind === 'pass' && !b.missedReceiver && b.vz < 2 ? b.destination : null;
+    if (
+      !owner &&
+      drop &&
+      b.z > 1 &&
+      this.players[b.kicker]?.team !== t &&
+      this.rel(drop.x, t) < 4.5 + p.skill('goalkeeping') * 0.015 &&
+      Math.abs(drop.y - 34) < 9 &&
+      p.arrival(drop) < dist(b, drop) / (hypot(b.vx, b.vy) || 1) - 0.05
+    ) {
+      p.aim(drop.x, drop.y, 'sweep', 'Coming for the cross');
+      return;
     }
     if (
       !owner &&
@@ -441,7 +486,8 @@ export class PlanningMethods {
           (sameSide ? 0.16 : 0) +
           Math.min(backCover, 3) * 0.06 -
           (otherHigh ? 0.25 : 0) -
-          (tac.style === 'bus' ? 0.17 : 0),
+          (tac.style === 'bus' ? 0.17 : 0) +
+          tac.lean * 0.12,
         0.05,
         0.97,
       );
@@ -466,6 +512,21 @@ export class PlanningMethods {
       y = 25 + (p.slot % 3) * 9;
       intent = 'run';
       action = 'Attacking the delivery';
+    } else if (
+      base >= 30 &&
+      base < 60 &&
+      role !== 'DM' &&
+      br > 74 &&
+      Math.abs(b.y - 34) > 11 &&
+      p.tendency('hold') < 0.6 &&
+      p.tendency('advance') > 0.42 - tac.lean * 0.1 &&
+      owner?.role !== 'GK'
+    ) {
+      // Late run to the edge / penalty spot: the cutback zone.
+      x = Math.max(x, p.has('latearrival') ? 90 : 87.5);
+      y = 34 + (p.slot % 2 ? 4.5 : -4.5);
+      intent = 'run';
+      action = 'Arriving late in the box';
     }
     if (role === 'ST' && br > 84) {
       const attack = p.tendency('timing') * p.tendency('shoot');

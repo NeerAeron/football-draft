@@ -1,7 +1,7 @@
 // Possession: taking the ball (own), first-touch quality, collection reach.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
-import { skillError } from './constants.js';
+import { clamp, lerp } from '../util/math.js';
+import { skillError, dist, hypot } from './constants.js';
 
 export class PossessionMethods {
   own(p, handling = false) {
@@ -114,6 +114,7 @@ export class PossessionMethods {
     b.penaltyKick = false;
     p.beatChain = [];
     p.finishUntil = 0;
+    p.bylineAt = null;
     p.hold = 0;
     p.receivedAt = this.elapsed;
     p.possessionAt = this.elapsed;
@@ -142,7 +143,7 @@ export class PossessionMethods {
         'carry',
         regain ? 'Turning away with the ball' : 'Taking a first touch',
       );
-      if (Math.hypot(p.vx, p.vy) < 1) p.facing = Math.atan2(escape.y - p.y, escape.x - p.x);
+      if (hypot(p.vx, p.vy) < 1) p.facing = Math.atan2(escape.y - p.y, escape.x - p.x);
     }
     return true;
   }
@@ -222,7 +223,7 @@ export class PossessionMethods {
       b.kind === 'pass' && b.target === p.id && this.players[b.kicker]?.team === p.team;
     // A small reach for the intended receiver, not a larger interception
     // radius for everybody. High balls still require heading and timing.
-    const settled = b.kind === 'loose' && b.z < 0.3 && Math.hypot(b.vx, b.vy) < 5;
+    const settled = b.kind === 'loose' && b.z < 0.3 && hypot(b.vx, b.vy) < 5;
     return (
       (base +
         (receiving && b.z < 0.6
@@ -238,13 +239,16 @@ export class PossessionMethods {
     if (p.sentOff || p.stun > 0) return false;
     // In a shootout only the keeper may touch the kick; no follow-ups.
     if (this.mode === 'shootout' && p.id !== this.shootoutState?.kick?.keeperId) return false;
-    if (p.id === b.kicker && b.age < 0.45 && ['pass', 'shot'].includes(b.kind)) return false;
+    if (p.id === b.kicker && b.age < 0.45 && (b.kind === 'pass' || b.kind === 'shot')) return false;
+    // A ball someone has just parried, blocked or headed away is not theirs to
+    // collect again a frame later.
+    if (p.id === b.deflectedBy && this.elapsed - b.deflectedAt < 0.3) return false;
     // A tackle cooldown is not a ban on taking a loose ball. Keep a separate,
     // short first-touch recovery, with an escape for a ball settled at the feet.
     const settled =
       (b.kind === 'loose' || b.missedReceiver) &&
       b.z < 0.3 &&
-      Math.hypot(b.vx, b.vy) < 3.2 &&
+      hypot(b.vx, b.vy) < 3.2 &&
       dist(p, b) < 1;
     if (
       (p.controlUntil || 0) > this.elapsed &&
@@ -277,7 +281,7 @@ export class PossessionMethods {
         ? 0.36
         : (((p.has('control') ? 0.3 : 0.42) +
             (1 - p.skill('dribbling') / 100) * 0.6 +
-            (0.08 + Math.hypot(p.vx, p.vy) * 0.025) * (gait + 1)) *
+            (0.08 + hypot(p.vx, p.vy) * 0.025) * (gait + 1)) *
             (0.62 + firstTouch * 0.38)) /
           (1 + protection * 0.1 + p.skill('strength') * 0.001);
       let angle = p.facing;
@@ -297,7 +301,7 @@ export class PossessionMethods {
         for (const q of this.activePlayers) if (q.team !== p.team && this.duel(p, q)) break;
         if (
           b.owner !== null &&
-          Math.hypot(p.vx, p.vy) > 4 &&
+          hypot(p.vx, p.vy) > 4 &&
           this.rand() <
             ((dt * 0.07 * this.tuning.gameplay.dribbleLoss * (100 - p.skill('dribbling'))) / 70) *
               skillError(

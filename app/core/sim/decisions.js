@@ -1,14 +1,16 @@
 // Carrier decisions: decide (cross / shoot / carry / pass / feint), carry targets, take-ons, pressure.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
+import { clamp, lerp } from '../util/math.js';
 import { shootingAbility } from '../players/ratings.js';
-import { segment, sigmoid } from './constants.js';
+import { segment, sigmoid, dist, hypot } from './constants.js';
+
+const CARRY_OFFSETS = [-2.8, -2.2, -1.55, -1.0, -0.55, 0, 0.55, 1.0, 1.55, 2.2, 2.8];
 
 export class DecisionMethods {
   decide(p) {
     if (this.ball.owner !== p.id) return;
     const rx = this.rel(p.x, p.team),
-      dGoal = Math.hypot(105 - rx, p.y - 34),
+      dGoal = hypot(105 - rx, p.y - 34),
       pressure = this.pressure(p),
       opts = this.options(p),
       best = opts[0],
@@ -51,6 +53,24 @@ export class DecisionMethods {
         (!judgment ||
           (o.chance > 0.3 + judgment * 0.35 && o.score > best.score - (2.4 - judgment * 1.8))),
     );
+    // Final-third flow: a carrier at the byline delivers (cross / cutback) or
+    // recycles within about a second; no corner-flag stalls.
+    const byline = rx > 88 && Math.abs(p.y - 34) > 9;
+    if (byline) p.bylineAt ??= this.elapsed;
+    if (byline && (this.elapsed - p.bylineAt > 0.55 || p.hold > 1.4)) {
+      const dir = this.direction(p.team);
+      let forced = null,
+        recycle = null;
+      for (const o of opts) {
+        if ((o.delivery === 'cross' || o.delivery === 'cutback') && o.margin > -0.9 && o.risk < 1.6)
+          forced ??= o;
+        else if ((o.aim.x - p.x) * dir < -3 && o.chance > 0.55) recycle ??= o;
+      }
+      if (forced || recycle || best) {
+        this.pass(p, forced || recycle || best);
+        return;
+      }
+    }
     if (
       wide &&
       rx > 73 &&
@@ -58,9 +78,10 @@ export class DecisionMethods {
       p.hold > 0.28 &&
       (p.has('crosser') ||
         p.has('byline') ||
-        rx > 89 ||
+        rx > 84 ||
         tac.style === 'wings' ||
-        delivery.score > 3.5)
+        delivery.score > 3 ||
+        this.boxRunners(p.team) >= 2)
     ) {
       this.pass(p, delivery);
       return;
@@ -117,16 +138,21 @@ export class DecisionMethods {
             0.035,
             0.9,
           )
-        : 0.1 *
-          (specialist ? 2 : 1) *
-          (spatial.central ? 1 : 0.4) *
-          clamp((35 - dGoal) / 10, 0.15, 1);
+        : // From outside the box: likelier the closer and more central the shot,
+          // for specialists, and with fewer bodies in the way (blocked shots
+          // are part of the game; a crowd in front is not a hard veto).
+          0.3 *
+          (specialist ? 1.6 : 1) *
+          (spatial.central ? 1 : 0.5) *
+          clamp((32 - dGoal) / 12, 0.08, 1) *
+          0.55 ** blocks;
       if (spatial.zone === 'deep_central') urge *= this.profile.deepUrge;
-      if (!box && (blocks > (specialist ? 1 : 0) || pressure > 1 || p.hold < 0.27)) urge = 0;
+      if (!box && (blocks > 3 || pressure > 1.1 || p.hold < 0.2)) urge = 0;
       if (
         this.rand() <
         urge *
           (0.7 + p.tendency('shoot') * 0.6) *
+          (1 + tac.lean * 0.15) *
           (box ? this.profile.shotUrge : this.profile.rangeUrge) *
           this.tuning.gameplay.shotFrequency
       ) {
@@ -214,6 +240,13 @@ export class DecisionMethods {
     if (p.animation?.type !== 'feint')
       p.action = pressure > 0.5 ? 'Protecting the ball' : 'Driving into space';
   }
+  // Teammates (outfield) currently inside the opponent's box.
+  boxRunners(team) {
+    let n = 0;
+    for (const q of this.activePlayers)
+      if (q.team === team && q.role !== 'GK' && this.inBox(q)) n++;
+    return n;
+  }
   carryTarget(p) {
     const br = this.rel(p.x, p.team),
       dir = this.direction(p.team),
@@ -224,7 +257,9 @@ export class DecisionMethods {
         dir * (105 - br),
       );
     let best = null;
-    for (const offset of [-2.8, -2.2, -1.55, -1.0, -0.55, 0, 0.55, 1.0, 1.55, 2.2, 2.8]) {
+    const advance = p.tendency('advance'),
+      escapeBadge = p.has('pressescape');
+    for (const offset of CARRY_OFFSETS) {
       const angle = goalAngle + offset,
         length = Math.abs(offset) > 1.5 ? 4.5 : 6;
       const c = {
@@ -236,12 +271,19 @@ export class DecisionMethods {
       if (dist(p, c) < length * 0.65) continue;
       let clearance = 6,
         landing = 9;
+      // Opponents a quarter-second ahead: distance to the route (past its first
+      // 12%) and to its end. Inline segment maths, no allocation.
+      const ex = c.x - p.x,
+        ey = c.y - p.y,
+        len2 = ex * ex + ey * ey || 1;
       for (const q of this.activePlayers)
         if (q.team !== p.team) {
-          const ahead = { x: q.x + q.vx * 0.25, y: q.y + q.vy * 0.25 },
-            route = segment(ahead, p, c);
-          if (route.t > 0.12) clearance = Math.min(clearance, route.d);
-          landing = Math.min(landing, dist(ahead, c));
+          const ax = q.x + q.vx * 0.25,
+            ay = q.y + q.vy * 0.25,
+            t = clamp(((ax - p.x) * ex + (ay - p.y) * ey) / len2, 0, 1);
+          if (t > 0.12)
+            clearance = Math.min(clearance, hypot(ax - p.x - ex * t, ay - p.y - ey * t));
+          landing = Math.min(landing, hypot(ax - c.x, ay - c.y));
         }
       const heading = Math.atan2(c.y - p.y, c.x - p.x),
         progress = (c.x - p.x) * dir,
@@ -249,10 +291,10 @@ export class DecisionMethods {
       const score =
         clearance * (0.85 + pressure * 0.75) +
         landing * 0.12 +
-        progress * (0.45 + p.tendency('advance') * 0.32) -
+        progress * (0.45 + advance * 0.32) -
         turn * 0.12 -
         Math.abs(c.y - 34) * 0.013;
-      const escape = p.has('pressescape') && progress < 0 ? Math.min(pressure, 1.5) * 0.4 : 0;
+      const escape = escapeBadge && progress < 0 ? Math.min(pressure, 1.5) * 0.4 : 0;
       if (!best || score + escape > best.score) best = { ...c, score: score + escape };
     }
     return best;
@@ -341,14 +383,14 @@ export class DecisionMethods {
     }
   }
   pressure(p) {
-    return this.activePlayers.reduce(
-      (sum, q) =>
-        sum +
-        (q.team !== p.team && q.role !== 'GK'
-          ? Math.max(0, 1 - dist(p, q) / (4.5 * this.tuning.gameplay.pressDistance))
-          : 0),
-      0,
-    );
+    const players = this.activePlayers,
+      range = 4.5 * this.tuning.gameplay.pressDistance;
+    let sum = 0;
+    for (let i = 0; i < players.length; i++) {
+      const q = players[i];
+      if (q.team !== p.team && q.role !== 'GK') sum += Math.max(0, 1 - dist(p, q) / range);
+    }
+    return sum;
   }
   // Technique changes execution under pressure, not the physical space
   // perceived by tactics, shooting decisions, or supporting teammates.

@@ -5,8 +5,7 @@ What a match screen can rely on from `app/core/sim/`. Everything here is plain d
 calls listed under _Controls_. The engine is deterministic: the same seed + config gives the
 same match, and nothing in this contract consumes simulation RNG.
 
-Status: everything below is live except the `'tip over'` save type, which lands with the keeper
-dive model.
+Status: everything below is live on the engine branch (Phase 1).
 
 ```js
 import { Match } from './core/sim/engine.js';
@@ -40,8 +39,14 @@ decides a level match by a penalty shootout (see below).
 | `mentality` | `'push' | 'balanced' | 'hold'` (default `'balanced'`; `MENTALITIES` in `insights.js`) |
 
 Mentality is a live, replay-safe tactic like the others (part of `exportConfig`, never draws
-RNG). The AI coach may set it for team 1. `tacticAccess(mode, team, state)` (coach.js) says
-whether the human may edit a side right now.
+RNG). `push`: higher line (+8), more runners and overlaps, +15% shooting urge, riskier passes,
+quicker restarts, +5% energy cost. `hold`: deeper block (−10), fewer runners, safer passing,
+slower restarts (×1.25), −5% energy cost. `gameStateMentality(m, team)` (coach.js) returns the
+game-state choice — after 70' a trailing side pushes, from 75' a leading side holds — and the AI
+coach applies it to team 1; offer it to the human as "auto". Tactics also cost energy: press
+level out of possession (±11% per step from 3, +8% for the press style) and tempo in
+possession (±7% per step). `tacticAccess(mode, team, state)` (coach.js) says whether the human
+may edit a side right now.
 
 ### Player config (`config.players[i]`)
 
@@ -68,7 +73,8 @@ plus **`chem`**: links/chemistry bonus, a number clamped to 0–2 (default 0), a
 | `players[i]` | 22 players, `id = team * 11 + slot`: `x, y, vx, vy, facing, energy (0–1), role, team, slot, number, name, action, intent, animation, yellowCards, sentOff, emergencyKeeper, chem, stats` (per-player `goals, assists, shots, onTarget, saves, keyPasses, tackles, …`) |
 | `activePlayers` | players still on the pitch |
 | `ball` | `x, y, z` (m), `vx, vy, vz`, `owner` (player id or `null`), `kind`: `'dribble' | 'held' | 'pass' | 'shot' | 'loose'` |
-| `effects` | short-lived visual cues `{ type, x, y, life, maxLife, team, label?, strength? }`: `whistle`, `goal`, `shot`, `tackle`, `feint`, `catch`, `parry`, `delivery` |
+| `effects` | short-lived visual cues `{ type, x, y, life, maxLife, team, label?, strength? }`: `whistle`, `goal`, `shot`, `tackle`, `feint`, `catch`, `parry` (label `PARRIED` / `TIPPED OVER`), `header` (`WON IN THE AIR`), `delivery` |
+| `players[i].animation` | `{ type, start, duration, … }`: `pass`, `shot`, `feint`, `beaten`, `stumble`, `tackle`, `dive` (with `stretch` 0–1 for a keeper's dive) |
 | `goalHistory` | goal events in order (oldest first) |
 | `halftime` | `{ score, energyBefore, energyAfter }` after the break |
 | `momentum` | rolling momentum series, see below |
@@ -92,10 +98,10 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | Type | Extra fields |
 | --- | --- |
 | `kickoff` | — |
-| `restart` | — (corners, goal kicks, throw-ins, indirect free kicks) |
+| `restart` | `restart`: the restart type (corners, goal kicks, throw-ins, indirect free kicks). For a corner, `m.restart` also has `routine` (`'near post' | 'far post' | 'edge'`), `target` (player id) and `aim` (`{ x, y }`) while it is set up |
 | `shot` | `playerId`, `assistId` (key pass, or `null`), `shotType` (`Placed finish`, `Driven shot`, `Power shot`, `Curler`, `Knuckleball`, `Header`, `Volley`, `Penalty`), `xg` (0–1), `bigChance`, `oneOnOne`, `situation`, `setPiece`, `direct` (direct free kick), `penalty`, `distance` (m), `box`, `zone`, `foot`, `origin` (`{ x, y, attackX, box, zone }`), `chance` (estimated on-target probability), `outcome`: `'in flight'` → `'goal' | 'saved' | 'blocked' | 'post' | 'off target'`, `resolvedAt` |
-| `save` | `playerId` (keeper), `shooterId`, `shotEventId`, `xg`, `bigChance`, `saveType`: `'catch' | 'parry' | 'parry into danger' | 'tip over'`, `difficulty` (0 routine … 1 spectacular), `chance` (save probability) |
-| `block` | `playerId` (blocker), `shooterId`, `shotEventId`, `xg`, `bigChance` |
+| `save` | `playerId` (keeper), `shooterId`, `shotEventId`, `xg`, `bigChance`, `saveType`: `'catch' | 'parry' | 'parry into danger' | 'tip over'`, `difficulty` (0 routine … 1 spectacular: 1 − the save probability from the dive model — stretch, power, height), `chance` (save probability) |
+| `block` | `playerId` (blocker), `shooterId`, `shotEventId`, `xg`, `bigChance`; a blocked cross has `cross: true` and no shot fields |
 | `post` | woodwork: `playerId` (shooter), `shotEventId`, `xg`, `bigChance`, `frame: 'post' | 'bar'` |
 | `near-miss` | just wide / over: `playerId`, `shotEventId`, `xg`, `bigChance`, `miss: 'wide' | 'over'`, `by` (metres, < 0.6) |
 | `goal` | `playerId` (`null` for an own goal), `assistId`, `ownGoal`, `shotType`, `shotEventId`, `xg`, `bigChance`, `oneOnOne`, `situation`, `setPiece`, `penalty`, `box`, `zone`, `origin`, **`scoreAfter`** (`[h, a]` including this goal — use it for banners, not `m.score`), **`story`** (see below) |
