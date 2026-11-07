@@ -136,6 +136,9 @@ export function simulateRequest(request, options) {
 /** CupRun.recordResult input from a result (user = side 0); same as match-store runResultFor. */
 export function runSide(result) {
   const [h, a] = result.score;
+  // A level match decided otherwise (abandoned: a side fell below seven) has a winner but no
+  // shootout; carry the winner so a knockout can still be recorded.
+  const decided = h === a && !result.shootout && (result.winner === 0 || result.winner === 1);
   return {
     goalsFor: h,
     goalsAgainst: a,
@@ -144,7 +147,9 @@ export function runSide(result) {
           winner: result.shootout.winner === 0 ? 'user' : 'opponent',
           score: [result.shootout.score[0], result.shootout.score[1]],
         }
-      : null,
+      : decided
+        ? { winner: result.winner === 0 ? 'user' : 'opponent', score: null }
+        : null,
     players: result.players
       .filter(p => p.team === 0)
       .map(p => ({ profileId: p.profileId, rating: p.rating, goals: p.goals, assists: p.assists })),

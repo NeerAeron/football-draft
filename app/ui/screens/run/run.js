@@ -445,14 +445,17 @@ export default function RunScreen() {
           if (result && saved.run.round === saved.pending.round) {
             const before = saved.run.snapshot();
             const round = saved.pending.round;
-            saved.run.recordResult(runResultFor(result, 0));
+            const input = runResultFor(result, 0);
+            if (!input.shootout && result.winner != null && input.goalsFor === input.goalsAgainst)
+              input.shootout = { winner: result.winner === 0 ? 'user' : 'opponent', score: null };
+            saved.run.recordResult(input);
             const entry = logEntry(round, result);
             saved.log = withLog(saved.log, entry);
             saved.pending = null;
             saveRun(saved.run, saved.meta, { pending: null, log: saved.log });
             clearMatch(result.id);
             flash = { kind: 'result', round, before, entry };
-            playCue(runResultFor(result, 0).outcome === 'L' ? 'full' : 'goal');
+            playCue(input.outcome === 'L' ? 'full' : 'goal');
           } else if (saved.pending.round !== saved.run.round) {
             saved.pending = null;
             patchRunState({ pending: null });

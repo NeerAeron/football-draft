@@ -156,7 +156,7 @@ function Intro({ catalog, day, state, today, onStart, starting }) {
       </div>
       <${Button}
         variant="primary"
-        size="xl"
+        size="lg"
         block
         iconEnd="arrow-right"
         onClick=${onStart}
