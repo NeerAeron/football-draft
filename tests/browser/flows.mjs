@@ -17,6 +17,50 @@ const seed = (page, entries) =>
 
 const ONBOARDED = { 'football-draft-ui': { onboarded: true } };
 
+// ---------- DRAFT-UI helpers (draft board) ----------
+
+/** Wait until the board shows `n` picks for the side on the clock. */
+const picksMade = (page, n) =>
+  page.waitForFunction(
+    count => document.querySelector('.draft-head__count')?.textContent.startsWith(`${count}/`),
+    n,
+    { timeout: 10000 },
+  );
+
+/** Start a draft from a setup URL and wait for the board. */
+async function startFromSetup(page, base, url) {
+  await page.goto(`${base}${url}`);
+  await visible(page, '[data-screen="setup"]');
+  await page.click('[data-testid="start-draft"]');
+  await visible(page, '[data-screen="draft"][data-phase]');
+}
+
+/**
+ * One pick: spin if needed, select the first playable row, optionally try another slot and
+ * go back with Auto, then confirm (sheet on phones, dock on desktop).
+ */
+async function draftPick(page, { tryAuto = false } = {}) {
+  const spin = page.locator('[data-testid="spin"]');
+  if (await spin.isVisible().catch(() => false)) await spin.click();
+  const row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
+  await row.waitFor({ state: 'visible', timeout: 10000 });
+  await row.click();
+  const confirm = page.locator('[data-testid="confirm-pick"]:visible');
+  await confirm.waitFor({ state: 'visible', timeout: 5000 });
+  if (tryAuto) {
+    const other = page
+      .locator(
+        '.pitch--interactive .pitch-slot.is-fit-ok, .pitch--interactive .pitch-slot.is-fit-penalty',
+      )
+      .first();
+    if (await other.isVisible().catch(() => false)) {
+      await other.click();
+      await page.click('[data-testid="auto-slot"]:visible');
+    }
+  }
+  await confirm.click();
+}
+
 const GALLERY_SECTIONS = [
   'tokens',
   'buttons',
@@ -272,9 +316,8 @@ export const flows = [
       });
       await step('start run', async () => {
         await page.click('[data-testid="start-run"]');
-        await visible(page, '[data-screen="placeholder"]');
+        await visible(page, '[data-screen="setup"]');
       });
-      await shot('play-placeholder');
       await step('back home', async () => {
         await page.click('button[aria-label="Back"]');
         await visible(page, '[data-screen="home"]');
@@ -337,12 +380,233 @@ export const flows = [
     viewports: ['mobile'],
     async run({ page, step, base }) {
       await seed(page, ONBOARDED);
-      for (const path of ['play/quick', 'draft', 'run', 'daily', 'exhibition', 'nope']) {
+      for (const path of ['run', 'daily', 'exhibition', 'nope']) {
         await step(`#/${path}`, async () => {
           await page.goto(`${base}#/${path}`);
           await visible(page, '[data-screen="placeholder"] h1');
         });
       }
+    },
+  },
+  // ---------- DRAFT-UI: setup, draft board, pre-match ----------
+  {
+    name: 'setup',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, ONBOARDED);
+      await page.goto(`${base}#/play/run`);
+      await step('run setup', () => visible(page, '[data-screen="setup"][data-mode="run"]'));
+      await step('opponents loaded', () => visible(page, '.ladder__examples:not(.is-muted)'));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('run');
+      if (viewport === 'mobile') await shot('run-full', { fullPage: true });
+      await step('choose clubs + world class + 4-4-2', async () => {
+        await page.click('.type-card:has-text("Clubs")');
+        await page.click('.ladder__row:has-text("World Class")');
+        await page.click('.formation-card:has-text("4–4–2")');
+        for (const [name, value] of [
+          ['setup-type', 'clubs'],
+          ['setup-difficulty', 'worldclass'],
+          ['setup-formation', '442'],
+        ])
+          if (!(await page.isChecked(`input[name="${name}"][value="${value}"]`)))
+            throw new Error(`${name} is not ${value}`);
+      });
+      await step('quick setup prefilled from a challenge link', async () => {
+        await page.goto(
+          `${base}#/play/quick?type=leagues&difficulty=amateur&formation=4231&seed=123`,
+        );
+        await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
+        for (const [name, value] of [
+          ['setup-type', 'leagues'],
+          ['setup-difficulty', 'amateur'],
+          ['setup-formation', '4231'],
+        ])
+          if (!(await page.isChecked(`input[name="${name}"][value="${value}"]`)))
+            throw new Error(`${name} is not ${value}`);
+      });
+      await shot('quick-challenge');
+      await step('versus setup', async () => {
+        await page.goto(`${base}#/play/versus`);
+        await visible(page, '[data-screen="setup"][data-mode="versus"]');
+        await page.fill('#player-0', 'Ana');
+        await page.fill('#player-1', 'Bea');
+      });
+      await shot('versus');
+      if (viewport === 'mobile') await shot('versus-full', { fullPage: true });
+    },
+  },
+  {
+    name: 'draft-nations',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, ONBOARDED);
+      await step('start a seeded run draft', () =>
+        startFromSetup(page, base, '#/play/run?type=nations&seed=7&formation=433'),
+      );
+      await step('first spin lands', () => visible(page, '[data-testid="spin-result"]'));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('first-spin');
+      await step('select a player', async () => {
+        await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
+        await visible(page, '[data-testid="confirm-pick"]');
+      });
+      await shot('selected');
+      await step('pick 1 (other slot, then Auto)', async () => {
+        await page.click(
+          '.pitch--interactive .pitch-slot.is-fit-ok, .pitch--interactive .pitch-slot.is-fit-penalty',
+        );
+        await page.click('[data-testid="auto-slot"]:visible');
+        await page.click('[data-testid="confirm-pick"]:visible');
+        await picksMade(page, 1);
+      });
+      await shot('after-first-pick');
+      for (let pick = 2; pick <= 11; pick++) {
+        await step(`pick ${pick}`, async () => {
+          await draftPick(page, { tryAuto: pick === 6 });
+          await picksMade(page, pick);
+        });
+        if (pick === 5) await shot('mid-draft', viewport === 'mobile' ? { fullPage: true } : {});
+      }
+      await step('completion sheet', () => visible(page, 'dialog.complete-sheet[open]'));
+      await shot('complete');
+      await step('continue to the run', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await page.waitForFunction(() => location.hash === '#/run');
+      });
+    },
+  },
+  {
+    name: 'draft-clubs',
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      await step('start a seeded clubs quick draft', () =>
+        startFromSetup(page, base, '#/play/quick?type=clubs&seed=11&difficulty=amateur'),
+      );
+      await step('league + club land', () => visible(page, '[data-testid="spin-result"]'));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('spin');
+      await step('re-roll', async () => {
+        const before = await page.textContent('.reveal__title');
+        await page.click('[data-testid="reroll"]');
+        await page.waitForFunction(
+          prev => document.querySelector('.reveal__title')?.textContent !== prev,
+          before,
+        );
+      });
+      await shot('rerolled');
+      await step('odds popover', async () => {
+        await page.click('button[aria-label="Odds of this spin"]');
+        await visible(page, 'dialog.modal[open] .odds');
+      });
+      await shot('odds');
+      await step('close odds', async () => {
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
+      });
+      for (let pick = 1; pick <= 3; pick++)
+        await step(`pick ${pick}`, async () => {
+          await draftPick(page);
+          await picksMade(page, pick);
+        });
+      await step('filter + search the pool', async () => {
+        await page.click('[data-testid="spin"]');
+        await visible(page, '[data-testid="pool"]');
+        await page.click('[data-testid="pool"] .toggle-chip:has-text("DEF")');
+        await page.fill('[data-testid="pool"] input[type="search"]', 'a');
+      });
+      await shot('after-picks');
+      await step('auto-pick', async () => {
+        await page.click('[data-testid="auto-pick"]');
+        await picksMade(page, 4);
+      });
+    },
+  },
+  {
+    name: 'draft-versus',
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      await step('start versus', async () => {
+        await page.goto(`${base}#/play/versus?type=nations&seed=5`);
+        await visible(page, '[data-screen="setup"]');
+        await page.fill('#player-0', 'Ana');
+        await page.fill('#player-1', 'Bea');
+        await page.click('[data-testid="start-draft"]');
+        await visible(page, '[data-screen="draft"]');
+      });
+      await step('coin toss interstitial', () => visible(page, 'dialog.pass-device[open]'));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('coin-toss');
+      for (let pick = 1; pick <= 4; pick++) {
+        await step(`pick ${pick}`, async () => {
+          await page.click('[data-testid="pass-spin"]');
+          await page.waitForFunction(() => !document.querySelector('dialog.pass-device[open]'));
+          await draftPick(page);
+          if (pick < 4) await visible(page, 'dialog.pass-device[open]');
+        });
+        if (pick === 1) await shot('pass-device');
+      }
+      await step('both XIs', async () => {
+        await page.click('button:has-text("See the board")');
+        await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
+      });
+      await shot('board');
+      await step('finish (auto) → both XIs → pre-match', async () => {
+        await page.goto(`${base}#/draft?auto=1`);
+        await visible(page, 'dialog.complete-sheet[open]');
+        await page.click('[data-testid="draft-continue"]');
+        await visible(page, '[data-screen="prematch"] .pm-switch');
+      });
+      await shot('prematch');
+    },
+  },
+  {
+    name: 'prematch',
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      await step('quick draft, auto-completed', async () => {
+        await startFromSetup(page, base, '#/play/quick?type=nations&seed=3&difficulty=semipro');
+        await page.goto(`${base}#/draft?auto=1`);
+        await visible(page, 'dialog.complete-sheet[open]');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await shot('complete');
+      await step('opponent reveal', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await visible(page, '[data-testid="opponent-name"]');
+      });
+      await shot('opponent');
+      await step('to the pre-match', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await visible(page, '[data-screen="prematch"] .lineup__pitch');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await shot('prematch');
+      await step('swap two players', async () => {
+        const names = () =>
+          page.$$eval('.lineup__pitch .pitch-slot', els =>
+            els.map(e => e.getAttribute('aria-label')).join('|'),
+          );
+        const before = await names();
+        await page.click('.lineup__pitch .pitch-slot[data-slot="9"]');
+        await page.click('.lineup__pitch .pitch-slot[data-slot="10"]');
+        await page.waitForFunction(
+          prev =>
+            [...document.querySelectorAll('.lineup__pitch .pitch-slot')]
+              .map(e => e.getAttribute('aria-label'))
+              .join('|') !== prev,
+          before,
+        );
+      });
+      await step('change a tactic', async () => {
+        await page.click('.tactics__mentality label:has-text("Push")');
+        await page.selectOption('[data-testid="formation-select"]', '442');
+      });
+      await shot('edited');
+      await step('kick off', async () => {
+        await page.click('[data-testid="kick-off"]');
+        await page.waitForFunction(() => location.hash === '#/match');
+        const saved = await page.evaluate(() => localStorage.getItem('football-draft-match'));
+        if (!/"mentality":"push"/.test(saved || '')) throw new Error('tactics not handed over');
+      });
     },
   },
   {
