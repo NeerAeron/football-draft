@@ -28,7 +28,7 @@ Never `npm i playwright` or run `playwright install` locally (CI installs its ow
 
 ```
 app/                    served statically (deploy = publish this folder); runtime files only
-  index.html            game shell (home, draft, match screens + dialogs) — legacy UI
+  index.html            new UI shell (import map, fonts) → app/ui/main.js; legacy.html = old UI
   config.html           tuning/config page — legacy UI
   core/                 pure logic: no DOM, no storage, Node-testable
     sim/                engine, rules, cards, periods, replay, in-match AI coach
@@ -38,7 +38,8 @@ app/                    served statically (deploy = publish this folder); runtim
     util/               rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey)
   services/             browser-side services reusable by any UI: sound, playback, fullscreen
   legacy/               the pre-overhaul UI (scripts + style/game/squad/config.css)
-  ui/                   (new UI goes here; it will replace legacy/ and the two root pages)
+  ui/                   NEW UI (Preact + htm, vendored, no build): lib/, components/, screens/, styles/ —
+                        read docs/ui-guide.md before touching it
   data/catalog.v3.json  compiled columnar catalog (the only JSON fetched; decode via services/catalog.js)
   assets/logos/         league logos (paths in the catalog are relative to the page)
   assets/flags/         flag-icons SVGs (MIT) for every nation in the catalog
@@ -56,8 +57,11 @@ docs/                   history.md (pre-overhaul README / dev log), calibration 
 .github/workflows/      ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
 ```
 
-New UI work goes under `app/ui/`; `app/legacy/` is the pre-overhaul UI and stays working
-(index.html/config.html load it) until it is replaced. UI code may import `core/` and
+New UI work goes under `app/ui/` (entry `app/index.html`, component gallery `app/gallery.html`);
+`app/legacy/` is the pre-overhaul UI, still reachable at `app/legacy.html` (and `config.html`, the
+advanced tuning page) until it is replaced. UI contracts: `docs/ui-guide.md` (screens, stores,
+routing, components), `docs/engine-events.md` (match events/state), `docs/ui-match.md` (match
+requests/results), `docs/draft-api.md` + `docs/competition-api.md` (draft and run logic). UI code may import `core/` and
 `services/`; `core/` must never import `services/`, `legacy/` or `ui/`. Runtime URLs such as
 catalog asset paths (`./assets/logos/…`, `./assets/flags/…`) resolve against the page in `app/`,
 not against the module file. Load the catalog only through `loadCatalog()` (`app/services/catalog.js`,
