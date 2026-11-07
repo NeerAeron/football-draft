@@ -152,7 +152,7 @@ function RunHeader({ snapshot, meta, nations }) {
   </header>`;
 }
 
-function DrawBanner({ snapshot }) {
+function DrawBanner({ snapshot, hideRatings }) {
   const group = snapshot.rounds.slice(0, 3).map(r => r.opponent);
   const [shown, setShown] = useState(isReducedMotion() ? 3 : 0);
   useEffect(() => {
@@ -176,7 +176,7 @@ function DrawBanner({ snapshot }) {
             <span class="draw-team__pot">Pot ${o.pot}</span>
             <${TeamMark} team=${opponentTeam(o)} size=${44} />
             <span class="draw-team__name">${o.name}</span>
-            <span class="draw-team__rating num">${fmt1(o.rating)}</span>
+            ${!hideRatings && html`<span class="draw-team__rating num">${fmt1(o.rating)}</span>`}
           </li>`,
       )}
     </ul>
@@ -513,6 +513,7 @@ export default function RunScreen() {
         matchSideFor(m.away, { kind: 'ai', editable: false }),
       ],
       competition: { mode: 'ai', difficulty: run.difficulty, knockout: m.knockout },
+      hideRatings: !!meta.hideRatings,
       meta: {
         context: 'run',
         title: `${roundLabel(m.round).replace('Group · ', '')} · ${m.away.name}`,
@@ -646,7 +647,7 @@ export default function RunScreen() {
                 onStop=${ticker.stop}
               />`
             : html`
-                ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} />`}
+                ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} hideRatings=${meta.hideRatings} />`}
                 ${
                   flash?.kind === 'result' &&
                   html`<${ResultBanner}

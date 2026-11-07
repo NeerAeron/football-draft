@@ -48,6 +48,33 @@ const FALLBACK_KITS = [
   ['#6d3fc0', '#ffffff'],
   ['#e8702a', '#13213d'],
 ];
+// prettier-ignore
+const NOISE = new Set(['fc', 'cf', 'afc', 'sc', 'ac', 'sv', 'fk', 'sk', 'cd', 'ud', 'ss', 'as', 'bk', 'if',
+  'club', 'de', 'the', 'and']);
+
+/** Three-letter broadcast code: 'Real Madrid' → 'RMA', 'Arsenal' → 'ARS', 'Paris Saint-Germain' → 'PSG'. */
+export function teamCode(name) {
+  const words = String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(w => w.length > 1 && !/^\d+$/.test(w) && !NOISE.has(w.toLowerCase()));
+  if (!words.length)
+    return String(name || 'TM')
+      .slice(0, 3)
+      .toUpperCase();
+  const code =
+    words.length === 1
+      ? words[0].slice(0, 3)
+      : words.length === 2
+        ? words[0][0] + words[1].slice(0, 2)
+        : words
+            .slice(0, 3)
+            .map(w => w[0])
+            .join('');
+  return code.toUpperCase();
+}
+
 /** Generic kit when a side has neither colours nor a nation (neutral navy + white). */
 export const NEUTRAL_KIT = ['#2e3e63', '#ffffff'];
 

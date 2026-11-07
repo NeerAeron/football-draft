@@ -16,7 +16,9 @@ import { CONFIG } from '../../core/config/config.js';
 import { Match } from '../../core/sim/engine.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { matchSetup, applyMatchSetup } from '../../core/draft/session.js';
-import { nationKit } from './kits.js';
+import { nationKit, teamCode } from './kits.js';
+
+export { teamCode };
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
 export const MATCH_KEY = 'football-draft-match';
@@ -77,32 +79,6 @@ matchStore.subscribe(state => {
 
 // ---------- Config ----------
 
-// prettier-ignore
-const NOISE = new Set(['fc', 'cf', 'afc', 'sc', 'ac', 'sv', 'fk', 'sk', 'cd', 'ud', 'ss', 'as', 'bk', 'if',
-  'club', 'de', 'the', 'and']);
-
-/** Three-letter broadcast code: 'Real Madrid' → 'RMA', 'Arsenal' → 'ARS', 'Paris Saint-Germain' → 'PSG'. */
-export function teamCode(name) {
-  const words = String(name || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(w => w.length > 1 && !/^\d+$/.test(w) && !NOISE.has(w.toLowerCase()));
-  if (!words.length)
-    return String(name || 'TM')
-      .slice(0, 3)
-      .toUpperCase();
-  const code =
-    words.length === 1
-      ? words[0].slice(0, 3)
-      : words.length === 2
-        ? words[0][0] + words[1].slice(0, 2)
-        : words
-            .slice(0, 3)
-            .map(w => w[0])
-            .join('');
-  return code.toUpperCase();
-}
 const initials = teamCode;
 
 function normalizeSide(side, i) {

@@ -83,6 +83,8 @@ openPrematch({
   competition: { mode?: 'ai' | 'pvp', difficulty: 'pro', knockout: false, extraTime? },
   meta: { context: 'run', title: 'Quarter-final', returnTo: '#/run', fixture: 'run:abc:qf' },
   useDefaultRules?: false,         // Daily/challenge: tuning = DEFAULT_CONFIG
+  hideRatings?: false,             // Ball Knower: no OVRs, odds or rating tags (also read from
+                                   // meta.hideRatings); passed on as request meta.hideRatings
   view?: 'key' | 'full' | 'instant',
 }, { go = true });                  // → #/prematch
 ```

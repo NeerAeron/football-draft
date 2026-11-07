@@ -142,6 +142,8 @@ export function normalizePrematch(input = {}) {
       returnTo: meta.returnTo || '#/',
     },
     useDefaultRules: !!input.useDefaultRules,
+    // Ball Knower: no OVRs, odds or rating numbers until the result.
+    hideRatings: !!(input.hideRatings ?? meta.hideRatings),
     view: MATCH_VIEWS.includes(input.view) ? input.view : storedView(),
   };
 }
@@ -364,6 +366,7 @@ export function kickOff({ go = true } = {}) {
       config,
       meta: {
         ...data.meta,
+        hideRatings: data.hideRatings,
         autoKickoff: true, // this screen was the pre-match: #/match starts straight away
         sides: data.sides.map(s => ({
           name: s.name,

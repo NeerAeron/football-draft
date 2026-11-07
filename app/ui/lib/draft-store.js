@@ -30,7 +30,7 @@ import { pickOpponent } from '../../core/draft/opponents.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { loadCatalog } from '../../services/catalog.js';
-import { sideColors } from './kits.js';
+import { sideColors, teamCode } from './kits.js';
 import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
@@ -405,11 +405,25 @@ export function quickOpponent() {
 
 const matchSeed = seed => Math.imul((seed >>> 0) ^ 0x5bd1e995, 0x9e3779b1) >>> 0 || 1;
 
+/**
+ * Broadcast code of a drafted side: 'YOU' alone, 'P1'/'P2' for the default Versus names,
+ * else the team code ('Ann' → 'ANN'). Two equal codes get the side number ('AN1', 'AN2').
+ */
+export function draftedShorts(names, solo = false) {
+  if (solo) return ['YOU'];
+  const codes = names.map(n => {
+    const m = /^player\s*(\d+)$/i.exec(String(n || '').trim());
+    return m ? `P${m[1]}` : teamCode(n);
+  });
+  return codes[0] === codes[1] ? codes.map((c, i) => `${c.slice(0, 2)}${i + 1}`) : codes;
+}
+
 function draftedSide(i, kind) {
   const side = session.matchSide(i);
+  const names = Array.from({ length: session.sides }, (_, j) => session.matchSide(j).name);
   return {
     name: side.name,
-    short: kind === 'user' && session.sides === 1 ? 'YOU' : undefined,
+    short: draftedShorts(names, kind === 'user' && session.sides === 1)[i],
     colors: [side.color, side.secondary],
     kind,
     formation: side.formation,
@@ -429,6 +443,7 @@ export function prematchPayload() {
       sides: [draftedSide(0, 'user'), draftedSide(1, 'p2')],
       competition: { mode: 'pvp', difficulty: context.difficulty, knockout: false },
       meta: { context: 'versus', title: 'Versus', returnTo: '#/play/versus' },
+      hideRatings: !!context.options?.hideRatings,
     };
   const opp = quickOpponent();
   return {
@@ -447,6 +462,7 @@ export function prematchPayload() {
       },
     ],
     competition: { mode: 'ai', difficulty: context.difficulty, knockout: false },
+    hideRatings: !!context.options?.hideRatings,
     meta: {
       context: 'quick',
       title: `Quick Match · ${difficultyLabel(context.difficulty)}`,

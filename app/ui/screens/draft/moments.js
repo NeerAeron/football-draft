@@ -49,7 +49,9 @@ export function PassDevice({ open, team, first, pickIndex, totalPicks, onSpin, o
       style=${teamStyle([team.color, team.secondary])}
       aria-hidden="true"
     >
-      <span>${team.name.slice(0, 1).toUpperCase()}</span>
+      <span
+        >${/^player\s*(\d+)$/i.exec(team.name.trim())?.[1] ?? team.name.slice(0, 1).toUpperCase()}</span
+      >
     </div>
   <//>`;
 }
