@@ -11,7 +11,7 @@ export function PickMoment({ moment, view }) {
   useEffect(() => {
     if (!moment) return;
     setShown(moment);
-    const t = setTimeout(() => setShown(null), 1700);
+    const t = setTimeout(() => setShown(null), moment.tier === 'Superstar' ? 1700 : 1150);
     return () => clearTimeout(t);
   }, [moment?.token]);
   const superstar = shown?.tier === 'Superstar';
@@ -20,7 +20,7 @@ export function PickMoment({ moment, view }) {
       view &&
       html`<div class=${cx('pick-moment', superstar && 'is-superstar')} aria-hidden="true">
         <div class="pick-moment__card">
-          <${PlayerCard} player=${view} size="l" showBadges=${false} />
+          <${PlayerCard} player=${view} size=${superstar ? 'l' : 'm'} showBadges=${false} />
           <span class="pick-moment__sheen"></span>
         </div>
         <p class="pick-moment__label">${superstar ? 'Superstar signed' : 'Star signed'}</p>

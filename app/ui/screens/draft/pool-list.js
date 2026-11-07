@@ -100,7 +100,7 @@ export function PoolPanel({
                     disabled=${!e.available}
                     onClick=${e.available ? () => onSelect(e.profileId) : undefined}
                     onDblClick=${e.available && onDraft ? () => onDraft(e.profileId) : undefined}
-                    class=${cx('pool__row', i === 0 && filter === 'best' && !query && 'is-top')}
+                    class=${cx('pool__row', i === 0 && filter === 'best' && !query && !hideRatings && 'is-top')}
                     data-profile=${e.profileId}
                   />
                 </li>`,

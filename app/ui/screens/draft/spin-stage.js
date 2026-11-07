@@ -24,8 +24,8 @@ import {
 } from './draft-model.js';
 
 const TIMING = {
-  nation: [{ duration: 1400, cycles: 2 }],
-  league: [{ duration: 1400, cycles: 2 }],
+  nation: [{ duration: 1300, cycles: 2 }],
+  league: [{ duration: 1300, cycles: 2 }],
   club: [
     { duration: 800, cycles: 1 },
     { duration: 1150, cycles: 2 },
