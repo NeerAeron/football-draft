@@ -95,6 +95,140 @@ async function draftOnePick(page) {
   if (await confirm.isVisible().catch(() => false)) await confirm.click();
 }
 
+// ---------- Match screen (#/match, MATCH-UI) ----------
+
+const MATCH = '#/match?demo=1';
+
+/** Pre-kickoff → kick off. */
+async function kickOff(page, step, shot) {
+  await step('pre-kickoff', () =>
+    visible(page, '[data-screen="match"] [data-testid="kickoff"]', 30000),
+  );
+  await page.evaluate(() => document.fonts.ready);
+  if (shot) await shot('prematch');
+  await step('kick off', () => page.click('[data-testid="kickoff"]'));
+}
+
+/** Click "Next clip" (Key Moments) until half-time or full time shows up. */
+async function skipClips(page, until, limit = 80) {
+  for (let i = 0; i < limit; i++) {
+    if (
+      await page
+        .locator(until)
+        .isVisible()
+        .catch(() => false)
+    )
+      return;
+    const next = page.locator('[data-testid="next-clip"]');
+    if (await next.isEnabled().catch(() => false)) await next.click().catch(() => {});
+    await page.waitForTimeout(250);
+  }
+  await visible(page, until, 20000);
+}
+
+/** The controller's own frame-time counter (window.__matchPerf). */
+async function framePerf(page) {
+  return page.evaluate(() => {
+    const p = globalThis.__matchPerf;
+    if (!p?.samples.length) return null;
+    const s = [...p.samples].sort((a, b) => a - b);
+    return { frames: p.frames, avg: p.total / p.frames, p95: s[Math.floor(s.length * 0.95)] };
+  });
+}
+
+const matchFlows = [
+  {
+    name: 'match-key',
+    async run({ page, shot, step, base, viewport }) {
+      await page.goto(`${base}${MATCH}&view=key`);
+      await kickOff(page, step, shot);
+      await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
+      await page.waitForTimeout(1500);
+      await shot('first-half');
+      await step('skip to half-time', () => skipClips(page, '[data-testid="halftime"]'));
+      await shot('halftime');
+      await step('half-time mentality', () =>
+        page.click('[data-testid="halftime"] .segmented label:has-text("Push")'),
+      );
+      await step('second half', () => page.click('[data-testid="second-half"]'));
+      await step('skip to full time', () => skipClips(page, '[data-testid="match-result"]'));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('result');
+      if (viewport === 'mobile') await shot('result-full', { fullPage: true });
+      await step('result persisted', async () => {
+        const saved = await page.evaluate(() => localStorage.getItem('football-draft-match'));
+        if (!/"status":"done"/.test(saved || '')) throw new Error('result not stored');
+      });
+    },
+  },
+  {
+    name: 'match-full',
+    async run({ page, shot, step, base }) {
+      await page.goto(`${base}${MATCH}&view=full`);
+      await kickOff(page, step);
+      await step('live canvas', () => visible(page, '.stage__canvas'));
+      await page.waitForTimeout(2500);
+      await shot('live');
+      await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
+      await page.waitForTimeout(2000);
+      await step('keyboard pause', async () => {
+        await page.locator('.stage__canvas').click({ position: { x: 5, y: 5 } });
+        await page.keyboard.press('Space');
+        await visible(page, '.stage-play');
+        await page.keyboard.press('Space');
+      });
+      await step('next moment', () => page.click('[data-testid="skip-moment"]'));
+      await page.waitForTimeout(2500);
+      await shot('after-skip');
+      await step('mentality push', () =>
+        page.click('.match-controls__mentality label:has-text("Push")'),
+      );
+      await step('open tactics', async () => {
+        await page.click('[data-testid="open-tactics"]');
+        await visible(page, 'dialog.modal[open] [data-testid="tactics-0"]');
+      });
+      await shot('tactics');
+      await step('close tactics', async () => {
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
+      });
+      const perf = await framePerf(page);
+      if (perf)
+        console.log(
+          `        frame ms avg ${perf.avg.toFixed(2)} p95 ${perf.p95.toFixed(2)} (${perf.frames} frames)`,
+        );
+    },
+  },
+  {
+    name: 'match-instant',
+    async run({ page, shot, step, base, viewport }) {
+      await page.goto(`${base}${MATCH}&view=instant&seed=3`);
+      await kickOff(page, step);
+      await step('result', () => visible(page, '[data-testid="match-result"]', 60000));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('result');
+      if (viewport === 'mobile') await shot('result-full', { fullPage: true });
+      await step('rematch', async () => {
+        await page.click('[data-testid="rematch"]');
+        await visible(page, '[data-testid="kickoff"]');
+      });
+    },
+  },
+  {
+    name: 'match-pens',
+    async run({ page, shot, step, base }) {
+      await page.goto(`${base}${MATCH}&view=full&pens=1`);
+      await kickOff(page, step);
+      await step('shootout panel', () => visible(page, '.pens', 20000));
+      await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
+      await page.waitForTimeout(3000);
+      await shot('shootout');
+      await step('shootout decided', () => visible(page, '[data-testid="match-result"]', 90000));
+      await shot('result');
+    },
+  },
+];
+
 export const flows = [
   {
     name: 'home',
@@ -192,7 +326,7 @@ export const flows = [
     viewports: ['mobile'],
     async run({ page, step, base }) {
       await seed(page, ONBOARDED);
-      for (const path of ['play/quick', 'draft', 'match', 'run', 'daily', 'exhibition', 'nope']) {
+      for (const path of ['play/quick', 'draft', 'run', 'daily', 'exhibition', 'nope']) {
         await step(`#/${path}`, async () => {
           await page.goto(`${base}#/${path}`);
           await visible(page, '[data-screen="placeholder"] h1');
@@ -245,6 +379,7 @@ export const flows = [
       if (viewport === 'mobile') await shot('sheet');
     },
   },
+  ...matchFlows,
   {
     name: 'legacy-home',
     async run({ page, shot, base }) {

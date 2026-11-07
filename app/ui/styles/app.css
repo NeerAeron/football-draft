@@ -35,3 +35,4 @@
 @import url('../screens/home/home.css') layer(screens);
 @import url('../screens/settings/settings.css') layer(screens);
 @import url('../screens/placeholder/placeholder.css') layer(screens);
+@import url('../screens/match/match.css') layer(screens);
