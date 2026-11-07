@@ -17,7 +17,12 @@ export const routes = [
     back: '/',
     load: () => import('./screens/settings/settings.js'),
   },
-  { path: '/play/:mode', title: 'Set up', back: '/', load: placeholder },
+  {
+    path: '/play/:mode',
+    title: 'Set up',
+    back: '/',
+    load: () => import('./screens/setup/setup.js'),
+  },
   { path: '/draft', title: 'Draft', back: '/', load: placeholder },
   { path: '/match', title: 'Match', back: '/', load: placeholder },
   { path: '/run', title: 'World Cup Run', back: '/', load: placeholder },

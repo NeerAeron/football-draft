@@ -127,9 +127,8 @@ export const flows = [
       });
       await step('start run', async () => {
         await page.click('[data-testid="start-run"]');
-        await visible(page, '[data-screen="placeholder"]');
+        await visible(page, '[data-screen="setup"]');
       });
-      await shot('play-placeholder');
       await step('back home', async () => {
         await page.click('button[aria-label="Back"]');
         await visible(page, '[data-screen="home"]');
@@ -192,12 +191,59 @@ export const flows = [
     viewports: ['mobile'],
     async run({ page, step, base }) {
       await seed(page, ONBOARDED);
-      for (const path of ['play/quick', 'draft', 'match', 'run', 'daily', 'exhibition', 'nope']) {
+      for (const path of ['match', 'run', 'daily', 'exhibition', 'nope']) {
         await step(`#/${path}`, async () => {
           await page.goto(`${base}#/${path}`);
           await visible(page, '[data-screen="placeholder"] h1');
         });
       }
+    },
+  },
+  // ---------- DRAFT-UI: setup, draft board, pre-match ----------
+  {
+    name: 'setup',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, ONBOARDED);
+      await page.goto(`${base}#/play/run`);
+      await step('run setup', () => visible(page, '[data-screen="setup"][data-mode="run"]'));
+      await step('opponents loaded', () => visible(page, '.ladder__examples:not(.is-muted)'));
+      await page.evaluate(() => document.fonts.ready);
+      await shot('run');
+      if (viewport === 'mobile') await shot('run-full', { fullPage: true });
+      await step('choose clubs + world class + 4-4-2', async () => {
+        await page.click('.type-card:has-text("Clubs")');
+        await page.click('.ladder__row:has-text("World Class")');
+        await page.click('.formation-card:has-text("4–4–2")');
+        for (const [name, value] of [
+          ['setup-type', 'clubs'],
+          ['setup-difficulty', 'worldclass'],
+          ['setup-formation', '442'],
+        ])
+          if (!(await page.isChecked(`input[name="${name}"][value="${value}"]`)))
+            throw new Error(`${name} is not ${value}`);
+      });
+      await step('quick setup prefilled from a challenge link', async () => {
+        await page.goto(
+          `${base}#/play/quick?type=leagues&difficulty=amateur&formation=4231&seed=123`,
+        );
+        await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
+        for (const [name, value] of [
+          ['setup-type', 'leagues'],
+          ['setup-difficulty', 'amateur'],
+          ['setup-formation', '4231'],
+        ])
+          if (!(await page.isChecked(`input[name="${name}"][value="${value}"]`)))
+            throw new Error(`${name} is not ${value}`);
+      });
+      await shot('quick-challenge');
+      await step('versus setup', async () => {
+        await page.goto(`${base}#/play/versus`);
+        await visible(page, '[data-screen="setup"][data-mode="versus"]');
+        await page.fill('#player-0', 'Ana');
+        await page.fill('#player-1', 'Bea');
+      });
+      await shot('versus');
+      if (viewport === 'mobile') await shot('versus-full', { fullPage: true });
     },
   },
   {
