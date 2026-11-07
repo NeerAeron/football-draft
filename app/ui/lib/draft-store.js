@@ -31,11 +31,12 @@ import { FORMATIONS } from '../../core/players/formations.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { loadCatalog } from '../../services/catalog.js';
 import { sideColors } from './kits.js';
+import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
-export const DRAFT_KEY = 'football-draft-draft';
+export { DRAFT_KEY, readSavedDraft };
 export const DRAFT_KINDS = ['run', 'quick', 'versus', 'daily'];
-const FORMAT = 1;
+const FORMAT = DRAFT_FORMAT;
 
 /** UI draft types (Home chip, setup, query ?type=) → core session modes. */
 export const TYPE_TO_MODE = {
@@ -264,19 +265,6 @@ export async function startDraft(input, { go: navigateTo = true, spin = true } =
 }
 
 /** The saved draft without restoring it (sync): { context, picks, total, complete } | null. */
-export function readSavedDraft() {
-  const saved = readJSON(DRAFT_KEY, null);
-  if (!saved || saved.format !== FORMAT || saved.session?.type !== 'draft-session') return null;
-  const picks = (saved.session.state?.picks || []).flat();
-  return {
-    context: saved.context,
-    picks: picks.filter(Boolean).length,
-    total: picks.length,
-    complete: picks.length > 0 && picks.every(Boolean),
-    savedAt: saved.savedAt || null,
-  };
-}
-
 /**
  * The current draft, restoring the saved one after a reload: { session, context } | null.
  * Sets status 'empty' when nothing is saved and 'error' when the save no longer fits the

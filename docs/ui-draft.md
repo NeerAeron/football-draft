@@ -44,6 +44,7 @@ await startDraft(context, { go = true, spin = true });  // → #/draft, first sp
 completedDraft();      // { session, context } when every pick is made (in memory), else null
 await loadDraft();     // the same after a reload (restores 'football-draft-draft'), or null
 readSavedDraft();      // sync summary { context, picks, total, complete, savedAt } | null
+                       // (lives in lib/saved.js, no catalog; Home's "Draft in progress" card)
 clearDraft();          // forget it (memory + storage)
 ```
 

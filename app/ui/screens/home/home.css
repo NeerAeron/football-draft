@@ -314,6 +314,23 @@
   font-size: var(--text-sm);
 }
 
+.continue__record small {
+  color: var(--text-3);
+  font-size: 0.55em;
+}
+.draft-resume__bar {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.draft-resume__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--volt-400);
+}
+
 /* ---------- Daily ---------- */
 .home-daily {
   display: flex;

@@ -8,11 +8,16 @@
 //   'football-draft-daily'  Daily Challenge record:
 //      { streak: 3, best: 7, lastPlayed: 'YYYY-MM-DD' (UTC day), lastResult?: '5-1-1',
 //        streakState?: { current, best, last }, results?: { [day]: entry }, current?: {…} }
+//   'football-draft-draft'  the draft in progress (lib/draft-store.js writes it):
+//      { format: 1, context: { kind, type, difficulty, … }, session: { type: 'draft-session',
+//        state: { picks: [[…11 ids or null], …] } }, savedAt }
 //   The full run state lives in 'football-draft-run-state' (lib/run-store.js).
 import { readJSON } from './storage.js';
 
 export const RUN_KEY = 'football-draft-run';
 export const DAILY_KEY = 'football-draft-daily';
+export const DRAFT_KEY = 'football-draft-draft';
+export const DRAFT_FORMAT = 1;
 
 export const STAGES = [
   { id: 'G1', short: '1', label: 'Group match 1' },
@@ -78,4 +83,22 @@ export function readDailyStatus(now = new Date()) {
 export function todayKey(date = new Date()) {
   const p = n => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}
+
+/**
+ * Sync summary of the draft in progress (no catalog needed — Home and setup show it):
+ * { context, picks, total, complete, savedAt } | null.
+ */
+export function readSavedDraft() {
+  const saved = readJSON(DRAFT_KEY, null);
+  if (!saved || saved.format !== DRAFT_FORMAT || saved.session?.type !== 'draft-session')
+    return null;
+  const picks = (saved.session.state?.picks || []).flat();
+  return {
+    context: saved.context && typeof saved.context === 'object' ? saved.context : {},
+    picks: picks.filter(Boolean).length,
+    total: picks.length,
+    complete: picks.length > 0 && picks.every(Boolean),
+    savedAt: saved.savedAt || null,
+  };
 }

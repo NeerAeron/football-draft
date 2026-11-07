@@ -367,6 +367,16 @@ export const flows = [
       await step('continue card', () => visible(page, '.continue'));
       await page.evaluate(() => document.fonts.ready);
       await shot('continue');
+      await step('draft in progress resumes from Home', async () => {
+        await page.evaluate(async () => {
+          const { startDraft } = await import('./ui/lib/draft-store.js');
+          await startDraft({ kind: 'quick', type: 'leagues', seed: 11 }, { go: false });
+        });
+        await page.reload();
+        await visible(page, '[data-testid="resume-draft-card"]');
+        await page.click('[data-testid="resume-draft"]');
+        await visible(page, '[data-screen="draft"][data-phase="pick"]');
+      });
     },
   },
   {
