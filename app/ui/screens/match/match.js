@@ -75,6 +75,9 @@ function Playing({ request, onExit, restarted }) {
     if (auto) controller.kickoff();
   }, [controller, auto]);
   const phase = useStore(controller.hud, s => s.phase);
+  // Each view (pre-kickoff → live → report) starts at the top of the page.
+  const view = phase === 'pre' ? 'pre' : phase === 'finished' ? 'report' : 'live';
+  useEffect(() => globalThis.scrollTo?.(0, 0), [view]);
   const result = useStore(controller.hud, s => s.result);
   const [tacticsFor, setTacticsFor] = useState(null);
   const tactics = useStore(controller.hud, s => s.tactics);
