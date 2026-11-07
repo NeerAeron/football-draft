@@ -10,18 +10,15 @@ import {
   saveConfig,
   loadConfig,
 } from '../app/core/config/config.js';
-import { Draft } from '../app/core/draft/draft.js';
-import { createAIOpponent } from '../app/core/draft/opponent.js';
 import { clubSquads } from '../app/core/players/club-lineups.js';
 import { clubRating } from '../app/core/players/team-ratings.js';
-import { playerTier, overallRating } from '../app/core/players/ratings.js';
+import { overallRating } from '../app/core/players/ratings.js';
 import { Match } from '../app/core/sim/engine.js';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 const catalog = loadRuntimeCatalog();
 const oldRatings = JSON.parse(
   readFileSync(new URL('./fixtures/ratings-v21.json', import.meta.url)),
 );
-const random = seed => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 
 test('configuration round-trips all fields and rejects invalid budgets, tiers and role weights', () => {
   // League/club odds are sparse maps (missing = 1): one synthetic field per catalog entry.
@@ -96,90 +93,6 @@ test('legacy draw defaults upgrade once, preserving custom odds and all other se
   upgraded.draft.leagueWeights = { A: 32, B: 10, C: 3, D: 0.8, F: 0.2 };
   assert.deepEqual(normalizeConfig(upgraded), upgraded);
 });
-test('budget drafts finish within their paid slots against all difficulties, including keeper-last selections', () => {
-  for (const [level, index] of ['veryeasy', 'easy', 'medium', 'hard', 'impossible'].map((x, i) => [
-    x,
-    i,
-  ]))
-    for (const seed of [28, 62, 108]) {
-      const opponent = createAIOpponent(catalog, level, random(seed + index)),
-        d = new Draft(catalog, {
-          opponent: opponent.players,
-          funding: 'budget',
-          seed,
-          formations: ['352', opponent.formation],
-        });
-      while (!d.complete) {
-        d.spinLeague();
-        d.spinTeam();
-        const pool = d.available(),
-          outfield = pool.filter(p => p.primaryPosition !== 'GK');
-        const p = (outfield.length ? outfield : pool).at(
-          seed % (outfield.length ? outfield : pool).length,
-        );
-        assert.ok(p, level);
-        assert.ok(
-          d.pick(d.bestSlot(p), p.profileId, { confirmedBudgetSlot: d.budgetOffer(p).slotGroup }),
-        );
-      }
-      const state = d.budgetState();
-      assert.deepEqual(state.used, { superstar: 2, star: 3, starter: 3, lower: 3 });
-      assert.ok(state.counts.superstar <= 2 && state.counts.superstar + state.counts.star <= 5);
-      assert.equal(d.used.size, 22);
-      assert.equal(d.picks[0].filter(p => p.primaryPosition === 'GK').length, 1);
-    }
-});
-test('takeover has no tier caps; budget rejects an over-cap direct pick', () => {
-  const opponent = createAIOpponent(catalog, 'veryeasy', random(8)),
-    d = new Draft(catalog, { opponent: opponent.players, funding: 'budget', seed: 19 });
-  const stars = catalog.players
-    .filter(p => playerTier(p).name === 'Superstar' && p.primaryPosition !== 'GK')
-    .slice(0, 3);
-  d.picks[0][1] = stars[0];
-  d.picks[0][2] = stars[1];
-  d.used.add(stars[0].profileId);
-  d.used.add(stars[1].profileId);
-  assert.equal(d.eligible(stars[2]), false);
-  d.funding = 'takeover';
-  assert.equal(d.eligible(stars[2]), true);
-});
-test('budget-blocked players remain visible in their draw but cannot be drafted', () => {
-  const opponent = createAIOpponent(catalog, 'veryeasy', random(8)),
-    d = new Draft(catalog, { opponent: opponent.players, funding: 'budget', seed: 19 });
-  const stars = catalog.players
-    .filter(
-      p =>
-        playerTier(p).name === 'Superstar' &&
-        p.primaryPosition !== 'GK' &&
-        !d.used.has(p.profileId),
-    )
-    .slice(0, 3);
-  stars.slice(0, 2).forEach((p, i) => {
-    d.picks[0][i + 1] = p;
-    d.used.add(p.profileId);
-  });
-  const p = stars[2];
-  d.league = d.leagues.find(l => l.id === p.source.leagueId);
-  d.club = d.league.teams.find(t => t.id === p.source.clubId);
-  const rng = d.rng,
-    slot = d.bestSlot(p, 'ST', { includeBudgetBlocked: true });
-  assert.ok(slot >= 0);
-  assert.equal(d.bestSlot(p), -1);
-  assert.ok(d.visible().some(q => q.profileId === p.profileId));
-  assert.ok(d.visible(slot).some(q => q.profileId === p.profileId));
-  assert.deepEqual(
-    d.visible().map(q => q.profileId),
-    d.club.players.map(q => q.profileId),
-  );
-  assert.ok(!d.available().some(q => d.used.has(q.profileId)));
-  assert.ok(!d.available().some(q => q.profileId === p.profileId));
-  assert.equal(d.pick(slot, p.profileId), false);
-  assert.equal(d.history.length, 0);
-  assert.equal(d.rng, rng);
-  d.funding = 'takeover';
-  assert.ok(d.available().some(q => q.profileId === p.profileId));
-  assert.equal(d.pick(slot, p.profileId), true);
-});
 test('saved defaults adopt Superstar85 and lower A-league odds once, preserving subsequent edits', () => {
   const old = structuredClone(DEFAULT_CONFIG);
   old._settingsVersion = 1;
@@ -230,31 +143,6 @@ test('unchanged saved role weights and name timings upgrade while custom setting
     globalThis.localStorage = previous;
   }
 });
-test('lower-tier players remain available when a higher budget ticket is open', () => {
-  const opponent = createAIOpponent(catalog, 'veryeasy', random(18)),
-    d = new Draft(catalog, { opponent: opponent.players, funding: 'budget', seed: 19 });
-  const pool = tier =>
-    catalog.players.filter(
-      p => p.primaryPosition !== 'GK' && playerTier(p).name === tier && !d.used.has(p.profileId),
-    );
-  const starters = pool('Starter').slice(0, 4),
-    normals = pool('Normal').slice(0, 3),
-    bench = pool('Bench').slice(0, 2);
-  starters.slice(0, 3).forEach((p, i) => {
-    d.picks[0][i + 1] = p;
-    d.used.add(p.profileId);
-  });
-  assert.equal(d.eligible(starters[3]), true);
-  assert.equal(d.budgetOffer(starters[3]).slotGroup, 'star');
-  assert.equal(d.budgetOffer(starters[3]).requiresConfirmation, true);
-  assert.equal(d.eligible(normals[0]), true);
-  [normals[0], normals[1], bench[0]].forEach((p, i) => {
-    d.picks[0][i + 4] = p;
-    d.used.add(p.profileId);
-  });
-  assert.equal(d.eligible(normals[2]), true);
-  assert.equal(d.eligible(bench[1]), true);
-});
 test('previous saved defaults migrate to upper-tier maximums while retaining other settings', () => {
   const legacy = structuredClone(DEFAULT_CONFIG);
   legacy.draft.budget = { superstar: 2, star: 5, lower: 4, allowDowngrades: false };
@@ -264,20 +152,6 @@ test('previous saved defaults migrate to upper-tier maximums while retaining oth
   assert.equal(upgraded.gameplay.shotFrequency, 1.3);
   legacy.draft.budget = { superstar: 1, star: 4, lower: 6, allowDowngrades: true };
   assert.deepEqual(normalizeConfig(legacy).draft.budget, { superstar: 1, star: 4, starter: 3 });
-});
-test('Impossible only draws viable formations when its minimum overall changes', () => {
-  const c = structuredClone(DEFAULT_CONFIG);
-  c.ai.impossibleOverall = 86;
-  setRuntimeConfig(c);
-  try {
-    for (const seed of [5, 18, 89, 224]) {
-      const ai = createAIOpponent(catalog, 'impossible', random(seed));
-      assert.equal(ai.players.length, 11);
-      assert.ok(ai.players.every(p => overallRating(p, true, p.primaryPosition) >= 86));
-    }
-  } finally {
-    setRuntimeConfig(DEFAULT_CONFIG);
-  }
 });
 test('configuration is frozen for the current match and restored with a replay', () => {
   const match = new Match(28),

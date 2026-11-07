@@ -1,8 +1,9 @@
+// Advanced tuning page (config.html): every CONFIG field by section, saved on this device.
+// Draft odds are shown for the draft session (core/draft/session.js) on a full pool.
 import {
   DEFAULT_CONFIG,
   CONFIG_FIELDS,
   configField,
-  overrideField,
   loadConfig,
   saveConfig,
   normalizeConfig,
@@ -10,11 +11,11 @@ import {
   configValue,
   setConfigValue,
 } from '../core/config/config.js';
-import { draftLeagues, leagueWeight, teamWeight } from '../core/draft/leagues.js';
+import { catalogIndex, draftRules } from '../core/draft/pools.js';
 import { clubSquads } from '../core/players/club-lineups.js';
 import { loadCatalog } from '../services/catalog.js';
 import { BADGES } from '../core/players/traits.js';
-import { ATTRS, overallRating, playerTier } from '../core/players/ratings.js';
+import { ATTRS, playerTier } from '../core/players/ratings.js';
 import { escapeHtml } from '../core/util/text.js';
 const $ = s => document.querySelector(s),
   esc = escapeHtml;
@@ -29,21 +30,21 @@ let draft = loadConfig(),
 const sections = [
   [
     'draft',
-    'Draft & budget',
-    'Lower-tier players can use higher budget slots after confirmation.',
-    p => p.startsWith('draft.') && !p.includes('Overrides.'),
+    'Draft rules',
+    'Nations field and call-ups, spin odds, re-rolls, the opponent ladder and Links. Daily Challenges and challenge links always use the defaults.',
+    p => p.startsWith('draft.'),
   ],
   [
     'leagues',
     'League odds',
-    'Opening full-pool probabilities. Budget restrictions and previous picks change the eligible pool.',
-    p => p.startsWith('draft.leagueOverrides.'),
+    'First-spin chances on a full pool, from the tier weights in Draft rules. Drafted players and the keeper guard change later spins.',
+    () => false,
   ],
   [
     'clubs',
     'Club odds',
-    'Odds are conditional on the selected league. D and F leagues skip the club spinner.',
-    p => p.startsWith('draft.clubOverrides.'),
+    'Clubs spins land a league first, then a club of that league (clubs with enough players). Chances within the selected league on a full pool.',
+    () => false,
   ],
   [
     'playerTiers',
@@ -60,7 +61,7 @@ const sections = [
   [
     'ai',
     'AI decisions',
-    'Club strength and coaching only. Match physics stay the same.',
+    'Club XIs and in-match coaching. Match physics stay the same.',
     p => p.startsWith('ai.'),
   ],
   [
@@ -118,7 +119,6 @@ function edit(path, value) {
     try {
       setRuntimeConfig(draft);
       refreshSummary();
-      if (['leagues', 'clubs'].includes(active)) refreshOdds();
     } catch (e) {
       status(e.message, true);
     }
@@ -128,19 +128,12 @@ const percentField = f =>
   f.path.startsWith('badges.tendencies.') ||
   [
     'halftimeRecovery',
-    'leagueOptaLimit',
-    'leagueOptaSlope',
     'minimumFit',
-    'impossibleFit',
     'storedTendencyWeight',
     'familiarityBase',
     'familiarityBonus',
     'unfamiliarFit',
     'fatigueThreshold',
-    'eliteClubBoost',
-    'slightlyBetter',
-    'moderatelyBetter',
-    'muchBetter',
   ].includes(f.key);
 function input(field) {
   const scale = percentField(field) ? 100 : 1,
@@ -171,10 +164,22 @@ function bindInputs() {
       }),
   );
 }
+const GROUP_LABELS = {
+  draft: 'Leagues',
+  'draft.nations': 'Nations: field and call-ups',
+  'draft.leagueTierWeights': 'Leagues spin: weight by league tier',
+  'draft.clubs': 'Clubs spin',
+  'draft.clubs.leagueTierWeights': 'Clubs spin: league weight by tier',
+  'draft.clubs.tierWeights': 'Clubs spin: club weight by club tier',
+  'draft.rerolls': 'Re-rolls per drafter',
+  'draft.ladder': 'Opponent strength vs a typical draft (effective rating)',
+  'draft.links': 'Links',
+  'draft.links.club': 'Links · same club',
+  'draft.links.nation': 'Links · same nation',
+  'draft.links.league': 'Links · same league',
+};
 function groupLabel(path) {
-  if (path === 'draft.respinBoosts') return 'Re-spin improvement boosts';
-  if (path === 'draft.clubDoubleEvery')
-    return 'Club odds double every… OVR (lower = stronger bias)';
+  if (GROUP_LABELS[path]) return GROUP_LABELS[path];
   const parts = path.split('.');
   if (parts[0] === 'formats') return parts[1] === '180' ? '3-minute match' : '5-minute match';
   if (parts[0] === 'badges' && parts[1] === 'tendencies') return 'Tendency · ' + parts[2];
@@ -191,7 +196,10 @@ function groupLabel(path) {
   );
 }
 async function catalog() {
-  data ??= await loadCatalog();
+  if (!data) {
+    data = await loadCatalog();
+    navigation(); // league and club counts
+  }
   return data;
 }
 function navigation() {
@@ -200,9 +208,9 @@ function navigation() {
     .map(([id, label, , match]) => {
       const count =
         id === 'leagues'
-          ? (data?.leagues.length ?? '')
+          ? (index()?.leagues.length ?? '')
           : id === 'clubs'
-            ? (data?.teams.length ?? '')
+            ? (index()?.clubs.size ?? '')
             : CONFIG_FIELDS.filter(
                 f =>
                   match(f.path) &&
@@ -224,6 +232,7 @@ async function render() {
   const section = sections.find(s => s[0] === active),
     query = $('#config-search').value.trim().toLowerCase();
   $('#config-title').textContent = section[1];
+  $('#config-reset-section').hidden = ['leagues', 'clubs'].includes(active);
   $('#config-description').textContent = section[2];
   $('#config-summary').textContent = '';
   if (['leagues', 'clubs'].includes(active)) {
@@ -257,20 +266,12 @@ async function render() {
         ([group, fs]) =>
           `<fieldset><legend>${esc(groupLabel(group))}</legend>${fs
             .map(f => {
-              const label =
-                f.path === 'draft.budget.lower'
-                  ? 'Normal / Bench'
-                  : f.path.startsWith('badges.tendencies.')
-                    ? BADGES.find(b => b.id === f.key)?.label || f.label
-                    : f.path.startsWith('badges.boosts.') ||
-                        f.path.startsWith('ratings.roleWeights.')
-                      ? ATTRS[f.key] || f.label
-                      : f.path.startsWith('ai.tiers.')
-                        ? { veryeasy: 'Very Easy', easy: 'Easy', medium: 'Medium', hard: 'Hard' }[
-                            f.key
-                          ]
-                        : f.label;
-              return `<label class="config-row"><span>${esc(label)}${percentField(f) ? ' (%)' : ''}<small>${f.path.startsWith('draft.budget.') && f.key === 'lower' ? 'Normal or Bench' : `Default ${percentField(f) ? Number((f.defaultValue * 100).toFixed(3)) + '%' : f.defaultValue}`}</small></span>${input(f)}</label>`;
+              const label = f.path.startsWith('badges.tendencies.')
+                ? BADGES.find(b => b.id === f.key)?.label || f.label
+                : f.path.startsWith('badges.boosts.') || f.path.startsWith('ratings.roleWeights.')
+                  ? ATTRS[f.key] || f.label
+                  : f.label;
+              return `<label class="config-row"><span>${esc(label)}${percentField(f) ? ' (%)' : ''}<small>Default ${percentField(f) ? Number((f.defaultValue * 100).toFixed(3)) + '%' : f.defaultValue}</small></span>${input(f)}</label>`;
             })
             .join('')}</fieldset>`,
       )
@@ -289,7 +290,7 @@ async function render() {
   refreshSummary();
 }
 async function refreshSummary() {
-  if (!['teamTiers', 'playerTiers', 'ai', 'ratings'].includes(active)) return;
+  if (!['draft', 'teamTiers', 'playerTiers', 'ai', 'ratings'].includes(active)) return;
   try {
     const current = active;
     await catalog();
@@ -302,6 +303,13 @@ async function refreshSummary() {
         .sort((a, b) => b[1] - a[1])
         .map(([k, v]) => `<span>${esc(ATTRS[k])} <b>${((v / sum) * 100).toFixed(1)}%</b></span>`)
         .join('')}</div>`;
+      return;
+    }
+    if (active === 'draft') {
+      const ix = index(),
+        spinnable = ix.leagues.reduce((n, l) => n + l.spinnableClubs.length, 0);
+      $('#config-summary').innerHTML =
+        `<div class="summary-chips"><span>Nations field <b>${ix.field.length}</b></span><span>Leagues <b>${ix.leagues.length}</b></span><span>Spinnable clubs <b>${spinnable}</b></span></div>`;
       return;
     }
     const clubs = clubSquads(data);
@@ -323,26 +331,36 @@ async function refreshSummary() {
         .join('')}</div>`;
     }
     if (active === 'ai')
-      $('#config-summary').innerHTML = `<div class="summary-chips">${Object.entries(draft.ai.tiers)
-        .map(
-          ([level, tier]) =>
-            `<span>${level === 'veryeasy' ? 'Very Easy' : level[0].toUpperCase() + level.slice(1)} · ${tier} · <b>${clubs.filter(c => c.tier === tier && c.formations.length).length} clubs</b></span>`,
-        )
-        .join(
-          '',
-        )}<span>Impossible · <b>${data.players.filter(p => overallRating(p, true, p.primaryPosition) >= draft.ai.impossibleOverall).length} eligible players</b></span></div>`;
+      $('#config-summary').innerHTML =
+        `<div class="summary-chips"><span>Clubs with a complete XI <b>${clubs.filter(c => c.formations.length).length}</b> of ${clubs.length}</span></div>`;
   } catch (e) {
     status(e.message, true);
   }
 }
-function oddsData() {
-  const leagues = draftLeagues(data).filter(
-      l =>
-        leagueWeight(l) > 0 &&
-        (!['A', 'B', 'C'].includes(l.tier) || l.teams.some(t => teamWeight(t) > 0)),
-    ),
-    total = leagues.reduce((n, l) => n + leagueWeight(l), 0);
-  return { leagues, total };
+// The draft-session index for the edited rules (cached per catalog + rules + ratings).
+function index() {
+  if (!data) return null;
+  try {
+    return catalogIndex(data, draftRules(draft.draft));
+  } catch {
+    return catalogIndex(data, draftRules(DEFAULT_CONFIG.draft));
+  }
+}
+const percent = (weight, total) => (total ? ((weight / total) * 100).toFixed(2) + '%' : '—');
+// Same weights as DraftSession#draw on a full pool (no exclusions, every slot open).
+function leagueOdds(ix) {
+  const rules = draft.draft,
+    leagueWeight = l => rules.leagueTierWeights[l.tier] ?? 0,
+    clubsWeight = l =>
+      l.spinnableClubs.length
+        ? (rules.clubs.leagueTierWeights?.[l.tier] ?? rules.leagueTierWeights[l.tier] ?? 0)
+        : 0;
+  const totals = [leagueWeight, clubsWeight].map(w => ix.leagues.reduce((n, l) => n + w(l), 0));
+  return ix.leagues.map(l => ({
+    league: l,
+    leagues: percent(leagueWeight(l), totals[0]),
+    clubs: percent(clubsWeight(l), totals[1]),
+  }));
 }
 async function renderOdds() {
   $('#config-fields').textContent = 'Loading…';
@@ -350,36 +368,34 @@ async function renderOdds() {
   try {
     await catalog();
     if (selected !== active) return;
-    setRuntimeConfig(draft);
-    const { leagues } = oddsData();
+    const ix = index(),
+      query = $('#config-search').value.trim().toLowerCase();
     if (active === 'leagues') {
-      const query = $('#config-search').value.toLowerCase(),
-        rows = data.leagues.filter(l => (l.name + ' ' + l.id).toLowerCase().includes(query));
+      const rows = leagueOdds(ix).filter(r =>
+        (r.league.name + ' ' + r.league.id).toLowerCase().includes(query),
+      );
       $('#config-fields').innerHTML =
-        `<div class="config-table"><table><thead><tr><th>League</th><th>Players</th><th>Multiplier</th><th>Draw chance</th></tr></thead><tbody>${rows
-          .map(l => {
-            const f = overrideField('league', l.id);
-            return `<tr data-league="${l.id}"><td><strong>${l.tier} · ${esc(l.name)}</strong></td><td>${l.playerCount}</td><td>${input(f)}</td><td data-odds></td></tr>`;
-          })
+        `<div class="config-table"><table><thead><tr><th>League</th><th>Players</th><th>Spinnable clubs</th><th>Leagues spin</th><th>Clubs spin</th></tr></thead><tbody>${rows
+          .map(
+            ({ league: l, leagues, clubs }) =>
+              `<tr data-league="${esc(l.id)}"><td><strong>${l.tier} · ${esc(l.name)}</strong></td><td>${l.players.length}</td><td>${l.spinnableClubs.length}</td><td>${leagues}</td><td>${clubs}</td></tr>`,
+          )
           .join('')}</tbody></table></div>`;
     } else {
-      const choices = data.leagues.filter(l => l.available);
-      if (!clubLeague) clubLeague = choices[0].id;
-      const league =
-        leagues.find(l => l.id === clubLeague) || draftLeagues(data).find(l => l.id === clubLeague);
-      const clubs = (league?.teams || [])
-        .filter(t =>
-          (t.name + ' ' + t.id)
-            .toLowerCase()
-            .includes((clubQuery || $('#config-search').value).toLowerCase()),
-        )
-        .sort((a, b) => b.overall - a.overall);
+      const choices = ix.leagues.filter(l => l.spinnableClubs.length);
+      if (!choices.some(l => l.id === clubLeague)) clubLeague = choices[0]?.id || '';
+      const league = ix.leagueById.get(clubLeague),
+        weight = c => draft.draft.clubs.tierWeights?.[c.tier] ?? 1,
+        total = (league?.spinnableClubs || []).reduce((n, c) => n + weight(c), 0),
+        clubs = (league?.spinnableClubs || []).filter(c =>
+          (c.name + ' ' + c.id).toLowerCase().includes((clubQuery || query).toLowerCase()),
+        );
       $('#config-fields').innerHTML =
-        `<div class="odds-filters"><select id="odds-league" aria-label="League">${choices.map(l => `<option value="${l.id}"${l.id === clubLeague ? ' selected' : ''}>${l.tier} · ${esc(l.name)}</option>`).join('')}</select><input id="odds-club-search" type="search" placeholder="Find a club" value="${esc(clubQuery)}" aria-label="Find a club"></div><div class="config-table"><table><thead><tr><th>Club</th><th>Median OVR</th><th>Players</th><th>Multiplier</th><th>Club chance</th></tr></thead><tbody>${clubs
+        `<div class="odds-filters"><select id="odds-league" aria-label="League">${choices.map(l => `<option value="${esc(l.id)}"${l.id === clubLeague ? ' selected' : ''}>${l.tier} · ${esc(l.name)}</option>`).join('')}</select><input id="odds-club-search" type="search" placeholder="Find a club" value="${esc(clubQuery)}" aria-label="Find a club"></div><div class="config-table"><table><thead><tr><th>Club</th><th>Best-XI OVR</th><th>Players</th><th>Club chance</th></tr></thead><tbody>${clubs
           .slice(0, clubLimit)
           .map(
-            t =>
-              `<tr data-club="${t.id}"><td><strong>${t.tier} · ${esc(t.name)}</strong></td><td>${t.overall.toFixed(2)}</td><td>${t.players.length}</td><td>${input(overrideField('club', t.id))}</td><td data-odds></td></tr>`,
+            c =>
+              `<tr data-club="${esc(c.id)}"><td><strong>${c.tier || '–'} · ${esc(c.name)}</strong></td><td>${c.strength.toFixed(1)}</td><td>${c.players.length}</td><td>${percent(weight(c), total)}</td></tr>`,
           )
           .join(
             '',
@@ -400,30 +416,11 @@ async function renderOdds() {
           renderOdds();
         };
     }
-    bindInputs();
-    refreshOdds();
+    navigation();
   } catch (e) {
     $('#config-fields').textContent = '';
     status(e.message, true);
   }
-}
-function refreshOdds() {
-  if (!data) return;
-  const { leagues, total } = oddsData();
-  document.querySelectorAll('[data-league]').forEach(row => {
-    const l = leagues.find(l => l.id === row.dataset.league);
-    row.querySelector('[data-odds]').textContent =
-      (l ? (leagueWeight(l) / total) * 100 : 0).toFixed(3) + '%';
-  });
-  const l =
-      leagues.find(l => l.id === clubLeague) || draftLeagues(data).find(l => l.id === clubLeague),
-    sum = l?.teams.reduce((n, t) => n + teamWeight(t), 0) || 0;
-  document.querySelectorAll('[data-club]').forEach(row => {
-    const t = l.teams.find(t => t.id === row.dataset.club);
-    row.querySelector('[data-odds]').textContent = ['D', 'F'].includes(l.tier)
-      ? 'No club spin'
-      : (sum ? (teamWeight(t) / sum) * 100 : 0).toFixed(3) + '%';
-  });
 }
 $('#config-search').oninput = () => {
   clearTimeout(timer);
@@ -450,8 +447,6 @@ $('#config-reset-section').onclick = () => {
   const match = sections.find(s => s[0] === active)[3];
   for (const f of CONFIG_FIELDS.filter(f => match(f.path)))
     setConfigValue(draft, f.path, f.defaultValue);
-  if (active === 'leagues') draft.draft.leagueOverrides = {};
-  if (active === 'clubs') draft.draft.clubOverrides = {};
   try {
     setRuntimeConfig(draft);
     render();

@@ -385,9 +385,12 @@ button,
   .config-layout > aside {
     position: static;
   }
-  .config-layout > aside p,
-  .config-layout > aside > .reset-button {
+  .config-layout > aside p {
     display: none;
+  }
+  .config-layout > aside > .reset-button {
+    padding: 8px 12px;
+    font-size: 12px;
   }
   #config-navigation {
     display: flex;

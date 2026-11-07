@@ -846,13 +846,87 @@ export const flows = [
     },
   },
   ...matchFlows,
+  // ---------- Advanced tuning page (app/config.html → app/tuning/) ----------
   {
     name: 'config',
-    viewports: ['desktop'],
-    async run({ page, shot, base }) {
+    async run({ page, shot, step, base }) {
+      const status = text =>
+        page.waitForFunction(
+          t => document.querySelector('#config-status')?.textContent.includes(t),
+          text,
+        );
+      const section = async (label, ready) => {
+        await page.click(`#config-navigation button:has-text("${label}")`);
+        await visible(page, ready);
+      };
       await page.goto(`${base}config.html`);
-      await page.waitForTimeout(800);
-      await shot('page');
+      await step('draft rules + catalog summary', async () => {
+        await visible(page, '#config-fields fieldset');
+        await visible(page, '#config-summary .summary-chips');
+      });
+      await shot('draft');
+      await step('league odds', () => section('League odds', '[data-league]'));
+      await shot('leagues');
+      await step('club odds', async () => {
+        await section('Club odds', '[data-club]');
+        const before = await page.locator('[data-club]').first().getAttribute('data-club');
+        await page.selectOption('#odds-league', { index: 1 });
+        await page.waitForFunction(
+          id => document.querySelector('[data-club]')?.dataset.club !== id,
+          before,
+        );
+      });
+      await shot('clubs');
+      await step('edit and save a setting', async () => {
+        await section('Gameplay', '[data-setting="gameplay.shotFrequency"]');
+        await page.fill('[data-setting="gameplay.shotFrequency"]', '1.2');
+        await status('Unsaved changes');
+        await page.click('#config-save');
+        await status('Saved');
+        const saved = await page.evaluate(() => localStorage.getItem('football-draft-settings-v1'));
+        if (!/"shotFrequency":1\.2/.test(saved || '')) throw new Error(`not saved: ${saved}`);
+      });
+      await step('search', async () => {
+        await page.fill('#config-search', 'stamina');
+        await page.waitForFunction(() =>
+          [...document.querySelectorAll('#config-navigation small')].some(
+            s => s.textContent === '0',
+          ),
+        );
+        await page.fill('#config-search', '');
+      });
+      await step('export', async () => {
+        const [download] = await Promise.all([
+          page.waitForEvent('download'),
+          page.click('#config-export'),
+        ]);
+        if (download.suggestedFilename() !== 'football-draft-config.json')
+          throw new Error(`export file ${download.suggestedFilename()}`);
+      });
+      await step('import', async () => {
+        await page.setInputFiles('#config-import', {
+          name: 'settings.json',
+          mimeType: 'application/json',
+          // Includes a key of a removed setting: it is ignored, not an error.
+          buffer: Buffer.from(
+            JSON.stringify({ gameplay: { shotFrequency: 1.3 }, draft: { budget: { star: 4 } } }),
+          ),
+        });
+        await status('Imported');
+        const value = await page.inputValue('[data-setting="gameplay.shotFrequency"]');
+        if (value !== '1.3') throw new Error(`imported value ${value}`);
+      });
+      await step('reset section and all', async () => {
+        await page.click('#config-reset-section');
+        await status('Section reset');
+        await page.click('#config-reset-all');
+        await status('Defaults restored');
+        await page.click('#config-save');
+        await status('Saved');
+        const saved = await page.evaluate(() => localStorage.getItem('football-draft-settings-v1'));
+        if (/shotFrequency/.test(saved || '')) throw new Error(`defaults not saved: ${saved}`);
+      });
+      await shot('gameplay');
     },
   },
 ];
