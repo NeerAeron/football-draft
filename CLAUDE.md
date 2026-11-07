@@ -39,12 +39,14 @@ app/                    served statically (deploy = publish this folder); runtim
   services/             browser-side services reusable by any UI: sound, playback, fullscreen
   legacy/               the pre-overhaul UI (scripts + style/game/squad/config.css)
   ui/                   (new UI goes here; it will replace legacy/ and the two root pages)
-  data/players-runtime.json   compiled catalog loaded by the game (the only JSON fetched)
+  data/catalog.v3.json  compiled columnar catalog (the only JSON fetched; decode via services/catalog.js)
   assets/logos/         league logos (paths in the catalog are relative to the page)
-data/                   repo root, NOT deployed: players-fc26.json (catalog + provenance, for
-                        tests/scripts), catalog-reference.json (compiler input), logo sources,
-                        rules-reference.json, goal-location-reference.json (research outputs)
+  assets/flags/         flag-icons SVGs (MIT) for every nation in the catalog
+data/                   repo root, NOT deployed: catalog-reference.json (compiler input), logo sources,
+                        rules-reference.json, goal-location-reference.json (research outputs);
+                        raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
 scripts/                catalog compiler (compile-league-catalog.mjs + compile-players.mjs), audit export
+scripts/data/           data:fetch / data:build pipeline; catalog-file.mjs = loadRuntimeCatalog() for Node
 scripts/dev/            serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
 tests/*.test.mjs        node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
 tests/browser/flows.mjs Playwright flows used by test:browser and shots — keep selectors in sync
@@ -57,8 +59,12 @@ docs/                   history.md (pre-overhaul README / dev log), calibration 
 New UI work goes under `app/ui/`; `app/legacy/` is the pre-overhaul UI and stays working
 (index.html/config.html load it) until it is replaced. UI code may import `core/` and
 `services/`; `core/` must never import `services/`, `legacy/` or `ui/`. Runtime URLs such as
-`fetch('./data/players-runtime.json')` and catalog logo paths (`./assets/logos/…`) resolve
-against the page in `app/`, not against the module file.
+catalog asset paths (`./assets/logos/…`, `./assets/flags/…`) resolve against the page in `app/`,
+not against the module file. Load the catalog only through `loadCatalog()` (`app/services/catalog.js`,
+browser) or `loadRuntimeCatalog()` (`scripts/data/catalog-file.mjs`, Node) — never fetch the JSON
+directly. The decoded catalog has `players`, `leagues`, `teams`, `nations` and the Maps `byId`,
+`byNation`, `byLeague`, `byClub`; club-less national-team players have `source.club === null` and
+appear only in nation pools.
 
 ### Module map (`app/core/` unless noted)
 
@@ -110,13 +116,17 @@ SHA-256 `4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2`). An 
 copy: `https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv`.
 
 ```sh
-node scripts/compile-league-catalog.mjs FC26_20250921.csv data/catalog-reference.json data/players-fc26.json
+npm run data:fetch   # pinned CSV -> data/raw/ (SHA-256 checked; no-op when present)
+npm run data:build   # -> app/data/catalog.v3.json, app/assets/flags/, data/build/players-fc26.json
 ```
 
-writes `data/players-fc26.json` and `app/data/players-runtime.json` deterministically
-(byte-identical reruns).
-Selection policy (league caps, expansion) lives in `catalog-reference.json`; every selected
-player's club must have a reviewed entry there.
+Builds are deterministic (byte-identical reruns). Format v3 is columnar
+(`app/core/players/catalog-codec.js`); it also carries precomputed badges, club ratings and club
+best XIs per formation, stamped with the config/FORMATIONS they were derived from. If you change
+rating, tier, minimum-fit, badge or formation defaults, rebuild the data (the data tests check the
+stamps). Selection: every player of every usable league plus club-less national-team players
+(`data/catalog-reference.json` → `selection`); every club player's club must have a reviewed entry
+there. Never invent ratings or club metadata.
 
 ## Conventions
 

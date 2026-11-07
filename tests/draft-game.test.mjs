@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Match } from '../app/core/sim/engine.js';
 import { FORMATIONS, formationLines, formationLabel } from '../app/core/players/formations.js';
 import { Draft, KITS, bestSlots } from '../app/core/draft/draft.js';
@@ -9,7 +8,8 @@ import { tacticAccess } from '../app/core/sim/coach.js';
 import { playerTier, overallRating, POSITIONS } from '../app/core/players/ratings.js';
 import { preference } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';
-const catalog = JSON.parse(readFileSync(new URL('../data/players-fc26.json', import.meta.url))),
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
+const catalog = loadRuntimeCatalog(),
   profiles = catalog.players;
 function choosePick(d) {
   d.spinLeague();

@@ -6,8 +6,9 @@ import { Draft } from '../../app/core/draft/draft.js';
 import { createAIOpponent } from '../../app/core/draft/opponent.js';
 import { coachAI } from '../../app/core/sim/coach.js';
 import { overallRating } from '../../app/core/players/ratings.js';
-const bytes = await readFile(new URL('../../data/players-fc26.json', import.meta.url)),
-  catalog = JSON.parse(bytes);
+import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
+const bytes = await readFile(new URL('../../app/data/catalog.v3.json', import.meta.url)),
+  catalog = loadRuntimeCatalog();
 const report = {
   purpose: 'Bounded integration checks, not score or win-rate calibration',
   catalogSha256: createHash('sha256').update(bytes).digest('hex'),

@@ -3,12 +3,11 @@
 // CALIBRATION_ENGINE=file:///path/engine.mjs CASE_LIMIT=1 node retention-calibration.mjs output.json
 import { readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
 const { Match } = await import(
   process.env.CALIBRATION_ENGINE || new URL('../../app/core/sim/engine.js', import.meta.url)
 );
-const catalog = JSON.parse(
-  readFileSync(new URL('../../app/data/players-runtime.json', import.meta.url)),
-).players;
+const catalog = loadRuntimeCatalog().players;
 const byId = new Map(catalog.map(p => [p.profileId, p]));
 const allCases = JSON.parse(
   readFileSync(

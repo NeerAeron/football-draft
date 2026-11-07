@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Match } from '../../app/core/sim/engine.js';
 import { randomLineups } from '../../app/core/players/lineups.js';
+import { loadRuntimeCatalog } from '../data/catalog-file.mjs';
 
 const args = process.argv.slice(2);
 const quick = args.includes('--quick');
@@ -20,9 +21,7 @@ const compareIndex = args.indexOf('--compare');
 const compareFile = compareIndex >= 0 ? args[compareIndex + 1] : null;
 const jsonOnly = args.includes('--json') || (!compareFile && !process.stdout.isTTY);
 
-const catalog = JSON.parse(
-  readFileSync(new URL('../../app/data/players-runtime.json', import.meta.url), 'utf8'),
-);
+const catalog = loadRuntimeCatalog();
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
 
 const cases = [];
