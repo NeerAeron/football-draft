@@ -45,13 +45,17 @@ export class DecisionMethods {
     const judgment =
       clamp((p.vision() * 0.6 + p.skill('composure') * 0.4 - 72) / 22, 0, 1) *
       clamp(this.tuning.gameplay.creativeQuality, 0, 1);
+    // Crossing willingness: discerning passers want a likelier delivery that is not much
+    // worse than the best option; crossWillingness relaxes both.
+    const willing = this.tuning.gameplay.crossWillingness,
+      minChance = (0.3 + judgment * 0.35) / willing,
+      window = (2.4 - judgment * 1.8) * willing;
     const delivery = opts.find(
       o =>
         ['cross', 'cutback'].includes(o.delivery) &&
         o.risk < 1.1 &&
         o.margin > -0.45 &&
-        (!judgment ||
-          (o.chance > 0.3 + judgment * 0.35 && o.score > best.score - (2.4 - judgment * 1.8))),
+        (!judgment || (o.chance > minChance && o.score > best.score - window)),
     );
     // Final-third flow: a carrier at the byline delivers (cross / cutback) or
     // recycles within about a second; no corner-flag stalls.

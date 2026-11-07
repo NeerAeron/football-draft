@@ -394,7 +394,7 @@ export class PlanningMethods {
     if (b.owner === q.id || dist(q, b) < 9) return 0;
     const focus = p.awareness() * 0.7 + p.skill('composure') * 0.3,
       share =
-        clamp((90 - focus) / 45, 0, 0.6) * (1.4 - 0.4 * p.energy) * (1 - coordination * 0.5) * k;
+        clamp((96 - focus) / 50, 0, 0.6) * (1.4 - 0.4 * p.energy) * (1 - coordination * 0.5) * k;
     if (share <= 0) return 0;
     return Math.sin(this.elapsed * 0.9 + p.id * 2.39) > Math.cos(Math.PI * Math.min(share, 0.5))
       ? 0.7

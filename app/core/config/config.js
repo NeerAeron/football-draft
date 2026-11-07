@@ -228,6 +228,7 @@ export const DEFAULT_CONFIG = {
     markingLapses: 1,
     deliveryDeflections: 1,
     runsInBehind: 1,
+    crossWillingness: 1.5,
     keeperRange: 1,
   },
   discipline: {
@@ -795,6 +796,7 @@ const labels = {
   markingLapses: 'Marking lapses (ball-watching)',
   deliveryDeflections: 'Deflected deliveries in the box',
   runsInBehind: 'Runs in behind the defensive line',
+  crossWillingness: 'Crossing willingness',
   keeperRange: 'Keeper rating influence',
   clubDoubleEvery: 'Club odds double every… OVR',
   clubRatingCenter: 'Club weight reference OVR',

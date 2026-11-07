@@ -28,13 +28,14 @@ const lapseShare = scene => {
   return n / 600;
 };
 
-test('poor readers ball-watch and lose their runner; elite markers stay switched on', () => {
+test('poor readers ball-watch and lose their runner; elite markers rarely do', () => {
   const poor = lapseShare(markingScene({ awareness: 58 })),
     good = lapseShare(markingScene({ awareness: 80 })),
     elite = lapseShare(markingScene({ awareness: 92 }));
-  assert.ok(poor > 0.12 && poor <= 0.55, `poor ${poor}`);
-  assert.ok(good < poor * 0.6, `good ${good}`);
-  assert.equal(elite, 0);
+  assert.ok(poor > 0.3 && poor <= 0.55, `poor ${poor}`);
+  assert.ok(good < poor * 0.75, `good ${good}`);
+  assert.ok(elite < good / 2, `elite ${elite}`);
+  assert.equal(lapseShare(markingScene({ awareness: 99 })), 0);
   assert.equal(lapseShare(markingScene({ awareness: 58, lapses: 0 })), 0);
   // Deterministic and RNG-free: the same scene gives the same lapses, no draws.
   const scene = markingScene({ awareness: 58 }),
