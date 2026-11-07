@@ -413,6 +413,21 @@
   }
 }
 
+/* Phones held sideways: the pitch fills the height, panels follow below */
+@media (orientation: landscape) and (max-height: 560px) {
+  .live .match-top {
+    min-height: 48px;
+    padding-block: 2px;
+  }
+  .stage {
+    aspect-ratio: auto;
+    height: calc(100dvh - 116px);
+  }
+  .ticker {
+    display: none;
+  }
+}
+
 /* Stage overlays */
 .stage-chips {
   position: absolute;
@@ -636,13 +651,13 @@
   text-transform: uppercase;
 }
 .goal.is-replay {
-  place-items: start center;
+  place-items: start start;
+  padding: var(--space-2);
 }
 .goal__replay {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-3);
   padding: 4px 6px 4px 4px;
   border-radius: var(--radius-pill);
   background: rgb(4 8 18 / 0.82);
@@ -880,6 +895,9 @@
     display: inline-flex;
     width: auto;
   }
+  .match-controls__mentality .segmented__item {
+    flex: 1 1 auto;
+  }
 }
 
 /* Side panel */
@@ -1115,8 +1133,7 @@
   height: 100dvh;
   background: #03060d;
 }
-.live.is-tv .match-side,
-.live.is-tv .match-top__title {
+.live.is-tv .match-side {
   display: none;
 }
 .live.is-tv .live__main {

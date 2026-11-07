@@ -9,7 +9,6 @@ const W = 105,
   STRIPES = 12;
 
 const COLORS = {
-  night: '#050913',
   surround: '#0b2a1b',
   stripeA: '#17633b',
   stripeB: '#1b7043',
@@ -126,17 +125,10 @@ function goals(ctx, s) {
  */
 export function drawPitch(ctx, t, width, height) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  // Stadium night
-  const sky = ctx.createLinearGradient(0, 0, 0, height);
-  sky.addColorStop(0, '#0a1222');
-  sky.addColorStop(1, COLORS.night);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
-  // Surround (run-off grass beyond the lines)
+  // Run-off grass everywhere (letterboxing never shows a hard edge), mowed stripes on the pitch
   ctx.fillStyle = COLORS.surround;
-  ctx.fillRect(-6, -5, W + 12, H + 10);
+  ctx.fillRect(0, 0, width, height);
+  ctx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
   // Mowed stripes across the length
   const band = W / STRIPES;
   for (let i = 0; i < STRIPES; i++) {
@@ -173,9 +165,10 @@ export function drawPitch(ctx, t, width, height) {
   const cx = t.a * (W / 2) + t.c * (H / 2) + t.e,
     cy = t.b * (W / 2) + t.d * (H / 2) + t.f,
     reach = Math.hypot(width, height) * 0.62;
-  const vignette = ctx.createRadialGradient(cx, cy, reach * 0.35, cx, cy, reach);
+  const vignette = ctx.createRadialGradient(cx, cy, reach * 0.3, cx, cy, reach);
   vignette.addColorStop(0, 'rgba(2, 6, 14, 0)');
-  vignette.addColorStop(1, 'rgba(2, 6, 14, 0.5)');
+  vignette.addColorStop(0.75, 'rgba(2, 6, 14, 0.38)');
+  vignette.addColorStop(1, 'rgba(2, 6, 14, 0.7)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 

@@ -143,7 +143,12 @@ const matchFlows = [
       await page.goto(`${base}${MATCH}&view=key`);
       await kickOff(page, step, shot);
       await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
-      await page.waitForTimeout(1500);
+      await step('the reel advances on its own', async () => {
+        const clock = () => page.getAttribute('.match-bug', 'aria-label');
+        const before = await clock();
+        await page.waitForTimeout(1500);
+        if ((await clock()) === before) throw new Error(`clock stuck at ${before}`);
+      });
       await shot('first-half');
       await step('skip to half-time', () => skipClips(page, '[data-testid="halftime"]'));
       await shot('halftime');

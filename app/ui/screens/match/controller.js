@@ -331,6 +331,7 @@ export class MatchController {
     this.trail = [];
     this.sounds.reset(this.display);
     this.presenting = 'reel';
+    this.clock.setPaused(this.hud.get().paused, performance.now());
     this.hud.set({
       phase: 'playing',
       presenting: 'reel',
@@ -910,6 +911,8 @@ export class MatchController {
     const now = performance.now();
     this.flushLists();
     if (!force && now - this.hudAt < 110) return;
+    // A replay shows the past: keep the live clock, stats and momentum on screen.
+    if (this.presenting === 'replay' && !force) return;
     this.hudAt = now;
     const patch = {
       clock: m.mode === 'shootout' || m.penaltyEnd != null ? 'PENS' : matchClock(m.time, m.half),

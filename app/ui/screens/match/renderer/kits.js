@@ -15,12 +15,21 @@ export function makeKits(teams = []) {
   const kits = teams.map(team => {
     let primary = parseHex(team.color) ? team.color : '#cdf545',
       secondary = parseHex(team.secondary) ? team.secondary : readableOn(primary);
-    // A kit that melts into the grass swaps to its secondary colour.
-    if (contrastRatio(primary, PITCH) < 1.5 && contrastRatio(secondary, PITCH) >= 1.5)
-      [primary, secondary] = [secondary, primary];
+    // A green kit that melts into the grass swaps to its secondary colour.
+    const melts = c => distance(c, PITCH) < 60 || contrastRatio(c, PITCH) < 1.08;
+    if (melts(primary) && !melts(secondary)) [primary, secondary] = [secondary, primary];
     if (distance(primary, secondary) < 70) secondary = readableOn(primary);
-    return { primary, secondary, ink: readableOn(primary) };
+    return { primary, secondary, ink: readableOn(primary), original: team.color };
   });
+  // Never undo the away side's clash change (matchSetup): keep the two shirts apart.
+  if (kits[1] && distance(kits[0].primary, kits[1].primary) < 80)
+    for (const k of kits)
+      if (parseHex(k.original) && k.primary !== k.original) {
+        [k.primary, k.secondary] = [k.original, k.primary];
+        k.ink = readableOn(k.primary);
+        break;
+      }
+  for (const k of kits) delete k.original;
   const taken = kits.map(k => k.primary);
   for (const kit of kits) {
     let best = GK_KITS[0],
