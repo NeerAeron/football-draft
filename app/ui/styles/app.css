@@ -1,0 +1,44 @@
+/* Stylesheet entry for app/index.html and app/gallery.html — one <link>, no build.
+   Cascade layers make precedence explicit: later layers win regardless of selector
+   specificity, so a screen can restyle a component without !important.
+   Add new files here (one line each): components in `components`, screens in `screens`. */
+@layer tokens, base, components, shell, screens, overrides;
+
+@import url('./fonts.css');
+@import url('./tokens.css') layer(tokens);
+@import url('./base.css') layer(base);
+
+@import url('../components/button.css') layer(components);
+@import url('../components/chip.css') layer(components);
+@import url('../components/segmented.css') layer(components);
+@import url('../components/card.css') layer(components);
+@import url('../components/flag.css') layer(components);
+@import url('../components/crest.css') layer(components);
+@import url('../components/fit-tag.css') layer(components);
+@import url('../components/player-card.css') layer(components);
+@import url('../components/player-row.css') layer(components);
+@import url('../components/pitch-view.css') layer(components);
+@import url('../components/meter.css') layer(components);
+@import url('../components/reel.css') layer(components);
+@import url('../components/modal.css') layer(components);
+@import url('../components/tabs.css') layer(components);
+@import url('../components/toast.css') layer(components);
+@import url('../components/score-bug.css') layer(components);
+@import url('../components/grade-badge.css') layer(components);
+@import url('../components/confetti.css') layer(components);
+@import url('../components/empty-state.css') layer(components);
+@import url('../components/skeleton.css') layer(components);
+@import url('../components/form.css') layer(components);
+
+@import url('../shell/shell.css') layer(shell);
+
+@import url('../screens/home/home.css') layer(screens);
+@import url('../screens/settings/settings.css') layer(screens);
+@import url('../screens/placeholder/placeholder.css') layer(screens);
+@import url('../screens/setup/setup.css') layer(screens);
+@import url('../screens/draft/draft.css') layer(screens);
+@import url('../screens/prematch/prematch.css') layer(screens);
+@import url('../screens/run/run.css') layer(screens);
+@import url('../screens/daily/daily.css') layer(screens);
+@import url('../screens/exhibition/exhibition.css') layer(screens);
+@import url('../screens/match/match.css') layer(screens);

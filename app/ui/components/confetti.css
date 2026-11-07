@@ -1,0 +1,9 @@
+/* Confetti canvas */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-confetti);
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}

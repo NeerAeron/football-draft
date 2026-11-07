@@ -20,4 +20,14 @@ Thumbs.db
 .sites-checkout/
 .sites-runtime/
 
-# Keep dist/ tracked: it is the complete editable game.
+# app/ is the complete editable game and is served as-is.
+
+# Dev tool output
+.shots/
+
+# Agent worktrees created by Claude Code
+.claude/worktrees/
+
+# Data pipeline: downloaded source CSV and generated provenance catalog (npm run data:fetch / data:build)
+data/raw/
+data/build/

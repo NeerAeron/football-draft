@@ -1,0 +1,33 @@
+/* Placeholder ("coming next") screen */
+.placeholder {
+  padding-top: var(--space-7);
+}
+.placeholder__params {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+}
+.placeholder__params div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.placeholder__params dt {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.placeholder__params dd {
+  margin: 0;
+}
+.placeholder__route {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.placeholder .empty--lg {
+  padding-block: var(--space-6);
+}

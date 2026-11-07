@@ -1,0 +1,308 @@
+/* Pre-match (#/prematch). Phones: one column + sticky Kick off. Desktop: lineup left,
+   tactics / opponent / view / Kick off right. */
+.prematch {
+  padding-top: var(--space-3);
+  padding-bottom: 0;
+}
+.prematch__layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.prematch__main,
+.prematch__side {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-width: 0;
+}
+.prematch.is-wide .prematch__layout {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  grid-template-areas:
+    'head head'
+    'matchup matchup'
+    'switch switch'
+    'main side';
+  column-gap: var(--space-7);
+  padding-bottom: var(--space-10);
+}
+.prematch.is-wide .pm-head {
+  grid-area: head;
+}
+.prematch.is-wide .matchup {
+  grid-area: matchup;
+}
+.prematch.is-wide .pm-switch {
+  grid-area: switch;
+}
+.prematch.is-wide .prematch__main {
+  grid-area: main;
+}
+.prematch.is-wide .prematch__side {
+  grid-area: side;
+}
+.pm-head {
+  display: grid;
+  gap: var(--space-1);
+}
+.pm-head__title {
+  font-size: var(--display-md);
+}
+.pm-empty__actions {
+  justify-content: center;
+}
+
+/* ---------- matchup ---------- */
+.matchup {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(70% 120% at 0% 0%, rgb(205 245 69 / 0.08), transparent 60%),
+    radial-gradient(70% 120% at 100% 0%, rgb(120 210 255 / 0.08), transparent 60%), var(--surface-1);
+  box-shadow: var(--shadow-inset), var(--shadow-md);
+}
+.matchup__sides {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+.matchup__side {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  text-align: center;
+}
+.matchup__side > .flag,
+.matchup__side > .crest {
+  box-shadow:
+    0 0 0 3px var(--team),
+    var(--shadow-md);
+  border-radius: 50%;
+}
+.matchup__name {
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  font-weight: var(--weight-heavy);
+  line-height: 1.05;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.matchup__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.matchup__meta b {
+  color: var(--text-1);
+  font-size: var(--display-xs);
+}
+.matchup__vs {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  font-weight: var(--weight-heavy);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.matchup__odds {
+  display: grid;
+  gap: var(--space-1);
+}
+.matchup__bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+}
+.matchup__bar .is-win {
+  background: var(--volt-400);
+}
+.matchup__bar .is-draw {
+  background: var(--text-3);
+}
+.matchup__bar .is-loss {
+  background: var(--sky-400);
+}
+.matchup__legend {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.matchup__legend b {
+  color: var(--text-1);
+  font-size: var(--text-md);
+}
+.matchup__hidden {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* ---------- panels ---------- */
+.pm-panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+.pm-panel__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--display-xs);
+}
+.pm-panel__title small {
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  text-transform: none;
+}
+
+/* Lineup */
+.lineup__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.lineup__formation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.lineup__formation:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.lineup__formation select {
+  min-height: 38px;
+  border: 0;
+  background: none;
+  color: var(--text-1);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  outline: none;
+  cursor: pointer;
+}
+.lineup__formation option {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+.lineup__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.5em;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.lineup__pitch {
+  max-width: 520px;
+  margin-inline: auto;
+}
+.lineup__links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.lineup__links b {
+  color: var(--gold-300);
+}
+.draft-pitch .pitch__link--1 {
+  stroke: rgb(255 255 255 / 0.22);
+}
+
+/* Tactics */
+.tactics__label {
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tactics__style {
+  display: grid;
+  gap: var(--space-2);
+}
+.tactics__hint {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.tactics__sliders {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Opponent */
+.opponent__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+.opponent__pitch {
+  max-width: 220px;
+}
+.opponent__keys {
+  display: grid;
+  gap: var(--space-2);
+}
+.opponent__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+.opponent__list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: var(--text-sm);
+}
+.opponent__pos {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  color: var(--text-3);
+}
+.matchup__cta {
+  justify-self: center;
+  width: min(100%, 380px);
+}
+.draft-pitch .pitch__link--3 {
+  stroke-width: 2.5px;
+}

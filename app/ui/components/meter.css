@@ -1,0 +1,170 @@
+/* Meter, StatBar, StatTile */
+.meter {
+  --meter: var(--volt-400);
+  --meter-2: var(--volt-500);
+  --meter-h: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.meter--sm {
+  --meter-h: 4px;
+  gap: 4px;
+}
+.meter--lg {
+  --meter-h: 12px;
+}
+.meter--gold {
+  --meter: var(--gold-300);
+  --meter-2: var(--gold-500);
+}
+.meter--coral {
+  --meter: var(--coral-300);
+  --meter-2: var(--coral-500);
+}
+.meter--sky {
+  --meter: var(--sky-300);
+  --meter-2: var(--sky-400);
+}
+.meter--green {
+  --meter: var(--green-300);
+  --meter-2: var(--green-500);
+}
+.meter--amber {
+  --meter: var(--amber-400);
+  --meter-2: var(--amber-500);
+}
+.meter__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.meter__label {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.meter__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-1);
+}
+.meter--lg .meter__value {
+  font-size: 26px;
+}
+.meter__track,
+.statbar__track {
+  position: relative;
+  height: var(--meter-h);
+  border-radius: var(--radius-pill);
+  background: rgb(148 170 220 / 0.14);
+  overflow: hidden;
+}
+.meter__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--meter-2), var(--meter));
+  box-shadow: 0 0 12px -2px color-mix(in srgb, var(--meter) 60%, transparent);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.meter__compare {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text-1);
+  border-radius: 1px;
+  opacity: 0.7;
+}
+.meter__hint {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.meter-delta {
+  font-size: 0.7em;
+  font-weight: var(--weight-bold);
+}
+.meter-delta.is-up {
+  color: var(--green-400);
+}
+.meter-delta.is-down {
+  color: var(--coral-400);
+}
+
+.statbar {
+  --meter: var(--volt-400);
+  --meter-2: var(--volt-500);
+  --meter-h: 6px;
+  display: grid;
+  grid-template-columns: 40px 1fr 28px;
+  align-items: center;
+  gap: var(--space-2);
+}
+.statbar__label {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.05em;
+}
+.statbar__value {
+  font-size: 17px;
+  text-align: right;
+}
+
+.stat-tile {
+  --tile-fg: var(--text-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-1);
+  background: rgb(4 7 15 / 0.45);
+  text-align: center;
+}
+.stat-tile__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 30px;
+  font-weight: var(--weight-heavy);
+  line-height: 1;
+  color: var(--tile-fg);
+}
+.stat-tile--lg .stat-tile__value {
+  font-size: 44px;
+}
+.stat-tile__label {
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.stat-tile--volt {
+  --tile-fg: var(--volt-400);
+}
+.stat-tile--gold {
+  --tile-fg: var(--gold-400);
+}
+.stat-tile--coral {
+  --tile-fg: var(--coral-400);
+}
+.stat-tile--green {
+  --tile-fg: var(--green-400);
+}
+.stat-tile--muted {
+  --tile-fg: var(--text-3);
+}

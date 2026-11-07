@@ -1,0 +1,10 @@
+node_modules/
+package-lock.json
+app/data/
+app/assets/
+app/ui/vendor/
+data/
+tests/**/*.json
+tests/fixtures/
+*.md
+.claude/
