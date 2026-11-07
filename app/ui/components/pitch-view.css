@@ -62,6 +62,38 @@
   stroke-width: 3.5px;
   filter: drop-shadow(0 0 4px rgb(245 200 76 / 0.6));
 }
+/* Link modes: 'quiet' keeps the pitch legible (thin, faint, no glow); a hovered/focused or
+   selected player lights his own links and fades the rest. 'focus' draws only those. */
+.pitch--links-quiet .pitch__link,
+.pitch--links-focus .pitch__link {
+  opacity: 0.5;
+  filter: none;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    stroke-width var(--dur-fast) var(--ease-out);
+}
+.pitch--links-quiet .pitch__link--1,
+.pitch--links-focus .pitch__link--1 {
+  stroke-width: 1.25px;
+}
+.pitch--links-quiet .pitch__link--2,
+.pitch--links-focus .pitch__link--2 {
+  stroke-width: 1.5px;
+}
+.pitch--links-quiet .pitch__link--3,
+.pitch--links-focus .pitch__link--3 {
+  stroke-width: 2px;
+}
+.pitch.has-link-focus .pitch__link {
+  opacity: 0.12;
+}
+.pitch.has-link-focus .pitch__link.is-on {
+  opacity: 1;
+  stroke-width: 3px;
+}
+.pitch.has-link-focus .pitch__link--3.is-on {
+  filter: drop-shadow(0 0 3px rgb(245 200 76 / 0.6));
+}
 .pitch__slots {
   position: absolute;
   inset: 0;

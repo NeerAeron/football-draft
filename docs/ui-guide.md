@@ -206,7 +206,7 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `PlayerCard` | `player`, `size` s·m·l, `tier`, `selected`, `disabled`, `hideRatings`, `onClick`, `children` (footer) |
 | `PlayerRow` | `player`, `fit`, `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
 | `FitTag` | `fit { state: best·ok·penalty·swap·blocked·neutral, label, from, to }` |
-| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `selected`, `onSelect(i)`, `hideRatings`, `names` |
+| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `names` |
 | `Meter` / `StatBar` / `StatTile` | `label value max tone(auto) size valueText delta compare hint` |
 | `Reel` | `items`, `landIndex` (decided first!), `spinKey`, `onLand`, `onTick`, `skip`, `duration`, `size` |
 | `Modal` / `Sheet` | `open`, `onClose`, `title` (required), `eyebrow`, `description`, `footer`, `size`, `dismissible` |

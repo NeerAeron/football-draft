@@ -11,6 +11,10 @@
  *               'swap'|'blocked', label?, from?, to? }); 'blocked' slots cannot be selected
  *   links       [{ from, to, strength: 1 | 2 | 3 }] slot-index pairs (1 = same league,
  *               2 = same nation, 3 = club teammates — the screen decides) → lines under tokens
+ *   linkMode    'quiet' (default): thin, faint lines; hovering/focusing a player (or the
+ *               selected slot) lights his links and fades the rest. 'focus': only the active
+ *               player's links (used automatically when there are more than 14, e.g. a club
+ *               XI where everyone links). 'all': the full-strength style everywhere.
  *   selected    selected slot index (volt ring)
  *   onSelect    (index, slot) => void. Without it the pitch is display-only (no buttons).
  *   hideRatings hide OVR badges;  names (default true) show surname labels under tokens
@@ -120,12 +124,16 @@ function SlotToken({ player, hideRatings }) {
   </span>`;
 }
 
+/** Links busier than this switch the default 'quiet' mode to 'focus'. */
+export const LINK_FOCUS_THRESHOLD = 14;
+
 export function PitchView({
   formation = '433',
   rows,
   players = [],
   highlights = {},
   links = [],
+  linkMode = 'quiet',
   selected = null,
   onSelect,
   hideRatings = false,
@@ -141,7 +149,14 @@ export function PitchView({
   const usable = i => highlights[i]?.state !== 'blocked';
   const firstUsable = slots.find(s => usable(s.index))?.index ?? 0;
   const [focusIndex, setFocusIndex] = useState(null);
+  const [hover, setHover] = useState(null);
+  const [keyFocus, setKeyFocus] = useState(null);
   const tabStop = focusIndex ?? (selected != null && usable(selected) ? selected : firstUsable);
+  const mode = linkMode === 'quiet' && links.length > LINK_FOCUS_THRESHOLD ? 'focus' : linkMode;
+  const active = hover ?? keyFocus ?? (players[selected] ? selected : null);
+  const shownLinks =
+    mode === 'focus' ? links.filter(l => l.from === active || l.to === active) : links;
+  const linkEvents = links.length > 0 && mode !== 'all';
 
   const onKeyDown = e => {
     const dir = KEYS[e.key];
@@ -158,25 +173,32 @@ export function PitchView({
 
   const filledCount = players.filter(Boolean).length;
   return html`<div
-    class=${cx('pitch', interactive && 'pitch--interactive', className)}
+    class=${cx(
+      'pitch',
+      interactive && 'pitch--interactive',
+      links.length > 0 && `pitch--links-${mode}`,
+      linkEvents && active != null && 'has-link-focus',
+      className,
+    )}
     style=${`--pitch-aspect:${aspect}`}
   >
     <${PitchMarkings} />
     ${
-      links.length > 0 &&
+      shownLinks.length > 0 &&
       html`<svg
         class="pitch__links"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        ${links.map(l => {
+        ${shownLinks.map(l => {
           const a = slots[l.from];
           const b = slots[l.to];
           if (!a || !b) return null;
+          const on = active != null && (l.from === active || l.to === active);
           return html`<line
             key=${`${l.from}-${l.to}`}
-            class=${`pitch__link pitch__link--${l.strength || 1}`}
+            class=${cx('pitch__link', `pitch__link--${l.strength || 1}`, on && 'is-on')}
             x1=${a.left}
             y1=${a.top}
             x2=${b.left}
@@ -224,6 +246,17 @@ export function PitchView({
             names && player && html`<span class="pitch-slot__name">${surname(player.name)}</span>`
           }`;
         const style = `left:${slot.left}%;top:${slot.top}%`;
+        const pointer = linkEvents &&
+          player && {
+            onPointerEnter: e => e.pointerType === 'mouse' && setHover(slot.index),
+            onPointerLeave: e =>
+              e.pointerType === 'mouse' && setHover(h => (h === slot.index ? null : h)),
+            // Display-only pitch on touch: a tap shows that player's links (tap again: all).
+            ...(!interactive && {
+              onPointerUp: e =>
+                e.pointerType !== 'mouse' && setHover(h => (h === slot.index ? null : slot.index)),
+            }),
+          };
         return interactive
           ? html`<button
               key=${slot.index}
@@ -236,8 +269,13 @@ export function PitchView({
               aria-label=${description}
               aria-pressed=${String(selected === slot.index)}
               aria-disabled=${blocked ? 'true' : undefined}
-              onFocus=${() => setFocusIndex(slot.index)}
+              onFocus=${e => {
+                setFocusIndex(slot.index);
+                if (linkEvents && e.target.matches(':focus-visible')) setKeyFocus(slot.index);
+              }}
+              onBlur=${() => setKeyFocus(null)}
               onClick=${() => !blocked && onSelect(slot.index, slot)}
+              ...${pointer || {}}
             >
               ${inner}
             </button>`
@@ -247,6 +285,7 @@ export function PitchView({
               style=${style}
               role="listitem"
               aria-label=${description}
+              ...${pointer || {}}
             >
               ${inner}
             </div>`;
