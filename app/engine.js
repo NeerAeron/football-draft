@@ -2268,6 +2268,16 @@ export class Match {
     );
   }
   assignmentCost(d, a) {
+    const cache = this._costCache;
+    let base;
+    if (cache) {
+      const k = d.id * 22 + a.id;
+      base = cache[k];
+      if (base !== base) cache[k] = base = this.assignmentBase(d, a);
+    } else base = this.assignmentBase(d, a);
+    return base === Infinity ? base : base - (d.markId === a.id ? 0.6 : 0);
+  }
+  assignmentBase(d, a) {
     const base = this.formation(d)[0],
       depth = this.rel(a.x, d.team);
     // The back line protects forward threats, rather than following opponents
@@ -2282,8 +2292,7 @@ export class Match {
       d.arrival(point) +
       behind * 0.045 +
       (base < 30 && depth > 58 ? 0.7 : base > 60 && depth < 25 ? 0.45 : 0) +
-      Math.max(0, lateral - 10) * binding * (depth < 35 ? 0.15 : 1) -
-      (d.markId === a.id ? 0.6 : 0)
+      Math.max(0, lateral - 10) * binding * (depth < 35 ? 0.15 : 1)
     );
   }
   supportTarget(p, target, anchor, openRun = false) {
@@ -2298,15 +2307,16 @@ export class Match {
     };
   }
   abandonment(team, defender, carrier, excluded = []) {
-    const others = this.activePlayers.filter(
-      p => p.team === team && p.role !== 'GK' && p.id !== defender.id && !excluded.includes(p.id),
-    );
+    const players = this.activePlayers;
     let cost = 0;
-    for (const a of this.activePlayers) {
+    for (const a of players) {
       if (a.team === team || a.role === 'GK' || a.id === carrier?.id || this.rel(a.x, team) > 54)
         continue;
-      const own = this.assignmentCost(defender, a),
-        next = Math.min(...others.map(p => this.assignmentCost(p, a)));
+      const own = this.assignmentCost(defender, a);
+      let next = Infinity;
+      for (const p of players)
+        if (p.team === team && p.role !== 'GK' && p.id !== defender.id && !excluded.includes(p.id))
+          next = Math.min(next, this.assignmentCost(p, a));
       if (own < 2.2 && next > own + 0.3)
         cost = Math.max(cost, (next - own) * this.threatValue(team, a));
     }
@@ -2547,6 +2557,14 @@ export class Match {
     return best;
   }
   plan() {
+    this._costCache = (this._costBuffer ??= new Float64Array(484)).fill(NaN);
+    try {
+      this.planInner();
+    } finally {
+      this._costCache = null;
+    }
+  }
+  planInner() {
     const b = this.ball,
       owner = b.owner !== null ? this.players[b.owner] : null,
       attack = this.mode === 'restart' ? this.restart.team : owner ? owner.team : b.lastTouch;
