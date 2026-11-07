@@ -1,7 +1,7 @@
 # Draft API (`app/core/draft/`)
 
-Pure logic for the new draft screens: no DOM, no storage, deterministic for a seed. The legacy
-`Draft` class (`draft.js`) still serves the legacy UI and is not used here.
+Pure logic for the draft screens, the opponents and the competitions: no DOM, no storage,
+deterministic for a seed.
 
 | Module | What it gives you |
 | --- | --- |
