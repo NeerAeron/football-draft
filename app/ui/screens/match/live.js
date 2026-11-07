@@ -514,8 +514,13 @@ export function LiveMatch({ controller, teams, onExit, onTactics }) {
     <h1 class="visually-hidden">${teams[0].name} vs ${teams[1].name}</h1>
     <div class="live__main">
       <div class="live__stage-col">
-        <div class="stage">
-          <canvas ref=${canvas} class="stage__canvas" aria-label="Match pitch" role="img"></canvas>
+        <div class="match-stage">
+          <canvas
+            ref=${canvas}
+            class="match-stage__canvas"
+            aria-label="Match pitch"
+            role="img"
+          ></canvas>
           <${StageChips} controller=${controller} />
           <${Overlays} controller=${controller} teams=${teams} />
           <${Halftime} controller=${controller} teams=${teams} onTactics=${onTactics} />

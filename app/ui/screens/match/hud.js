@@ -195,12 +195,15 @@ export function Feed({ feed = [] }) {
 
 /** One-line lower third with the latest commentary. */
 export function Ticker({ line, fallback }) {
-  return html`<div class=${cx('ticker', line && `ticker--${line.tone}`)} aria-hidden="true">
+  return html`<div
+    class=${cx('match-ticker', line && `match-ticker--${line.tone}`)}
+    aria-hidden="true"
+  >
     ${
       line
-        ? html`<span class="ticker__min num">${line.minute}</span>
-            <span class="ticker__text" key=${line.id}>${line.text}</span>`
-        : html`<span class="ticker__text is-muted">${fallback || ' '}</span>`
+        ? html`<span class="match-ticker__min num">${line.minute}</span>
+            <span class="match-ticker__text" key=${line.id}>${line.text}</span>`
+        : html`<span class="match-ticker__text is-muted">${fallback || ' '}</span>`
     }
   </div>`;
 }

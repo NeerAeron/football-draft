@@ -175,14 +175,14 @@ function DailyCard({ daily }) {
     month: 'short',
     timeZone: 'UTC',
   });
-  return html`<${Card} variant="gold" class="daily" as="section" aria-labelledby="daily-title">
-    <div class="daily__head">
-      <span class="daily__icon" aria-hidden="true"
+  return html`<${Card} variant="gold" class="home-daily" as="section" aria-labelledby="daily-title">
+    <div class="home-daily__head">
+      <span class="home-daily__icon" aria-hidden="true"
         ><${Icon} name="calendar-days" size=${20}
       /></span>
-      <div class="daily__titles">
+      <div class="home-daily__titles">
         <p class="eyebrow is-gold">Daily Challenge</p>
-        <h2 class="daily__title" id="daily-title">${date}</h2>
+        <h2 class="home-daily__title" id="daily-title">${date}</h2>
       </div>
       ${
         played
@@ -190,19 +190,19 @@ function DailyCard({ daily }) {
           : html`<${Chip} tone="gold" variant="outline">New<//>`
       }
     </div>
-    <p class="daily__text">
+    <p class="home-daily__text">
       ${
         daily.todayResult
           ? `Today: ${daily.todayResult.points.toLocaleString()} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
           : 'Same spins for everyone today. Nations draft, one attempt, auto-simmed.'
       }
     </p>
-    <div class="daily__foot">
-      <span class="daily__streak" title="Days in a row">
+    <div class="home-daily__foot">
+      <span class="home-daily__streak" title="Days in a row">
         <${Icon} name="flame" size=${18} />
         <b class="num">${daily.streak}</b>
         <span>day streak</span>
-        ${daily.best > 0 && html`<span class="daily__best">· best ${daily.best}</span>`}
+        ${daily.best > 0 && html`<span class="home-daily__best">· best ${daily.best}</span>`}
       </span>
       <${Button} variant="secondary" size="sm" iconEnd="arrow-right" href=${href('/daily')}
         >${played ? 'Results' : 'Play'}<//

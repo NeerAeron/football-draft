@@ -227,13 +227,13 @@ const matchFlows = [
     async run({ page, shot, step, base }) {
       await page.goto(`${base}${MATCH}&view=full`);
       await kickOff(page, step);
-      await step('live canvas', () => visible(page, '.stage__canvas'));
+      await step('live canvas', () => visible(page, '.match-stage__canvas'));
       await page.waitForTimeout(2500);
       await shot('live');
       await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
       await page.waitForTimeout(2000);
       await step('keyboard pause', async () => {
-        await page.locator('.stage__canvas').click({ position: { x: 5, y: 5 } });
+        await page.locator('.match-stage__canvas').click({ position: { x: 5, y: 5 } });
         await page.keyboard.press('Space');
         await visible(page, '.stage-play');
         await page.keyboard.press('Space');
@@ -287,7 +287,7 @@ const matchFlows = [
     async run({ page, step, base }) {
       await page.goto(`${base}${MATCH}&view=full&auto=1`);
       await step('starts without a second pre-kickoff', async () => {
-        await visible(page, '.stage__canvas', 30000);
+        await visible(page, '.match-stage__canvas', 30000);
         if (await page.locator('[data-testid="kickoff"]').count())
           throw new Error('pre-kickoff shown despite autoKickoff');
         await visible(page, '[data-testid="play-pause"][aria-label="Pause"]');
@@ -520,7 +520,7 @@ export const flows = [
       await shot('rerolled');
       await step('odds popover', async () => {
         await page.click('button[aria-label="Odds of this spin"]');
-        await visible(page, 'dialog.modal[open] .odds');
+        await visible(page, 'dialog.modal[open] .spin-odds');
       });
       await shot('odds');
       await step('close odds', async () => {
@@ -633,7 +633,7 @@ export const flows = [
         if (!/"mentality":"push"/.test(saved || '')) throw new Error('tactics not handed over');
       });
       await step('match starts without a second pre-kickoff', async () => {
-        await visible(page, '[data-screen="match"] .stage__canvas', 30000);
+        await visible(page, '[data-screen="match"] .match-stage__canvas', 30000);
         if (await page.locator('[data-testid="kickoff"]').count())
           throw new Error('match screen showed its own pre-kickoff');
       });
