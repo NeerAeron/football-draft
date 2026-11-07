@@ -1,24 +1,41 @@
 // Movement and contact: player motion, stamina, challenges, duels.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist } from '../util/math.js';
+import { clamp } from '../util/math.js';
 import { offenceInBox } from './rules.js';
-import { sigmoid } from './constants.js';
+import { sigmoid, dist, hypot } from './constants.js';
+
+const URGENT = new Set([
+  'press',
+  'cover',
+  'recover',
+  'receive',
+  'intercept',
+  'sweep',
+  'dribble',
+  'track',
+  'reset',
+]);
 
 export class MovementMethods {
   move(p, dt, restart = false) {
     if (p.sentOff) return;
     let dx = p.tx - p.x,
       dy = p.ty - p.y;
-    for (const q of this.activePlayers) {
-      if (q.id === p.id) continue;
-      const d = dist(p, q);
-      if (d > 0.01 && d < 1.55) {
-        const force = (1.55 - d) * (q.team === p.team ? 2 : 0.55);
-        dx += ((p.x - q.x) / d) * force;
-        dy += ((p.y - q.y) / d) * force;
+    const players = this.activePlayers;
+    for (let i = 0; i < players.length; i++) {
+      const q = players[i],
+        ox = p.x - q.x,
+        oy = p.y - q.y;
+      if (q === p || ox > 1.55 || ox < -1.55 || oy > 1.55 || oy < -1.55) continue;
+      const d2 = ox * ox + oy * oy;
+      if (d2 > 0.0001 && d2 < 2.4025) {
+        const d = Math.sqrt(d2),
+          force = (1.55 - d) * (q.team === p.team ? 2 : 0.55);
+        dx += (ox / d) * force;
+        dy += (oy / d) * force;
       }
     }
-    const d = Math.hypot(dx, dy),
+    const d = hypot(dx, dy),
       carrying = this.ball.owner === p.id && this.ball.kind !== 'held';
     const owner =
       !restart && p.intent === 'press' && this.ball.owner !== null
@@ -31,23 +48,13 @@ export class MovementMethods {
       : 0;
     const motion = jockey ? this.carrierMotion(p, carrier) : carrier;
     const urgent =
-      [
-        'press',
-        'cover',
-        'recover',
-        'receive',
-        'intercept',
-        'sweep',
-        'dribble',
-        'track',
-        'reset',
-      ].includes(p.intent) ||
-      (p.intent === 'mark' && (d > 3 || Math.hypot(p.vx, p.vy) > p.topSpeed() * 0.55)) ||
+      URGENT.has(p.intent) ||
+      (p.intent === 'mark' && (d > 3 || hypot(p.vx, p.vy) > p.topSpeed() * 0.55)) ||
       (p.intent === 'run' && d > 5) ||
       (carrying && d > 4 && p.tendency('advance') > 0.48);
     if (p.sprint < 0.08) p.sprintRest = Math.max(p.sprintRest, 1.8);
     p.sprintRest = Math.max(0, p.sprintRest - dt);
-    const trackingRun = jockey > 0 && Math.hypot(carrier.vx, carrier.vy) > p.topSpeed() * 0.65;
+    const trackingRun = jockey > 0 && hypot(carrier.vx, carrier.vy) > p.topSpeed() * 0.65;
     const sprint = urgent && p.sprint > 0.16 && p.sprintRest === 0 && (d > 2 || trackingRun);
     let max =
       p.topSpeed(carrying) *
@@ -60,7 +67,7 @@ export class MovementMethods {
             : 0.7);
     if (p.stun > 0) max *= 0.2;
     const mark =
-      !restart && ['mark', 'track'].includes(p.intent) && p.markId != null
+      !restart && (p.intent === 'mark' || p.intent === 'track') && p.markId != null
         ? this.players[p.markId]
         : null;
     // A moving mark is not a stationary arrival point. Match their velocity
@@ -70,15 +77,15 @@ export class MovementMethods {
         (mark?.vx || 0) + (motion?.vx || 0) * jockey + (d > 0.02 ? (dx / d) * targetSpeed : 0),
       followY =
         (mark?.vy || 0) + (motion?.vy || 0) * jockey + (d > 0.02 ? (dy / d) * targetSpeed : 0);
-    const followScale = Math.min(1, max / (Math.hypot(followX, followY) || 1)),
+    const followScale = Math.min(1, max / (hypot(followX, followY) || 1)),
       vx = followX * followScale,
       vy = followY * followScale;
     const accel = p.acceleration() * (0.72 + p.energy * 0.28) * dt,
-      dv = Math.hypot(vx - p.vx, vy - p.vy),
+      dv = hypot(vx - p.vx, vy - p.vy),
       weight = Math.min(1, accel / (dv || 1));
     p.vx += (vx - p.vx) * weight;
     p.vy += (vy - p.vy) * weight;
-    const speed = Math.hypot(p.vx, p.vy);
+    const speed = hypot(p.vx, p.vy);
     p.stats.distance += speed * dt;
     p.x = clamp(p.x + p.vx * dt, 0.5, 104.5);
     p.y = clamp(p.y + p.vy * dt, 0.5, 67.5);
@@ -121,7 +128,7 @@ export class MovementMethods {
   challengeModel(p, q) {
     const bearing =
       ((q.x - p.x) * Math.cos(p.facing) + (q.y - p.y) * Math.sin(p.facing)) / (dist(p, q) || 1);
-    const closing = Math.hypot(q.vx - p.vx, q.vy - p.vy),
+    const closing = hypot(q.vx - p.vx, q.vy - p.vy),
       behind = Math.max(0, -bearing),
       reach = dist(q, this.ball);
     const fatigue = 1 - q.energy,

@@ -1,9 +1,10 @@
 // Player: per-player ratings view (skill, awareness, speed) and kinematic helpers.
 import { CONFIG } from '../config/config.js';
-import { clamp, dist } from '../util/math.js';
+import { clamp } from '../util/math.js';
 import { preference } from './player-model.js';
 import { badgeBoost } from '../players/traits.js';
-import { normalizeAttributes, positionFamiliarity } from '../players/ratings.js';
+import { ATTRS, normalizeAttributes, positionFamiliarity } from '../players/ratings.js';
+import { dist } from './constants.js';
 
 const KEEPER_TECHNIQUE = new Set([
   'shortPassing',
@@ -17,6 +18,33 @@ const KEEPER_TECHNIQUE = new Set([
 // computes it from club / nation / league links; matches default to 0.
 export const normalizeChem = value =>
   Number.isFinite(value) ? Math.max(0, Math.min(2, value)) : 0;
+const TAG_ALIAS = { creator: 'vision', byline: 'cutback' };
+// Per-step cache of skill values and familiarity. It is only active while a
+// Match step runs (stamp != 0): inside one step attributes, badges, tuning and
+// roles are fixed, while code outside a step (tests, UI, setup) mutating
+// p.attrs / p.tags / tuning in place always reads fresh values.
+const SKILL_KEYS = Object.keys(ATTRS),
+  SKILL_SLOT = Object.fromEntries(SKILL_KEYS.map((key, i) => [key, i]));
+let stamp = 0,
+  stamps = 0;
+const TENDENCY_KEYS = [
+    'advance',
+    'carry',
+    'risk',
+    'shoot',
+    'overlap',
+    'timing',
+    'roam',
+    'aggression',
+    'discipline',
+    'hold',
+    'inside',
+    'aerial',
+    'sweep',
+  ],
+  TENDENCY_SLOT = Object.fromEntries(TENDENCY_KEYS.map((key, i) => [key, i]));
+export const beginStepCache = () => (stamp = ++stamps);
+export const endStepCache = () => (stamp = 0);
 export class Player {
   constructor(data) {
     Object.assign(this, data);
@@ -29,8 +57,39 @@ export class Player {
     this.stun = 0;
     this.feintCooldown = 0;
     this.rethinkAt = 0;
+    // Fields set later by the simulation, declared up front so every player
+    // keeps one object shape (fast, monomorphic property access in hot loops).
+    this.feintTarget = null;
+    this.actionSince = 0;
+    this._stamp = 0;
+    this._skills = null;
+    this._tendencies = null;
+    this._familiarity = NaN;
+    this._awareness = NaN;
+    this._baseSpeed = NaN;
+    this._acceleration = NaN;
   }
   skill(key) {
+    if (stamp !== 0) {
+      const slot = SKILL_SLOT[key];
+      if (slot !== undefined) {
+        if (this._stamp !== stamp) this.syncCache();
+        const cached = this._skills[slot];
+        return cached === cached ? cached : (this._skills[slot] = this.rawSkill(key));
+      }
+    }
+    return this.rawSkill(key);
+  }
+  syncCache() {
+    (this._skills ??= new Float64Array(SKILL_KEYS.length)).fill(NaN);
+    (this._tendencies ??= new Float64Array(TENDENCY_KEYS.length)).fill(NaN);
+    this._familiarity = NaN;
+    this._awareness = NaN;
+    this._baseSpeed = NaN;
+    this._acceleration = NaN;
+    this._stamp = stamp;
+  }
+  rawSkill(key) {
     // Natural keepers have one technical rating. Their imported outfield
     // placeholders must not make an elite keeper incapable of distribution.
     const keeperTechnique =
@@ -46,14 +105,20 @@ export class Player {
     );
   }
   has(tag) {
-    const alias = { creator: 'vision', byline: 'cutback' };
-    return this.tags?.includes(alias[tag] || tag);
+    return this.tags?.includes(TAG_ALIAS[tag] || tag);
   }
   familiarity() {
-    return positionFamiliarity(this);
+    if (stamp === 0) return positionFamiliarity(this);
+    if (this._stamp !== stamp) this.syncCache();
+    const cached = this._familiarity;
+    return cached === cached ? cached : (this._familiarity = positionFamiliarity(this));
   }
   awareness() {
-    return this.skill('awareness') * this.familiarity() ** 1.5;
+    if (stamp !== 0 && this._stamp === stamp && this._awareness === this._awareness)
+      return this._awareness;
+    const value = this.skill('awareness') * this.familiarity() ** 1.5;
+    if (stamp !== 0) this._awareness = value;
+    return value;
   }
   defensiveReading() {
     return (
@@ -85,15 +150,28 @@ export class Player {
     return this.skill('defending') * this.familiarity();
   }
   tendency(key) {
-    return preference(this, key);
+    if (stamp === 0) return preference(this, key);
+    const slot = TENDENCY_SLOT[key];
+    if (slot === undefined) return preference(this, key);
+    if (this._stamp !== stamp) this.syncCache();
+    const cached = this._tendencies[slot];
+    return cached === cached ? cached : (this._tendencies[slot] = preference(this, key));
   }
   baseSpeed() {
-    return (3.7 + this.skill('pace') * 0.062) * (this.tuning || CONFIG).gameplay.movementSpeed;
+    if (stamp !== 0 && this._stamp === stamp && this._baseSpeed === this._baseSpeed)
+      return this._baseSpeed;
+    const value =
+      (3.7 + this.skill('pace') * 0.062) * (this.tuning || CONFIG).gameplay.movementSpeed;
+    if (stamp !== 0) this._baseSpeed = value;
+    return value;
   }
   acceleration() {
-    return (
-      (3.2 + this.skill('acceleration') * 0.08) * (this.tuning || CONFIG).gameplay.acceleration
-    );
+    if (stamp !== 0 && this._stamp === stamp && this._acceleration === this._acceleration)
+      return this._acceleration;
+    const value =
+      (3.2 + this.skill('acceleration') * 0.08) * (this.tuning || CONFIG).gameplay.acceleration;
+    if (stamp !== 0) this._acceleration = value;
+    return value;
   }
   topSpeed(carrying = false) {
     return (
@@ -122,10 +200,10 @@ export class Player {
       disc = b * b - 4 * a * c;
     let time = Math.sqrt(c) / s;
     if (disc >= 0 && Math.abs(a) > 0.001) {
-      const roots = [(-b - Math.sqrt(disc)) / (2 * a), (-b + Math.sqrt(disc)) / (2 * a)].filter(
-        t => t > 0,
-      );
-      if (roots.length) time = Math.min(...roots);
+      const root = Math.sqrt(disc),
+        t1 = (-b - root) / (2 * a),
+        t2 = (-b + root) / (2 * a);
+      if (t1 > 0 || t2 > 0) time = t1 > 0 && t2 > 0 ? Math.min(t1, t2) : t1 > 0 ? t1 : t2;
     }
     time = clamp(time, 0, maxTime);
     return { x: clamp(target.x + vx * time, 1, 104), y: clamp(target.y + vy * time, 1, 67), time };

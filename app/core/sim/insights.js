@@ -4,7 +4,7 @@
 // momentum series. Nothing here draws from the match RNG.
 // Methods are installed on Match.prototype by match.js. See docs/engine-events.md.
 import { clamp } from '../util/math.js';
-import { GOAL, segment, sigmoid } from './constants.js';
+import { GOAL, segment, sigmoid, hypot } from './constants.js';
 
 // Restart types that start a set-piece attack, and how long (sim seconds of
 // the same possession) a shot still counts as coming from it.
@@ -175,7 +175,7 @@ export class InsightMethods {
     if (b.kind !== 'shot' || !record || record.status) return null;
     const wide = Math.abs(crossY - 34) - GOAL / 2,
       over = crossZ - 2.44;
-    const by = wide > 0 ? (over > 0 ? Math.hypot(wide, over) : wide) : over;
+    const by = wide > 0 ? (over > 0 ? hypot(wide, over) : wide) : over;
     if (!(by > 0) || by >= NEAR_MISS) return null;
     const p = this.players[record.player];
     return this.addEvent(

@@ -1,7 +1,7 @@
 // Set pieces and restarts: positioning and execution.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist } from '../util/math.js';
-import { H } from './constants.js';
+import { clamp } from '../util/math.js';
+import { H, dist } from './constants.js';
 
 const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
 

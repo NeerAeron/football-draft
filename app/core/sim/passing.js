@@ -1,10 +1,25 @@
 // Passing: option scoring, lane risk, flight, keeper distribution, clearances, pass execution.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
+import { clamp, lerp } from '../util/math.js';
 import { footExecution } from './player-model.js';
 import { offsideSnapshot } from './rules.js';
-import { passingAbility, shootingAbility } from '../players/ratings.js';
-import { segment, sigmoid, skillError } from './constants.js';
+import { shootingAbility } from '../players/ratings.js';
+import { segment, sigmoid, skillError, dist, hypot } from './constants.js';
+
+// players/ratings.js passingAbility, without allocating per call (hot path).
+function passingAbility(p, distance, delivery = 'pass') {
+  if (delivery === 'cross') return p.skill('crossing') * 0.8 + p.skill('longPassing') * 0.2;
+  if (delivery === 'cutback') return p.skill('shortPassing') * 0.7 + p.skill('crossing') * 0.3;
+  const long = clamp((distance - 16) / 20, 0, 1);
+  return p.skill('shortPassing') * (1 - long) + p.skill('longPassing') * long;
+}
+
+const LANE_SAMPLES = [0.18, 0.36, 0.54, 0.72, 0.9],
+  LANE_X = new Float64Array(5),
+  LANE_Y = new Float64Array(5),
+  LANE_T = new Float64Array(5),
+  LANE_Z = new Float64Array(5),
+  LANE_POINT = { x: 0, y: 0 };
 
 export class PassingMethods {
   receiverMargin(p, r, aim, loft = false) {
@@ -63,25 +78,35 @@ export class PassingMethods {
       start = this.ball.owner === p.id && this.ball.kind === 'held' ? 1.65 : 0.12,
       landing = delivery === 'cross' ? 1.65 : 0.45;
     const craft = passingAbility(p, length, delivery) * 0.65 + p.vision() * 0.35;
+    // The five sample points along the lane, their flight times and ball heights
+    // do not depend on the defender: compute them once per lane.
+    for (let i = 0; i < 5; i++) {
+      const f = LANE_SAMPLES[i],
+        flight = this.flightTime(length, loft, f);
+      LANE_X[i] = lerp(p.x, end.x, f);
+      LANE_Y[i] = lerp(p.y, end.y, f);
+      LANE_T[i] = flight;
+      // Use the launch arc, so midfield traffic can be cleared but defenders
+      // near takeoff and landing still have a realistic interception chance.
+      LANE_Z[i] = !loft
+        ? 0
+        : delivery === 'cross'
+          ? 9.81 * total * 0.46 * flight - 4.905 * flight * flight
+          : lerp(start, landing, f) + 4.905 * total * total * f * (1 - f);
+    }
+    const point = LANE_POINT;
     let risk = 0;
     for (const q of this.activePlayers) {
       if (q.team === p.team) continue;
+      const reaction = 0.1 + (100 - q.pressAwareness()) * 0.002,
+        reach = delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007;
       let threat = 0;
-      for (const f of [0.18, 0.36, 0.54, 0.72, 0.9]) {
-        const point = { x: lerp(p.x, end.x, f), y: lerp(p.y, end.y, f) },
-          flight = this.flightTime(length, loft, f),
-          reaction = 0.1 + (100 - q.pressAwareness()) * 0.002;
-        // Use the launch arc, so midfield traffic can be cleared but defenders
-        // near takeoff and landing still have a realistic interception chance.
-        if (loft) {
-          const height =
-            delivery === 'cross'
-              ? 9.81 * total * 0.46 * flight - 4.905 * flight * flight
-              : lerp(start, landing, f) + 4.905 * total * total * f * (1 - f);
-          if (height > (delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007)) continue;
-        }
+      for (let i = 0; i < 5; i++) {
+        if (loft && LANE_Z[i] > reach) continue;
+        point.x = LANE_X[i];
+        point.y = LANE_Y[i];
         const arrival = q.arrival(point) + reaction;
-        threat = Math.max(threat, sigmoid((flight - arrival + 0.04) * 5));
+        threat = Math.max(threat, sigmoid((LANE_T[i] - arrival + 0.04) * 5));
       }
       const disguise =
         1 -
@@ -160,8 +185,7 @@ export class PassingMethods {
         if (!Number.isFinite(this.flightTime(d, loft))) continue;
         const goalAccess = box
           ? (0.6 + this.location({ x: aim.x, y: aim.y, team: p.team }).quality * 0.95) *
-            (0.65 +
-              shootingAbility(r, Math.hypot(105 - this.rel(aim.x, p.team), 34 - aim.y)) * 0.007)
+            (0.65 + shootingAbility(r, hypot(105 - this.rel(aim.x, p.team), 34 - aim.y)) * 0.007)
           : clamp((this.rel(aim.x, p.team) - 60) / 30, 0, 1) * 0.7;
         const foot = footExecution(p, Math.atan2(aim.y - p.y, aim.x - p.x));
         const ability = passingAbility(p, d, delivery),
@@ -447,7 +471,7 @@ export class PassingMethods {
     const error = Math.min(rawError, 0.8 + d * 0.08 + pressure * 0.3);
     const tx = clamp(aim.x + this.noise() * error, 0.1, 104.9),
       ty = aim.y + this.noise() * error,
-      length = Math.hypot(tx - p.x, ty - p.y),
+      length = hypot(tx - p.x, ty - p.y),
       angle = Math.atan2(ty - p.y, tx - p.x);
     const speed = this.passSpeed(length, loft);
     const restartType = p.goalKickExempt

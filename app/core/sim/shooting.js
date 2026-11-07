@@ -4,7 +4,7 @@ import { clamp, lerp } from '../util/math.js';
 import { footExecution } from './player-model.js';
 import { offsideSnapshot, targetChance } from './rules.js';
 import { shootingAbility } from '../players/ratings.js';
-import { GOAL } from './constants.js';
+import { GOAL, hypot } from './constants.js';
 
 export class ShootingMethods {
   shotWeights(p, d, aerialHeight = 0, penalty = false) {
@@ -40,7 +40,7 @@ export class ShootingMethods {
     p.beatChain = [];
     const b = this.ball,
       goalX = this.abs(105, p.team),
-      d = Math.hypot(goalX - p.x, 34 - p.y),
+      d = hypot(goalX - p.x, 34 - p.y),
       pressure = this.pressure(p),
       box = this.inBox(p),
       spatial = this.location(p),
@@ -58,7 +58,7 @@ export class ShootingMethods {
     const balance =
       1 +
       (100 - p.skill('composure')) * 0.004 +
-      Math.max(0, Math.hypot(p.vx, p.vy) - 5) * 0.045 +
+      Math.max(0, hypot(p.vx, p.vy) - 5) * 0.045 +
       (1 - p.energy) * 0.6;
     const spread = penalty
       ? (0.3 + (1 - skill) * 1.8 + (100 - p.skill('composure')) * 0.008) /
@@ -273,11 +273,14 @@ export class ShootingMethods {
     const goal = this.abs(105, team),
       dir = this.direction(team);
     if (vx * dir <= 0) return false;
-    for (let i = 0; i < 300; i++) {
-      const dt = 0.01;
+    // Same integration as moveBall (1/60 s steps), without allocating.
+    const dt = 1 / 60;
+    for (let i = 0; i < 180; i++) {
       if (b.shotType === 'Curler') vy += (b.curve || 0) * dt;
       if (b.shotType === 'Knuckleball') vy += Math.sin(age * 23) * 7 * dt;
-      const old = { x, y, z };
+      const ox = x,
+        oy = y,
+        oz = z;
       x += vx * dt;
       y += vy * dt;
       z = Math.max(0, z + vz * dt);
@@ -285,14 +288,14 @@ export class ShootingMethods {
       age += dt;
       if (z === 0) {
         vz = Math.abs(vz) > 0.9 ? -vz * 0.3 : 0;
-        const speed = Math.hypot(vx, vy),
+        const speed = hypot(vx, vy),
           drag = Math.max(0, 1 - (2 * dt) / (speed || 1));
         vx *= drag;
         vy *= drag;
       }
       if ((x - goal) * dir >= 0) {
-        const f = (goal - old.x) / (x - old.x || 1);
-        return Math.abs(lerp(old.y, y, f) - 34) < GOAL / 2 && lerp(old.z, z, f) < 2.44;
+        const f = (goal - ox) / (x - ox || 1);
+        return Math.abs(lerp(oy, y, f) - 34) < GOAL / 2 && lerp(oz, z, f) < 2.44;
       }
     }
     return false;

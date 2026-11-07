@@ -1,7 +1,9 @@
 // Defensive assignment helpers: marking points, press/cover bids, marks, lane reading.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
-import { H } from './constants.js';
+import { clamp, lerp } from '../util/math.js';
+import { H, dist, hypot } from './constants.js';
+
+const NONE = [];
 
 export class DefenceMethods {
   markingPoint(team, attacker, defender, coordination = 0) {
@@ -102,21 +104,68 @@ export class DefenceMethods {
       Math.max(0, lateral - 10) * binding * (depth < 35 ? 0.15 : 1)
     );
   }
-  abandonment(team, defender, carrier, excluded = []) {
-    const players = this.activePlayers;
+  // How much leaving `defender`'s nearby threat to the next-best teammate
+  // costs. Uses each attacker's three cheapest covering defenders, computed
+  // once per team and planning pass (same result as scanning every pair).
+  abandonment(team, defender, carrier, excluded = NONE) {
+    const top = this.coverTop(team);
     let cost = 0;
-    for (const a of players) {
-      if (a.team === team || a.role === 'GK' || a.id === carrier?.id || this.rel(a.x, team) > 54)
-        continue;
+    for (let i = 0; i < top.count; i++) {
+      const a = this.players[top.attackers[i]];
+      if (a.id === carrier?.id) continue;
       const own = this.assignmentCost(defender, a);
       let next = Infinity;
-      for (const p of players)
-        if (p.team === team && p.role !== 'GK' && p.id !== defender.id && !excluded.includes(p.id))
-          next = Math.min(next, this.assignmentCost(p, a));
+      for (let k = 0; k < 3; k++) {
+        const id = top.ids[i * 3 + k];
+        if (id < 0) break;
+        if (id === defender.id || excluded.includes(id)) continue;
+        next = top.costs[i * 3 + k];
+        break;
+      }
       if (own < 2.2 && next > own + 0.3)
         cost = Math.max(cost, (next - own) * this.threatValue(team, a));
     }
     return cost;
+  }
+  coverTop(team) {
+    const cache = (this._coverTop ??= [0, 1].map(() => ({
+      pass: -1,
+      count: 0,
+      attackers: new Int32Array(11),
+      ids: new Int32Array(33),
+      costs: new Float64Array(33),
+    })))[team];
+    // Reused only within one planning pass; direct calls (tests) always recompute.
+    if (this._costCache && cache.pass === this._planPass) return cache;
+    cache.pass = this._costCache ? this._planPass : -1;
+    cache.count = 0;
+    const players = this.activePlayers;
+    for (const a of players) {
+      if (a.team === team || a.role === 'GK' || this.rel(a.x, team) > 54) continue;
+      const i = cache.count++,
+        o = i * 3;
+      cache.attackers[i] = a.id;
+      for (let k = 0; k < 3; k++) {
+        cache.ids[o + k] = -1;
+        cache.costs[o + k] = Infinity;
+      }
+      for (const p of players) {
+        if (p.team !== team || p.role === 'GK') continue;
+        const c = this.assignmentCost(p, a);
+        // Insert into the sorted top three (first-found wins ties, like Math.min).
+        for (let k = 0; k < 3; k++)
+          if (cache.ids[o + k] < 0 || c < cache.costs[o + k]) {
+            for (let j = 2; j > k; j--) {
+              cache.ids[o + j] = cache.ids[o + j - 1];
+              cache.costs[o + j] = cache.costs[o + j - 1];
+            }
+            cache.ids[o + k] = p.id;
+            cache.costs[o + k] = c;
+            break;
+          }
+      }
+    }
+    return cache;
   }
   carrierMotion(defender, carrier) {
     // A fresh receiver's visible body direction hints at the next touch. Read
@@ -126,7 +175,7 @@ export class DefenceMethods {
     const launch =
       fresh *
       forward *
-      Math.max(0, 4 - Math.hypot(carrier.vx, carrier.vy)) *
+      Math.max(0, 4 - hypot(carrier.vx, carrier.vy)) *
       (0.55 + defender.pressingReading() * 0.25);
     return {
       vx: carrier.vx + Math.cos(carrier.facing) * launch,
@@ -304,7 +353,7 @@ export class DefenceMethods {
   }
   readPassingLane(team, receiver) {
     const b = this.ball,
-      speed = Math.hypot(b.vx, b.vy);
+      speed = hypot(b.vx, b.vy);
     if (b.kind !== 'pass' || b.missedReceiver || b.z > 0.65 || b.vz > 1 || speed < 5) return null;
     let best = null;
     for (const p of this.activePlayers) {

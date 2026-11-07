@@ -21,7 +21,7 @@ import {
   freshStats,
   install,
 } from './constants.js';
-import { Player, normalizeChem } from './player.js';
+import { Player, normalizeChem, beginStepCache, endStepCache } from './player.js';
 import { PossessionMethods } from './possession.js';
 import { PassingMethods } from './passing.js';
 import { ShootingMethods } from './shooting.js';
@@ -34,6 +34,7 @@ import { BallMethods } from './ball.js';
 import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
 import { ShootoutMethods } from './shootout.js';
+import { hypot } from './constants.js';
 
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
@@ -128,6 +129,10 @@ export class Match {
         ),
       );
     this.competition = { mode: 'sandbox', difficulty: 'medium' };
+    this._costCache = null;
+    this._costBuffer = null;
+    this._planPass = 0;
+    this._coverTop = null;
     for (const p of this.players) this.setTags(p.id, p.tags);
     this.reset();
   }
@@ -504,6 +509,14 @@ export class Match {
     for (const p of this.activePlayers) if (p.team === team) p.rethinkAt = 0;
     return true;
   }
+  // Expire visual effects in place (no per-step allocation).
+  ageEffects(dt) {
+    const effects = this.effects;
+    let n = 0;
+    for (let i = 0; i < effects.length; i++)
+      if ((effects[i].life -= dt) > 0) effects[n++] = effects[i];
+    effects.length = n;
+  }
   flair(type, p, duration, extra = {}, force = false) {
     if (!force && this.elapsed - this.lastFlair < 1.1) return;
     this.lastFlair = this.elapsed;
@@ -606,6 +619,14 @@ export class Match {
     return true;
   }
   step(dt) {
+    beginStepCache();
+    try {
+      this.stepInner(dt);
+    } finally {
+      endStepCache();
+    }
+  }
+  stepInner(dt) {
     if (this.finished) return;
     if (this.mode === 'halftime') {
       if (!this.pauseAtHalf) this.resumeHalf();
@@ -614,7 +635,7 @@ export class Match {
     if (this.mode === 'shootout') {
       dt = Math.min(dt, 0.05);
       this.elapsed += dt;
-      this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+      this.ageEffects(dt);
       this.stepShootout(dt);
       return;
     }
@@ -626,7 +647,7 @@ export class Match {
     this.elapsed += dt;
     this.time =
       PERIOD_START[this.half - 1] + ((this.elapsed - this.periodStart) / this.duration) * 5400;
-    this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+    this.ageEffects(dt);
     this.trackMomentum(dt);
     if (
       this.elapsed - this.periodStart >= this.duration * PERIOD_SHARE[this.half - 1] &&
@@ -643,8 +664,8 @@ export class Match {
     const pendingPenalty =
       (this.mode === 'restart' && this.restart.type === 'Penalty') ||
       (this.ball.penaltyKick &&
-        ['shot', 'loose'].includes(this.ball.kind) &&
-        Math.hypot(this.ball.vx, this.ball.vy) > 0.5);
+        (this.ball.kind === 'shot' || this.ball.kind === 'loose') &&
+        hypot(this.ball.vx, this.ball.vy) > 0.5);
     const settling =
       (this.ball.kind === 'shot' && this.ball.age < 3) ||
       (this.mode === 'restart' && this.restart.type === 'Goal' && this.restart.timer > 0.1);

@@ -1,11 +1,12 @@
 // Planning: every player picks a target (keeper, carrier, press, marking, support runs).
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
-import { H, segment } from './constants.js';
+import { clamp, lerp } from '../util/math.js';
+import { H, segment, dist } from './constants.js';
 
 export class PlanningMethods {
   plan() {
     this._costCache = (this._costBuffer ??= new Float64Array(484)).fill(NaN);
+    this._planPass = (this._planPass ?? 0) + 1;
     try {
       this.planInner();
     } finally {

@@ -1,9 +1,9 @@
 // Ball flight: contacts, saves, blocks, receptions, bounds and goals.
 // Methods are installed on Match.prototype by match.js.
-import { clamp, dist, lerp } from '../util/math.js';
+import { clamp, lerp } from '../util/math.js';
 import { goalZone } from './goal-zones.js';
 import { offsideSnapshot } from './rules.js';
-import { W, H, GOAL, segment } from './constants.js';
+import { W, H, GOAL, segment, dist, hypot } from './constants.js';
 
 export class BallMethods {
   moveBall(dt) {
@@ -20,7 +20,7 @@ export class BallMethods {
     b.vz -= 9.81 * dt;
     if (b.z === 0) {
       b.vz = Math.abs(b.vz) > 0.9 ? -b.vz * 0.3 : 0;
-      const speed = Math.hypot(b.vx, b.vy),
+      const speed = hypot(b.vx, b.vy),
         drag = Math.max(0, 1 - ((b.kind === 'pass' ? b.roll || 3.8 : 2) * dt) / (speed || 1));
       b.vx *= drag;
       b.vy *= drag;
@@ -28,8 +28,7 @@ export class BallMethods {
     if (
       b.kind === 'pass' &&
       b.destination &&
-      ((b.x - b.destination.x) * b.vx + (b.y - b.destination.y) * b.vy > 0 ||
-        Math.hypot(b.vx, b.vy) < 5)
+      ((b.x - b.destination.x) * b.vx + (b.y - b.destination.y) * b.vy > 0 || hypot(b.vx, b.vy) < 5)
     ) {
       b.missedReceiver = true;
       this.planTimer = 0;
@@ -76,7 +75,7 @@ export class BallMethods {
       if (this.canHandle(p) && incomingGoal && p.team !== flightTeam) {
         if (b.saver === p.id) continue;
         b.saver = p.id;
-        const speed = Math.hypot(b.vx, b.vy),
+        const speed = hypot(b.vx, b.vy),
           lateral = Math.abs((p.x - b.x) * b.vy - (p.y - b.y) * b.vx) / (speed || 1),
           onTarget = this.projectedOnTarget();
         const prob = clamp(
@@ -176,7 +175,7 @@ export class BallMethods {
         continue;
       }
       const height = b.z,
-        speed = Math.hypot(b.vx, b.vy),
+        speed = hypot(b.vx, b.vy),
         teammate = b.kind === 'pass' && b.kicker !== null && this.players[b.kicker].team === p.team;
       if (!teammate && b.kind === 'pass' && p.role !== 'GK') {
         const facing = (Math.cos(p.facing) * -b.vx + Math.sin(p.facing) * -b.vy) / (speed || 1);

@@ -9,11 +9,19 @@ export const LENGTHS = { full: 300, quick: 180, highlights: 60, instant: 0 };
 // Match length never scales movement. Highlights and Instant resolve a 300 s game.
 export const DURATION_PROFILES = CONFIG.formats;
 
+// Euclidean distance / length with a plain square root (Math.hypot guards
+// against overflow at a large cost; pitch-scale values never need it).
+export const hypot = (x, y) => Math.sqrt(x * x + y * y);
+export const dist = (a, b) => {
+  const dx = a.x - b.x,
+    dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+};
 export function segment(p, a, b) {
   const dx = b.x - a.x,
     dy = b.y - a.y,
     t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
-  return { d: Math.hypot(p.x - a.x - dx * t, p.y - a.y - dy * t), t };
+  return { d: hypot(p.x - a.x - dx * t, p.y - a.y - dy * t), t };
 }
 export const sigmoid = x => 1 / (1 + Math.exp(-x));
 // Abilities already affect execution directly. This secondary adjustment is
