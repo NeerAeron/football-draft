@@ -98,7 +98,16 @@ export function PoolPanel({
                     hideRatings=${hideRatings}
                     selected=${selectedId === e.profileId}
                     disabled=${!e.available}
-                    onClick=${e.available ? () => onSelect(e.profileId) : undefined}
+                    onClick=${
+                      e.available
+                        ? ev =>
+                            // Keyboard (Enter/Space → click with detail 0) on the selected
+                            // row drafts him, like a double-click.
+                            ev?.detail === 0 && onDraft && selectedId === e.profileId
+                              ? onDraft(e.profileId)
+                              : onSelect(e.profileId)
+                        : undefined
+                    }
                     onDblClick=${e.available && onDraft ? () => onDraft(e.profileId) : undefined}
                     class=${cx('pool__row', i === 0 && filter === 'best' && !query && !hideRatings && 'is-top')}
                     data-profile=${e.profileId}

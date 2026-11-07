@@ -15,7 +15,7 @@ import { seedNumber } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 import { RUN_KEY, DAILY_KEY, STAGES } from './saved.js';
 import { teamCode } from './match-store.js';
-import { sideColors } from './kits.js';
+import { sideColors, nationTrigram } from './kits.js';
 
 export const RUN_STATE_KEY = 'football-draft-run-state';
 export const RUN_STATE_FORMAT = 1;
@@ -66,7 +66,10 @@ export function matchSideFor(side, { kind = 'ai', editable = kind !== 'ai', name
   const display = name || side.name;
   return {
     name: display,
-    short: display === 'You' || display === 'Your XI' ? 'YOU' : teamCode(display),
+    short:
+      display === 'You' || display === 'Your XI'
+        ? 'YOU'
+        : nationTrigram(side.code) || teamCode(display),
     colors: sideColors(side),
     flagCode: side.code || null,
     code: side.code || null,

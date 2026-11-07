@@ -16,7 +16,7 @@ import { CONFIG } from '../../core/config/config.js';
 import { Match } from '../../core/sim/engine.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { matchSetup, applyMatchSetup } from '../../core/draft/session.js';
-import { nationKit, teamCode } from './kits.js';
+import { nationKit, nationTrigram, teamCode } from './kits.js';
 
 export { teamCode };
 import { readJSON, writeJSON, removeKey } from './storage.js';
@@ -91,7 +91,7 @@ function normalizeSide(side, i) {
   const kit = (!color && nationKit(side.code ?? side.flagCode)) || DEFAULT_KITS[i];
   return {
     name: side.name || `Team ${i + 1}`,
-    short: side.short || initials(side.name),
+    short: side.short || nationTrigram(side.code ?? side.flagCode) || initials(side.name),
     color: color || kit[0],
     secondary: secondary || (color ? DEFAULT_KITS[i][1] : kit[1]),
     formation: side.formation,

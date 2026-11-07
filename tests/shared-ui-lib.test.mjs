@@ -3,7 +3,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fmt1, fmt2, int, signed1, pct } from '../app/ui/lib/format.js';
-import { nationKit, sideColors, kitColors, NEUTRAL_KIT } from '../app/ui/lib/kits.js';
+import {
+  nationKit,
+  sideColors,
+  kitColors,
+  NEUTRAL_KIT,
+  NATION_TRIGRAMS,
+  nationTrigram,
+  teamCode,
+} from '../app/ui/lib/kits.js';
 
 test('format: fixed "." decimals and "," thousands whatever the locale', () => {
   assert.equal(fmt1(82.24), '82.2');
@@ -33,4 +41,15 @@ test('kits: nations by flag code, clubs keep their colours, stable fallbacks', (
   assert.deepEqual(kitColors({ colors: ['#111111', '#eeeeee'] }), ['#111111', '#eeeeee']);
   assert.deepEqual(kitColors({ flagCode: 'br' }), ['#f9d616', '#1d4f9c']);
   assert.deepEqual(kitColors({}, ['#000000', '#ffffff']), ['#000000', '#ffffff']);
+});
+
+test('nation trigrams: real FIFA codes, all distinct', () => {
+  assert.equal(nationTrigram('at'), 'AUT');
+  assert.equal(nationTrigram('AU'), 'AUS');
+  assert.equal(nationTrigram('kr'), 'KOR');
+  assert.equal(nationTrigram('gb-eng'), 'ENG');
+  assert.equal(nationTrigram(null), null);
+  const codes = Object.values(NATION_TRIGRAMS);
+  assert.equal(new Set(codes).size, codes.length);
+  assert.equal(teamCode('Real Madrid'), 'RMA');
 });

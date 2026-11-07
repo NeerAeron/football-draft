@@ -30,7 +30,7 @@ import { pickOpponent } from '../../core/draft/opponents.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { loadWarmCatalog } from './catalog-warm.js';
-import { sideColors, teamCode } from './kits.js';
+import { sideColors, teamCode, nationTrigram } from './kits.js';
 import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
@@ -453,6 +453,7 @@ export function prematchPayload() {
       draftedSide(0, 'user'),
       {
         name: opp.name,
+        short: nationTrigram(opp.code) || undefined,
         colors: sideColors(opp),
         flagCode: opp.code || null,
         kind: 'ai',

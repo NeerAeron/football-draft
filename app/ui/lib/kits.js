@@ -75,6 +75,35 @@ export function teamCode(name) {
   return code.toUpperCase();
 }
 
+// FIFA trigrams by flag code for score bugs and odds legends: the name heuristic in teamCode()
+// gives AUS for both Austria and Australia, SLO for Slovenia and Slovakia, KRE, SPA, NET….
+// prettier-ignore
+export const NATION_TRIGRAMS = {
+  ad: 'AND', ae: 'UAE', ag: 'ATG', al: 'ALB', am: 'ARM', ao: 'ANG', ar: 'ARG', at: 'AUT',
+  au: 'AUS', az: 'AZE', ba: 'BIH', bb: 'BRB', bd: 'BAN', be: 'BEL', bf: 'BFA', bg: 'BUL',
+  bi: 'BDI', bj: 'BEN', bm: 'BER', bo: 'BOL', br: 'BRA', by: 'BLR', ca: 'CAN', cd: 'COD',
+  cf: 'CTA', cg: 'CGO', ch: 'SUI', ci: 'CIV', cl: 'CHI', cm: 'CMR', co: 'COL', cr: 'CRC',
+  cu: 'CUB', cv: 'CPV', cw: 'CUW', cy: 'CYP', cz: 'CZE', de: 'GER', dk: 'DEN', do: 'DOM',
+  dz: 'ALG', ec: 'ECU', ee: 'EST', eg: 'EGY', es: 'ESP', fi: 'FIN', fo: 'FRO', fr: 'FRA',
+  ga: 'GAB', 'gb-eng': 'ENG', 'gb-nir': 'NIR', 'gb-sct': 'SCO', 'gb-wls': 'WAL', gd: 'GRN',
+  ge: 'GEO', gh: 'GHA', gi: 'GIB', gm: 'GAM', gn: 'GUI', gq: 'EQG', gr: 'GRE', gt: 'GUA',
+  gw: 'GNB', gy: 'GUY', hn: 'HON', hr: 'CRO', ht: 'HAI', hu: 'HUN', id: 'IDN', ie: 'IRL',
+  il: 'ISR', iq: 'IRQ', ir: 'IRN', is: 'ISL', it: 'ITA', jm: 'JAM', jo: 'JOR', jp: 'JPN',
+  ke: 'KEN', km: 'COM', kn: 'SKN', kr: 'KOR', lb: 'LBN', lc: 'LCA', lk: 'SRI', lr: 'LBR',
+  lt: 'LTU', lu: 'LUX', lv: 'LVA', ly: 'LBY', ma: 'MAR', md: 'MDA', me: 'MNE', mg: 'MAD',
+  mk: 'MKD', ml: 'MLI', mr: 'MTN', ms: 'MSR', mt: 'MLT', mw: 'MWI', mx: 'MEX', my: 'MAS',
+  mz: 'MOZ', na: 'NAM', nc: 'NCL', ne: 'NIG', ng: 'NGA', nl: 'NED', no: 'NOR', nz: 'NZL',
+  pa: 'PAN', pe: 'PER', ph: 'PHI', pk: 'PAK', pl: 'POL', pr: 'PUR', ps: 'PLE', pt: 'POR',
+  py: 'PAR', qa: 'QAT', ro: 'ROU', rs: 'SRB', ru: 'RUS', rw: 'RWA', sa: 'KSA', se: 'SWE',
+  si: 'SVN', sk: 'SVK', sl: 'SLE', sn: 'SEN', so: 'SOM', sr: 'SUR', sv: 'SLV', sy: 'SYR',
+  td: 'CHA', tg: 'TOG', th: 'THA', tn: 'TUN', tr: 'TUR', tt: 'TRI', tz: 'TAN', ua: 'UKR',
+  ug: 'UGA', us: 'USA', uy: 'URU', uz: 'UZB', ve: 'VEN', xk: 'KVX', ye: 'YEM', za: 'RSA',
+  zm: 'ZAM', zw: 'ZIM',
+};
+
+/** Broadcast code of a nation by flag code ('at' → 'AUT'), or null. */
+export const nationTrigram = code => (code && NATION_TRIGRAMS[String(code).toLowerCase()]) || null;
+
 /** Generic kit when a side has neither colours nor a nation (neutral navy + white). */
 export const NEUTRAL_KIT = ['#2e3e63', '#ffffff'];
 
