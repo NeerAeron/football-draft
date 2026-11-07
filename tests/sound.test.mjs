@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {GameAudio,MatchSoundEvents,selectionSound} from '../dist/sound.js';
+import {GameAudio,MatchSoundEvents,selectionSound} from '../app/sound.js';
 
 const match=()=>({elapsed:10,events:[],players:[{x:90}]});
 const event=(id,type,elapsed=10,extra={})=>({id,type,elapsed,playerId:0,...extra});

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
-import {CONFIG_FIELDS,DEFAULT_CONFIG,normalizeConfig,loadConfig,saveConfig} from '../dist/config.js';
+import {Match} from '../app/engine.js';
+import {CONFIG_FIELDS,DEFAULT_CONFIG,normalizeConfig,loadConfig,saveConfig} from '../app/config.js';
 
 function scene(half=1,team=0){
  const m=new Match(239,300);m.mode='play';m.elapsed=10;m.half=half;

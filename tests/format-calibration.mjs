@@ -1,10 +1,10 @@
 // Descriptive neutral-squad sample, not a scoring quota or automated pass/fail gate.
 // node tests/format-calibration.mjs [matchesPerFormat=16] [firstSeed=42501] [output] [duration]
 import {readFileSync,writeFileSync} from 'node:fs';
-import {Match,DURATION_PROFILES} from '../dist/engine.js';
-import {randomLineups} from '../dist/lineups.js';
+import {Match,DURATION_PROFILES} from '../app/engine.js';
+import {randomLineups} from '../app/lineups.js';
 const count=Number(process.argv[2]||16),firstSeed=Number(process.argv[3]||42501),output=process.argv[4]||'tests/format-calibration-results.json';
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-fc26.json',import.meta.url)));
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-fc26.json',import.meta.url)));
 const mean=a=>a.reduce((s,n)=>s+n,0)/a.length,of=a=>a.filter((_,i)=>i%11);
 const results=[],doc={description:'Random position-matched squads from 1100 profiles; balanced style, all tactics3, 60Hz. Outcomes emerge from play; finite sample, not quotas.',profiles:DURATION_PROFILES,results};
 for(const duration of (process.argv[5]?[Number(process.argv[5])]:[300,180])){

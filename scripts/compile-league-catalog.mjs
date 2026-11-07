@@ -1,9 +1,9 @@
-import {rateClubCatalog} from '../dist/team-ratings.js';
+import {rateClubCatalog} from '../app/team-ratings.js';
 import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {compilePlayer,parseCSV,COMPILER_VERSION,SOURCE_URL} from './compile-players.mjs';
-import {ATTRS} from '../dist/ratings.js';
+import {ATTRS} from '../app/ratings.js';
 
 export function compileLeagueCatalog(rows,reference,hash=null){
  const seen=new Set();for(const row of rows){if(seen.has(row.player_id))throw Error(`Duplicate ${row.player_id}`);seen.add(row.player_id);}

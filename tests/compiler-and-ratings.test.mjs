@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseCSV,compileRows,compilePlayer} from '../scripts/compile-players.mjs';
-import {Match} from '../dist/engine.js';
-import {ATTRS,OVERALL_WEIGHTS,overallRating,roleAbility,calibratedRoleAbility,positionFamiliarity,passingAbility,normalizeAttributes,playerTier} from '../dist/ratings.js';
-import {simulateComplete} from '../dist/replay.js';
+import {Match} from '../app/engine.js';
+import {ATTRS,OVERALL_WEIGHTS,overallRating,roleAbility,calibratedRoleAbility,positionFamiliarity,passingAbility,normalizeAttributes,playerTier} from '../app/ratings.js';
+import {simulateComplete} from '../app/replay.js';
 const fixture=parseCSV(readFileSync(new URL('./fixtures/fc26-sample.csv',import.meta.url),'utf8'));
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-fc26.json',import.meta.url),'utf8'));
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-fc26.json',import.meta.url),'utf8'));
 const setup=(seed=77)=>{const m=new Match(seed,300);m.mode='play';for(const p of m.players){p.x=5;p.y=5;p.vx=p.vy=0;p.cooldown=0;}return m;};
 
 test('CSV parsing preserves quotes, commas, unicode and embedded newlines',()=>{

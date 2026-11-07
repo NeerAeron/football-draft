@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Draft} from '../dist/draft.js';
-import {FORMATIONS} from '../dist/formations.js';
-import {overallRating,POSITIONS} from '../dist/ratings.js';
-import {rankPlayers,squadOrder,miniPitch,renderSquadList,showPlayerCard} from '../dist/squad-ui.js';
+import {Draft} from '../app/draft.js';
+import {FORMATIONS} from '../app/formations.js';
+import {overallRating,POSITIONS} from '../app/ratings.js';
+import {rankPlayers,squadOrder,miniPitch,renderSquadList,showPlayerCard} from '../app/squad-ui.js';
 
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url)));
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url)));
 function draw(){
  const d=new Draft(catalog,{seed:27});d.weighted=options=>options.find(o=>o.id==='13'||o.name==='Liverpool')||options[0];
  d.spinLeague();d.spinTeam();return d;

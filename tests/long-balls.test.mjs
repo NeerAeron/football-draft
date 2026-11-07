@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
-import {DEFAULT_CONFIG,normalizeConfig,CONFIG_FIELDS} from '../dist/config.js';
+import {Match} from '../app/engine.js';
+import {DEFAULT_CONFIG,normalizeConfig,CONFIG_FIELDS} from '../app/config.js';
 
 function switchScene(half=1,team=0){
  const m=new Match(703,300);m.mode='play';m.half=half;m.noise=()=>0;

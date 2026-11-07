@@ -1,15 +1,15 @@
 # Football Draft Challenge
 
-A dependency-free draft and continuous 11v11 soccer game. Serve `dist/` over HTTP; no build, account, database or external runtime API is required.
+A dependency-free draft and continuous 11v11 soccer game. Serve `app/` over HTTP; no build, account, database or external runtime API is required.
 
 ## Quick start
 
-No dependency installation or build step is required. The `dist/` directory contains the editable HTML, CSS, JavaScript modules, player data and assets used by the game.
+No dependency installation or build step is required. The `app/` directory contains the editable HTML, CSS, JavaScript modules, player data and assets used by the game.
 
 From this repository's root, start a local web server with Python 3:
 
 ```sh
-python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
+python3 -m http.server 8000 --bind 127.0.0.1 --directory app
 ```
 
 Open [http://localhost:8000](http://localhost:8000) in your browser. Serve the game over HTTP so its JavaScript modules and player catalog can load.
@@ -24,9 +24,9 @@ node --test tests/*.test.mjs
 
 ## Upload to GitHub
 
-Unzip the repository archive, create an empty GitHub repository, and upload the **contents** of the `football-draft-repo` folder. Include `dist/`, `scripts/`, `tests/`, this README and `.gitignore`.
+Unzip the repository archive, create an empty GitHub repository, and upload the **contents** of the `football-draft-repo` folder. Include `app/`, `scripts/`, `tests/`, this README and `.gitignore`.
 
-To host the game with any static web host, publish the contents of `dist/`. This export does not require ChatGPT Sites or its original hosting configuration.
+To host the game with any static web host, publish the contents of `app/`. This export does not require ChatGPT Sites or its original hosting configuration.
 
 This is the version 43 source export from **Create Soccer Simulation**, based on source commit `2a654aed377d8c6c9e04d913201e79069aa54943`. Game files, data, scripts, tests and existing credits are preserved. Original hosting metadata and Git internals are omitted. The original development notes follow below.
 
@@ -119,7 +119,7 @@ The structure is inspired by official Konami explanations of [eFootball v5 playe
 ## FC 26 compiler
 
 ```sh
-node scripts/compile-league-catalog.mjs SOURCE.csv dist/data/catalog-reference.json dist/data/players-fc26.json
+node scripts/compile-league-catalog.mjs SOURCE.csv app/data/catalog-reference.json app/data/players-fc26.json
 ```
 
 The deterministic dependency-free compiler parses the 18,405-row CSV once, validates IDs/positions/abilities, and selects each requested league by source overall (original row order breaks ties): A all players; B top200; C top100; D top50; F top20. No model or API is called per player. Compiler 1.7.0 emits 7,733 real profiles (6,968 outfield players and 765 goalkeepers), 522 retained clubs, and metadata for all50 leagues. The original league allocation is preserved; `catalog-reference.json` adds a cumulative expansion of 1,000 outfield players and 100 keepers, independently selected by source overall from unused players in available leagues. This expansion exceeds the original per-league caps without dropping any existing profile. Re-running the compiler produces the same IDs and does not add duplicates. The older `compile-players.mjs` entry point remains a bounded first-N fixture/debug compiler; it does not define the production selection.
@@ -226,9 +226,9 @@ Source: [StatsBomb Open Data](https://github.com/hudl/open-data/tree/4b73468fc5b
 | Unsuccessful dribbles |48.2% |
 | Headers / shots |17.3% |
 
-[IFAB Law 11](https://www.theifab.com/laws/latest/offside/), [Law 12](https://www.theifab.com/laws/latest/fouls-and-misconduct/) and [Law 14](https://www.theifab.com/laws/latest/the-penalty-kick/) guide the rules. `dist/data/rules-reference.json` contains exact definitions, numerator/denominator counts and competition variation. The source attribution/logo is included in the app; no raw event data is bundled.
+[IFAB Law 11](https://www.theifab.com/laws/latest/offside/), [Law 12](https://www.theifab.com/laws/latest/fouls-and-misconduct/) and [Law 14](https://www.theifab.com/laws/latest/the-penalty-kick/) guide the rules. `app/data/rules-reference.json` contains exact definitions, numerator/denominator counts and competition variation. The source attribution/logo is included in the app; no raw event data is bundled.
 
-Spatial priors use the same sample's 2734 non-penalty shots and 250 goals, excluding shootouts and own goals:220 inside(88%),30 outside(12%),208 in the central six-yard-width corridor(83.2%). The user's 85/15 goal-location mix is the design reference, not the pooled source result or an enforced quota. Six zones preserve actual box and six-yard landmarks. Relative conversion and goal-mouth geometry influence chance selection and execution. See `dist/data/goal-location-reference.json` and `dist/goal-zones.js`.
+Spatial priors use the same sample's 2734 non-penalty shots and 250 goals, excluding shootouts and own goals:220 inside(88%),30 outside(12%),208 in the central six-yard-width corridor(83.2%). The user's 85/15 goal-location mix is the design reference, not the pooled source result or an enforced quota. Six zones preserve actual box and six-yard landmarks. Relative conversion and goal-mouth geometry influence chance selection and execution. See `app/data/goal-location-reference.json` and `app/goal-zones.js`.
 
 Rates are research baselines, not event schedules. Match profiles adjust attacking support, passing-read windows, decisions and finishing for the short formats; neither counters nor score deficits cause an event. Foul and offside totals depend on the contacts and runs that actually happen. Lower action volume means short games contain fewer whistles than real 90-minute games. Default scoring aims for three total goals on average in each continuous format, with substantial natural variation. The short profile uses more precise deliveries, quicker decisions, less hesitation over a good box shot, and adjusted finishing. Attributes and pressure still determine delivery error. Player and ball speeds have no duration multiplier. No model forces a draw, desired score or prescribed location share.
 

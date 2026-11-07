@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
-import {commonName,receiptLabel} from '../dist/player-labels.js';
-import {snapshot,applyReplayFrame} from '../dist/replay.js';
+import {Match} from '../app/engine.js';
+import {commonName,receiptLabel} from '../app/player-labels.js';
+import {snapshot,applyReplayFrame} from '../app/replay.js';
 
 test('receipt names preserve football names, appear on control, fade and reset on the next receipt',()=>{
  for(const [name,expected] of [['E. Haaland','Haaland'],['V. van Dijk','van Dijk'],['A. Mac Allister','Mac Allister'],['Rodri','Rodri'],['Vinícius Jr.','Vinícius Jr.'],['Bruno Fernandes','Bruno Fernandes']])assert.equal(commonName({name}),expected);

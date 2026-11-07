@@ -1,11 +1,11 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
-import {Draft} from '../dist/draft.js';
-import {createAIOpponent,coachAI} from '../dist/ai.js';
-import {overallRating} from '../dist/ratings.js';
-const bytes=await readFile(new URL('../dist/data/players-fc26.json',import.meta.url)),catalog=JSON.parse(bytes);
+import {Match} from '../app/engine.js';
+import {Draft} from '../app/draft.js';
+import {createAIOpponent,coachAI} from '../app/ai.js';
+import {overallRating} from '../app/ratings.js';
+const bytes=await readFile(new URL('../app/data/players-fc26.json',import.meta.url)),catalog=JSON.parse(bytes);
 const report={purpose:'Bounded integration checks, not score or win-rate calibration',catalogSha256:createHash('sha256').update(bytes).digest('hex'),players:catalog.players.length,policy:'Human drafts highest natural overall from locked league and club draws; AI selects a tier-eligible complete club or 84+ all-stars. Identical execution formulas. Human edits tactics at half-time.',matches:[]};
 for(const [index,level] of ['easy','medium','hard','impossible'].entries())for(const duration of [180,300]){
  const seed=12648517+index*977+duration;let state=seed;const random=()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296);

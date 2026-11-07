@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Match,Player} from '../dist/engine.js';
-import {FORMATIONS,formationLines,formationLabel} from '../dist/formations.js';
-import {Draft,KITS,bestSlots} from '../dist/draft.js';
-import {DIFFICULTIES,tacticAccess} from '../dist/ai.js';
-import {playerTier,overallRating,normalizeAttributes,POSITIONS} from '../dist/ratings.js';
-import {preference} from '../dist/player-model.js';
-import {TAGS} from '../dist/traits.js';
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-fc26.json',import.meta.url))),profiles=catalog.players;
+import {Match,Player} from '../app/engine.js';
+import {FORMATIONS,formationLines,formationLabel} from '../app/formations.js';
+import {Draft,KITS,bestSlots} from '../app/draft.js';
+import {DIFFICULTIES,tacticAccess} from '../app/ai.js';
+import {playerTier,overallRating,normalizeAttributes,POSITIONS} from '../app/ratings.js';
+import {preference} from '../app/player-model.js';
+import {TAGS} from '../app/traits.js';
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-fc26.json',import.meta.url))),profiles=catalog.players;
 function choosePick(d){d.spinLeague();d.spinTeam();const player=d.available().sort((a,b)=>overallRating(b,false,b.primaryPosition)-overallRating(a,false,a.primaryPosition))[0];return {player,slot:d.bestSlot(player)};}
 
 test('all formation variations have eleven usable roles and run without invalid motion',()=>{

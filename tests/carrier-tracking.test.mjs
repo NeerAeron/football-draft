@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
+import {Match} from '../app/engine.js';
 
 function reception({team=0,half=1,skill=75,pace=78,energy=1,momentum=0,seed=173}={}){
  const m=new Match(seed,300);m.mode='play';m.elapsed=10;m.half=half;const dir=m.direction(team);

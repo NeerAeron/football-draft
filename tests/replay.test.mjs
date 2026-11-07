@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
-import {selectHighlights,simulateComplete,applyReplayFrame,performanceRating} from '../dist/replay.js';
+import {Match} from '../app/engine.js';
+import {selectHighlights,simulateComplete,applyReplayFrame,performanceRating} from '../app/replay.js';
 
 test('highlights keep every goal, run chronologically, and total exactly one minute',()=>{
  for(const goalCount of [0,4,12]){const events=Array.from({length:goalCount},(_,i)=>({type:'goal',elapsed:12+i*22}));events.push(...Array.from({length:20},(_,i)=>({type:'shot',elapsed:5+i*13,level:2})));const clips=selectHighlights(events,300,60);

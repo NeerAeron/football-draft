@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match,Player} from '../dist/engine.js';
-import {snapshot,applyReplayFrame,simulateHalf} from '../dist/replay.js';
-import {offsideSnapshot} from '../dist/rules.js';
-import {cardRisk} from '../dist/discipline.js';
+import {Match,Player} from '../app/engine.js';
+import {snapshot,applyReplayFrame,simulateHalf} from '../app/replay.js';
+import {offsideSnapshot} from '../app/rules.js';
+import {cardRisk} from '../app/discipline.js';
 
 function playing(seed=86){const m=new Match(seed,180);m.mode='play';m.elapsed=10;return m;}
 

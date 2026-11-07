@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Draft} from '../dist/draft.js';
-import {createAIOpponent} from '../dist/ai.js';
-import {playerTier,overallRating} from '../dist/ratings.js';
-import {createBudgetConfirmation} from '../dist/budget-confirmation.js';
+import {Draft} from '../app/draft.js';
+import {createAIOpponent} from '../app/ai.js';
+import {playerTier,overallRating} from '../app/ratings.js';
+import {createBudgetConfirmation} from '../app/budget-confirmation.js';
 
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url)));
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url)));
 const random=seed=>()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
 const opponent=createAIOpponent(catalog,'veryeasy',random(31));
 const setup=()=>new Draft(catalog,{opponent:opponent.players,funding:'budget',seed:43});

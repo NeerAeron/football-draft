@@ -1,10 +1,10 @@
 // Paired before/after evidence, not an enforced match-rate target.
 // node tests/long-ball-calibration.mjs /tmp/long-balls.json
 import {readFileSync,writeFileSync} from 'node:fs';
-import {randomLineups} from '../dist/lineups.js';
-const {Match}=await import(process.env.CALIBRATION_ENGINE||'../dist/engine.js');
+import {randomLineups} from '../app/lineups.js';
+const {Match}=await import(process.env.CALIBRATION_ENGINE||'../app/engine.js');
 
-const profiles=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url))).players;
+const profiles=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url))).players;
 const rows=[];
 const seeds=Array.from({length:Number(process.argv[4]||3)},(_,i)=>Number(process.argv[3]||4301)+i);
 for(const duration of [180,300])for(const roster of ['paired','catalog'])for(const seed of seeds){

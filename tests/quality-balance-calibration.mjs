@@ -4,10 +4,10 @@
 // node tests/quality-balance-calibration.mjs /tmp/balance.json
 import {readFileSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
-import {overallRating} from '../dist/ratings.js';
-const {Match}=await import(process.env.CALIBRATION_ENGINE||new URL('../dist/engine.js',import.meta.url));
+import {overallRating} from '../app/ratings.js';
+const {Match}=await import(process.env.CALIBRATION_ENGINE||new URL('../app/engine.js',import.meta.url));
 const original=JSON.parse(readFileSync(new URL('./fixtures/quality-gap-squads.json',import.meta.url)));
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url))).players;
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url))).players;
 const byId=new Map(catalog.map(p=>[p.profileId,p]));
 const base=original.find(f=>f.pair===1&&f.duration===180),baseTeam=base.weakTeam;
 const baseProfiles=base.profiles.slice(baseTeam*11,baseTeam*11+11).map(id=>byId.get(id));

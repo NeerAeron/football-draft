@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
+import {Match} from '../app/engine.js';
 
 function trapped(half,team,bottom){
  const m=new Match(561,300);m.mode='play';m.half=half;

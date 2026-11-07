@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match} from '../dist/engine.js';
-import {offsideSnapshot} from '../dist/rules.js';
-import {footExecution} from '../dist/player-model.js';
-import {PlaybackClock} from '../dist/playback.js';
+import {Match} from '../app/engine.js';
+import {offsideSnapshot} from '../app/rules.js';
+import {footExecution} from '../app/player-model.js';
+import {PlaybackClock} from '../app/playback.js';
 
 const setup=()=>{const m=new Match(731,300);m.mode='play';for(const p of m.players){p.x=p.team?75:25;p.y=5+p.slot*5;p.vx=p.vy=0;p.cooldown=0;}return m;};
 

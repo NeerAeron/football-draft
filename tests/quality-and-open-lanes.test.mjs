@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Match} from '../dist/engine.js';
-import {overallRating,playerTier} from '../dist/ratings.js';
-import {BADGES,badgeDescription,badgeEligible} from '../dist/traits.js';
+import {Match} from '../app/engine.js';
+import {overallRating,playerTier} from '../app/ratings.js';
+import {BADGES,badgeDescription,badgeEligible} from '../app/traits.js';
 
 function lane(half=1,team=0){
  const m=new Match(703,300);m.mode='play';m.half=half;
@@ -64,7 +64,7 @@ test('attribute quality slightly widens execution differences while overall stay
 });
 
 test('badge descriptions keep mechanics private, and compiled additions fit their players',()=>{
- const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-fc26.json',import.meta.url)));
+ const catalog=JSON.parse(readFileSync(new URL('../app/data/players-fc26.json',import.meta.url)));
  for(const b of BADGES)assert.doesNotMatch(badgeDescription(b),/[+%\d]|attribute|bonus|odds|preference/i,b.label);
  for(const id of ['slalom','pressescape','givego','latearrival','overlap','anchor'])assert.ok(catalog.players.some(p=>p.tags.includes(id)),id);
  for(const p of catalog.players){const tier=playerTier(p);assert.ok(p.tags.length>=tier.minimum&&p.tags.length<=tier.capacity);for(const id of p.tags)assert.ok(badgeEligible(p,BADGES.find(b=>b.id===id)));}

@@ -2,10 +2,10 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {dirname} from 'node:path';
-import {ATTRS,POSITIONS,normalizeAttributes,overallRating,playerTier} from '../dist/ratings.js';
-import {makeIdentity} from '../dist/player-model.js';
-import {TAGS} from '../dist/traits.js';
-import {compileBadges} from '../dist/badges.js';
+import {ATTRS,POSITIONS,normalizeAttributes,overallRating,playerTier} from '../app/ratings.js';
+import {makeIdentity} from '../app/player-model.js';
+import {TAGS} from '../app/traits.js';
+import {compileBadges} from '../app/badges.js';
 
 export const COMPILER_VERSION='1.7.0';
 export const SOURCE_URL='https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data';

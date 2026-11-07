@@ -20,4 +20,4 @@ Thumbs.db
 .sites-checkout/
 .sites-runtime/
 
-# Keep dist/ tracked: it is the complete editable game.
+# app/ is the complete editable game and is served as-is.

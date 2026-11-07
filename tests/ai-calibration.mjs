@@ -1,10 +1,10 @@
 // Optional experiment. No observed rates are loaded by production code.
 import {readFile,writeFile} from 'node:fs/promises';
-import {Match} from '../dist/engine.js';
-import {Draft} from '../dist/draft.js';
-import {createAIOpponent,coachAI,DIFFICULTIES} from '../dist/ai.js';
-import {overallRating} from '../dist/ratings.js';
-const catalog=JSON.parse(await readFile(new URL('../dist/data/players-fc26.json',import.meta.url))),output=process.argv[2]||'/tmp/football-ai-calibration.json';
+import {Match} from '../app/engine.js';
+import {Draft} from '../app/draft.js';
+import {createAIOpponent,coachAI,DIFFICULTIES} from '../app/ai.js';
+import {overallRating} from '../app/ratings.js';
+const catalog=JSON.parse(await readFile(new URL('../app/data/players-fc26.json',import.meta.url))),output=process.argv[2]||'/tmp/football-ai-calibration.json';
 const report={method:'Human surrogate drafts highest natural overall after production league/club draws, then uses balanced tactics3. AI uses tier-eligible club or80+ all-stars and its coach. Same execution formulas. No target win rates.',matches:[],summary:{}};
 for(const level of Object.keys(DIFFICULTIES)){
  for(let seed=63101;seed<63125;seed++){

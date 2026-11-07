@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bindPitchFullscreen} from '../dist/fullscreen.js';
-import {createDraftReel} from '../dist/draft-reel.js';
+import {bindPitchFullscreen} from '../app/fullscreen.js';
+import {createDraftReel} from '../app/draft-reel.js';
 
 const classes=()=>{const set=new Set();return {toggle(k,on){if(on)set.add(k);else set.delete(k);},remove(k){set.delete(k);},contains:k=>set.has(k)};};
 function fullscreenFixture(){

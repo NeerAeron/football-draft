@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Draft} from '../dist/draft.js';
-import {overallRating,playerTier} from '../dist/ratings.js';
-import {createAIOpponent} from '../dist/ai.js';
-import {leagueWeight,teamWeight} from '../dist/leagues.js';
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url)));
+import {Draft} from '../app/draft.js';
+import {overallRating,playerTier} from '../app/ratings.js';
+import {createAIOpponent} from '../app/ai.js';
+import {leagueWeight,teamWeight} from '../app/leagues.js';
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url)));
 const random=seed=>()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
 function reveal(d,seen){
  const cards=d.visible().sort((a,b)=>overallRating(b,false,b.primaryPosition)-overallRating(a,false,a.primaryPosition)).slice(0,24);

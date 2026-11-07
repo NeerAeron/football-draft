@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Match,LENGTHS} from '../dist/engine.js';
+import {Match,LENGTHS} from '../app/engine.js';
 
 test('full matches finish with finite positions, valid stats, and varied play',()=>{
   for(const duration of [180,300]){

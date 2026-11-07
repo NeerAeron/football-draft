@@ -1,4 +1,4 @@
-import {Match,DURATION_PROFILES} from '../dist/engine.js';
+import {Match,DURATION_PROFILES} from '../app/engine.js';
 const count=Number(process.argv[2]||48),firstSeed=Number(process.argv[3]||1001);
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return (s[Math.floor((s.length-1)/2)]+s[Math.floor(s.length/2)])/2;};
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length,results=[];

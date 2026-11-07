@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Draft} from '../dist/draft.js';
-import {CONFIG,DEFAULT_CONFIG,normalizeConfig} from '../dist/config.js';
-import {leagueWeight,teamWeight,respinMultiplier} from '../dist/leagues.js';
+import {Draft} from '../app/draft.js';
+import {CONFIG,DEFAULT_CONFIG,normalizeConfig} from '../app/config.js';
+import {leagueWeight,teamWeight,respinMultiplier} from '../app/leagues.js';
 
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url)));
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url)));
 test('club re-spin improvements apply exactly one relative boost, with no bonus for equal or worse teams',()=>{
  const previous={overall:70};
  for(const [overall,expected] of [[68,1],[70,1],[70.01,1.2],[73,1.2],[73.01,1.15],[77,1.15],[77.01,1.05],[89,1.05]])assert.equal(respinMultiplier('team',previous,{overall}),expected,`OVR ${overall}`);

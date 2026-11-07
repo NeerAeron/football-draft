@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Match} from '../dist/engine.js';
-import {randomLineups,playerInitials} from '../dist/lineups.js';
-import {positionFamiliarity} from '../dist/ratings.js';
-import {simulateComplete} from '../dist/replay.js';
-const pool=JSON.parse(readFileSync(new URL('../dist/data/players-fc26.json',import.meta.url))).players;
+import {Match} from '../app/engine.js';
+import {randomLineups,playerInitials} from '../app/lineups.js';
+import {positionFamiliarity} from '../app/ratings.js';
+import {simulateComplete} from '../app/replay.js';
+const pool=JSON.parse(readFileSync(new URL('../app/data/players-fc26.json',import.meta.url))).players;
 const ids=players=>players.map(p=>p.profileId);
 
 test('every formation pairing draws 22 distinct players in natural positions, with one GK per side',()=>{

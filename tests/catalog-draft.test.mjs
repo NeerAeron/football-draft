@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
-import {Match,Player} from '../dist/engine.js';
-import {BADGES,badgeEligible} from '../dist/traits.js';
-import {playerTier,normalizeAttributes,overallRating,positionFamiliarity} from '../dist/ratings.js';
-import {Draft} from '../dist/draft.js';
-import {draftLeagues,leagueWeight,teamWeight} from '../dist/leagues.js';
-import {createAIOpponent,chooseAIFormation} from '../dist/ai.js';
-import {clubSquads,assignClubLineup,partialClubLineup} from '../dist/club-lineups.js';
-import {FORMATIONS} from '../dist/formations.js';
-import {CONFIG} from '../dist/config.js';
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-fc26.json',import.meta.url))),profiles=catalog.players;
+import {Match,Player} from '../app/engine.js';
+import {BADGES,badgeEligible} from '../app/traits.js';
+import {playerTier,normalizeAttributes,overallRating,positionFamiliarity} from '../app/ratings.js';
+import {Draft} from '../app/draft.js';
+import {draftLeagues,leagueWeight,teamWeight} from '../app/leagues.js';
+import {createAIOpponent,chooseAIFormation} from '../app/ai.js';
+import {clubSquads,assignClubLineup,partialClubLineup} from '../app/club-lineups.js';
+import {FORMATIONS} from '../app/formations.js';
+import {CONFIG} from '../app/config.js';
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-fc26.json',import.meta.url))),profiles=catalog.players;
 function random(seed){let state=seed>>>0;return ()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296);}
 
 test('badge ranges and eligibility hold across the full recompiled catalog; hidden values are individual',()=>{
@@ -44,7 +44,7 @@ test('tier weights dominate small strength nudges; every requested league has a 
  assert.ok(aShare>.51&&aShare<.52);
  const auditClubs=clubSquads(catalog);
  for(const l of leagues){assert.ok(l.teams.every(t=>t.leagueTier===l.tier));for(const t of l.teams)assert.equal(teamWeight(t),teamWeight(auditClubs.find(c=>c.id===t.id)));}
- for(const l of catalog.leagues)assert.ok(existsSync(new URL(`../dist/${l.logo}`,import.meta.url)),l.name);
+ for(const l of catalog.leagues)assert.ok(existsSync(new URL(`../app/${l.logo}`,import.meta.url)),l.name);
 });
 test('both draws stay locked through filtering and reject players from elsewhere',()=>{
  const d=new Draft(catalog,{seed:8901});const league=d.spinLeague(),rng=d.rng;

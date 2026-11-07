@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CONFIG,DEFAULT_CONFIG,CONFIG_FIELDS,normalizeConfig,setRuntimeConfig,saveConfig,loadConfig} from '../dist/config.js';
-import {Draft} from '../dist/draft.js';
-import {createAIOpponent} from '../dist/ai.js';
-import {clubSquads} from '../dist/club-lineups.js';
-import {clubRating} from '../dist/team-ratings.js';
-import {playerTier,overallRating} from '../dist/ratings.js';
-import {Match} from '../dist/engine.js';
-const catalog=JSON.parse(readFileSync(new URL('../dist/data/players-runtime.json',import.meta.url)));
+import {CONFIG,DEFAULT_CONFIG,CONFIG_FIELDS,normalizeConfig,setRuntimeConfig,saveConfig,loadConfig} from '../app/config.js';
+import {Draft} from '../app/draft.js';
+import {createAIOpponent} from '../app/ai.js';
+import {clubSquads} from '../app/club-lineups.js';
+import {clubRating} from '../app/team-ratings.js';
+import {playerTier,overallRating} from '../app/ratings.js';
+import {Match} from '../app/engine.js';
+const catalog=JSON.parse(readFileSync(new URL('../app/data/players-runtime.json',import.meta.url)));
 const oldRatings=JSON.parse(readFileSync(new URL('./fixtures/ratings-v21.json',import.meta.url)));
 const random=seed=>()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
 
