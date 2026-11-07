@@ -4,23 +4,26 @@ A dependency-free draft and continuous 11v11 soccer game. Serve `app/` over HTTP
 
 ## Quick start
 
-No dependency installation or build step is required. The `app/` directory contains the editable HTML, CSS, JavaScript modules, player data and assets used by the game.
-
-From this repository's root, start a local web server with Python 3:
+`app/` is the complete game: plain HTML, CSS and ES modules plus the player data. There is no build step. Serve it over HTTP (modules and the player catalog cannot load from `file://`):
 
 ```sh
-python3 -m http.server 8000 --bind 127.0.0.1 --directory app
+npm ci          # dev tools only (Prettier, ESLint); the game itself has no dependencies
+npm run dev     # http://127.0.0.1:8000 with live reload
 ```
 
-Open [http://localhost:8000](http://localhost:8000) in your browser. Serve the game over HTTP so its JavaScript modules and player catalog can load.
+Without Node.js: `python3 -m http.server 8000 --bind 127.0.0.1 --directory app`.
 
-## Automated checks
-
-With Node.js 22 or newer, run the existing regression suite from the repository root:
+## Development
 
 ```sh
-node --test tests/*.test.mjs
+npm run check         # format check + lint + fast tests (~10 s)
+npm test              # full node:test suite
+npm run test:browser  # Playwright smoke run of the UI flows
+npm run shots         # screenshots of every flow into .shots/
+npm run verify        # everything above
 ```
+
+See `CLAUDE.md` for the architecture map, invariants (determinism, config snapshots) and the data pipeline.
 
 ## Upload to GitHub
 

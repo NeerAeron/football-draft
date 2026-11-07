@@ -21,3 +21,6 @@ Thumbs.db
 .sites-runtime/
 
 # app/ is the complete editable game and is served as-is.
+
+# Dev tool output
+.shots/
