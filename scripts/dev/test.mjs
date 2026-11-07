@@ -26,6 +26,8 @@ const SLOW = [
   'formation variations have eleven usable roles',
   'reveal targets, or stop targeting',
   'same seed and inputs produce the same match state',
+  'event contract over a full match',
+  'shootout survives recording',
 ];
 
 const argv = process.argv.slice(2);

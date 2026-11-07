@@ -43,6 +43,13 @@ test('AI recorded, instant, and direct full simulations resolve the same match',
   assert.ok(target.elapsed >= 0 && target.elapsed <= record.result.elapsed);
   assert.ok(target.events.every(e => e.elapsed <= target.elapsed));
   assert.equal(target.finished, false);
+  // The momentum series is replayed up to the frame shown.
+  assert.deepEqual(record.result.momentum.samples, direct.momentum.samples);
+  const shown = target.momentum.samples;
+  assert.ok(shown.length < record.result.momentum.samples.length);
+  assert.deepEqual(shown, record.result.momentum.samples.slice(0, shown.length));
+  applyReplayFrame(target, record, 59.9);
+  assert.ok(target.momentum.samples.length >= shown.length);
   for (const p of direct.players) assert.ok(Number.isFinite(performanceRating(p, direct)));
 });
 
