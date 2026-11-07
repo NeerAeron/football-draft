@@ -6,7 +6,7 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 
 | Module | Exports |
 | --- | --- |
-| `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `cupGrade`, `projectRun`, `CUP_ROUNDS`, `CUP_TUNING`, `STAGE_LABELS`, `GRADES` |
+| `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `cupGrade`, `projectRun`, `cupOffsets`, `CUP_ROUNDS`, `CUP_TUNING`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `GRADES` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
 | `daily.js` | `dailyId`, `dailyNumber`, `dailyIdFromNumber`, `previousDay`, `nextDay`, `dailyChallenge`, `perfectXI`, `perfectPercent`, `dailyScore`, `canPlayDaily`, `updateStreak`, `currentStreak`, `DAILY_EPOCH`, `DAILY_RULES`, `DAILY_POINTS` |
 | `share.js` | `shareText`, `resultEmoji`, `encodeChallenge`, `decodeChallenge`, `challengeUrl`, `parseChallengeUrl`, `challengeDraftOptions` |
@@ -15,17 +15,50 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 
 Group of four (you + three AI teams), three matches, top two advance, then Round of 16,
 quarter-final, semi-final, final. Opponents come from the draft ladder
-(`docs/draft-api.md`), offset per round (`CUP_TUNING`, effective rating vs the level target):
+(`docs/draft-api.md`), offset per round and difficulty (`CUP_TUNING`, effective rating vs the
+level target; `cupOffsets(difficulty)` returns the seven offsets):
 
-| Round | MD1 | MD2 | MD3 | R16 | QF | SF | Final |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| offset | −4.5 | −3.5 | −2.5 | −2 | −1 | 0 | +1 |
+| Difficulty | MD1 | MD2 | MD3 | R16 | QF | SF | Final | final opponents (typical) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Amateur | −10.5 | −9.5 | −9 | −8.5 | −8 | −5 | +3 | Norway, Senegal, Scotland, Czechia (≈ 79.5) |
+| Semi-pro | −11 | −9.5 | −8 | −7 | −4 | −1 | +2 | Uruguay, Colombia, USA, Morocco (≈ 81.4) |
+| Pro | −12.5 | −11 | −9.5 | −8.5 | −5.5 | −2.5 | +2.5 | Brazil, Italy, England, Argentina (≈ 86.3) |
+| World Class | −12.5 | −11 | −9.5 | −8.5 | −5.5 | −2.5 | 0 | Brazil, France, Spain, Italy (≈ 87) |
+| Legendary | −13 | −11.5 | −10 | −9 | −6 | −3 | −1 | World XI, All-Stars, France (≈ 88.6) |
+
+Offsets are to the level's ladder target (Amateur 76.7 … Legendary 90.1 in Nations): weak groups
+and early rounds, then knockouts that climb to a real final (the Amateur floor is the weakest
+nations, ~66–70). `KNOCKOUT_EDGE` (1.5 rating points) is added to the user in the fast
+model's knockout ties (`projectRun`, `simulateNext`): in the engine a drafted XI goes through
+77.6% of its cup knockout ties where independent Poisson goals say 73.0% (584 ties); group
+matches agree with the model (81.7% vs 79.7% wins).
 
 The group is "drawn from lower pots" (pot labels 4/3/2 by strength, weakest first) and the
-knockouts escalate; no opponent repeats; every opponent XI excludes the user's players.
-With the fast model, a typical drafted XI projects to: Amateur — champions ~60%, Semi-pro —
-semi-finals (champions ~28%), Pro — quarter-finals (champions ~6%, out in the group ~20%),
-World Class — group stage (~55% out), Legendary — group stage (~80% out).
+knockouts escalate to a final against a top side for the level; no opponent repeats; every
+opponent XI excludes the user's players. The Daily Challenge uses the Pro offsets.
+
+**Odds** for a typical drafted XI (Nations, positional picks with the level's re-rolls, XI ≈
+83.0–83.6), `tools/calibration/cup-calibration.mjs runs`: 1,000 runs per level with the fitted
+model for the user's matches (real opponents, AI-vs-AI group results), and `projectRun` at the
+mode baseline (6,000 runs):
+
+| Difficulty | champions | out in the group | reached: group / R16 / QF / SF / final / champions | `projectRun` |
+| --- | --- | --- | --- | --- |
+| Amateur | 59.6% | 0.6% | 1 / 4 / 5 / 9 / 22 / 60 | 61% · Champions |
+| Semi-pro | 37.8% | 2.7% | 3 / 10 / 13 / 19 / 17 / 38 | 34% · Final |
+| Pro | 19.8% | 4.8% | 5 / 14 / 18 / 23 / 21 / 20 | 18% · Semi-finals |
+| World Class | 8.2% | 14.7% | 15 / 23 / 21 / 24 / 9 / 8 | 8% · Quarter-finals |
+| Legendary | 3.4% | 24.3% | 24 / 27 / 23 / 17 / 6 / 3 | 3% · Quarter-finals |
+
+**Real engine** for the user's matches (30 runs per level, 180 s / 300 s alternating; ±9 points
+at this size): champions Amateur 46.7%, Semi-pro 40.0%, Pro 20.0% (no group exits), World Class
+3.3%, Legendary 10.0%. Match by match it agrees with the model plus `KNOCKOUT_EDGE`: group wins
+74.0% vs 75.1%, knockout ties won 74.8% vs 69.9% without the edge (≈ 74% with it). Re-check with
+`cup-calibration.mjs runs --runs 1000 --engine 30 --workers 2` after engine changes.
+
+`projectRun` plays the same rounds against the exact targets (the real candidates sit within a
+point of them); the setup screen's "a typical draft reaches …" line is its median stage
+(300 runs).
 
 ```js
 import { createCupRun, restoreCupRun, projectRun } from './core/competition/cup.js';
@@ -88,11 +121,18 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 
 ### Fast rating model (`model.js`)
 
-Independent Poisson goals on effective ratings: `λA = 1.3·e^{0.09(rA−rB)}`,
-`λB = 1.3·e^{−0.09(rA−rB)}` — gap 0: 37% W / 26% D / 37% L; gap +4: 60/22/18; gap +8: 80/13/6.
-Shootouts: five kicks each then sudden death, each scored with p = 0.75 ± 0.01 per rating
-point. Fitted roughly to the pre-overhaul engine (review match-gap sample); refit when the
-engine overhaul lands (`MATCH_MODEL`).
+Independent Poisson goals on effective ratings: `λA = 1.82·e^{0.0525(rA−rB)}`,
+`λB = 1.82·e^{−0.0525(rA−rB)}` — gap 0: 39% W / 22% D / 39% L; gap +4: 55/21/24; gap +8:
+70/16/14; gap +12: 83/10/7. Fitted by Poisson maximum likelihood to 840 engine matches of the
+Phase 3 engine (`cup-calibration.mjs gaps`: a typically drafted XI against ladder opponents at
+gaps of −12…+20, the AI coach at each difficulty's level, 180 s and 300 s alternating). The
+engine by gap (W/D/L) against the model: −8…−4 19/15/66 vs 21/19/60; +4…+8 59/25/17 vs
+63/18/19; +8…+13 80/14/6 vs 78/13/9; +13…+17 88/7/5 vs 89/7/4. 180 s matches score less (1.58
+per side at gap 0) than 300 s (2.06) with the same slope; the model uses the blend. No home or
+coach constant: the AI coach's level moves the user's edge by at most ±1 rating point with no
+trend; Poisson draws match the engine (16.4% vs 16.9%). Shootouts: five kicks each then sudden
+death, each scored with p = 0.75 ± 0.005 per rating point (340 engine shootouts: a side 6 points
+stronger wins 62%, 6 weaker 41%; `MATCH_MODEL`).
 
 ## Daily Challenge
 
