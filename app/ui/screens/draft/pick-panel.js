@@ -7,8 +7,6 @@ import { surname } from '../../lib/player-view.js';
 import { PlayerCard, FitTag, Flag, Button, IconButton, Sheet } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
 
-const KIND_ICON = { club: 'shield', nation: 'flag', league: 'layout-grid' };
-
 function Effects({ team, preview, hideRatings }) {
   if (!preview) return null;
   const delta = team.rating == null ? null : Math.round((preview.rating - team.rating) * 10) / 10;
@@ -129,6 +127,7 @@ export function PickSheet({
         onSelect=${onTarget}
         hideRatings=${hideRatings}
         label="Choose a slot"
+        aspect="1 / 1.16"
         class="pick__pitch"
       />
     </div>
@@ -185,5 +184,3 @@ export function PickDock({
     </div>
   </div>`;
 }
-
-export { KIND_ICON };

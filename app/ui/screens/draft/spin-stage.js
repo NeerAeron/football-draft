@@ -149,8 +149,7 @@ function IdlePanel({ category, complete, turnName }) {
     </span>
     <span class="stage-idle__text">
       <b
-        >${turnName ? `${turnName}: spin` : 'Spin'} for a
-        ${CATEGORY_LABEL[category]?.toLowerCase() || 'pick'}</b
+        >${`${turnName ? `${turnName}: spin` : 'Spin'} for a ${CATEGORY_LABEL[category]?.toLowerCase() || 'pick'}`}</b
       >
       <span>${IDLE_TEXT[category] || ''}</span>
     </span>
@@ -201,9 +200,9 @@ export function OddsDialog({ open, onClose, spin }) {
 
 /**
  * SpinStage props: snap (session snapshot), animate (token or null), onLanded(),
- * onAutoPick(), turnName (versus), busy.
+ * onAutoPick(), turnName (versus), actions (desktop: Spin / Re-roll buttons in the card).
  */
-export function SpinStage({ snap, animate, onLanded, onAutoPick, turnName, fresh }) {
+export function SpinStage({ snap, animate, onLanded, onAutoPick, turnName, fresh, actions }) {
   const [odds, setOdds] = useState(false);
   const spin = snap.spin;
   const category = snap.category;
@@ -251,6 +250,7 @@ export function SpinStage({ snap, animate, onLanded, onAutoPick, turnName, fresh
               turnName=${turnName}
             />`
     }
+    ${actions && html`<div class="stage__actions">${actions}</div>`}
     ${spin && html`<${OddsDialog} open=${odds} onClose=${() => setOdds(false)} spin=${spin} />`}
   </section>`;
 }

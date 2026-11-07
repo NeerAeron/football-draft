@@ -35,10 +35,18 @@ import {
   draftProjection,
   landedAnnouncement,
   pickPreview,
+  rowStats,
 } from './draft-model.js';
 import { SpinStage } from './spin-stage.js';
 import { PoolPanel } from './pool-list.js';
-import { TeamSummary, TeamPitch, LineMeters, VersusStrip, Progress } from './team-panel.js';
+import {
+  TeamSummary,
+  TeamPitch,
+  LineMeters,
+  VersusStrip,
+  Progress,
+  History,
+} from './team-panel.js';
 import { PickSheet, PickDock } from './pick-panel.js';
 import { CompleteSheet } from './complete-sheet.js';
 import { PickMoment, PassDevice } from './moments.js';
@@ -119,11 +127,52 @@ function Board({ state, draft, auto }) {
     const cache = new WeakMap();
     return e => {
       let v = cache.get(e);
-      if (!v)
-        cache.set(e, (v = { ...toView(session.player(e.profileId)), ovr: e.ovr, tier: e.tier }));
+      if (!v) {
+        const base = toView(session.player(e.profileId));
+        v = { ...base, ovr: e.ovr, tier: e.tier, stats: rowStats(base.stats, base.position) };
+        cache.set(e, v);
+      }
       return v;
     };
   }, [toView, session]);
+  const lookups = useMemo(
+    () => ({
+      nations: new Map((catalog.nations || []).map(n => [n.name, n])),
+      leagues: new Map(catalog.leagues.map(l => [String(l.id), l])),
+      teams: new Map(catalog.teams.map(t => [String(t.id), t])),
+    }),
+    [catalog],
+  );
+  const history = useMemo(() => {
+    const shown = snap.sides === 2 ? shownSide : 0;
+    return snap.history
+      .filter(h => h.side === shown)
+      .map(h => {
+        const slot = snap.teams[h.side].slots[h.slot];
+        const n = lookups.nations.get(h.optionId);
+        const l = lookups.leagues.get(String(h.optionId));
+        const c = lookups.teams.get(String(h.optionId));
+        const media =
+          h.category === 'nation'
+            ? { flag: { code: n?.code, name: h.optionName, src: n?.flag } }
+            : h.category === 'league'
+              ? { logo: { src: l?.logo, name: h.optionName } }
+              : {
+                  crest: { name: h.optionName, colors: [c?.primary, c?.secondary].filter(Boolean) },
+                };
+        return {
+          key: `${h.side}:${h.round}`,
+          round: h.round + 1,
+          category: h.category,
+          from: h.optionName,
+          media,
+          name: slot.player?.name || '',
+          role: slot.role,
+          rating: slot.rating,
+        };
+      })
+      .reverse();
+  }, [snap, lookups, shownSide]);
   const teamPlayers = useMemo(
     () =>
       snap.teams.map(t =>
@@ -154,7 +203,9 @@ function Board({ state, draft, auto }) {
     [entry, snap],
   );
   const target = entry ? (sel.target ?? placement?.auto?.slot ?? null) : null;
-  const highlights = placement ? slotHighlights(placement.options, placement.auto) : null;
+  const highlights = placement
+    ? slotHighlights(placement.options, placement.auto, { hideRatings: hide })
+    : null;
   const preview = useMemo(
     () => (entry && target != null ? pickPreview(session, side, entry.profileId, target) : null),
     [entry, target, snap],
@@ -285,6 +336,7 @@ function Board({ state, draft, auto }) {
     hideRatings=${hide}
     preview=${placing ? preview : null}
     compact=${!wide}
+    showOvr=${!versus}
   />`;
   const pitch = html`<${TeamPitch}
     team=${shownTeam}
@@ -293,13 +345,64 @@ function Board({ state, draft, auto }) {
     selected=${wide && placing ? target : null}
     onSelect=${wide && placing ? onSlot : undefined}
     hideRatings=${hide}
+    aspect=${wide ? '4 / 4.8' : undefined}
   />`;
+  const spinLabel = `Spin ${versus ? `· ${team.name}` : `a ${CATEGORY_LABEL[snap.category]?.toLowerCase()}`}`;
+  const spinButton = html`<${Button}
+    variant="primary"
+    size=${wide ? 'lg' : 'xl'}
+    block
+    icon="reel"
+    onClick=${spin}
+    data-testid="spin"
+    >${spinLabel}<//
+  >`;
+  const rerollButton = html`<${Button}
+    variant="secondary"
+    size=${wide ? 'md' : 'lg'}
+    icon="rotate-ccw"
+    onClick=${reroll}
+    disabled=${!snap.canReroll}
+    data-testid="reroll"
+    class="draft-bar__reroll"
+    >${
+      rerollsLeft > 0
+        ? html`Re-roll<span class="draft-bar__count num">${rerollsLeft} left</span>`
+        : 'No re-rolls left'
+    }<//
+  >`;
+  const doneButton = html`<${Button}
+    variant="primary"
+    size=${wide ? 'lg' : 'xl'}
+    block
+    iconEnd="arrow-right"
+    onClick=${() => setCompleteOpen(true)}
+    data-testid="draft-done"
+    >Continue<//
+  >`;
+  // Desktop: the stage carries its own buttons; phones: the sticky action bar does.
+  const stageActions =
+    wide &&
+    (snap.complete
+      ? doneButton
+      : animating
+        ? null
+        : snap.phase === 'spin'
+          ? spinButton
+          : html`<div class="stage__row">
+              <p class="stage__hint">
+                Select a player: the pitch lights up where he fits. Double-click drafts him to his
+                best slot.
+              </p>
+              ${rerollButton}
+            </div>`);
   const stage = html`<${SpinStage}
     snap=${snap}
     animate=${animating ? animate : null}
     onLanded=${onLanded}
     onAutoPick=${doAutoPick}
     turnName=${turnName}
+    actions=${stageActions}
   />`;
   const pool =
     snap.phase === 'pick' &&
@@ -315,64 +418,29 @@ function Board({ state, draft, auto }) {
       heading=${versus ? `${team.name}: pick a player` : 'Pick a player'}
     />`;
 
-  let bar;
-  if (snap.complete)
-    bar = html`<${Button}
-      variant="primary"
-      size=${wide ? 'lg' : 'xl'}
-      block
-      iconEnd="arrow-right"
-      onClick=${() => setCompleteOpen(true)}
-      data-testid="draft-done"
-      >Continue<//
-    >`;
+  let bar = null;
+  if (wide)
+    bar =
+      entry &&
+      html`<${PickDock}
+        entry=${entry}
+        view=${entryView(entry)}
+        team=${team}
+        highlights=${highlights}
+        options=${placement.options}
+        auto=${placement.auto}
+        target=${target}
+        onTarget=${slot => setSel(s => ({ ...s, target: slot }))}
+        onConfirm=${confirm}
+        onCancel=${() => setSel(null)}
+        preview=${preview}
+        hideRatings=${hide}
+      />`;
+  else if (snap.complete) bar = doneButton;
   else if (animating)
-    bar = html`<${Button} variant="secondary" size=${wide ? 'lg' : 'xl'} block disabled loading
-      >Spinning<//
-    >`;
-  else if (snap.phase === 'spin')
-    bar = html`<${Button}
-      variant="primary"
-      size=${wide ? 'lg' : 'xl'}
-      block
-      icon="reel"
-      onClick=${spin}
-      data-testid="spin"
-      >${`Spin ${versus ? `· ${team.name}` : `a ${CATEGORY_LABEL[snap.category]?.toLowerCase()}`}`}<//
-    >`;
-  else if (wide && entry)
-    bar = html`<${PickDock}
-      entry=${entry}
-      view=${entryView(entry)}
-      team=${team}
-      highlights=${highlights}
-      options=${placement.options}
-      auto=${placement.auto}
-      target=${target}
-      onTarget=${slot => setSel(s => ({ ...s, target: slot }))}
-      onConfirm=${confirm}
-      onCancel=${() => setSel(null)}
-      preview=${preview}
-      hideRatings=${hide}
-    />`;
-  else
-    bar = html`<div class="draft-bar">
-      ${wide && html`<p class="draft-bar__hint">Select a player — the pitch shows where he fits. Double-click drafts him to his best slot.</p>`}
-      <${Button}
-        variant="secondary"
-        size=${wide ? 'md' : 'lg'}
-        icon="rotate-ccw"
-        onClick=${reroll}
-        disabled=${!snap.canReroll}
-        data-testid="reroll"
-        class="draft-bar__reroll"
-        >${
-          rerollsLeft > 0
-            ? html`Re-roll <span class="draft-bar__count num">${rerollsLeft} left</span>`
-            : 'No re-rolls left'
-        }<//
-      >
-    </div>`;
+    bar = html`<${Button} variant="secondary" size="xl" block disabled loading>Spinning<//>`;
+  else if (snap.phase === 'spin') bar = spinButton;
+  else bar = rerollButton;
 
   const head = html`<header class="draft-head">
     <div class="draft-head__titles">
@@ -394,6 +462,7 @@ function Board({ state, draft, auto }) {
       complete=${snap.complete}
       hideRatings=${hide}
     />`;
+  const xiLabel = `${xiOpen ? 'Hide' : 'Show'} ${versus ? `${shownTeam.name}’s` : 'your'} XI`;
 
   return html`<div
     class=${cx('screen draft', wide && 'is-wide', versus && 'is-versus')}
@@ -410,7 +479,8 @@ function Board({ state, draft, auto }) {
               </aside>
               <div class="draft__play">
                 ${stage} ${pool}
-                <div class="action-bar draft__bar">${bar}</div>
+                ${snap.phase !== 'pick' && html`<${History} entries=${history} hideRatings=${hide} />`}
+                ${bar && html`<div class="action-bar draft__bar">${bar}</div>`}
               </div>`
           : html`${vstrip} ${summary} ${stage}
               ${
@@ -421,10 +491,7 @@ function Board({ state, draft, auto }) {
                         aria-expanded=${String(xiOpen)}
                         onClick=${() => setXiOpen(!xiOpen)}
                       >
-                        <span
-                          >${xiOpen ? 'Hide' : 'Show'} ${versus ? `${shownTeam.name}’s` : 'your'}
-                          XI</span
-                        >
+                        <span>${xiLabel}</span>
                         <${Progress} filled=${shownTeam.filled} />
                       </button>
                       ${xiOpen && pitch} ${pool}`

@@ -105,6 +105,9 @@
   border-radius: var(--radius-md);
   background: var(--surface-1);
 }
+.tsummary.is-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .tsummary.is-compact .tstat {
   min-height: 56px;
   padding: var(--space-1) var(--space-3);
@@ -167,7 +170,8 @@
 }
 .line-meters {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
   padding: var(--space-3);
   border: 1px solid var(--line-1);
   border-radius: var(--radius-md);
@@ -184,6 +188,15 @@
 }
 .draft-pitch .pitch-slot.is-fit-blocked {
   opacity: 0.45;
+}
+/* League links (dashed) stay in the background; nation and club lines carry the story */
+.draft-pitch .pitch__link--1,
+.xi-summary__pitch .pitch__link--1 {
+  stroke: rgb(255 255 255 / 0.22);
+}
+/* Poor fits: a muted rating tag, the slot stays selectable */
+.draft-pitch .pitch-slot.is-fit-neutral .pitch-slot__ring {
+  opacity: 0.7;
 }
 .team-pitch.is-placing .draft-pitch {
   box-shadow:
@@ -442,6 +455,72 @@
   }
 }
 
+.stage__actions {
+  display: grid;
+}
+.stage__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-1);
+}
+.stage__hint {
+  flex: 1;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+
+/* Desktop: picks so far (spin phase) */
+.history {
+  display: grid;
+  gap: var(--space-2);
+}
+.history__title {
+  font-size: var(--display-xs);
+}
+.history__list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.history__item {
+  display: grid;
+  grid-template-columns: 28px 24px minmax(0, 0.8fr) auto minmax(0, 1fr) 36px 32px;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  border: 1px solid var(--line-1);
+  font-size: var(--text-sm);
+}
+.history__item:first-child {
+  border-color: rgb(205 245 69 / 0.3);
+}
+.history__round {
+  color: var(--text-3);
+}
+.history__from {
+  color: var(--text-2);
+}
+.history__arrow {
+  color: var(--text-3);
+}
+.history__name {
+  font-weight: var(--weight-semibold);
+}
+.history__role {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  color: var(--volt-300);
+}
+.history__ovr {
+  text-align: right;
+  font-size: var(--text-md);
+}
+
 /* Idle (before a spin) */
 .stage-idle {
   display: flex;
@@ -619,7 +698,7 @@
   flex: none;
 }
 .draft-bar__count {
-  margin-left: var(--space-1);
+  margin-left: var(--space-2);
   padding: 0 var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--surface-4);

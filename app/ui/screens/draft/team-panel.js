@@ -2,7 +2,7 @@
 // placed players and link lines, the DEF/MID/ATT line meters and, in Versus, both XIs.
 import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
-import { PitchView, Meter, Icon } from '../../components/index.js';
+import { PitchView, Meter, Icon, Flag, LeagueLogo, Crest } from '../../components/index.js';
 import { linkLines } from './draft-model.js';
 
 const fmt = v => (v == null ? '–' : v.toFixed(1));
@@ -34,19 +34,39 @@ function Stat({ label, value, sub, tone, testid }) {
  * The meters strip: team OVR (with a preview delta), Links (n / 33) and the projection.
  * hideRatings hides OVR and the projection (they would reveal the ratings).
  */
-export function TeamSummary({ team, projection, hideRatings, preview, compact = false, children }) {
+export function TeamSummary({
+  team,
+  projection,
+  hideRatings,
+  preview,
+  compact = false,
+  showOvr = true,
+  children,
+}) {
   const delta =
     preview && team.rating != null && preview.rating != null
       ? Math.round((preview.rating - team.rating) * 10) / 10
       : null;
   const linkDelta = preview ? preview.links - team.links.score : null;
-  return html`<section class=${cx('tsummary', compact && 'is-compact')} aria-label="Team meters">
-    <${Stat}
-      label="Team OVR"
-      testid="team-ovr"
-      value=${hideRatings ? '?' : fmt(team.rating)}
-      sub=${!hideRatings && delta != null ? html`<span class=${cx('delta', delta >= 0 ? 'is-up' : 'is-down')}>${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}</span>` : null}
-    />
+  return html`<section
+    class=${cx('tsummary', compact && 'is-compact', !showOvr && 'is-two')}
+    aria-label="Team meters"
+  >
+    ${
+      showOvr &&
+      html`<${Stat}
+        label="Team OVR"
+        testid="team-ovr"
+        value=${hideRatings ? '?' : fmt(team.rating)}
+        sub=${
+          !hideRatings && delta != null
+            ? html`<span class=${cx('delta', delta >= 0 ? 'is-up' : 'is-down')}
+                >${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}</span
+              >`
+            : null
+        }
+      />`
+    }
     <${Stat}
       label="Links"
       testid="team-links"
@@ -105,6 +125,8 @@ export function TeamPitch({
   onSelect,
   hideRatings,
   label,
+  aspect,
+  names = true,
   class: className,
 }) {
   return html`<div class=${cx('team-pitch', highlights && 'is-placing', className)}>
@@ -117,9 +139,44 @@ export function TeamPitch({
       onSelect=${onSelect}
       hideRatings=${hideRatings}
       label=${label || `${team.name} XI`}
+      aspect=${aspect}
+      names=${names}
       class="draft-pitch"
     />
   </div>`;
+}
+
+/**
+ * The side's picks so far, newest first: what the spin landed on → who was drafted, where.
+ * entries: [{ key, round, category, from, media: { flag | logo | crest }, name, role, rating }]
+ */
+export function History({ entries, hideRatings }) {
+  if (!entries.length) return null;
+  return html`<section class="history" aria-labelledby="history-title">
+    <h2 class="history__title" id="history-title">Your picks</h2>
+    <ol class="history__list" role="list">
+      ${entries.map(
+        e =>
+          html`<li key=${e.key} class="history__item">
+            <span class="history__round num">${e.round}</span>
+            <span class="history__media">
+              ${
+                e.media.flag
+                  ? html`<${Flag} ...${e.media.flag} size=${22} decorative />`
+                  : e.media.logo
+                    ? html`<${LeagueLogo} ...${e.media.logo} size=${22} decorative />`
+                    : html`<${Crest} ...${e.media.crest} size=${22} decorative />`
+              }
+            </span>
+            <span class="history__from truncate">${e.from}</span>
+            <${Icon} name="arrow-right" size=${14} class="history__arrow" />
+            <span class="history__name truncate">${e.name}</span>
+            <span class="history__role">${e.role}</span>
+            <span class="history__ovr num">${hideRatings ? '' : e.rating}</span>
+          </li>`,
+      )}
+    </ol>
+  </section>`;
 }
 
 /** Versus: both drafters, the side to pick, and which XI is shown. */

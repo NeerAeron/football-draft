@@ -80,31 +80,47 @@ export function rowFit(entry) {
   return { state: 'penalty', label: best.role, from: entry.ovr, to: best.rating };
 }
 
+/** A drop bigger than this (OVR points) is shown as a muted "poor fit" instead of amber. */
+export const POOR_FIT_DROP = 7;
+
 /**
  * PitchView highlights for placementOptions(id): the Auto slot 'best', natural slots 'ok',
- * out-of-position slots 'penalty' (natural → in-slot rating), closed slots 'blocked'.
+ * small out-of-position drops 'penalty' (natural → in-slot rating), big drops a muted
+ * 'neutral' tag with the in-slot rating (still selectable), closed slots 'blocked'.
  */
-export function slotHighlights(options = [], auto = null) {
+export function slotHighlights(options = [], auto = null, { hideRatings = false } = {}) {
   const out = {};
+  const off = o =>
+    o.natural - o.rating > POOR_FIT_DROP
+      ? { state: 'neutral', label: hideRatings ? 'Poor' : String(o.rating), from: o.natural }
+      : { state: 'penalty', label: o.role, from: o.natural, to: o.rating };
   for (const o of options) {
     if (!o.allowed) out[o.slot] = { state: 'blocked', label: o.reason };
     else if (auto && o.slot === auto.slot)
-      out[o.slot] =
-        o.familiarity >= NATURAL_FIT
-          ? { state: 'best', label: 'Best' }
-          : { state: 'penalty', label: o.role, from: o.natural, to: o.rating };
+      out[o.slot] = o.familiarity >= NATURAL_FIT ? { state: 'best', label: 'Best' } : off(o);
     else if (o.familiarity >= NATURAL_FIT) out[o.slot] = { state: 'ok', label: o.role };
-    else out[o.slot] = { state: 'penalty', label: o.role, from: o.natural, to: o.rating };
+    else out[o.slot] = off(o);
   }
   return out;
 }
 
-/** Slot choices for the pick sheet: allowed slots, Auto first, then by rating. */
-export function slotChoices(options = [], auto = null) {
-  return options
-    .filter(o => o.allowed)
-    .map(o => ({ ...o, auto: auto?.slot === o.slot, natural: o.familiarity >= NATURAL_FIT }))
-    .sort((a, b) => b.auto - a.auto || b.rating - a.rating || a.slot - b.slot);
+const GROUP_ORDER = ['Pot 1', 'Pot 2', 'Pot 3', 'Pot 4', 'S', 'A', 'B', 'C', 'D', 'F'].map(
+  (k, i) => [k.length === 1 ? `Tier ${k}` : k, i],
+);
+const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
+
+const ROW_STATS = {
+  GK: ['GK', 'PAS', 'PAC'],
+  DEF: ['DEF', 'PHY', 'PAC'],
+  MID: ['PAS', 'DRI', 'SHO'],
+  ATT: ['SHO', 'PAC', 'DRI'],
+};
+
+/** The six summary stats with the ones that matter for the player's line first (pool rows). */
+export function rowStats(stats = [], position) {
+  const keys = ROW_STATS[lineOf(position)] || [];
+  const first = keys.map(k => stats.find(s => s.key === k)).filter(Boolean);
+  return [...first, ...stats.filter(s => !keys.includes(s.key))];
 }
 
 /** PitchView link lines from Links pairs: club 3 · nation 2 · league 1. */
@@ -178,7 +194,7 @@ export function oddsSummary(spin) {
         chance: pct(landed.probability),
       },
       groups: [...groups.values()]
-        .sort((a, b) => (a.label < b.label ? -1 : 1))
+        .sort((a, b) => groupRank(a.label) - groupRank(b.label))
         .map(g => ({ ...g, chance: pct(g.each) })),
     };
   });
