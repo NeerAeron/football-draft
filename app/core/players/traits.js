@@ -194,7 +194,3 @@ export const TACTICS = {
     help: 'Balances positional discipline and freedom to roam.',
   },
 };
-
-export function badgeDescription(b) {
-  return b.description;
-}

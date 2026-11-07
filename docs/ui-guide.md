@@ -15,8 +15,7 @@ Mobile-first single column (390 px) that becomes a two-pane layout from 960 px.
 app/
   index.html              the app shell page (import map → ui/main.js)
   gallery.html            component gallery (design review + screenshot QA)
-  legacy.html             the pre-overhaul game (app/legacy/), kept until parity
-  config.html             advanced tuning page (legacy UI), unchanged
+  config.html             Advanced tuning page (plain DOM, app/tuning/; linked from Home/Settings)
   assets/fonts/           Barlow Condensed + Inter woff2 subsets + OFL texts
 ui/
   main.js                 entry: render the shell
@@ -137,6 +136,8 @@ Hash routes (static hosting, back button works). Table in `app/ui/routes.js`:
 | `#/run`       | RUN-UI       | World Cup Run hub (Home's "Continue" goes here)                 |
 | `#/daily`     | RUN-UI       | Daily Challenge                                                 |
 | `#/exhibition`| RUN-UI       | Exhibition picker                                               |
+| `#/prematch`  | DRAFT-UI     | pre-match for any two XIs (`prematch-store.js`)                 |
+| `#/challenge` | RUN-UI       | challenge-link landing (`?c=…&r=…`)                             |
 | `#/settings`  | foundation   | Settings (`?section=credits` scrolls to a panel)                |
 
 ```js

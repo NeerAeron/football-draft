@@ -13,7 +13,7 @@ render. Follow `docs/ui-guide.md` for components, tokens and flows.
 
 Shared pieces: `lib/run-store.js` (persistence, Home summary, kits, prematch sides, stakes,
 links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/run/auto-sim.js`
-(engine auto-sims), `sim-ticker.js` (`useSimTicker` results ticker), `share-panel.js`,
+(engine auto-sims) + `auto-sim-worker.js`, `sim-ticker.js` (`useSimTicker` results ticker), `share-panel.js`,
 `team-view.js` (XI → PlayerViews, share card data), `trophy.js`.
 
 ## World Cup Run flow
@@ -38,8 +38,10 @@ links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/r
 5. **End.** Champion (trophy + confetti + achievements) or elimination; grade + verdict, record,
    Player of the Tournament, Held you back, XI, share text + image, Challenge a friend, Play again.
 
-Auto-sims run on the main thread in ~14 ms slices (`autoSimulate`); swap in MATCH-UI's worker
-client (`app/services/sim-client.js`) in that one function when it lands.
+Auto-sims (`autoSimulate`) run the engine in a module Worker (`auto-sim-worker.js`, which runs
+the same `simulateHere()` loop and streams the ticker updates); without Worker support or if the
+worker fails they run on the main thread in ~14 ms slices. Same seed + config ⇒ the same result
+as the match screen's Instant view.
 
 ## Daily Challenge flow
 
@@ -80,6 +82,5 @@ challenge: { token, by }, returnTo })`; "Review the settings first" opens
   daily record + streak, share image layout.
 - `tests/browser/flows.mjs` — `run`, `daily`, `exhibition`, `challenge-link` (seeded, fast
   sims). Drafts finish on the real board via `#/draft?auto=1` + the completion sheet's
-  Continue; matches kick off from the real pre-match (`[data-testid="kick-off"]`). While
-  `#/match` is a placeholder, `finishMatch()` simulates the stored request in the page;
-  with MATCH-UI's screen it presses Instant and Continue.
+  Continue; matches kick off from the real pre-match (`[data-testid="kick-off"]`), and
+  `finishMatch()` presses Instant and Continue on the match screen.

@@ -9,7 +9,6 @@ import {
   setRuntimeConfig,
   configDiff,
   configField,
-  overrideField,
 } from '../app/core/config/config.js';
 
 const KEY = 'football-draft-settings-v1';
@@ -32,16 +31,14 @@ test('saving stores only the differences from the defaults', () => {
   const storage = memory(),
     config = structuredClone(DEFAULT_CONFIG);
   config.gameplay.shotFrequency = 1.2;
-  config.draft.clubOverrides['9'] = 2;
-  config.draft.leagueOverrides['13'] = 1; // the default multiplier is not stored
   config.draft.rerolls.pro = 2;
+  config.draft.ladder.pro = DEFAULT_CONFIG.draft.ladder.pro; // a default value is not stored
   const saved = saveConfig(config, { storage });
   assert.deepEqual(storage.stored(), {
     gameplay: { shotFrequency: 1.2 },
-    draft: { clubOverrides: { 9: 2 }, rerolls: { pro: 2 } },
+    draft: { rerolls: { pro: 2 } },
     _settingsVersion: 9,
   });
-  assert.deepEqual(saved.draft.leagueOverrides, {});
   assert.deepEqual(loadConfig({ storage }), saved);
   assert.deepEqual(configDiff(DEFAULT_CONFIG), {});
   saveConfig(DEFAULT_CONFIG, { storage });
@@ -53,7 +50,7 @@ test('an invalid saved value is dropped with a warning; the rest is kept', () =>
       _settingsVersion: 9,
       gameplay: { shotFrequency: 'fast', shotPower: 1.1 },
       playerTiers: { Star: { minimum: 300 } },
-      draft: { clubOverrides: { 9: 2, 10: -4, 11: 'x' }, rerolls: { pro: 1.5, amateur: 3 } },
+      draft: { rerolls: { pro: 1.5, amateur: 3, worldclass: -1 } },
       removedSetting: { anything: 1 },
     }),
     { messages, warn } = collect(),
@@ -61,14 +58,14 @@ test('an invalid saved value is dropped with a warning; the rest is kept', () =>
   assert.equal(config.gameplay.shotFrequency, DEFAULT_CONFIG.gameplay.shotFrequency);
   assert.equal(config.gameplay.shotPower, 1.1);
   assert.equal(config.playerTiers.Star.minimum, DEFAULT_CONFIG.playerTiers.Star.minimum);
-  assert.deepEqual(config.draft.clubOverrides, { 9: 2 });
   assert.equal(config.draft.rerolls.pro, 1);
   assert.equal(config.draft.rerolls.amateur, 3);
-  assert.equal(messages.length, 5, messages.join('\n'));
+  assert.equal(config.draft.rerolls.worldclass, 1);
+  assert.equal(messages.length, 4, messages.join('\n'));
   assert.ok(messages.some(m => m.includes('gameplay.shotFrequency')));
   // Strict normalisation (the config page, imports) still rejects the same values.
   assert.throws(() => normalizeConfig({ gameplay: { shotFrequency: 'fast' } }));
-  assert.throws(() => normalizeConfig({ draft: { clubOverrides: { 9: -1 } } }));
+  assert.throws(() => normalizeConfig({ draft: { rerolls: { pro: -1 } } }));
 });
 
 test('a broken cross-field rule resets only its group', () => {
@@ -108,8 +105,8 @@ test('unreadable or failing storage falls back without throwing', () => {
   assert.equal(messages.length, 4);
 });
 
-test('version-8 full snapshots migrate: sparse overrides, customs kept, defaults dropped', () => {
-  // A v8 save is a full snapshot with dense override maps (every league and club at 1).
+test('version-8 full snapshots migrate: customs kept, defaults and removed settings dropped', () => {
+  // A v8 save is a full snapshot, with the pre-overhaul draft's dense override maps.
   const old = structuredClone(DEFAULT_CONFIG);
   delete old.draft.nations; // v8 had no draft-session settings
   delete old.draft.links;
@@ -120,9 +117,10 @@ test('version-8 full snapshots migrate: sparse overrides, customs kept, defaults
   old.gameplay.shotFrequency = 1.25; // customised
   old._settingsVersion = 8;
   const storage = memory(old);
-  const config = loadConfig({ storage });
-  assert.deepEqual(config.draft.leagueOverrides, { 19: 1.5 });
-  assert.deepEqual(config.draft.clubOverrides, { 9: 2 });
+  const { messages, warn } = collect();
+  const config = loadConfig({ storage, warn });
+  assert.deepEqual(messages, []);
+  assert.ok(!('leagueOverrides' in config.draft) && !('clubOverrides' in config.draft));
   assert.equal(config.gameplay.shotFrequency, 1.25);
   assert.deepEqual(config.draft.links, DEFAULT_CONFIG.draft.links);
   // Untouched v8 defaults follow later default changes instead of pinning the old value.
@@ -138,34 +136,70 @@ test('version-8 full snapshots migrate: sparse overrides, customs kept, defaults
   }
   // Re-saving writes the compact form.
   saveConfig(config, { storage });
-  assert.deepEqual(storage.stored(), {
-    gameplay: { shotFrequency: 1.25 },
-    draft: { leagueOverrides: { 19: 1.5 }, clubOverrides: { 9: 2 } },
-    _settingsVersion: 9,
-  });
+  assert.deepEqual(storage.stored(), { gameplay: { shotFrequency: 1.25 }, _settingsVersion: 9 });
 });
 
-test('sparse override fields and runtime replacement of the maps', () => {
-  assert.deepEqual(DEFAULT_CONFIG.draft.leagueOverrides, {});
-  const f = overrideField('club', '9');
-  assert.deepEqual(
-    [f.path, f.defaultValue, f.min, f.max, f.step],
-    ['draft.clubOverrides.9', 1, 0, 10, 0.05],
-  );
-  assert.equal(configField('draft.leagueOverrides.13').path, 'draft.leagueOverrides.13');
+test('settings of removed features load silently and are dropped on the next save', () => {
+  // Keys only the pre-overhaul UI read: its draft (league/club weights and overrides, budget
+  // tickets, re-spins and their boosts), its AI club opponents and its display settings.
+  const removed = {
+    draft: {
+      leagueWeights: { A: 40, B: 10, C: 3, D: 0.8, F: 0.2 },
+      leagueOptaSlope: 0.01,
+      leagueOptaLimit: 0.2,
+      clubDoubleEvery: { A: 6, B: 4, C: 3 },
+      respins: { league: 2, team: 0 },
+      respinBoosts: { slightlyBetter: 0.3, clubSlightGap: 4 },
+      budget: { superstar: 1, star: 4, starter: 2 },
+      leagueOverrides: { 19: 1.5 },
+      clubOverrides: { 9: 2, 10: 'x' },
+      eliteClubBoost: 0.5,
+      rerolls: { pro: 2 }, // still a setting
+    },
+    ai: {
+      tiers: { veryeasy: 'D', hard: 'A' },
+      impossibleOverall: 86,
+      impossibleFit: 0.9,
+      impossibleCandidatesPerRole: 3,
+      impossibleRandomness: 10,
+      formationNoise: { easy: 2 },
+      coachInterval: 8, // still a setting
+    },
+    display: { playerRadius: 1.2, spinnerDuration: 900, receiptLabelDuration: 2 },
+  };
+  for (const version of [2, 8, 9]) {
+    const storage = memory({ ...structuredClone(removed), _settingsVersion: version }),
+      { messages, warn } = collect(),
+      config = loadConfig({ storage, warn });
+    assert.deepEqual(messages, [], `v${version}: ${messages.join('\n')}`);
+    assert.equal(config.draft.rerolls.pro, 2);
+    assert.equal(config.ai.coachInterval, 8);
+    assert.deepEqual(Object.keys(config), Object.keys(DEFAULT_CONFIG));
+    assert.deepEqual(Object.keys(config.draft), Object.keys(DEFAULT_CONFIG.draft));
+    assert.deepEqual(Object.keys(config.ai), Object.keys(DEFAULT_CONFIG.ai));
+    saveConfig(config, { storage });
+    assert.deepEqual(storage.stored(), {
+      draft: { rerolls: { pro: 2 } },
+      ai: { coachInterval: 8 },
+      _settingsVersion: 9,
+    });
+  }
+  // Imports (strict) ignore them too instead of rejecting the file.
+  assert.equal(normalizeConfig(removed).ai.coachInterval, 8);
+});
+
+test('config fields and runtime replacement', () => {
   assert.equal(configField('gameplay.shotPower').defaultValue, DEFAULT_CONFIG.gameplay.shotPower);
   assert.equal(configField('draft.rerolls.pro').label, 'Pro');
+  assert.equal(configField('draft.clubOverrides.9'), null);
   assert.equal(configField('nope.nothing'), null);
   const config = structuredClone(DEFAULT_CONFIG);
-  config.draft.clubOverrides = { 9: 2, 10: 0.5 };
+  config.draft.rerolls.pro = 3;
   try {
     setRuntimeConfig(config);
-    assert.deepEqual(CONFIG.draft.clubOverrides, { 9: 2, 10: 0.5 });
-    config.draft.clubOverrides = { 10: 3 };
-    setRuntimeConfig(config);
-    assert.deepEqual(CONFIG.draft.clubOverrides, { 10: 3 }, 'removed entries return to 1');
+    assert.equal(CONFIG.draft.rerolls.pro, 3);
   } finally {
     setRuntimeConfig(DEFAULT_CONFIG);
   }
-  assert.deepEqual(CONFIG.draft.clubOverrides, {});
+  assert.equal(CONFIG.draft.rerolls.pro, DEFAULT_CONFIG.draft.rerolls.pro);
 });

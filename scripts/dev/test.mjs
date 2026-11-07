@@ -2,7 +2,7 @@
 //
 //   node scripts/dev/test.mjs                 # every tests/**/*.test.mjs, all cores
 //   node scripts/dev/test.mjs --fast          # skip the full-match simulation tests (~5 s)
-//   node scripts/dev/test.mjs draft respin    # only files whose path contains a word
+//   node scripts/dev/test.mjs draft session   # only files whose path contains a word
 //   node scripts/dev/test.mjs --grep "offside" # only tests whose name matches
 //
 // Extra flags after `--` are passed to node --test unchanged.
@@ -24,7 +24,6 @@ const SLOW = [
   'continuous lengths include regulation',
   'every formation pairing draws',
   'formation variations have eleven usable roles',
-  'reveal targets, or stop targeting',
   'same seed and inputs produce the same match state',
   'event contract over a full match',
 ];

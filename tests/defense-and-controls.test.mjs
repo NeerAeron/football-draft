@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
 import { OVERALL_WEIGHTS, OVERALL_OFFSETS, overallRating } from '../app/core/players/ratings.js';
-import { PlaybackClock, bindPlaybackButton } from '../app/services/playback.js';
+import { PlaybackClock } from '../app/services/playback.js';
 
 test('every role has a normalized overall, with heading contributing to striker ability', () => {
   const m = new Match(60),
@@ -26,104 +26,32 @@ test('every role has a normalized overall, with heading contributing to striker 
   assert.notEqual(overallRating(p), striker);
 });
 
-class Button extends EventTarget {
-  disabled = false;
-  captured = null;
-  getBoundingClientRect() {
-    return { left: 10, right: 122, top: 20, bottom: 64 };
+test('a paused playback clock freezes the actual match; resuming continues it', () => {
+  const clock = new PlaybackClock(),
+    m = new Match(401, 180);
+  let now = 0;
+  const frame = () => {
+    now += 20;
+    for (let i = clock.ticks(clock.frame(now)); i > 0; i--) m.step(1 / 60);
+  };
+  clock.setPaused(false, now);
+  for (let n = 0; n < 10; n++) frame();
+  assert.ok(m.elapsed > 0);
+  for (let n = 0; n < 20; n++) {
+    frame();
+    clock.setPaused(true, now);
+    const elapsed = m.elapsed,
+      positions = m.players.map(p => [p.x, p.y]);
+    for (let f = 0; f < 12; f++) frame();
+    assert.equal(m.elapsed, elapsed);
+    assert.deepEqual(
+      m.players.map(p => [p.x, p.y]),
+      positions,
+    );
+    clock.setPaused(false, now);
+    frame();
+    assert.ok(m.elapsed > elapsed);
   }
-  setPointerCapture(id) {
-    this.captured = id;
-  }
-  hasPointerCapture(id) {
-    return this.captured === id;
-  }
-  releasePointerCapture() {
-    this.captured = null;
-    this.dispatchEvent(new Event('lostpointercapture'));
-  }
-  fire(type, props = {}) {
-    const e = new Event(type, { cancelable: true });
-    Object.assign(e, {
-      button: 0,
-      isPrimary: true,
-      pointerId: 7,
-      clientX: 40,
-      clientY: 40,
-      detail: 1,
-      ...props,
-    });
-    this.dispatchEvent(e);
-  }
-}
-
-test('mouse and touch button gestures each pause once and freeze the actual match', () => {
-  for (const pointerType of ['mouse', 'touch', 'pen']) {
-    const button = new Button(),
-      clock = new PlaybackClock(),
-      m = new Match(401, 180);
-    let now = 0,
-      actions = 0;
-    const frame = () => {
-      now += 20;
-      for (let i = clock.ticks(clock.frame(now)); i > 0; i--) m.step(1 / 60);
-    };
-    bindPlaybackButton(button, () => {
-      actions++;
-      clock.setPaused(!clock.paused, now);
-    });
-    button.fire('click', { detail: 0 }); // Native keyboard / assistive activation.
-    for (let n = 0; n < 10; n++) frame();
-    assert.ok(m.elapsed > 0);
-    for (let n = 0; n < 20; n++) {
-      button.fire('pointerdown', { pointerType });
-      frame();
-      button.fire('pointerup', { pointerType });
-      button.fire('click', { pointerType });
-      assert.equal(clock.paused, true);
-      const elapsed = m.elapsed,
-        positions = m.players.map(p => [p.x, p.y]);
-      for (let f = 0; f < 12; f++) frame();
-      assert.equal(m.elapsed, elapsed);
-      assert.deepEqual(
-        m.players.map(p => [p.x, p.y]),
-        positions,
-      );
-      button.fire('pointerdown', { pointerType });
-      button.fire('pointerup', { pointerType });
-      button.fire('click', { pointerType });
-      frame();
-      assert.equal(clock.paused, false);
-      assert.ok(m.elapsed > elapsed);
-    }
-    assert.equal(actions, 41);
-  }
-});
-
-test('cancelled, right-clicked, outside-release and disabled button gestures cannot toggle playback', () => {
-  const button = new Button();
-  let actions = 0;
-  bindPlaybackButton(button, () => actions++);
-  button.fire('pointerdown');
-  button.fire('pointercancel');
-  button.fire('pointerup');
-  button.fire('click');
-  assert.equal(actions, 0);
-  button.fire('pointerdown');
-  button.fire('pointerup', { clientX: 200 });
-  button.fire('click');
-  assert.equal(actions, 0);
-  button.fire('pointerdown', { button: 2 });
-  button.fire('pointerup', { button: 2 });
-  assert.equal(actions, 0);
-  button.disabled = true;
-  button.fire('pointerdown');
-  button.fire('pointerup');
-  button.fire('click', { detail: 0 });
-  assert.equal(actions, 0);
-  button.disabled = false;
-  button.fire('click', { detail: 0 });
-  assert.equal(actions, 1);
 });
 
 test('markers predict forward runs and remain goal-side in both halves and directions', () => {
