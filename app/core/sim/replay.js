@@ -38,6 +38,15 @@ export function snapshot(m) {
     phase: m.phase,
     restart: { ...m.restart },
     momentumSamples: m.momentum?.samples.length ?? 0,
+    penaltyEnd: m.penaltyEnd ?? null,
+    shootout: m.shootout
+      ? {
+          first: m.shootout.first,
+          kicks: m.shootout.kicks.map(k => ({ ...k })),
+          score: [...m.shootout.score],
+          winner: m.shootout.winner,
+        }
+      : null,
   };
 }
 // How much a non-goal moment deserves a highlight slot: chance quality (xG),
@@ -81,9 +90,13 @@ export function highlightScore(e) {
       return 0;
   }
 }
+// Every penalty-shootout kick is shown: a short clip from the run-up to the outcome.
+const KICK_BEFORE = 1.1,
+  KICK_AFTER = 0.7;
 export function selectHighlights(events, duration, budget = 60) {
   budget = Math.min(budget, duration);
   const goals = events.filter(e => e.type === 'goal').sort((a, b) => a.elapsed - b.elapsed);
+  const kicks = events.filter(e => e.type === 'shootout');
   const merge = list => {
     const out = [];
     for (const c of list.sort((a, b) => a.start - b.start)) {
@@ -94,13 +107,24 @@ export function selectHighlights(events, duration, budget = 60) {
     return out;
   };
   const total = list => list.reduce((s, c) => s + c.end - c.start, 0);
-  const perGoal = Math.min(8, budget / Math.max(1, goals.length));
-  let clips = merge(
-    goals.map(e => ({
+  // Kicks may use up to 60% of the reel; a very long shootout trims each run-up.
+  const kickSpan = e => Math.max(0.3, e.elapsed - (e.kickedAt ?? e.elapsed));
+  const natural = kicks.reduce((s, e) => s + kickSpan(e) + KICK_BEFORE + KICK_AFTER, 0),
+    squeeze = natural > budget * 0.6 ? (budget * 0.6) / natural : 1;
+  const kickClips = kicks.map(e => {
+    const end = Math.min(duration, e.elapsed + KICK_AFTER * squeeze),
+      start = Math.max(0, end - (kickSpan(e) + KICK_BEFORE + KICK_AFTER) * squeeze);
+    return { start, end };
+  });
+  const kickTime = total(merge(kickClips.map(c => ({ ...c }))));
+  const perGoal = Math.min(8, (budget - kickTime) / Math.max(1, goals.length));
+  let clips = merge([
+    ...goals.map(e => ({
       start: clamp(e.elapsed - perGoal * 0.67, 0, duration - perGoal),
       end: clamp(e.elapsed - perGoal * 0.67, 0, duration - perGoal) + perGoal,
     })),
-  );
+    ...kickClips,
+  ]);
   const candidates = events
     .map(e => ({ e, score: highlightScore(e) }))
     .filter(c => c.score > 0)
@@ -228,6 +252,8 @@ export function applyReplayFrame(target, recording, viewTime) {
   target.effects = a.effects.map(e => ({ ...e }));
   target.mode = a.mode;
   target.abandonedTeam = a.abandonedTeam ?? null;
+  target.penaltyEnd = a.penaltyEnd ?? null;
+  target.shootout = a.shootout ?? null;
   target.phase = a.phase;
   target.restart = a.restart;
   target.players.forEach((p, i) => {

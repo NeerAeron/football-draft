@@ -24,9 +24,15 @@ export function stoppageMinutes(seed, tuning = CONFIG.periods) {
     ),
   ];
 }
+// Match-clock start/end (seconds) of each period: two halves, then the two
+// optional 15-minute halves of extra time.
+export const PERIOD_START = [0, 2700, 5400, 6300];
+export const PERIOD_END = [2700, 5400, 6300, 7200];
+// Real-time share of the match length that each period lasts.
+export const PERIOD_SHARE = [0.5, 0.5, 1 / 6, 1 / 6];
 export function matchClock(time, half) {
   const format = n =>
     `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
-  const end = half === 1 ? 2700 : 5400;
+  const end = PERIOD_END[half - 1] ?? 5400;
   return time >= end ? `${end / 60}+${format(time - end)}` : format(time);
 }

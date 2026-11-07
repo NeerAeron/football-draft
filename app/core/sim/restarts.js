@@ -3,12 +3,13 @@
 import { clamp, dist } from '../util/math.js';
 import { H } from './constants.js';
 
+const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
+
 export class RestartMethods {
   startRestart(type, team, x, y, timer) {
     timer ??=
       type === 'Goal kick' ? 1.7 : type === 'Corner' ? 2.1 : type === 'Throw-in' ? 1.15 : 1.2;
-    if (!['Goal', 'Second half', 'Kickoff'].includes(type))
-      timer *= this.tuning.gameplay.restartSetup;
+    if (!KICKOFFS.has(type)) timer *= this.tuning.gameplay.restartSetup;
     this.mode = 'restart';
     this.phase = type;
     const b = this.ball;
@@ -38,7 +39,7 @@ export class RestartMethods {
     this.lastPass = null;
     this.pendingTackle = null;
     let taker;
-    if (['Goal', 'Second half', 'Kickoff'].includes(type)) taker = this.kickoffTaker(team);
+    if (KICKOFFS.has(type)) taker = this.kickoffTaker(team);
     else if (type === 'Goal kick') taker = this.keeper(team);
     else if (type === 'Penalty')
       taker = this.activePlayers
@@ -54,7 +55,7 @@ export class RestartMethods {
         .filter(p => p.team === team && p.role !== 'GK')
         .sort((a, c) => dist(a, b) - dist(c, b))[0];
     this.restart = { type, team, x, y, timer, taker: taker.id };
-    if (!['Goal', 'Second half', 'Penalty', 'Free kick', 'Offside'].includes(type))
+    if (!['Goal', 'Second half', 'Extra time', 'Penalty', 'Free kick', 'Offside'].includes(type))
       this.addEvent(`${type} · ${this.teams[team].name}`, team, 'restart');
     this.planTimer = 0;
     for (const p of this.activePlayers) {
@@ -90,7 +91,7 @@ export class RestartMethods {
       p.stun = 0;
       p.animation = null;
       p.action = 'Taking position';
-      if (['Goal', 'Second half', 'Kickoff'].includes(type)) {
+      if (KICKOFFS.has(type)) {
         const [base, by] = this.formation(p);
         p.tx = this.abs(Math.min(base * 0.67, 49), p.team);
         p.ty = this.direction(p.team) > 0 ? by : H - by;
@@ -142,7 +143,7 @@ export class RestartMethods {
     for (const p of this.activePlayers) this.move(p, dt, true);
     if (r.timer > 0) return;
     const taker = this.players[r.taker],
-      kickoff = ['Goal', 'Second half', 'Kickoff'].includes(r.type);
+      kickoff = KICKOFFS.has(r.type);
     if (kickoff) this.positionKickoff(r.team);
     for (const p of this.activePlayers) {
       if (r.type === 'Penalty') {

@@ -102,7 +102,7 @@ export class BallMethods {
         if (this.rand() < effectiveSave) {
           this.resolveShot(onTarget ? 'saved' : 'off target');
           let save = null;
-          if (onTarget && b.shotRecord) {
+          if (onTarget && b.shotRecord && !b.shotRecord.shootout) {
             this.stats[p.team].saves++;
             p.stats.saves++;
             save = this.addEvent(`${p.name.split(' ').pop()} makes the save.`, p.team, 'save', {

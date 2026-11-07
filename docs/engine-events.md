@@ -5,9 +5,8 @@ What a match screen can rely on from `app/core/sim/`. Everything here is plain d
 calls listed under _Controls_. The engine is deterministic: the same seed + config gives the
 same match, and nothing in this contract consumes simulation RNG.
 
-Status: everything below is live except the penalty shootout (`competition.knockout`, `mode
-'shootout'`, `m.shootout`, `shootout*` events) and the `'tip over'` save type, which land in the
-next commits of the engine branch with exactly these shapes.
+Status: everything below is live except the `'tip over'` save type, which lands with the keeper
+dive model.
 
 ```js
 import { Match } from './core/sim/engine.js';
@@ -25,6 +24,7 @@ import { matchClock } from './core/sim/periods.js';
 | `m.pauseAtHalf = true` | Stop in `mode === 'halftime'` until `m.resumeHalf()`; otherwise half-time passes automatically. |
 | `m.setTactic(team, key, value)` | See _Tactics_. `true` applied · `false` locked (formation in AI/PvP) · `undefined` invalid. |
 | `m.swapLineup(a, b)`, `m.setPlayerProfile(id, profile)`, `m.setTags(id, tags)` | Pre-match / half-time lineup edits (unchanged). |
+| `m.winner()` | `0` / `1` once decided (score, shootout, or the opponent of an abandoned side), `null` for a draw or while running. |
 
 `config.competition`: `{ mode: 'sandbox' | 'ai' | 'pvp', difficulty, knockout?: boolean,
 extraTime?: boolean }`. `mode: 'ai'` lets `coach.js` run team 1's tactics. `knockout: true`
@@ -57,12 +57,12 @@ plus **`chem`**: links/chemistry bonus, a number clamped to 0–2 (default 0), a
 | `score` | `[home, away]` goals (regulation + extra time; shootout kicks are separate) |
 | `teams[t]` | `{ name, short, color, tactics }` — team 0 is home |
 | `elapsed` | real seconds simulated |
-| `time`, `half` | match clock in seconds (`0…2700` first half, `2700…5400` second; beyond = added time). Display with `matchClock(time, half)` → `"45+1:12"` |
+| `time`, `half` | match clock in seconds (`0…2700` first half, `2700…5400` second, extra time `5400…6300` half 3 and `6300…7200` half 4; beyond a period's end = added time). Display with `matchClock(time, half)` → `"45+01:12"`. `PERIOD_START` / `PERIOD_END` in `periods.js`. The clock stops during a shootout. |
 | `addedMinutes` | `[firstHalf, secondHalf]` stoppage minutes (announced by an `added` event) |
 | `periodDeadline()`, `expectedDuration()` | real-second end of this period / of the whole match (progress bars) |
 | `mode` | `'restart'` (dead ball, players setting up) · `'play'` · `'halftime'` · `'fulltime'` · `'shootout'` |
 | `phase` | short label: `'Build-up'`, `'In transition'`, `'Final third'`, `'Keeper possession'`, `'Shot on goal'`, `'Moving the ball'`, `'Ball in dispute'`, a restart type, `'Half-time'`, `'Full time'`, `'Penalty shootout'`, `'Match abandoned'` |
-| `restart` | `{ type, team, x, y, timer, taker }` while `mode === 'restart'`. Types: `Kickoff`, `Goal`, `Second half`, `Goal kick`, `Corner`, `Throw-in`, `Free kick`, `Indirect free kick`, `Offside`, `Penalty` |
+| `restart` | `{ type, team, x, y, timer, taker }` while `mode === 'restart'`. Types: `Kickoff`, `Goal`, `Second half`, `Extra time`, `Goal kick`, `Corner`, `Throw-in`, `Free kick`, `Indirect free kick`, `Offside`, `Penalty` |
 | `finished`, `abandonedTeam` | match over; `abandonedTeam` set when a side drops below 7 players |
 | `stats[t]` | team totals: `possession` (seconds), `passes`, `completed`, `shots`, `onTarget`, `blocked`, `offTarget`, `woodwork`, `saves`, `xg`, `boxShots`, `crosses`, `throughBalls`, `tackles`, `takeons`, `dribbleAttempts`, `fouls`, `foulsWon`, `yellowCards`, `redCards`, `offsides`, `penalties`, `penaltyGoals`, `miscontrols`, … `stats[t].xg` is the sum of that side's shot `xg` |
 | `players[i]` | 22 players, `id = team * 11 + slot`: `x, y, vx, vy, facing, energy (0–1), role, team, slot, number, name, action, intent, animation, yellowCards, sentOff, emergencyKeeper, chem, stats` (per-player `goals, assists, shots, onTarget, saves, keyPasses, tackles, …`) |
@@ -109,9 +109,10 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `yellow`, `red` | `playerId`, `reason`, `secondYellow` |
 | `added` | `minutes` |
 | `half` | half-time |
-| `full` | full time (also: match abandoned). In a knockout that goes to penalties, `shootout: true` |
+| `full` | full time (also: match abandoned). In a knockout that goes to penalties, `shootout: true` (the match is not `finished` yet) |
+| `extra-time` | `period: 1 | 2` — start of each extra-time half |
 | `shootout-start` | `first` (team taking the first kick) |
-| `shootout` | one kick: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive` |
+| `shootout` | one kick, at its outcome: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive`, `kickedAt` (elapsed of the strike) |
 | `shootout-end` | `winner` (team), `shootoutScore` |
 
 **`situation`** (how the attack began, `SHOT_SITUATIONS`): `'open play'`, `'counter'` (ball won
@@ -142,8 +143,12 @@ sample object per match minute.
 With `competition.knockout === true`, a match level after regulation (incl. stoppage; after
 extra time when `competition.extraTime === true`) goes to a shootout: `mode` becomes
 `'shootout'`, then `finished` once a winner is known. Kicks alternate, five each then sudden
-death; takers are ordered by penalties + composure; each kick is simulated physically
-(keeper dive, ball flight), so live play and replays show it.
+death; takers are ordered by penalties + composure (keeper last); each kick is simulated
+physically (keeper dive, ball flight; no follow-ups), so live play and replays show it. All kicks
+are taken at the x = 105 goal (`m.direction()` follows the kicking side). Each kick takes about
+3 s: set-up (`phase` stays `'Penalty shootout'`), strike, a 1 s pause; after the decisive kick
+`winner` is set at once and the match finishes ~1.6 s later with a `shootout-end` event. Kicks
+never count as match shots or xG. The first kicker is a seeded coin toss.
 
 ```js
 m.shootout = {

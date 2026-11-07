@@ -133,11 +133,15 @@ export class ShootingMethods {
       angle,
       power: p.skill('power'),
     };
-    const stat = this.stats[p.team];
-    stat.shots++;
-    p.stats.shots++;
-    if (box) stat.boxShots++;
-    if (penalty) p.stats.penalties++;
+    const stat = this.stats[p.team],
+      shootout = !!context.shootout;
+    // Shootout kicks are not match shots: no stats, xG, momentum or shot event.
+    if (!shootout) {
+      stat.shots++;
+      p.stats.shots++;
+      if (box) stat.boxShots++;
+      if (penalty) p.stats.penalties++;
+    }
     const chance = targetChance(
       aimY,
       spread,
@@ -146,44 +150,44 @@ export class ShootingMethods {
     // Presentation-only shot insight; reads geometry, never the RNG.
     const quality = this.shotQuality(p, header, penalty),
       { situation, setPiece } = this.situation(p.team, penalty);
-    stat.xg += quality.xg;
-    this.addMomentumShot(p.team, quality.xg);
+    if (!shootout) {
+      stat.xg += quality.xg;
+      this.addMomentumShot(p.team, quality.xg);
+    }
     p.cooldown = 0.65;
     p.action = shotType;
     p.think = 0.5;
     p.lastShotChance = chance;
-    const e = this.addEvent(
-      `${p.name.split(' ').pop()} · ${shotType.toLowerCase()}`,
-      p.team,
-      'shot',
-      {
-        playerId: p.id,
-        chance,
-        chanceLabel: 'on target',
-        strength: b.strength,
-        shotType,
-        box,
-        zone: spatial.zone,
-        origin: { ...b.shotOrigin },
-        outcome: 'in flight',
-        foot: foot.foot,
-        penalty,
-        xg: quality.xg,
-        bigChance: quality.bigChance,
-        oneOnOne: quality.oneOnOne,
-        distance: quality.distance,
-        situation,
-        setPiece,
-        direct: !!context.restart,
-        assistId: b.assist,
-      },
-    );
+    const e = shootout
+      ? null
+      : this.addEvent(`${p.name.split(' ').pop()} · ${shotType.toLowerCase()}`, p.team, 'shot', {
+          playerId: p.id,
+          chance,
+          chanceLabel: 'on target',
+          strength: b.strength,
+          shotType,
+          box,
+          zone: spatial.zone,
+          origin: { ...b.shotOrigin },
+          outcome: 'in flight',
+          foot: foot.foot,
+          penalty,
+          xg: quality.xg,
+          bigChance: quality.bigChance,
+          oneOnOne: quality.oneOnOne,
+          distance: quality.distance,
+          situation,
+          setPiece,
+          direct: !!context.restart,
+          assistId: b.assist,
+        });
     b.shotRecord = {
       team: p.team,
       player: p.id,
-      eventId: e.id,
+      eventId: e?.id ?? null,
       status: null,
       penalty,
+      shootout,
       xg: quality.xg,
       bigChance: quality.bigChance,
       oneOnOne: quality.oneOnOne,
@@ -224,6 +228,10 @@ export class ShootingMethods {
           : o === 'post'
             ? 'woodwork'
             : 'offTarget';
+    if (record.shootout) {
+      record.status = outcome;
+      return;
+    }
     const previous = record.status,
       stat = this.stats[record.team],
       p = this.players[record.player];

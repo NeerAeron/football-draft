@@ -9,7 +9,7 @@ import { goalZone, goalGeometry } from './goal-zones.js';
 import { makeIdentity } from './player-model.js';
 import { STYLES, DEFAULT_TAGS } from '../players/traits.js';
 import { normalizeBadges } from '../players/badges.js';
-import { stoppageMinutes } from './periods.js';
+import { stoppageMinutes, PERIOD_START, PERIOD_SHARE } from './periods.js';
 import { normalizeAttributes } from '../players/ratings.js';
 import {
   W,
@@ -33,6 +33,7 @@ import { FoulMethods } from './fouls.js';
 import { BallMethods } from './ball.js';
 import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
+import { ShootoutMethods } from './shootout.js';
 
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
@@ -144,7 +145,9 @@ export class Match {
     return (this.rand() + this.rand() + this.rand() - 1.5) * 2;
   }
   direction(t) {
-    return (t === 0 ? 1 : -1) * (this.half === 1 ? 1 : -1);
+    // A shootout is taken at one end: the kicking side always attacks x = 105.
+    if (this.penaltyEnd != null) return t === this.penaltyEnd ? 1 : -1;
+    return (t === 0 ? 1 : -1) * (this.half % 2 === 1 ? 1 : -1);
   }
   rel(x, t) {
     return this.direction(t) > 0 ? x : W - x;
@@ -282,6 +285,8 @@ export class Match {
     this.restart.taker = this.kickoffTeam * 11 + 9;
     this.addEvent('Kickoff. A new match begins.', this.kickoffTeam, 'kickoff');
     this.shootout = null;
+    this.shootoutState = null;
+    this.penaltyEnd = null;
     this.resetInsights();
   }
   addEvent(text, team, type = 'play', extra = {}) {
@@ -518,11 +523,17 @@ export class Match {
   }
   periodDeadline() {
     return (
-      this.periodStart + this.duration / 2 + (this.addedMinutes[this.half - 1] * this.duration) / 90
+      this.periodStart +
+      this.duration * PERIOD_SHARE[this.half - 1] +
+      (this.addedMinutes[this.half - 1] * this.duration) / 90
     );
   }
+  // Real seconds of regulation including stoppage time (plus extra time once it starts).
   expectedDuration() {
-    return this.duration * (1 + this.addedMinutes.reduce((a, b) => a + b, 0) / 90);
+    return (
+      this.duration * (1 + this.addedMinutes.reduce((a, b) => a + b, 0) / 90) +
+      (this.half > 2 ? this.duration / 3 : 0)
+    );
   }
   finishPeriod() {
     this.resolveShot('off target');
@@ -555,6 +566,15 @@ export class Match {
       this.mode = 'halftime';
       this.phase = 'Half-time';
       this.addEvent('Half-time. Time to recover and adjust tactics.', null, 'half');
+    } else if (this.half === 2 && this.knockoutLevel() && this.competition.extraTime)
+      this.startExtraHalf(3);
+    else if (this.half === 3) this.startExtraHalf(4);
+    else if (this.knockoutLevel()) {
+      for (const p of this.activePlayers) p.vx = p.vy = 0;
+      this.addEvent('Full-time. Level, so it goes to penalties.', null, 'full', {
+        shootout: true,
+      });
+      this.startShootout();
     } else {
       this.finished = true;
       this.mode = 'fulltime';
@@ -564,6 +584,14 @@ export class Match {
       this.addEvent('Full-time. The final whistle.', null, 'full');
     }
   }
+  // The side that won (0 / 1), null for a draw or while undecided. A shootout
+  // decides a level knockout match.
+  winner() {
+    if (!this.finished || this.abandonedTeam != null)
+      return this.abandonedTeam != null ? 1 - this.abandonedTeam : null;
+    if (this.score[0] !== this.score[1]) return this.score[0] > this.score[1] ? 0 : 1;
+    return this.shootout?.winner ?? null;
+  }
   resumeHalf() {
     if (this.mode !== 'halftime') return false;
     this.half = 2;
@@ -571,38 +599,7 @@ export class Match {
     this.time = 2700;
     this.momentumNext = 2700 + this.momentum.step;
     const team = 1 - this.kickoffTeam;
-    for (const p of this.activePlayers) {
-      p.runs = 0;
-      p.comboRun = null;
-      p.finishUntil = 0;
-      p.finishTarget = null;
-      p.beatChain = [];
-      p.penaltyDive = null;
-      p.receivedAt = -10;
-      p.possessionAt = -10;
-      p.lastReceipt = null;
-      p.goalKickExempt = false;
-      p.markId = null;
-      p.markUntil = 0;
-      p.animation = null;
-      p.stun = 0;
-      p.feintCooldown = 0;
-      p.feintTarget = null;
-      p.cooldown = 0;
-      p.controlUntil = 0;
-      p.controlErrorAt = -10;
-      p.rethinkAt = 0;
-      p.hold = 0;
-      p.think = 0;
-      p.touch = 0;
-      p.displayedAction = null;
-      p.pendingAction = null;
-    }
-    this.pendingTackle = null;
-    this.keeperRelease = null;
-    this.lastPass = null;
-    this.presser = [null, null];
-    this.ballTrail = [];
+    this.clearTransient();
     if (this.competition?.mode === 'ai') coachAI(this, true);
     this.positionKickoff(team);
     this.startRestart('Second half', team, 52.5, 34, 1.25);
@@ -614,17 +611,25 @@ export class Match {
       if (!this.pauseAtHalf) this.resumeHalf();
       return;
     }
+    if (this.mode === 'shootout') {
+      dt = Math.min(dt, 0.05);
+      this.elapsed += dt;
+      this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+      this.stepShootout(dt);
+      return;
+    }
     if (this.competition?.mode === 'ai' && this.elapsed >= this.nextAI) {
       coachAI(this);
       this.nextAI = this.elapsed + this.tuning.ai.coachInterval;
     }
     dt = Math.min(dt, 0.05);
     this.elapsed += dt;
-    this.time = (this.half - 1) * 2700 + ((this.elapsed - this.periodStart) / this.duration) * 5400;
+    this.time =
+      PERIOD_START[this.half - 1] + ((this.elapsed - this.periodStart) / this.duration) * 5400;
     this.effects = this.effects.filter(e => (e.life -= dt) > 0);
     this.trackMomentum(dt);
     if (
-      this.elapsed - this.periodStart >= this.duration / 2 &&
+      this.elapsed - this.periodStart >= this.duration * PERIOD_SHARE[this.half - 1] &&
       !this.addedAnnounced[this.half - 1]
     ) {
       this.addedAnnounced[this.half - 1] = true;
@@ -690,4 +695,5 @@ install(
   BallMethods,
   RestartMethods,
   InsightMethods,
+  ShootoutMethods,
 );

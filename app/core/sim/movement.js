@@ -111,7 +111,7 @@ export class MovementMethods {
       (1.12 - stamina * 0.33) *
       (p.has('engine') ? 0.96 : 1) *
       (restart ? 0.65 : 1) *
-      (this.half === 2 ? 1.1 : 1);
+      (this.half === 2 ? 1.1 : this.half > 2 ? 1.2 : 1);
     p.energy = clamp(p.energy - drain * lowReserve * this.tuning.stamina.drain, 0.001, 1);
     p.cooldown = Math.max(0, p.cooldown - dt);
     p.stun = Math.max(0, p.stun - dt);

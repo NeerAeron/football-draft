@@ -236,6 +236,8 @@ export class PossessionMethods {
   canCollect(p) {
     const b = this.ball;
     if (p.sentOff || p.stun > 0) return false;
+    // In a shootout only the keeper may touch the kick; no follow-ups.
+    if (this.mode === 'shootout' && p.id !== this.shootoutState?.kick?.keeperId) return false;
     if (p.id === b.kicker && b.age < 0.45 && ['pass', 'shot'].includes(b.kind)) return false;
     // A tackle cooldown is not a ban on taking a loose ball. Keep a separate,
     // short first-touch recovery, with an escape for a ball settled at the feet.
