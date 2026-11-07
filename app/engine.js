@@ -111,6 +111,14 @@ const sigmoid = x => 1 / (1 + Math.exp(-x));
 // same technical advantage into near-perfect play.
 const skillError = (ability, influence) =>
   clamp(1 + (75 - ability) * 0.012 * influence, 0.72, 1.28);
+const KEEPER_TECHNIQUE = new Set([
+  'shortPassing',
+  'longPassing',
+  'crossing',
+  'control',
+  'composure',
+  'vision',
+]);
 export class Player {
   constructor(data) {
     Object.assign(this, data);
@@ -127,9 +135,7 @@ export class Player {
     // Natural keepers have one technical rating. Their imported outfield
     // placeholders must not make an elite keeper incapable of distribution.
     const keeperTechnique =
-      this.role === 'GK' &&
-      this.primaryPosition === 'GK' &&
-      ['shortPassing', 'longPassing', 'crossing', 'control', 'composure', 'vision'].includes(key);
+      this.role === 'GK' && this.primaryPosition === 'GK' && KEEPER_TECHNIQUE.has(key);
     const value = this.attrs[keeperTechnique ? 'goalkeeping' : key];
     return clamp(
       70 + (value - 70) * (this.tuning || CONFIG).gameplay.qualityImpact + badgeBoost(this, key),

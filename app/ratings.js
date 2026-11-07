@@ -123,24 +123,24 @@ for (const k of POSITIONS)
     for (const b of POSITIONS)
       distances[a][b] = Math.min(distances[a][b], distances[a][k] + distances[k][b]);
 const familiarityCache = new WeakMap();
+const NO_POSITIONS = Object.freeze([]);
+// Hot path: called many times per simulation step. The cache compares the
+// tuning values directly (they can be edited in place) without allocating.
 export function positionFamiliarity(p, role = p.role) {
   const primary = p.primaryPosition || p.role,
-    secondary = p.secondaryPositions || [],
-    tuning = p.tuning?.ratings || CONFIG.ratings,
-    stamp = [
-      tuning.familiarityBase,
-      tuning.familiarityBonus,
-      tuning.familiarityDecay,
-      tuning.secondaryDistance,
-      tuning.unfamiliarFit,
-    ].join(',');
+    secondary = p.secondaryPositions || NO_POSITIONS,
+    tuning = p.tuning?.ratings || CONFIG.ratings;
   const cached = familiarityCache.get(p);
   if (
-    cached &&
+    cached !== undefined &&
     cached.role === role &&
     cached.primary === primary &&
     cached.secondary === secondary &&
-    cached.tuning === stamp
+    cached.base === tuning.familiarityBase &&
+    cached.bonus === tuning.familiarityBonus &&
+    cached.decay === tuning.familiarityDecay &&
+    cached.secondaryDistance === tuning.secondaryDistance &&
+    cached.unfamiliarFit === tuning.unfamiliarFit
   )
     return cached.value;
   let d = distances[primary]?.[role] ?? Infinity;
@@ -149,7 +149,17 @@ export function positionFamiliarity(p, role = p.role) {
   const value = Number.isFinite(d)
     ? tuning.familiarityBase + tuning.familiarityBonus * Math.exp(-tuning.familiarityDecay * d)
     : tuning.unfamiliarFit;
-  familiarityCache.set(p, { role, primary, secondary, value, tuning: stamp });
+  familiarityCache.set(p, {
+    role,
+    primary,
+    secondary,
+    value,
+    base: tuning.familiarityBase,
+    bonus: tuning.familiarityBonus,
+    decay: tuning.familiarityDecay,
+    secondaryDistance: tuning.secondaryDistance,
+    unfamiliarFit: tuning.unfamiliarFit,
+  });
   return value;
 }
 export function roleAbility(p, role = p.role) {

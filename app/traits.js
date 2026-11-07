@@ -94,14 +94,39 @@ export const BADGES = [
 ].map(([id, label, description, group, boosts]) => ({ id, label, description, group, boosts }));
 export const TAGS = BADGES; // Legacy tag field now contains badges only.
 const badges = new Map(BADGES.map(b => [b.id, b]));
+// Hot path: called for every skill lookup during simulation. Per-player sums
+// are cached and revalidated against the tag list and the boost table object;
+// the attribute cap is read live because it can be tuned during a match.
+// Editing a boost value in place requires a new boosts object (configs are
+// snapshotted per match, so this never happens during play).
+const boostCache = new WeakMap();
+const NO_TAGS = Object.freeze([]);
 export function badgeBoost(p, key) {
-  return Math.min(
-    (p.tuning?.badges || CONFIG.badges).attributeCap,
-    (p.tags || []).reduce(
-      (n, id) => n + ((p.tuning?.badges || CONFIG.badges).boosts[id]?.[key] || 0),
-      0,
-    ),
-  );
+  const tuning = p.tuning?.badges || CONFIG.badges,
+    boosts = tuning.boosts,
+    tags = p.tags || NO_TAGS;
+  let entry = boostCache.get(p);
+  if (
+    entry === undefined ||
+    entry.tags !== tags ||
+    entry.boosts !== boosts ||
+    !sameTags(entry.list, tags)
+  ) {
+    entry = { tags, boosts, list: [...tags], sums: new Map() };
+    boostCache.set(p, entry);
+  }
+  let total = entry.sums.get(key);
+  if (total === undefined) {
+    total = 0;
+    for (let i = 0; i < tags.length; i++) total += boosts[tags[i]]?.[key] || 0;
+    entry.sums.set(key, total);
+  }
+  return Math.min(tuning.attributeCap, total);
+}
+function sameTags(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 export function badgeEligible(p, b) {
   if (p.primaryPosition === 'GK')
