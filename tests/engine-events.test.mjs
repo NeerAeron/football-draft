@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { Match, GOAL } from '../app/core/sim/engine.js';
 import { MENTALITIES, SHOT_SITUATIONS, geometricXg } from '../app/core/sim/insights.js';
 import { selectHighlights, highlightScore } from '../app/core/sim/replay.js';
@@ -29,9 +29,7 @@ function score(m, p, time = null) {
 }
 
 test('event contract over a full match: shots, saves, goals and momentum carry their fields', () => {
-  const catalog = JSON.parse(
-    readFileSync(new URL('../app/data/players-runtime.json', import.meta.url), 'utf8'),
-  );
+  const catalog = loadRuntimeCatalog();
   const m = new Match(13, 180),
     config = m.exportConfig();
   config.players = randomLineups(m.players, catalog.players, 13);
