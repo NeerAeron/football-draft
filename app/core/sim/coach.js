@@ -2,6 +2,19 @@ import { CONFIG } from '../config/config.js';
 
 // In-match AI coaching (team 1 in AI mode) and tactic-control access rules.
 // The engine imports this; it must not depend on draft code.
+
+// Game-state mentality after ~70': a side behind pushes for a goal, a side
+// ahead from ~75' holds what it has. The AI coach uses it for its own team;
+// a UI can offer it to the human as the suggested "auto" choice.
+export function gameStateMentality(m, team) {
+  const lead = m.score[team] - m.score[1 - team],
+    minute = m.time / 60;
+  if (m.half > 2 || minute >= 70) {
+    if (lead < 0) return 'push';
+    if (lead > 0 && (m.half > 2 || minute >= 75)) return 'hold';
+  }
+  return 'balanced';
+}
 export function coachAI(m, interval = false) {
   if (m.competition?.mode !== 'ai') return;
   const c = (m.tuning || CONFIG).ai.coach,
@@ -69,7 +82,8 @@ export function coachAI(m, interval = false) {
     if (players.reduce((s, p) => s + p.energy, 0) / players.length < c.fatigueThreshold)
       press = Math.min(press, 3);
   }
-  for (const [key, value] of Object.entries({ style, tempo, width, press, fluidity }))
+  const mentality = level === 'veryeasy' ? 'balanced' : gameStateMentality(m, 1);
+  for (const [key, value] of Object.entries({ style, tempo, width, press, fluidity, mentality }))
     if (m.teams[1].tactics[key] !== value) m.setTactic(1, key, value);
 }
 export function tacticAccess(

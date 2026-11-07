@@ -152,6 +152,7 @@ export class DecisionMethods {
         this.rand() <
         urge *
           (0.7 + p.tendency('shoot') * 0.6) *
+          (1 + tac.lean * 0.15) *
           (box ? this.profile.shotUrge : this.profile.rangeUrge) *
           this.tuning.gameplay.shotFrequency
       ) {

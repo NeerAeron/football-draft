@@ -241,7 +241,8 @@ export class PassingMethods {
           p.tendency('advance') * 0.1 +
           (tac.tempo - 3) * 0.009 +
           (counter ? 0.09 * identity : 0) -
-          (tac.style === 'possession' ? 0.013 * identity : 0);
+          (tac.style === 'possession' ? 0.013 * identity : 0) +
+          tac.lean * 0.02;
         const judgment =
           1 +
           clamp((p.vision() + p.skill('composure') - 140) * 0.006, 0, 0.35) +
@@ -249,7 +250,8 @@ export class PassingMethods {
         const turnoverCost =
           (held ? 7 : 4.8 + Math.max(0, 55 - this.rel(p.x, p.team)) * 0.035) *
           (1.25 - p.tendency('risk') * 0.55) *
-          judgment;
+          judgment *
+          (1 - tac.lean * 0.12);
         let score =
           completion *
             (2 +
@@ -481,7 +483,7 @@ export class PassingMethods {
     );
     const rawError =
       (((0.16 + (100 - ability) * 0.03 + 0.035 * clamp((ability - 78) / 20, 0, 1)) *
-        (1 + pressure * 0.45 + Math.max(0, tempo - 3) * 0.07 + (1 - p.energy) * 0.5) *
+        (1 + pressure * 0.45 + Math.max(0, tempo - 3) * 0.07 + (1 - p.energy) * 0.3) *
         Math.max(0.6, d / 24)) /
         foot.quality) *
       this.profile.deliveryError *

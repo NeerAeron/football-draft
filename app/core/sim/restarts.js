@@ -10,6 +10,9 @@ export class RestartMethods {
     timer ??=
       type === 'Goal kick' ? 1.7 : type === 'Corner' ? 2.1 : type === 'Throw-in' ? 1.15 : 1.2;
     if (!KICKOFFS.has(type)) timer *= this.tuning.gameplay.restartSetup;
+    // A side holding a lead takes its time over restarts; one chasing hurries.
+    const lean = this.settings(team).lean;
+    if (type !== 'Penalty') timer *= lean < 0 ? 1.25 : lean > 0 ? 0.85 : 1;
     this.mode = 'restart';
     this.phase = type;
     const b = this.ball;

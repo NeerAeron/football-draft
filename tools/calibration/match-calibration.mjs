@@ -187,7 +187,9 @@ function merge(target, patch) {
 
 const ATTACK = new Set(['ST', 'LW', 'RW', 'AM', 'LM', 'RM', 'CF']);
 
-function runMatch(Match, spec, tuning) {
+// The human side (team 0) is played like a sensible user: it follows the same
+// game-state mentality as the AI coach (when the engine under test has one).
+function runMatch(Match, spec, tuning, mentality = null) {
   const m = new Match(spec.seed, spec.duration),
     config = m.exportConfig();
   if (tuning) merge(config.tuning, tuning);
@@ -208,6 +210,10 @@ function runMatch(Match, spec, tuning) {
   while (!m.finished && steps < 60 * 60 * 20) {
     m.step(1 / 60);
     steps++;
+    if (mentality && spec.ai && steps % 360 === 0) {
+      const want = mentality(m, 0);
+      if (m.teams[0].tactics.mentality !== want) m.setTactic(0, 'mentality', want);
+    }
     if (m.mode === 'restart' && m.restart !== lastRestart) {
       lastRestart = m.restart;
       if (m.restart.type === 'Corner') corners[m.restart.team]++;
@@ -461,6 +467,8 @@ function compare(a, b, nameA, nameB) {
 if (!isMainThread) {
   const { engine, tuning, specs } = workerData;
   const { Match } = await import(engine + '/core/sim/engine.js');
-  for (const spec of specs) parentPort.postMessage(runMatch(Match, spec, tuning));
+  const coach = await import(engine + '/core/sim/coach.js');
+  for (const spec of specs)
+    parentPort.postMessage(runMatch(Match, spec, tuning, coach.gameStateMentality));
   parentPort.close();
 } else await main();

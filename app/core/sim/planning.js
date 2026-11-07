@@ -442,7 +442,8 @@ export class PlanningMethods {
           (sameSide ? 0.16 : 0) +
           Math.min(backCover, 3) * 0.06 -
           (otherHigh ? 0.25 : 0) -
-          (tac.style === 'bus' ? 0.17 : 0),
+          (tac.style === 'bus' ? 0.17 : 0) +
+          tac.lean * 0.12,
         0.05,
         0.97,
       );
@@ -474,7 +475,7 @@ export class PlanningMethods {
       br > 74 &&
       Math.abs(b.y - 34) > 11 &&
       p.tendency('hold') < 0.6 &&
-      p.tendency('advance') > 0.42 &&
+      p.tendency('advance') > 0.42 - tac.lean * 0.1 &&
       owner?.role !== 'GK'
     ) {
       // Late run to the edge / penalty spot: the cutback zone.

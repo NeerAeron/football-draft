@@ -20,11 +20,13 @@ export class DefenceMethods {
     const beaten = this.rel(defender.x, team) > depth - 1;
     const closingRun = Math.max(0, -goalward),
       speedGap = Math.max(0, attacker.topSpeed() - defender.topSpeed());
+    // Tired markers give attackers more room late in a match.
     const cushion =
       1.25 +
       (100 - defender.awareness()) * 0.012 +
       (beaten ? 1.1 : 0) +
-      Math.min(0.9, closingRun * 0.07 + speedGap * 0.2);
+      Math.min(0.9, closingRun * 0.07 + speedGap * 0.2) +
+      (1 - defender.energy) * 0.9;
     // Read the runner, stay between them and goal, shade toward the passing lane.
     const x = clamp(
       depth + goalward * lead - cushion * this.tuning.gameplay.markingDistance,

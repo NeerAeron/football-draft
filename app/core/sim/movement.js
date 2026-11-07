@@ -118,12 +118,27 @@ export class MovementMethods {
       (1.12 - stamina * 0.33) *
       (p.has('engine') ? 0.96 : 1) *
       (restart ? 0.65 : 1) *
-      (this.half === 2 ? 1.1 : this.half > 2 ? 1.2 : 1);
+      (this.half === 2 ? 1.1 : this.half > 2 ? 1.2 : 1) *
+      this.tacticalLoad(p);
     p.energy = clamp(p.energy - drain * lowReserve * this.tuning.stamina.drain, 0.001, 1);
     p.cooldown = Math.max(0, p.cooldown - dt);
     p.stun = Math.max(0, p.stun - dt);
     p.feintCooldown = Math.max(0, p.feintCooldown - dt);
     if (p.animation && this.elapsed - p.animation.start > p.animation.duration) p.animation = null;
+  }
+  // E5: tactics cost energy. Out of possession the press level (and the press
+  // style) sets the effort, in possession the tempo; pushing for a goal costs a
+  // little more, holding saves a little. Balanced settings cost exactly 1.
+  tacticalLoad(p) {
+    const t = this.teams[p.team].tactics,
+      attacking = this.lastTeam === p.team && this.ball.owner !== null;
+    const lean = t.mentality === 'push' ? 1 : t.mentality === 'hold' ? -1 : 0;
+    return (
+      (attacking
+        ? 1 + (t.tempo - 3) * 0.07
+        : 1 + (t.press - 3) * 0.11 + (t.style === 'press' ? 0.08 : 0)) *
+      (1 + lean * 0.05)
+    );
   }
   challengeModel(p, q) {
     const bearing =

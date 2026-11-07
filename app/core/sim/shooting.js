@@ -59,7 +59,7 @@ export class ShootingMethods {
       1 +
       (100 - p.skill('composure')) * 0.004 +
       Math.max(0, hypot(p.vx, p.vy) - 5) * 0.045 +
-      (1 - p.energy) * 0.6;
+      (1 - p.energy) * 0.25;
     const spread = penalty
       ? (0.3 + (1 - skill) * 1.8 + (100 - p.skill('composure')) * 0.008) /
         this.tuning.gameplay.penaltyPrecision

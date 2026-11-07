@@ -33,6 +33,8 @@ import { FoulMethods } from './fouls.js';
 import { BallMethods } from './ball.js';
 import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
+
+const MENTALITY_LEAN = { push: 1, balanced: 0, hold: -1 };
 import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
 import { hypot } from './constants.js';
@@ -312,13 +314,17 @@ export class Match {
     return e;
   }
   settings(team) {
-    const t = this.teams[team].tactics;
+    const t = this.teams[team].tactics,
+      lean = MENTALITY_LEAN[t.mentality] ?? 0;
+    // Mentality leans the whole side: push = higher line, more bodies forward;
+    // hold = deeper block, fewer runners, patient possession.
     return {
       ...t,
+      lean,
       pressing: (t.press - 1) * 25,
       widthValue: (t.width - 1) * 25,
-      line: t.style === 'bus' ? 12 : t.style === 'press' ? 72 : 50,
-      attacking: t.style === 'bus' ? 25 : t.style === 'counter' ? 65 : 50,
+      line: (t.style === 'bus' ? 12 : t.style === 'press' ? 72 : 50) + lean * (lean > 0 ? 8 : 10),
+      attacking: (t.style === 'bus' ? 25 : t.style === 'counter' ? 65 : 50) + lean * 20,
     };
   }
   setTags(id, tags) {
