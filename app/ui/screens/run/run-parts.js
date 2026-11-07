@@ -351,29 +351,24 @@ export function KnockoutPath({ snapshot }) {
             : 'is-todo';
       return html`<li key=${r.id} class=${cx('ko-node', state)}>
         <span class="ko-node__stage">${roundLabel(i)}</span>
-        <span class="ko-node__tie">
-          <${TeamMark} team=${{ user: true }} size=${24} />
-          <span class="ko-node__score num"
-            >${result ? scoreText(result) : revealed ? 'v' : ''}</span
-          >
-          ${
-            revealed
-              ? html`<${TeamMark} team=${opponentTeam(r.opponent)} size=${24} />
-                  <span class="ko-node__name truncate">${r.opponent.name}</span>`
-              : html`<span class="ko-node__tbd"
-                  >${state === 'is-void' ? '—' : 'To be decided'}</span
-                >`
-          }
-        </span>
+        ${
+          revealed
+            ? html`<span class="ko-node__tie">
+                <${TeamMark} team=${{ user: true }} size=${24} />
+                <span class="ko-node__score num">${result ? scoreText(result) : 'v'}</span>
+                <${TeamMark} team=${opponentTeam(r.opponent)} size=${24} />
+                <span class="ko-node__name truncate">${r.opponent.name}</span>
+              </span>`
+            : html`<span class="ko-node__tbd">${state === 'is-void' ? '—' : 'To be decided'}</span>`
+        }
         ${
           result?.shootout &&
           html`<span class="ko-node__pens"
-            >${result.shootout.winner === 'user' ? 'Won' : 'Lost'} on
-            penalties${
+            >${`${result.shootout.winner === 'user' ? 'Won' : 'Lost'} on penalties${
               result.shootout.score
                 ? ` ${result.shootout.score[0]}–${result.shootout.score[1]}`
                 : ''
-            }</span
+            }`}</span
           >`
         }
       </li>`;
