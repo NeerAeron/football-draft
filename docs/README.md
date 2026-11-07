@@ -21,6 +21,7 @@ Keep these current when you change the code they describe.
 
 | Document | Covers |
 | --- | --- |
+| [`calibration.md`](calibration.md) | Match engine calibration: method, `match-calibration.mjs` runs, before/after of the engine package |
 | [`retention-calibration.md`](retention-calibration.md) | Possession and shot-volume calibration of the engine (method, runners, results) |
 | [`cards-calibration.md`](cards-calibration.md) | Loose-ball recovery and discipline (fouls, cards) validation |
 
