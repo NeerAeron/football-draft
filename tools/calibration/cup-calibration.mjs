@@ -214,12 +214,19 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
   const user = draftXI(env, seed, difficulty);
   const run = env.createCupRun(env.catalog, { mode: 'nations', difficulty, seed, user });
   let matches = 0;
+  const games = [];
   while (!run.complete) {
     const m = run.nextMatch();
     if (engine) {
       const config = env.fixtureConfig(m, difficulty);
       const r = playEngine(env, Match, config, m.seed, matches % 2 ? 300 : 180);
       const draw = r.score[0] === r.score[1];
+      games.push({
+        knockout: m.knockout,
+        ratings: [m.home.effective, m.away.effective],
+        score: r.score,
+        won: r.score[0] > r.score[1] || (m.knockout && draw && r.winner === 0),
+      });
       run.recordResult({
         goalsFor: r.score[0],
         goalsAgainst: r.score[1],
@@ -249,9 +256,42 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
     final: snap.rounds[6].opponent.name,
     finalRating: snap.rounds[6].opponent.effective,
     matches,
+    games,
   };
 }
+// Engine user matches against the fitted model's prediction for the same ratings.
+function gamesReport(env, rows) {
+  const games = rows.filter(r => r.engine).flatMap(r => r.games || []);
+  if (!games.length) return;
+  console.log('\nengine user matches vs the fitted model (same ratings)');
+  for (const knockout of [false, true]) {
+    const g = games.filter(x => x.knockout === knockout);
+    if (!g.length) continue;
+    let w = 0,
+      d = 0,
+      ew = 0,
+      ed = 0,
+      adv = 0,
+      eadv = 0;
+    for (const x of g) {
+      const p = env.outcomeProbabilities(x.ratings[0], x.ratings[1]);
+      if (x.score[0] > x.score[1]) w++;
+      else if (x.score[0] === x.score[1]) d++;
+      ew += p.win;
+      ed += p.draw;
+      if (x.won) adv++;
+      const k = Math.max(-10, Math.min(10, x.ratings[0] - x.ratings[1])) * 0.004;
+      eadv += p.win + p.draw * (0.5 + k);
+    }
+    const pct = x => ((x / g.length) * 100).toFixed(1) + '%';
+    console.log(
+      `  ${knockout ? 'knockout' : 'group   '} n=${g.length}: wins ${pct(w)} (model ${pct(ew)}), draws ${pct(d)} (model ${pct(ed)})` +
+        (knockout ? `, through ${pct(adv)} (model ${pct(eadv)})` : ''),
+    );
+  }
+}
 function runsReport(env, rows) {
+  gamesReport(env, rows);
   const stages = ['group', 'r16', 'qf', 'sf', 'final', 'champion'];
   for (const engine of [false, true]) {
     const rs = rows.filter(r => r.engine === engine);
@@ -350,7 +390,10 @@ async function main() {
         rows.push(runCup(env, Match, { seed: 90000 + i * 31, difficulty, engine: false }));
     if (engine) {
       const specs = DIFFS.flatMap(difficulty =>
-        Array.from({ length: engine }, (_, i) => ({ seed: 70000 + i * 37, difficulty })),
+        Array.from({ length: engine }, (_, i) => ({
+          seed: 70000 + (Number(flag('--from', 0)) + i) * 37,
+          difficulty,
+        })),
       );
       rows.push(...(await parallel('cup', specs, workers)));
     }
