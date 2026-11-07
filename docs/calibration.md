@@ -58,10 +58,12 @@ Per format (after, 128 batch): 180 s — 9.1 shots, 2.73 goals (was 1.89), saves
 parry 97, parry into danger 96, tip over 18. Goal situations: open play 109, counter 102, set
 piece 91, regain 76, penalty 15.
 
-**Independent check** (256 matches, `--matches 256`: different clubs and seeds, same mix):
-goals 3.08 (sd 1.86), shots 11.1, on target 49%, saves 44.7%, 0–0 4.7%, draws 23.4%, stronger
-side wins with a 10+ gap 80.0% (n = 50: club gaps 26/36, all-star XI 14/14), low-rated matchups
-2.31, headed goals 7.9%, corners 1.3, penalties 0.19. The 128-match draws (14.8%) and strong-gap
+**Independent check** (256 matches, `--matches 256`: different clubs and seeds, same mix;
+before → after): goals 1.93 → 3.08 (sd 1.46 → 1.86), shots 10.3 → 11.1, on target 42% → 49%,
+saves 56% → 44.7%, 0–0 14.1% → 4.7%, draws 26.2% → 23.4%, stronger side wins with a 10+ gap
+78% → 80% (n = 50: club gaps 26/36, all-star XI 14/14), low-rated matchups 1.47 → 2.31, headed
+goals 7.9% → 7.9%, corners 1.2 → 1.3, penalties 0.21 → 0.19, 85+ attackers 0.52 → 0.81
+goals a match. The 128-match draws (14.8%) and strong-gap
 wins (88.5%, n = 26) sit at the edge of their noise (±4 and ±8 points between batches); the
 256 batch is the steadier read.
 

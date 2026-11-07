@@ -65,7 +65,8 @@ tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by 
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
 tools/calibration/       manual calibration runners (write to /tmp; not run by npm test), incl.
                          match-calibration.mjs (engine stats, docs/calibration.md),
-                         draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results)
+                         draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results),
+                         cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md)
 tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json
 docs/                    contracts, guides and calibration notes — index in docs/README.md
 .github/workflows/       ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
