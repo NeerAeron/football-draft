@@ -22,6 +22,13 @@ const flagsLine = ({ mode, difficulty, hideRatings, uniqueNations }) =>
     .filter(Boolean)
     .join(' · ');
 const thousands = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+// The stage reached, unless the verdict already names it ("C Quarter-finalists" says it all;
+// "A Heartbreak on Penalties" still needs "Final").
+const stem = label => label.toLowerCase().replace(/s$/, '');
+const stageUnlessNamed = (stageLabel, grade) =>
+  grade?.verdict && stageLabel && grade.verdict.toLowerCase().includes(stem(stageLabel))
+    ? null
+    : stageLabel;
 
 /**
  * Share text for a finished (or in-progress) run. `snapshot` is CupRun.snapshot().
@@ -30,7 +37,7 @@ const thousands = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',
  *
  *   ⚽ Football Draft · Daily #7
  *   🟩🟩🟨 🟩🟩🟥
- *   5-1-1 · Semi-finals · B+ Semi-final Heartbreak
+ *   5-1-1 · B+ Semi-final Heartbreak          (the stage only when the verdict does not name it)
  *   XI 82.9 · 98.6% of perfect · 1,104 pts
  *   Nations · Pro · 🙈 Ratings hidden
  *   https://example.com/#c=…
@@ -49,7 +56,7 @@ export function shareText(snapshot, extras = {}) {
   const head = '⚽ ' + title + (daily ? ` · Daily #${daily.number}` : ' · World Cup Run');
   const summary = [
     `${r.w}-${r.d}-${r.l}`,
-    snapshot.stageLabel,
+    stageUnlessNamed(snapshot.stageLabel, grade),
     grade && `${grade.grade} ${grade.verdict}`,
   ]
     .filter(Boolean)

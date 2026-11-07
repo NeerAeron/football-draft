@@ -200,6 +200,7 @@ export function CompleteSheet({ open, onClose, snap, context, teamPlayers, onCon
         loading=${busy}
         class="complete-sheet__cta"
         data-testid="draft-continue"
+        autofocus
         >${step === 'opponent' ? 'To the pre-match' : next.label}<//
       >
     `}
