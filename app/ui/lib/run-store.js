@@ -393,6 +393,7 @@ export function runChallenge(meta, snapshot) {
 
 // ---- daily -------------------------------------------------------------------------------------
 const DAILY_RESULTS_KEPT = 40;
+const DAILY_RUNS_KEPT = 7; // full run state (replays) only for the latest week
 /**
  * The Daily Challenge record ('football-draft-daily'), read tolerantly:
  *   { streak, best, lastPlayed, lastResult,            // what Home reads (lib/saved.js)
@@ -422,8 +423,14 @@ export function readDaily() {
 }
 function writeDaily(state) {
   const ids = Object.keys(state.results || {}).sort();
+  const kept = ids.slice(-DAILY_RESULTS_KEPT);
   const results = Object.fromEntries(
-    ids.slice(-DAILY_RESULTS_KEPT).map(id => [id, state.results[id]]),
+    kept.map((id, i) => {
+      const entry = state.results[id];
+      if (i >= kept.length - DAILY_RUNS_KEPT || !entry?.run) return [id, entry];
+      const { run, ...rest } = entry;
+      return [id, rest];
+    }),
   );
   writeJSON(DAILY_KEY, { ...state, results });
   return { ...state, results };

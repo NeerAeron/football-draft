@@ -44,7 +44,14 @@ export async function startDraft(context = {}) {
     difficulty: context.difficulty || 'pro',
     hideRatings: !!context.options?.hideRatings,
     uniqueNations: !!context.options?.uniqueNations,
-    ...(context.schedule ? { schedule: context.schedule, rerolls: context.rerolls ?? 2 } : {}),
+    // Daily: `schedule` is dailyChallenge(…).draft (or just its { rounds } schedule).
+    ...(context.schedule
+      ? {
+          schedule: context.schedule.schedule ?? context.schedule,
+          rerolls: context.schedule.rerolls ?? context.rerolls ?? 2,
+          formation: context.schedule.formation ?? context.formation ?? '433',
+        }
+      : {}),
     useDefaultRules: !!(context.useDefaultRules || context.schedule || context.challenge),
   });
   while (!session.complete) {

@@ -42,7 +42,7 @@ import {
   userTeamName,
 } from '../../lib/run-store.js';
 import { readSavedRun } from '../../lib/saved.js';
-import { autoSimulate, fastSimEnabled } from './auto-sim.js';
+import { useSimTicker } from './sim-ticker.js';
 import {
   PathStrip,
   OddsBar,
@@ -56,13 +56,10 @@ import {
   OutcomeChip,
   opponentTeam,
   teamOf,
-  scoreText,
 } from './run-parts.js';
 import { RunEnd } from './run-end.js';
 import { xiViews, nationList, modeLabel, levelLabel } from './team-view.js';
 import { formationLabel } from '../../../core/players/formations.js';
-
-const wait = ms => new Promise(r => setTimeout(r, isReducedMotion() ? 0 : ms));
 
 /** The finished match for a pending fixture (by id, or the same seed in a run context). */
 function pendingResult(pending) {
@@ -405,8 +402,8 @@ function TeamPanel({ views, nations, meta, formation, snapshot }) {
 export default function RunScreen() {
   const [state, setState] = useState({ phase: 'loading' });
   const ctx = useRef(null); // { catalog, run, meta, log, pending }
-  const simFlags = useRef({ skip: false, stop: false });
-  const [sim, setSim] = useState(null);
+  const ticker = useSimTicker();
+  const sim = ticker.state;
   const [confirm, setConfirm] = useState(false);
 
   const refresh = (patch = {}) =>
@@ -469,7 +466,6 @@ export default function RunScreen() {
     })();
     return () => {
       live = false;
-      simFlags.current.stop = true;
     };
   }, []);
 
@@ -513,82 +509,18 @@ export default function RunScreen() {
 
   const simRest = async () => {
     const c = ctx.current;
-    simFlags.current = { skip: isReducedMotion(), stop: false };
     patchRunState({ pending: null });
-    const queue = c.run
-      .snapshot()
-      .rounds.map((r, i) => ({ r, i }))
-      .filter(({ r }) => !r.result);
-    const items = queue.map(({ r, i }) => ({ round: i, opponent: r.opponent, status: 'queued' }));
-    let current = {
-      items,
-      progress: 0,
-      skip: simFlags.current.skip,
-      stop: false,
-      finished: false,
-      announce: '',
-    };
-    const push = patch => {
-      current = { ...current, ...patch, skip: simFlags.current.skip, stop: simFlags.current.stop };
-      setSim(current);
-    };
-    const setItem = (round, patch) =>
-      push({ items: current.items.map(it => (it.round === round ? { ...it, ...patch } : it)) });
-    push({});
     setState(s => ({ ...s, phase: 'sim', flash: null }));
-    const fast = fastSimEnabled();
-    const total = items.length;
-    let index = 0;
-    let lastPaint = 0;
     try {
-      while (!c.run.complete && !simFlags.current.stop) {
-        const m = c.run.nextMatch();
-        if (!m) break;
-        setItem(m.round, { status: 'live', live: { minute: "0'", score: [0, 0] } });
-        let result = null;
-        if (fast) {
-          await wait(simFlags.current.skip ? 0 : 450);
-          c.run.simulateNext();
-        } else {
-          result = await autoSimulate(fixtureConfig(m), m.seed, {
-            id: fixtureId(c.meta, m.round),
-            onProgress: (f, liveState) => {
-              const now = performance.now();
-              if (now - lastPaint < 120 && f < 1) return;
-              lastPaint = now;
-              push({
-                progress: (index + f) / total,
-                items: current.items.map(it =>
-                  it.round === m.round && !simFlags.current.skip ? { ...it, live: liveState } : it,
-                ),
-              });
-            },
-            cancelled: () => simFlags.current.stop === 'abort',
-          });
-          if (!result) return;
-          c.run.recordResult(runResultFor(result, 0));
-        }
-        const entry = result ? logEntry(m.round, result) : null;
-        c.log = withLog(c.log, entry);
-        saveRun(c.run, c.meta, { pending: null, log: c.log });
-        const snap = c.run.snapshot();
-        const res = snap.rounds[m.round].result;
-        const other = m.round < 3 ? elsewhereOf(snap, m.round + 1) : null;
-        index++;
-        setItem(m.round, {
-          status: 'done',
-          result: res,
-          scorers: entry ? scorerLine(entry, 0) : '',
-          elsewhere: other ? { home: other.home, away: other.away, score: other.score } : null,
-        });
-        push({
-          progress: index / total,
-          announce: `${roundLabel(m.round)}: ${res.outcome === 'W' ? 'won' : res.outcome === 'D' ? 'drew' : 'lost'} ${scoreText(res)} against ${m.away.name}.`,
-        });
-        setState(s => ({ ...s, snapshot: snap }));
-        playCue(res.outcome === 'W' ? 'goal' : 'tick');
-        await wait(simFlags.current.skip ? 0 : 900);
-      }
+      await ticker.start(c.run, {
+        configFor: m => fixtureConfig(m),
+        idFor: m => fixtureId(c.meta, m.round),
+        onDone: (m, result, snapshot) => {
+          c.log = withLog(c.log, result ? logEntry(m.round, result) : null);
+          saveRun(c.run, c.meta, { pending: null, log: c.log });
+          setState(s => ({ ...s, snapshot }));
+        },
+      });
     } catch (error) {
       console.error('[run] simulation failed', error);
       toast({
@@ -597,9 +529,7 @@ export default function RunScreen() {
         tone: 'warning',
       });
     }
-    push({ finished: true, progress: 1 });
-    await wait(simFlags.current.skip ? 150 : 1100);
-    setSim(null);
+    ticker.clear();
     refresh({ flash: null });
   };
 
@@ -697,14 +627,8 @@ export default function RunScreen() {
             ? html`<${SimPanel}
                 snapshot=${snapshot}
                 sim=${sim}
-                onSkip=${() => {
-                  simFlags.current.skip = true;
-                  setSim(s => ({ ...s, skip: true }));
-                }}
-                onStop=${() => {
-                  simFlags.current.stop = true;
-                  setSim(s => ({ ...s, stop: true }));
-                }}
+                onSkip=${ticker.skip}
+                onStop=${ticker.stop}
               />`
             : html`
                 ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} />`}

@@ -132,3 +132,65 @@ export async function autoSimulate(
 export function simulateRequest(request, options) {
   return autoSimulate(request.config, request.seed, { ...options, id: request.id });
 }
+
+/** CupRun.recordResult input from a result (user = side 0); same as match-store runResultFor. */
+export function runSide(result) {
+  const [h, a] = result.score;
+  return {
+    goalsFor: h,
+    goalsAgainst: a,
+    shootout: result.shootout
+      ? {
+          winner: result.shootout.winner === 0 ? 'user' : 'opponent',
+          score: [result.shootout.score[0], result.shootout.score[1]],
+        }
+      : null,
+    players: result.players
+      .filter(p => p.team === 0)
+      .map(p => ({ profileId: p.profileId, rating: p.rating, goals: p.goals, assists: p.assists })),
+  };
+}
+
+/**
+ * Play every remaining match of a CupRun in order until the run is over (or flags.stop):
+ * engine results are recorded with recordResult (the fast model's simulateNext when the
+ * fastSim dev switch is on).
+ *   configFor(m)              engine config for run.nextMatch() m;  idFor(m) result id
+ *   onStart(m)                before a match;  onLive(m, fraction, live)  while it runs
+ *   onDone(m, result | null)  after it is recorded (persist here; may be async)
+ *   flags                     { stop, abort } read between matches / engine slices
+ * Resolves to the number of matches played.
+ */
+export async function simulateRemaining(
+  run,
+  {
+    configFor,
+    idFor = () => null,
+    onStart = () => {},
+    onLive = () => {},
+    onDone = () => {},
+    flags = {},
+  },
+) {
+  const fast = fastSimEnabled();
+  let played = 0;
+  while (!run.complete && !flags.stop) {
+    const m = run.nextMatch();
+    if (!m) break;
+    await onStart(m);
+    let result = null;
+    if (fast) run.simulateNext();
+    else {
+      result = await autoSimulate(configFor(m), m.seed, {
+        id: idFor(m),
+        onProgress: (f, live) => onLive(m, f, live),
+        cancelled: () => !!flags.abort,
+      });
+      if (!result) break;
+      run.recordResult(runSide(result));
+    }
+    played++;
+    await onDone(m, result);
+  }
+  return played;
+}

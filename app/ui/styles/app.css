@@ -36,3 +36,5 @@
 @import url('../screens/settings/settings.css') layer(screens);
 @import url('../screens/placeholder/placeholder.css') layer(screens);
 @import url('../screens/run/run.css') layer(screens);
+@import url('../screens/daily/daily.css') layer(screens);
+@import url('../screens/exhibition/exhibition.css') layer(screens);
