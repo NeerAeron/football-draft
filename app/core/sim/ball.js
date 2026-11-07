@@ -46,9 +46,7 @@ export class BallMethods {
       .filter(
         o =>
           o.d <
-          (this.canHandle(o.p) && incomingGoal
-            ? 1.3 + o.p.skill('goalkeeping') * 0.011
-            : this.collectionReach(o.p)),
+          (this.canHandle(o.p) && incomingGoal ? this.keeperReach(o.p) : this.collectionReach(o.p)),
       )
       .sort((a, c) => a.t - c.t || a.d - c.d);
     if (b.kind === 'shot' && b.offsideState) {
@@ -73,74 +71,7 @@ export class BallMethods {
       if (this.checkOffside(p)) return;
       if (this.checkRestartTouch(p)) return;
       if (this.canHandle(p) && incomingGoal && p.team !== flightTeam) {
-        if (b.saver === p.id) continue;
-        b.saver = p.id;
-        const speed = hypot(b.vx, b.vy),
-          lateral = Math.abs((p.x - b.x) * b.vy - (p.y - b.y) * b.vx) / (speed || 1),
-          onTarget = this.projectedOnTarget();
-        const prob = clamp(
-          0.34 +
-            p.skill('goalkeeping') * 0.0063 -
-            lateral * 0.14 -
-            Math.max(0, speed - 25) * 0.016 +
-            this.profile.saveBoost +
-            (b.penaltyKick ? -0.08 - this.profile.saveBoost : 0) +
-            (b.shotRecord ? 0 : 0.18 + Math.max(0, 24 - speed) * 0.015) +
-            (p.has('gkoneonone') && b.shotOrigin && dist(p, b.shotOrigin) < 16 ? 0.035 : 0),
-          0.04,
-          b.shotRecord ? 0.95 : 0.995,
-        );
-        p.action = 'Diving';
-        p.animation = {
-          type: 'dive',
-          start: this.elapsed,
-          duration: 0.6,
-          angle: Math.atan2(b.y - p.y, b.x - p.x),
-        };
-        const effectiveSave = clamp(prob * this.tuning.gameplay.saveAbility, 0.01, 0.995);
-        if (this.rand() < effectiveSave) {
-          this.resolveShot(onTarget ? 'saved' : 'off target');
-          let save = null;
-          if (onTarget && b.shotRecord && !b.shotRecord.shootout) {
-            this.stats[p.team].saves++;
-            p.stats.saves++;
-            save = this.addEvent(`${p.name.split(' ').pop()} makes the save.`, p.team, 'save', {
-              playerId: p.id,
-              chance: effectiveSave,
-              chanceLabel: 'save',
-              strength: clamp(speed / 38, 0, 1),
-              shotEventId: b.shotRecord.eventId,
-              shooterId: b.shotRecord.player,
-              xg: b.shotRecord.xg,
-              bigChance: b.shotRecord.bigChance,
-              difficulty: clamp(1 - effectiveSave, 0, 1),
-              saveType: 'catch',
-            });
-          }
-          b.penaltyTaker = null;
-          b.restartTaker = null;
-          b.indirect = null;
-          if (
-            this.rand() <
-            0.48 + p.skill('goalkeeping') * 0.003 + (p.has('safehands') ? 0.1 : 0)
-          ) {
-            this.own(p, true);
-            p.hold = 0;
-            if (onTarget) this.flair('catch', p, 0.55, { label: 'SAVED', strength: 0.35 });
-          } else {
-            if (onTarget) this.flair('parry', p, 0.7, { label: 'PARRIED', strength: 0.65 });
-            b.vx *= -0.2;
-            b.vy = (b.y > p.y ? 1 : -1) * (4 + this.rand() * 6);
-            b.vz = 2;
-            b.kind = 'loose';
-            b.lastTouch = p.team;
-            b.kicker = p.id;
-            b.age = 0;
-            p.cooldown = 0.6;
-            if (save) save.saveType = this.reboundDanger(p) ? 'parry into danger' : 'parry';
-          }
-          return;
-        }
+        if (this.keeperSave(p)) return;
         continue;
       }
       if (b.z > 1.6 + p.skill('heading') * 0.007) continue;
@@ -148,9 +79,17 @@ export class BallMethods {
         if (p.team === b.shotTeam) continue;
         if (this.rand() < 0.35 + p.skill('defending') * 0.003) {
           this.resolveShot('blocked');
-          b.vx *= -0.22;
-          b.vy += this.noise() * 6;
-          b.vz = 1.5;
+          // A block either kills the shot or deflects it on, often behind for a corner.
+          if (this.rand() < 0.45) {
+            const keep = 0.35 + this.rand() * 0.3;
+            b.vx *= keep;
+            b.vy = b.vy * keep + this.noise() * 4;
+            b.vz = 0.8 + this.rand() * 2;
+          } else {
+            b.vx *= -0.22;
+            b.vy += this.noise() * 6;
+            b.vz = 1.5;
+          }
           b.kind = 'loose';
           b.lastTouch = p.team;
           b.kicker = p.id;

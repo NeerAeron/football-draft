@@ -34,6 +34,7 @@ import { BallMethods } from './ball.js';
 import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
 import { ShootoutMethods } from './shootout.js';
+import { KeeperMethods } from './keeper.js';
 import { hypot } from './constants.js';
 
 export class Match {
@@ -717,4 +718,5 @@ install(
   RestartMethods,
   InsightMethods,
   ShootoutMethods,
+  KeeperMethods,
 );

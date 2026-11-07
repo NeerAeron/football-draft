@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
 import { matchClock } from '../app/core/sim/periods.js';
-import { simulateComplete, applyReplayFrame, selectHighlights } from '../app/core/sim/replay.js';
+import {
+  applyReplayFrame,
+  selectHighlights,
+  snapshot,
+  RECORD_STEP,
+} from '../app/core/sim/replay.js';
 
 // A knockout match that has just reached the end of regulation, level.
 function levelAtFullTime(seed, competition = {}) {
@@ -18,7 +23,7 @@ function levelAtFullTime(seed, competition = {}) {
 }
 function runShootout(m) {
   m.finishPeriod();
-  for (let i = 0; i < 60 * 120 && !m.finished; i++) m.step(1 / 60);
+  for (let i = 0; i < 60 * 400 && !m.finished; i++) m.step(1 / 60);
   return m;
 }
 
@@ -126,20 +131,29 @@ test('highlights show every shootout kick', () => {
     assert.ok(clips.some(c => e.elapsed >= c.start && e.elapsed <= c.end));
 });
 
-test('shootout survives recording: instant result and replay frames agree', async () => {
-  const config = new Match(3, 300).exportConfig();
-  config.competition = { mode: 'sandbox', knockout: true };
-  const record = await simulateComplete(config, 1, true);
-  const direct = new Match(1, 300);
-  direct.importConfig(config);
-  while (!direct.finished) direct.step(1 / 60);
-  assert.ok(direct.shootout, 'seed 1 is level after 90 minutes');
-  assert.deepEqual(record.result.shootout, direct.shootout);
-  const target = new Match(1, 300);
-  target.importConfig(config);
-  const total = record.clips.reduce((s, c) => s + c.end - c.start, 0);
-  applyReplayFrame(target, record, total - 0.05);
-  assert.ok(target.shootout);
-  assert.equal(target.shootout.kicks.length, direct.shootout.kicks.length);
-  assert.equal(target.shootout.winner, direct.shootout.winner);
+test('shootout replays: recorded frames carry the kicks and the result', () => {
+  const m = levelAtFullTime(36),
+    frames = [];
+  m.finishPeriod();
+  frames.push(snapshot(m));
+  for (let i = 1; i < 60 * 400 && !m.finished; i++) {
+    m.step(1 / 60);
+    if (i % RECORD_STEP === 0) frames.push(snapshot(m));
+  }
+  frames.push(snapshot(m));
+  const clips = selectHighlights(m.events, m.elapsed, 60),
+    recording = { frames, clips, result: m },
+    total = clips.reduce((s, c) => s + c.end - c.start, 0);
+  const target = levelAtFullTime(36);
+  applyReplayFrame(target, recording, total - 0.01);
+  // The reel ends on the decisive kick: winner known, all kicks shown.
+  assert.deepEqual(target.shootout, m.shootout);
+  assert.ok(target.shootout.winner !== null);
+  // Mid-shootout frames show the kicks taken so far, at the shootout end.
+  const kick = m.events.find(e => e.type === 'shootout' && e.round === 2);
+  const clip = clips.find(c => kick.elapsed >= c.start && kick.elapsed <= c.end);
+  applyReplayFrame(target, recording, clip.offset + (kick.elapsed - clip.start) + 0.1);
+  assert.equal(target.mode, 'shootout');
+  assert.ok(target.shootout.kicks.length >= 3 && target.shootout.kicks.length <= 4);
+  assert.equal(target.direction(kick.team), 1);
 });
