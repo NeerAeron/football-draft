@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   DEFAULT_CONFIG,
   CONFIG_FIELDS,
+  configField,
   normalizeConfig,
   setRuntimeConfig,
   saveConfig,
@@ -24,13 +25,12 @@ const oldRatings = JSON.parse(
 const random = seed => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 
 test('configuration round-trips all fields and rejects invalid budgets, tiers and role weights', () => {
+  // League/club odds are sparse maps (missing = 1): one synthetic field per catalog entry.
   for (const team of catalog.teams)
-    assert.ok(
-      CONFIG_FIELDS.some(f => f.path === 'draft.clubOverrides.' + team.id),
-      'Missing club setting: ' + team.name,
-    );
+    assert.equal(configField('draft.clubOverrides.' + team.id).defaultValue, 1, team.name);
+  assert.ok(!CONFIG_FIELDS.some(f => f.path.includes('Overrides.')));
   assert.deepEqual(normalizeConfig(DEFAULT_CONFIG), DEFAULT_CONFIG);
-  assert.ok(CONFIG_FIELDS.length > 800);
+  assert.ok(CONFIG_FIELDS.length > 400);
   for (const f of CONFIG_FIELDS.filter(f => typeof f.defaultValue === 'number'))
     assert.ok(
       Math.abs((f.defaultValue - f.min) / f.step - Math.round((f.defaultValue - f.min) / f.step)) <
