@@ -53,15 +53,38 @@
   display: grid;
   gap: var(--space-5);
   align-items: start;
+  grid-template-areas:
+    'matchup'
+    'picker'
+    'lineups'
+    'actions';
+}
+.ex-actions {
+  grid-area: actions;
+}
+.ex-matchup {
+  grid-area: matchup;
+}
+.ex-picker {
+  grid-area: picker;
+}
+.ex-lineups {
+  grid-area: lineups;
 }
 @media (min-width: 960px) {
   .ex-grid {
     grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'matchup picker'
+      'actions picker'
+      'lineups picker';
     gap: var(--space-6);
   }
-  .ex-matchup {
-    position: sticky;
-    top: calc(var(--topbar-h) + var(--space-4));
+}
+@media (max-width: 559px) {
+  .ex-lineup .pitch-slot__name {
+    display: none;
   }
 }
 .ex-matchup {
@@ -277,4 +300,30 @@
   .ex-slot__name {
     font-size: var(--display-xs);
   }
+}
+
+/* Line-ups preview */
+.ex-lineups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ex-lineups__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.ex-lineup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.ex-lineup__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
 }

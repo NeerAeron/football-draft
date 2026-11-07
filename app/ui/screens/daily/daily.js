@@ -375,42 +375,48 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       </div>
     </section>
     <div class="daily-result__grid">
-      <${SharePanel}
-        text=${text}
-        card=${card}
-        link=${link}
-        title=${`Daily #${day.number}`}
-        filename=${`football-draft-daily-${day.number}.png`}
-      />
-      ${
-        snapshot &&
-        html`<section class="card card--pad-md daily-matches" aria-labelledby="daily-matches-title">
-          <h2 class="section-title" id="daily-matches-title">Your matches</h2>
-          <ul class="daily-matches__list" role="list">
-            ${snapshot.rounds
-              .map((r, i) => ({ r, i }))
-              .filter(({ r }) => r.result)
-              .map(
-                ({ r, i }) =>
-                  html`<li key=${r.id} class="daily-match">
-                    <span class="daily-match__stage">${roundShort(i)}</span>
-                    <${TeamMark} team=${opponentTeam(r.opponent)} size=${24} />
-                    <span class="daily-match__name truncate">${r.opponent.name}</span>
-                    <span class="daily-match__score num">${scoreText(r.result)}</span>
-                    <${OutcomeChip} result=${r.result} size="sm" />
-                    <${Button}
-                      size="sm"
-                      variant="ghost"
-                      icon="play"
-                      onClick=${() => watch(i)}
-                      aria-label=${`Watch ${roundLabel(i)} against ${r.opponent.name}`}
-                      >Watch<//
-                    >
-                  </li>`,
-              )}
-          </ul>
-        </section>`
-      }
+      <div class="daily-result__main stack stack-lg">
+        <${SharePanel}
+          text=${text}
+          card=${card}
+          link=${link}
+          heading="Share your Daily"
+          title=${`Daily #${day.number}`}
+          filename=${`football-draft-daily-${day.number}.png`}
+        />
+        ${
+          snapshot &&
+          html`<section
+            class="card card--pad-md daily-matches"
+            aria-labelledby="daily-matches-title"
+          >
+            <h2 class="section-title" id="daily-matches-title">Your matches</h2>
+            <ul class="daily-matches__list" role="list">
+              ${snapshot.rounds
+                .map((r, i) => ({ r, i }))
+                .filter(({ r }) => r.result)
+                .map(
+                  ({ r, i }) =>
+                    html`<li key=${r.id} class="daily-match">
+                      <span class="daily-match__stage">${roundShort(i)}</span>
+                      <${TeamMark} team=${opponentTeam(r.opponent)} size=${24} />
+                      <span class="daily-match__name truncate">${r.opponent.name}</span>
+                      <span class="daily-match__score num">${scoreText(r.result)}</span>
+                      <${OutcomeChip} result=${r.result} size="sm" />
+                      <${Button}
+                        size="sm"
+                        variant="ghost"
+                        icon="play"
+                        onClick=${() => watch(i)}
+                        aria-label=${`Watch ${roundLabel(i)} against ${r.opponent.name}`}
+                        ><span class="daily-match__watch">Watch</span><//
+                      >
+                    </li>`,
+                )}
+            </ul>
+          </section>`
+        }
+      </div>
       ${
         views.length > 0 &&
         html`<section class="card card--pad-md daily-xi" aria-labelledby="daily-xi-title">

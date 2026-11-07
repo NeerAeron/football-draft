@@ -36,6 +36,7 @@ export function SharePanel({
   card,
   link,
   filename = 'football-draft.png',
+  heading = 'Share your run',
   title,
   class: className,
 }) {
@@ -110,7 +111,7 @@ export function SharePanel({
   >
     <div class="share-panel__head">
       <p class="eyebrow is-gold">Brag</p>
-      <h2 class="share-panel__title" id="share-title">Share your run</h2>
+      <h2 class="share-panel__title" id="share-title">${heading}</h2>
     </div>
     <div class="share-panel__body">
       <figure class="share-panel__thumb" aria-hidden=${thumb ? undefined : 'true'}>

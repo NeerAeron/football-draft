@@ -176,7 +176,7 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
                     <p class="eyebrow is-gold">
                       <${Icon} name="award" size=${14} /> Player of the Tournament
                     </p>
-                    <p class="pott__name">${pottView.fullName || pottView.name}</p>
+                    <p class="pott__name">${pottView.name}</p>
                     <p class="pott__line">
                       ${[
                         html`<b class="num" key="a">${pott.average?.toFixed(1)}</b>`,

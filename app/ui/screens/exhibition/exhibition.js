@@ -21,6 +21,8 @@ import { openPrematch } from '../../lib/prematch-store.js';
 import { readMatchResult, clearMatch, matchStore } from '../../lib/match-store.js';
 import { sideColors, matchSideFor } from '../../lib/run-store.js';
 import { TeamMark } from '../run/run-parts.js';
+import { xiViews } from '../run/team-view.js';
+import { PitchView } from '../../components/pitch-view.js';
 
 const KEY = 'football-draft-exhibition';
 const PAGE = 40;
@@ -226,6 +228,17 @@ export default function ExhibitionScreen() {
     return keys.map((k, i) => resolveTeam(data.catalog, data.byKey, data.leagues, k, i));
   }, [data, keys]);
 
+  // Both XIs for the line-up preview (built once per team choice).
+  const lineups = useMemo(
+    () =>
+      teams.map(t => {
+        if (!t || !data) return null;
+        const side = sideOf(data.catalog, t);
+        return side ? { formation: side.formation, views: xiViews(data.catalog, side) } : null;
+      }),
+    [teams[0]?.key, teams[1]?.key, data],
+  );
+
   const leagueOptions = useMemo(() => {
     if (!data) return [];
     const counts = new Map();
@@ -373,18 +386,6 @@ export default function ExhibitionScreen() {
             })()}
           </p>`
         }
-        <div class="action-bar ex-actions">
-          <${Button}
-            variant="primary"
-            size="lg"
-            block
-            iconEnd="arrow-right"
-            disabled=${!ready}
-            onClick=${kickOff}
-            data-testid="kick-off"
-            >Kick off<//
-          >
-        </div>
       </section>
 
       <section class="ex-picker card card--pad-md" aria-labelledby="ex-picker-title">
@@ -401,10 +402,10 @@ export default function ExhibitionScreen() {
             setLimit(PAGE);
           }}
           tabs=${[
-            { id: 'club', label: 'Clubs', icon: 'shield' },
-            { id: 'nation', label: 'Nations', icon: 'flag' },
-            { id: 'boss', label: 'Legends', icon: 'crown' },
-            { id: 'random', label: 'Random', icon: 'dices' },
+            { id: 'club', label: 'Clubs' },
+            { id: 'nation', label: 'Nations' },
+            { id: 'boss', label: 'Legends' },
+            { id: 'random', label: 'Random' },
           ]}
         >
           ${() =>
@@ -464,6 +465,41 @@ export default function ExhibitionScreen() {
                   }`}
         <//>
       </section>
+      ${
+        lineups.some(Boolean) &&
+        html`<section class="ex-lineups card card--pad-md" aria-labelledby="ex-lineups-title">
+          <h2 class="section-title" id="ex-lineups-title">Line-ups</h2>
+          <div class="ex-lineups__grid">
+            ${lineups.map(
+              (l, i) =>
+                l &&
+                html`<div class="ex-lineup" key=${teams[i].key}>
+                  <p class="ex-lineup__name">
+                    <${TeamMark} team=${teams[i]} size=${20} />
+                    <span class="truncate">${teams[i].name}</span>
+                  </p>
+                  <${PitchView}
+                    formation=${l.formation}
+                    players=${l.views.map(v => v.view)}
+                    label=${`${teams[i].name} line-up`}
+                  />
+                </div>`,
+            )}
+          </div>
+        </section>`
+      }
+      <div class="action-bar ex-actions">
+        <${Button}
+          variant="primary"
+          size="lg"
+          block
+          iconEnd="arrow-right"
+          disabled=${!ready}
+          onClick=${kickOff}
+          data-testid="kick-off"
+          >Kick off<//
+        >
+      </div>
     </div>
   </div>`;
 }

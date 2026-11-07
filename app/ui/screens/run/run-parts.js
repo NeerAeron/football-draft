@@ -394,7 +394,11 @@ export function KnockoutPath({ snapshot }) {
 export function ResultsTicker({ items, snapshot }) {
   return html`<ol class="ticker" role="list">
     ${items.map(it => {
-      const team = opponentTeam(it.opponent);
+      // Knockout opponents stay hidden until their tie kicks off.
+      const hidden = it.status === 'queued' && it.round >= 3;
+      const team = hidden
+        ? { key: '?', name: 'To be decided', code: null, colors: ['#223050', '#8592ad'] }
+        : opponentTeam(it.opponent);
       const res = it.result;
       const score = res ? scoreText(res) : it.live ? `${it.live.score[0]}–${it.live.score[1]}` : '';
       return html`<li
@@ -404,7 +408,11 @@ export function ResultsTicker({ items, snapshot }) {
         <span class="ticker__stage">${roundShort(it.round)}</span>
         <span class="ticker__match">
           <span class="ticker__vs">
-            <${TeamMark} team=${team} size=${26} />
+            ${
+              hidden
+                ? html`<span class="ticker__q" aria-hidden="true">?</span>`
+                : html`<${TeamMark} team=${team} size=${26} />`
+            }
             <span class="ticker__name truncate">${team.name}</span>
           </span>
           ${it.scorers && html`<span class="ticker__scorers truncate">${it.scorers}</span>`}
@@ -418,7 +426,9 @@ export function ResultsTicker({ items, snapshot }) {
         <span class="ticker__clock num"
           >${it.status === 'live' ? it.live?.minute || "0'" : it.status === 'queued' ? '' : 'FT'}</span
         >
-        <span class="ticker__score num">${score}</span>
+        <span class=${cx('ticker__score num', score && 'is-pop')} key=${`${it.round}:${score}`}
+          >${score}</span
+        >
         ${res ? html`<${OutcomeChip} result=${res} size="sm" />` : html`<span class="outcome outcome--sm outcome--q" aria-hidden="true"></span>`}
       </li>`;
     })}

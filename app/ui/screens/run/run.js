@@ -114,7 +114,7 @@ function RunHeader({ snapshot, meta, nations }) {
           ${`World Cup Run · ${modeLabel(snapshot.mode)} · ${levelLabel(snapshot.difficulty)}${meta.challenge ? ' · Challenge' : ''}`}
         </p>
         <h1 class="run-head__title">
-          <span class="sr-only-mobile">World Cup Run · </span>${userTeamName(snapshot.user.name)}
+          <span class="visually-hidden">World Cup Run: </span>${userTeamName(snapshot.user.name)}
         </h1>
         <p class="run-head__meta">
           ${

@@ -1294,3 +1294,17 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.ticker__q {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px dashed var(--line-3);
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+}
+.ticker__score.is-pop {
+  animation: score-pop var(--dur-slower) var(--ease-spring) both;
+}
