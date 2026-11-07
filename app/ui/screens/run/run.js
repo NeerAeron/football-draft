@@ -7,7 +7,7 @@ import { html, cx } from '../../lib/html.js';
 import { href, navigate } from '../../lib/router.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { Button } from '../../components/button.js';
 import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
@@ -429,7 +429,7 @@ export default function RunScreen() {
     let live = true;
     (async () => {
       try {
-        const catalog = await loadCatalog();
+        const catalog = await loadWarmCatalog();
         if (!live) return;
         let saved = loadRun(catalog);
         let flash = null;

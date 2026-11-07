@@ -29,7 +29,7 @@ import {
 import { pickOpponent } from '../../core/draft/opponents.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
-import { loadCatalog } from '../../services/catalog.js';
+import { loadWarmCatalog } from './catalog-warm.js';
 import { sideColors, teamCode } from './kits.js';
 import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
@@ -198,11 +198,11 @@ let catalogRef = null;
 let opponent = null;
 let token = 0;
 let loading = null;
-let catalogLoader = loadCatalog;
+let catalogLoader = loadWarmCatalog;
 
 /** Tests: replace the catalog loader (Node has no fetch for the relative catalog URL). */
 export function setCatalogLoader(fn) {
-  catalogLoader = fn || loadCatalog;
+  catalogLoader = fn || loadWarmCatalog;
 }
 
 function go(path) {

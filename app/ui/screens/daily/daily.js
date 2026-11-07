@@ -8,7 +8,7 @@ import { href } from '../../lib/router.js';
 import { useStore } from '../../lib/store.js';
 import { prefs } from '../../lib/prefs.js';
 import { isReducedMotion } from '../../lib/motion.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { DEFAULT_CONFIG } from '../../../core/config/config.js';
 import { createCupRun, restoreCupRun } from '../../../core/competition/cup.js';
 import {
@@ -509,7 +509,7 @@ export default function DailyScreen() {
     const live = () => alive.current;
     {
       try {
-        const catalog = await loadCatalog();
+        const catalog = await loadWarmCatalog();
         if (!live()) return;
         const today = todayDailyId();
         const day = dailyChallenge(catalog, today);

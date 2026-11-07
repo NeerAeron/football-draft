@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
-import { loadCatalog } from '../../../services/catalog.js';
+import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { opponentCandidates, buildOpponent } from '../../../core/draft/opponents.js';
 import { buildSide } from '../../../core/draft/session.js';
 import { randomLineups } from '../../../core/players/lineups.js';
@@ -39,6 +39,8 @@ const randomSeed = () => {
 };
 
 /** A team choice: { key, kind, id, name, code, colors, rating, effective, formation, league? }. */
+const nextTask = () => new Promise(resolve => setTimeout(resolve, 0));
+
 function teamFromCandidate(c, leagues) {
   return {
     key: c.key,
@@ -193,11 +195,15 @@ export default function ExhibitionScreen() {
 
   useEffect(() => {
     let live = true;
-    loadCatalog()
-      .then(catalog => {
+    loadWarmCatalog()
+      .then(async catalog => {
         if (!live) return;
         const leagues = new Map(catalog.leagues.map(l => [String(l.id), l]));
+        // Every club and nation XI (~170 ms once): its own task, then render in the next.
+        await nextTask();
         const list = opponentCandidates(catalog);
+        await nextTask();
+        if (!live) return;
         const byKey = new Map(list.map(c => [c.key, c]));
         const teams = list.map(c => teamFromCandidate(c, leagues));
         setData({ catalog, leagues, byKey, teams });
