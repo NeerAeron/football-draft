@@ -421,6 +421,30 @@ export const flows = [
           await visible(page, '[data-screen="placeholder"] h1');
         });
       }
+      await step('installable: manifest, icons and the share card resolve', async () => {
+        const missing = await page.evaluate(async () => {
+          const head = document.head;
+          const manifestUrl = head.querySelector('link[rel="manifest"]')?.href;
+          const manifest = await (await fetch(manifestUrl)).json();
+          const urls = [
+            ...manifest.icons.map(i => new URL(i.src, manifestUrl).href),
+            head.querySelector('link[rel="apple-touch-icon"]').href,
+            // og:image is absolute (the deployment); check the same path locally.
+            new URL(
+              new URL(head.querySelector('meta[property="og:image"]').content).pathname
+                .split('/')
+                .slice(-2)
+                .join('/'),
+              location.href,
+            ).href,
+          ];
+          const bad = [];
+          for (const url of urls) if (!(await fetch(url)).ok) bad.push(url);
+          if (!manifest.name || manifest.display !== 'standalone') bad.push('manifest fields');
+          return bad;
+        });
+        if (missing.length) throw new Error(`missing: ${missing.join(', ')}`);
+      });
     },
   },
   // ---------- DRAFT-UI: setup, draft board, pre-match ----------
