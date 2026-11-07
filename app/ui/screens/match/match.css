@@ -516,6 +516,142 @@
   }
 }
 
+/* Key Moments kick-off: line-ups walk out while the first half simulates */
+.walkout {
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  background:
+    radial-gradient(70% 60% at 50% 0%, rgb(205 245 69 / 0.08), transparent 70%), rgb(4 8 18 / 0.84);
+}
+.walkout__eyebrow {
+  margin: 0;
+}
+.walkout__teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: min(640px, 100%);
+  text-align: left;
+}
+.walkout__team {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border-top: 3px solid var(--team);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--team) 16%, transparent), transparent 60%),
+    rgb(255 255 255 / 0.03);
+  animation: walkout-in var(--dur-slow) var(--ease-out) both;
+}
+.walkout__team.is-away {
+  animation-delay: 120ms;
+}
+.walkout__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.walkout__names {
+  display: grid;
+  min-width: 0;
+}
+.walkout__name {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.walkout__formation {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.walkout__xi {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.walkout__row {
+  display: grid;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 20px;
+  font-size: var(--text-xs);
+  animation: walkout-in var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(200ms + var(--i, 0) * 45ms);
+}
+.walkout__num {
+  color: var(--team-ink, var(--text-1));
+  background: var(--team);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  line-height: 18px;
+  text-align: center;
+}
+.walkout__player {
+  color: var(--text-1);
+  font-weight: var(--weight-semibold);
+}
+.walkout__role {
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+}
+.walkout__foot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  width: min(360px, 90%);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+.walkout__foot .meter {
+  grid-column: 1 / -1;
+}
+.walkout__foot .meter__head {
+  display: none;
+}
+.walkout__status {
+  justify-self: start;
+}
+@keyframes walkout-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (max-width: 559px) {
+  .walkout {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-2);
+  }
+  .walkout__teams {
+    gap: var(--space-2);
+  }
+  .walkout__team {
+    padding: var(--space-2);
+  }
+  .walkout__name {
+    font-size: var(--text-md);
+  }
+  .walkout__role {
+    display: none;
+  }
+  .walkout__row {
+    grid-template-columns: 1.9em minmax(0, 1fr);
+  }
+}
+
 /* Half-time */
 .halftime {
   justify-content: center;

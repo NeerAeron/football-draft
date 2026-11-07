@@ -22,11 +22,15 @@ import {
   Ticker,
   ShootoutPanel,
   GoalOverlay,
+  TeamMark,
   teamColors,
   useMedia,
 } from './hud.js';
 import { MentalityControl } from './tactics.js';
 import { fmt2 } from '../../lib/format.js';
+import { teamStyle } from '../../lib/color.js';
+import { formationLabel } from '../../../core/players/formations.js';
+import { commonName } from '../../../core/players/player-labels.js';
 
 const SPEED_OPTIONS = [1, 2, 4].map(v => ({ value: String(v), label: `${v}×` }));
 
@@ -219,7 +223,68 @@ function Halftime({ controller, teams, onTactics }) {
   </div>`;
 }
 
-function Loading({ controller }) {
+const LINE_ORDER = ['GK', 'RB', 'CB', 'LB', 'DM', 'RM', 'CM', 'LM', 'AM', 'RW', 'ST', 'LW'];
+
+/**
+ * Key Moments kick-off: the first half simulates in a worker for a second or two — show the
+ * line-ups walking out (a TV-style team sheet) instead of a bare progress bar.
+ */
+function WalkOut({ controller, teams, progress }) {
+  const m = controller.preview;
+  const title = controller.request.meta?.title;
+  return html`<div class="stage-panel walkout" aria-busy="true">
+    <p class="eyebrow walkout__eyebrow">${title || 'Kick-off'} · Line-ups</p>
+    <div class="walkout__teams">
+      ${[0, 1].map(t => {
+        const team = teams[t] || {};
+        const xi = m.players
+          .filter(p => p.team === t)
+          .sort(
+            (a, b) => LINE_ORDER.indexOf(a.role) - LINE_ORDER.indexOf(b.role) || a.slot - b.slot,
+          );
+        return html`<section
+          key=${t}
+          class=${cx('walkout__team', t === 1 && 'is-away')}
+          style=${teamStyle(teamColors(team))}
+          aria-label=${`${team.name} line-up`}
+        >
+          <header class="walkout__head">
+            <${TeamMark} team=${team} size=${36} />
+            <span class="walkout__names">
+              <span class="walkout__name truncate">${team.name}</span>
+              <span class="walkout__formation"
+                >${formationLabel(m.teams[t]?.tactics?.formation || '433').split(' · ')[0]}</span
+              >
+            </span>
+          </header>
+          <ol class="walkout__xi" role="list">
+            ${xi.map(
+              (p, i) =>
+                html`<li key=${p.id} class="walkout__row" style=${`--i:${i}`}>
+                  <span class="walkout__num num">${p.number}</span>
+                  <span class="walkout__player truncate">${commonName(p) || p.name}</span>
+                  <span class="walkout__role">${p.role}</span>
+                </li>`,
+            )}
+          </ol>
+        </section>`;
+      })}
+    </div>
+    <div class="walkout__foot">
+      <span class="loading__ball" aria-hidden="true"><${Icon} name="ball" size=${18} /></span>
+      <span class="walkout__status">The teams are walking out…</span>
+      <${Meter}
+        label="Simulation progress"
+        value=${Math.round(progress * 100)}
+        valueText=${`${Math.round(progress * 100)}%`}
+        showValue=${false}
+        size="sm"
+      />
+    </div>
+  </div>`;
+}
+
+function Loading({ controller, teams }) {
   const h = useStore(
     controller.hud,
     s => ({ phase: s.phase, progress: s.progress, view: s.view, error: s.error }),
@@ -232,6 +297,8 @@ function Loading({ controller }) {
       <${Button} variant="primary" onClick=${() => location.reload()}>Try again<//>
     </div>`;
   if (h.phase !== 'loading') return null;
+  if (h.view === 'key' && teams)
+    return html`<${WalkOut} controller=${controller} teams=${teams} progress=${h.progress} />`;
   return html`<div class="stage-panel loading" aria-busy="true">
     <span class="loading__ball" aria-hidden="true"><${Icon} name="ball" size=${36} /></span>
     <p class="loading__text">
@@ -525,7 +592,7 @@ export function LiveMatch({ controller, teams, onExit, onTactics }) {
           <${Cut} controller=${controller} />
           <${Shootout} controller=${controller} teams=${teams} />
           <${FullTime} controller=${controller} teams=${teams} />
-          <${Loading} controller=${controller} />
+          <${Loading} controller=${controller} teams=${teams} />
         </div>
         <${TickerLine} controller=${controller} />
         <${Controls} controller=${controller} teams=${teams} onTactics=${onTactics} />
