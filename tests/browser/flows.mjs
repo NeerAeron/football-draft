@@ -50,9 +50,18 @@ async function finishMatch(page) {
   await page.waitForFunction(() => /^#\/(match|prematch)/.test(location.hash), null, {
     timeout: 15000,
   });
+  // Instant keeps flows fast: the pre-match screen hands off with autoKickoff, so the view
+  // chosen there is the one the match screen plays.
+  const chooseInstant = async screen => {
+    const radio = page
+      .locator(`[data-screen="${screen}"]`)
+      .getByRole('radio', { name: /instant/i });
+    if (await radio.count()) await radio.first().check({ force: true });
+  };
   if (await page.evaluate(() => location.hash.startsWith('#/prematch'))) {
     const kickOff = page.locator('[data-screen="prematch"] [data-testid="kick-off"]');
     await kickOff.waitFor({ state: 'visible', timeout: 15000 });
+    await chooseInstant('prematch');
     await kickOff.click();
     await page.waitForFunction(() => location.hash.startsWith('#/match'), null, {
       timeout: 15000,
@@ -60,9 +69,8 @@ async function finishMatch(page) {
   }
   await visible(page, '[data-screen="match"], [data-screen="placeholder"]');
   if (await page.locator('[data-screen="match"]').isVisible()) {
-    const instant = page.getByRole('button', { name: /instant/i }).first();
-    if (await instant.isVisible().catch(() => false)) await instant.click();
-    const go = page.getByRole('button', { name: /continue/i }).first();
+    await chooseInstant('match');
+    const go = page.locator('[data-screen="match"] [data-testid="continue"]');
     await go.waitFor({ state: 'visible', timeout: 90000 });
     await go.click();
     return;

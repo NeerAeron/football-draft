@@ -3,9 +3,10 @@
 // summarises it in the match screen's result shape (docs/ui-match.md, the fields the RUN
 // screens use). Framework-free.
 //
-// Until MATCH-UI's worker client (app/services/sim-client.js) is on main, the engine runs
-// here on the main thread in short time slices so the ticker keeps animating. Swap point:
-// autoSimulate() — replace the loop with `createSimClient().complete(config, seed)`.
+// In the browser, autoSimulate() runs the engine in a module Worker (auto-sim-worker.js) so
+// long sims never jank the page; the worker runs simulateHere() — the same deterministic loop —
+// and forwards its live ticker updates. Without Worker support (Node tests, old browsers) or if
+// the worker fails, simulateHere() runs on the main thread in short slices.
 import { Match } from '../../../core/sim/engine.js';
 import { performanceRating } from '../../../core/sim/replay.js';
 import { PERIOD_END } from '../../../core/sim/periods.js';
@@ -97,7 +98,7 @@ export function summarizeMatch(m, { id = null, seed = null } = {}) {
  * Simulate a config with the engine. onProgress(fraction 0–1, live) is called between slices
  * with live = { minute, score: [h, a], goals } for a ticker; cancelled() → resolves null.
  */
-export async function autoSimulate(
+export async function simulateHere(
   config,
   seed,
   { id = null, onProgress = () => {}, cancelled = () => false } = {},
@@ -126,6 +127,76 @@ export async function autoSimulate(
     await yieldToUi();
   }
   return summarizeMatch(m, { id, seed });
+}
+
+// One lazily created worker for the page; jobs run one at a time inside it.
+let worker = null,
+  workerBroken = typeof Worker !== 'function' || typeof window === 'undefined',
+  nextJob = 1;
+const jobs = new Map(); // id → { resolve, reject, onProgress, cancelled, timer }
+
+function failWorker(reason) {
+  workerBroken = true;
+  worker?.terminate();
+  worker = null;
+  for (const job of jobs.values()) {
+    clearInterval(job.timer);
+    job.reject(new Error(reason));
+  }
+  jobs.clear();
+}
+
+function ensureWorker() {
+  if (workerBroken) return null;
+  if (worker) return worker;
+  try {
+    worker = new Worker(new URL('./auto-sim-worker.js', import.meta.url), { type: 'module' });
+  } catch {
+    workerBroken = true;
+    return null;
+  }
+  worker.onmessage = ({ data }) => {
+    const job = jobs.get(data.id);
+    if (!job) return;
+    if ('progress' in data) return job.onProgress(data.progress, data.live);
+    clearInterval(job.timer);
+    jobs.delete(data.id);
+    if (data.error) job.reject(new Error(data.error));
+    else job.resolve(data.result ?? null);
+  };
+  worker.onerror = event => {
+    event.preventDefault?.();
+    failWorker(event.message || 'auto-sim worker failed');
+  };
+  return worker;
+}
+
+/**
+ * Simulate a config with the engine, off the main thread when possible. Same contract and the
+ * same deterministic result as simulateHere(); cancelled() → resolves null.
+ */
+export async function autoSimulate(config, seed, options = {}) {
+  const { onProgress = () => {}, cancelled = () => false } = options;
+  const w = ensureWorker();
+  if (!w) return simulateHere(config, seed, options);
+  const id = nextJob++;
+  try {
+    return await new Promise((resolve, reject) => {
+      const job = { resolve, reject, onProgress, timer: null };
+      job.timer = setInterval(() => {
+        if (!cancelled()) return;
+        clearInterval(job.timer);
+        jobs.delete(id);
+        w.postMessage({ cancel: id });
+        resolve(null);
+      }, 50);
+      jobs.set(id, job);
+      w.postMessage({ id, config, seed, matchId: options.id ?? null });
+    });
+  } catch {
+    // The worker could not run the job (e.g. it failed to load): fall back to this thread.
+    return simulateHere(config, seed, options);
+  }
 }
 
 /** Simulate a stored match request (#/match hand-off) — used by tests and the fallback flow. */
