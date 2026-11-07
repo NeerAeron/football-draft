@@ -18,7 +18,7 @@ links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/r
 
 ## World Cup Run flow
 
-1. **Arrival.** The hub boots with `completedDraft()` (draft-store). A completed draft whose
+1. **Arrival.** The hub boots with `completedDraft() ?? await loadDraft()` (draft-store). A completed draft whose
    `context.kind` is `'run'` becomes a run: `createRunFromDraft(catalog, { session, context })`
    → `createCupRun(catalog, { mode, difficulty, seed, user: session.matchSide(0) })` (challenge
    drafts — `useDefaultRules` — keep `DEFAULT_CONFIG.draft` so a friend meets the same
@@ -44,7 +44,7 @@ client (`app/services/sim-client.js`) in that one function when it lands.
 ## Daily Challenge flow
 
 Intro (date, rules, group, streak, countdown) → `startDraft({ kind: 'daily', type: 'nations',
-schedule: dailyChallenge(catalog, today).draft, seed, formation, rerolls, daily: id,
+schedule: day.schedule, seed: day.seed, formation, rerolls, daily: id,
 useDefaultRules: true, returnTo: '/daily' })` → back on `#/daily`: `createCupRun(catalog,
 { ...day.cup, user })`, `perfectXI` / `perfectPercent`, `beginDailyAttempt()` (the day is used
 from here on) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
@@ -79,6 +79,7 @@ challenge: { token, by }, returnTo })`; "Review the settings first" opens
 - `tests/run-ui-store.test.mjs` — persistence round trips, tolerant readers, stakes, links,
   daily record + streak, share image layout.
 - `tests/browser/flows.mjs` — `run`, `daily`, `exhibition`, `challenge-link` (seeded, fast
-  sims). Until DRAFT-UI/MATCH-UI land, `finishMatch()` simulates the stored request in the page
-  and the TEMP STUB draft-store drafts instantly; with the real screens the flows press
-  `[data-testid="auto-pick"]`, the pre-match `[data-testid="kick-off"]`, Instant and Continue.
+  sims). Drafts finish on the real board via `#/draft?auto=1` + the completion sheet's
+  Continue; matches kick off from the real pre-match (`[data-testid="kick-off"]`). While
+  `#/match` is a placeholder, `finishMatch()` simulates the stored request in the page;
+  with MATCH-UI's screen it presses Instant and Continue.
