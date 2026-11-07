@@ -18,49 +18,74 @@ continuous 2D 11v11 physics simulation. Static site, **no build step**: `app/` i
 | `npm run test:browser` | Playwright smoke run of every UI flow, fails on console/page errors | ~25 s |
 | `npm run shots -- --only draft --desktop` | screenshots into `.shots/` (view PNGs with the Read tool) | — |
 | `npm run sim:fingerprint` | deterministic results/hashes of 12 full matches + timings | ~35 s |
-| `npm run format` / `npm run lint` | Prettier write / ESLint | — |
+| `npm run format` / `npm run lint` | Prettier write / ESLint (`--max-warnings 0`) | — |
 | `npm run verify` | everything incl. full tests + browser smoke (before pushing) | ~60 s |
 
 Browser tooling uses the machine's pre-installed Playwright + Chromium (`require('playwright')`).
-Never `npm i playwright` or run `playwright install`.
+Never `npm i playwright` or run `playwright install` locally (CI installs its own copy).
 
 ## Layout
 
 ```
-app/                    served statically (deploy = publish this folder)
-  index.html            game shell (home, draft, match screens + dialogs)
-  config.html           tuning/config page (config-ui.js)
-  *.css                 style.css (shell/home/draft), game.css (match), squad.css, config.css
-  data/players-runtime.json   compiled player catalog loaded by the game (lazy fetch)
-  data/players-fc26.json      same catalog + full provenance (tests/scripts only)
-  data/catalog-reference.json league/club metadata, Opta ratings, colours (compiler input)
-  assets/logos/         league logos
+app/                    served statically (deploy = publish this folder); runtime files only
+  index.html            game shell (home, draft, match screens + dialogs) — legacy UI
+  config.html           tuning/config page — legacy UI
+  core/                 pure logic: no DOM, no storage, Node-testable
+    sim/                engine, rules, cards, periods, replay, in-match AI coach
+    players/            ratings, traits/badges, formations, club + random lineups, labels
+    draft/              Draft state machine, league/club weights, AI opponent selection
+    config/             config.js (DEFAULT_CONFIG, CONFIG, overrides, normalizeConfig)
+    util/               rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey)
+  services/             browser-side services reusable by any UI: sound, playback, fullscreen
+  legacy/               the pre-overhaul UI (scripts + style/game/squad/config.css)
+  ui/                   (new UI goes here; it will replace legacy/ and the two root pages)
+  data/players-runtime.json   compiled catalog loaded by the game (the only JSON fetched)
+  assets/logos/         league logos (paths in the catalog are relative to the page)
+data/                   repo root, NOT deployed: players-fc26.json (catalog + provenance, for
+                        tests/scripts), catalog-reference.json (compiler input), logo sources,
+                        rules-reference.json, goal-location-reference.json (research outputs)
 scripts/                catalog compiler (compile-league-catalog.mjs + compile-players.mjs), audit export
 scripts/dev/            serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
-tests/*.test.mjs        node:test suites; tests/fixtures/ inputs; tests/*-results.json are
-                        historical calibration records (never loaded by the game)
+tests/*.test.mjs        node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
 tests/browser/flows.mjs Playwright flows used by test:browser and shots — keep selectors in sync
+tools/calibration/      manual calibration/integration runners (write to /tmp; not run by npm test)
+tools/research/         StatsBomb research scripts (Python) behind data/*-reference.json
+docs/                   history.md (pre-overhaul README / dev log), calibration notes
+.github/workflows/      ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
 ```
 
-### Module map (`app/`)
+New UI work goes under `app/ui/`; `app/legacy/` is the pre-overhaul UI and stays working
+(index.html/config.html load it) until it is replaced. UI code may import `core/` and
+`services/`; `core/` must never import `services/`, `legacy/` or `ui/`. Runtime URLs such as
+`fetch('./data/players-runtime.json')` and catalog logo paths (`./assets/logos/…`) resolve
+against the page in `app/`, not against the module file.
 
-- **Simulation** — `engine.js` (`Match`, `Player`: fixed 1/60 s step, decisions, passing, shooting,
-  defending, restarts, fouls/cards, stats), `player-model.js` (hidden tendencies), `rules.js`
-  (offside etc.), `discipline.js` (cards), `goal-zones.js`, `periods.js` (clock, stoppage),
-  `replay.js` (record/highlights/instant, `performanceRating`), `ai.js` (AI opponent selection,
-  coaching, `tacticAccess`).
-- **Players & ratings** — `ratings.js` (attributes, role weights, `overallRating`,
+### Module map (`app/core/` unless noted)
+
+- **Simulation** (`sim/`) — `engine.js` (`Match`, `Player`: fixed 1/60 s step, decisions,
+  passing, shooting, defending, restarts, fouls/cards, stats; re-exports `ATTRS`, `clamp`),
+  `player-model.js` (hidden tendencies), `rules.js` (offside etc.), `discipline.js` (cards),
+  `goal-zones.js`, `periods.js` (clock, stoppage), `replay.js` (record/highlights/instant,
+  `performanceRating`), `coach.js` (`coachAI` in-match AI tactics, `tacticAccess`). The engine
+  imports only `sim/`, `players/`, `config/` and `util/` — never `draft/`.
+- **Players & ratings** (`players/`) — `ratings.js` (attributes, role weights, `overallRating`,
   `positionFamiliarity`, tiers), `traits.js` (badges/BADGES, styles, tactics, `badgeBoost`),
-  `badges.js` (badge normalisation by tier), `formations.js` (10 formations: `[x, y, role]` rows).
-- **Draft** — `draft.js` (`Draft`: spins, eligibility, budget tickets, re-spins, hidden reveal
-  pacing, `bestSlots`), `leagues.js` (league/club weights), `team-ratings.js`, `club-lineups.js`
-  (best XI per club, Hungarian assignment), `lineups.js` (random XIs).
-- **UI** — `app.js` (match screen controller + canvas renderer + global wiring), `game-ui.js`
-  (home + draft screens), `squad-ui.js` (cards, mini pitch), `draft-reel.js`,
-  `budget-confirmation.js`, `playback.js`, `fullscreen.js` (TV mode), `sound.js` (Web Audio),
-  `player-labels.js`.
-- **Config** — `config.js` (`DEFAULT_CONFIG`, persisted overrides, `normalizeConfig`); each
-  `Match` snapshots it into `match.tuning`.
+  `badges.js` (badge normalisation by tier), `formations.js` (10 formations: `[x, y, role]`
+  rows), `team-ratings.js`, `club-lineups.js` (best XI per club, Hungarian assignment),
+  `lineups.js` (random XIs, `playerInitials`), `player-labels.js`.
+- **Draft** (`draft/`) — `draft.js` (`Draft`: spins, eligibility, budget tickets, re-spins,
+  hidden reveal pacing, `bestSlots`, `KITS`), `leagues.js` (league/club weights), `opponent.js`
+  (`DIFFICULTIES`, `createAIOpponent`, `chooseAIFormation`, `draftValue`).
+- **Config** (`config/config.js`) — `DEFAULT_CONFIG`, live `CONFIG`, persisted overrides,
+  `normalizeConfig`; each `Match` snapshots it into `match.tuning`.
+- **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
+  uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
+  `searchKey`).
+- **Services** (`app/services/`) — `sound.js` (Web Audio), `playback.js` (`PlaybackClock`),
+  `fullscreen.js` (TV mode).
+- **Legacy UI** (`app/legacy/`) — `app.js` (match screen controller + canvas renderer + global
+  wiring), `game-ui.js` (home + draft screens), `squad-ui.js` (cards, mini pitch),
+  `draft-reel.js`, `budget-confirmation.js`, `config-ui.js`.
 
 ## Invariants — do not break
 
@@ -72,7 +97,7 @@ tests/browser/flows.mjs Playwright flows used by test:browser and shots — keep
 - **Hot paths.** `Player.skill`, `positionFamiliarity`, `badgeBoost`, `dist`, `Match.plan` and the
   defensive assignment helpers run thousands of times per step. No allocations/closures there;
   caches must stay correct when tests mutate `p.attrs`/`p.tags`/`match.tuning` in place.
-- **Behaviour-neutral refactors** of `app/engine.js` (or anything it imports) must keep
+- **Behaviour-neutral refactors** of `app/core/sim/engine.js` (or anything it imports) must keep
   `npm run sim:fingerprint` identical: record before (`… --json > /tmp/before.json`) and compare
   after (`node scripts/dev/sim-fingerprint.mjs --compare /tmp/before.json`). Intentional gameplay
   changes are expected to change it — then justify with tests/stats instead.
@@ -85,10 +110,11 @@ SHA-256 `4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2`). An 
 copy: `https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv`.
 
 ```sh
-node scripts/compile-league-catalog.mjs FC26_20250921.csv app/data/catalog-reference.json app/data/players-fc26.json
+node scripts/compile-league-catalog.mjs FC26_20250921.csv data/catalog-reference.json data/players-fc26.json
 ```
 
-writes `players-fc26.json` and `players-runtime.json` deterministically (byte-identical reruns).
+writes `data/players-fc26.json` and `app/data/players-runtime.json` deterministically
+(byte-identical reruns).
 Selection policy (league caps, expansion) lives in `catalog-reference.json`; every selected
 player's club must have a reviewed entry there.
 
@@ -96,7 +122,8 @@ player's club must have a reviewed entry there.
 
 - Plain modern JS (ES2024 modules), no framework, no runtime dependencies, no bundler.
 - Prettier: single quotes, 100 columns, `arrowParens: avoid`. ESLint flat config.
-- Escape any catalog text inserted with `innerHTML` (player/club names contain accents, quotes).
+- Escape any catalog text inserted with `innerHTML` with `escapeHtml` from `core/util/text.js`
+  (player/club names contain accents, quotes).
 - UI must work at 390 px wide (touch) and 1366 px desktop; respect `prefers-reduced-motion`.
 - After UI changes: `npm run shots -- --only <flow>` and look at the PNGs; update
   `tests/browser/flows.mjs` when selectors or flows change; `npm run test:browser` must pass.

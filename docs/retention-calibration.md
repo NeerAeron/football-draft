@@ -75,9 +75,9 @@ extra attempts. Penalty conversion retains its existing calculation.
 From the repository root:
 
 ```sh
-node tests/retention-calibration.mjs /tmp/retention-results.json
-CALIBRATION_FIXTURES=tests/fixtures/retention-fixed-opposition.json node tests/retention-calibration.mjs /tmp/retention-fixed-opposition-results.json
-VALIDATE_OBSERVER=1 CASE_LIMIT=1 node tests/retention-calibration.mjs /tmp/retention-observer-check.json
+node tools/calibration/retention-calibration.mjs /tmp/retention-results.json
+CALIBRATION_FIXTURES=tests/fixtures/retention-fixed-opposition.json node tools/calibration/retention-calibration.mjs /tmp/retention-fixed-opposition-results.json
+VALIDATE_OBSERVER=1 CASE_LIMIT=1 node tools/calibration/retention-calibration.mjs /tmp/retention-observer-check.json
 node --test tests/receiving-and-retention.test.mjs
 ```
 

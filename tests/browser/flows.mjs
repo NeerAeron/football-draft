@@ -1,5 +1,5 @@
 // User flows for scripts/dev/browser.mjs (smoke test + screenshots).
-// Keep selectors in sync with app/index.html when the UI changes.
+// Keep selectors in sync with app/index.html and app/legacy/ when the UI changes.
 // Each run() receives { page, shot, step, base, viewport }.
 
 const visible = (page, selector, timeout = 15000) =>
