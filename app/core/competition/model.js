@@ -1,14 +1,25 @@
 // Fast seeded result model for matches that are not simulated by the engine (AI vs AI in a
 // cup group, projections, optional quick-sims). Independent Poisson goals:
 //   lambda_A = goals * exp(+slope * (rA - rB)),  lambda_B = goals * exp(-slope * (rA - rB))
-// with ratings on the effective scale (team OVR + mean link chem). goals 1.3 and slope 0.09
-// per rating point roughly follow pre-overhaul engine results by rating gap (review match-gap
-// sample, 50 matches: gap > +4 won 10/12; gap < -4 won 4/19, lost 12/19). Model: gap +8 →
-// 80% W / 13% D; gap 0 → 37 / 26 / 37; gap -7 → 9% W / 76% L. Provisional: re-fit once the
-// engine overhaul lands. Shootouts: 5 kicks each then sudden death, each kick scored with
-// probability 0.75 ± 0.01 per rating point.
+// with ratings on the effective scale (team OVR + mean link chem). Fitted by Poisson maximum
+// likelihood to 840 engine matches of the Phase 3 engine (tools/calibration/cup-calibration.mjs
+// gaps): a typically drafted XI against ladder opponents at gaps of −12…+20, the AI coach at
+// each difficulty's level, 180 s and 300 s alternating (640 at gaps −12…+12, 200 at +8…+20).
+// goals 1.82 per side at gap 0 (1.58 for 180 s, 2.06 for 300 s; same slope), slope 0.0525 per
+// rating point: gap 0 → 39% W / 22% D / 39% L; +4 → 55/21/24; +8 → 70/16/14; +12 → 83/10/7.
+// Engine vs model by gap: −8…−4 19/15/66 vs 21/19/60, +4…+8 59/25/17 vs 63/18/19, +8…+13
+// 80/14/6 vs 78/13/9. No home or coach constant (the AI coach's level moves the user's edge by
+// at most ±1 rating point, with no trend), and Poisson draws match (16.4% vs 16.9%).
+// Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
+// rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 
-export const MATCH_MODEL = { goals: 1.3, slope: 0.09, maxGoals: 9, kick: 0.75, kickSlope: 0.01 };
+export const MATCH_MODEL = {
+  goals: 1.82,
+  slope: 0.0525,
+  maxGoals: 9,
+  kick: 0.75,
+  kickSlope: 0.005,
+};
 
 /** Expected goals [a, b] for two effective ratings. */
 export function expectedGoals(ratingA, ratingB, model = MATCH_MODEL) {

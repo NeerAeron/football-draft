@@ -9,14 +9,15 @@ import {
   cupGrade,
   projectRun,
   CUP_ROUNDS,
-  CUP_TUNING,
+  cupOffsets,
 } from '../app/core/competition/cup.js';
 import {
   outcomeProbabilities,
   simulateResult,
   simulateShootout,
 } from '../app/core/competition/model.js';
-import { ladderTarget } from '../app/core/draft/opponents.js';
+import { ladderTarget, MODE_BASELINES } from '../app/core/draft/opponents.js';
+import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
 
 const catalog = loadRuntimeCatalog();
@@ -118,7 +119,7 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
   const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 5, user });
   const keys = run.opponents.map(o => o.key);
   assert.equal(new Set(keys).size, 7);
-  const offsets = [...CUP_TUNING.groupOffsets, ...CUP_TUNING.knockoutOffsets];
+  const offsets = cupOffsets('pro');
   run.opponents.forEach((o, i) => {
     assert.equal(o.target, ladderTarget('nations', 'pro', { offset: offsets[i] }));
     assert.ok(Math.abs(o.nominal - o.target) <= 1.5, o.name);
@@ -284,7 +285,8 @@ test('rating model: probabilities, determinism, shootouts and projections', () =
   const even = outcomeProbabilities(80, 80);
   assert.ok(Math.abs(even.win - even.loss) < 1e-9);
   assert.ok(Math.abs(even.win + even.draw + even.loss - 1) < 1e-9);
-  assert.ok(outcomeProbabilities(87, 80).win > 0.7);
+  assert.ok(outcomeProbabilities(87, 80).win > 0.5);
+  assert.ok(outcomeProbabilities(92, 80).win > 0.75);
   const r1 = simulateResult(84, 80, lcg(7), { knockout: true }),
     r2 = simulateResult(84, 80, lcg(7), { knockout: true });
   assert.deepEqual(r1, r2);
@@ -309,4 +311,40 @@ test('rating model: probabilities, determinism, shootouts and projections', () =
     projectRun({ rating: 82, mode: 'nations' }),
     projectRun({ rating: 82, mode: 'nations' }),
   );
+});
+
+// Difficulty: what a typical drafted XI (the mode baseline) can expect, by the fitted model.
+// Targets (docs/competition-api.md): Amateur 55–65% champions, Semi-pro ~35%, Pro ~20% with
+// at most ~20% group exits, World Class 8–10%, Legendary 3–5%. Wide windows: projectRun is a
+// Monte-Carlo against the exact round targets.
+test('difficulty ladder: title odds fall level by level and finals are top sides', () => {
+  const windows = {
+    amateur: [0.5, 0.72],
+    semipro: [0.27, 0.45],
+    pro: [0.14, 0.27],
+    worldclass: [0.05, 0.14],
+    legendary: [0.015, 0.08],
+  };
+  let previous = 1;
+  for (const [difficulty, [lo, hi]] of Object.entries(windows)) {
+    const rerolls = DEFAULT_CONFIG.draft.rerolls[difficulty],
+      rating = MODE_BASELINES.nations.effective[Math.min(2, rerolls)];
+    const p = projectRun({ rating, mode: 'nations', difficulty, runs: 3000 }).probabilities;
+    assert.ok(p.champion >= lo && p.champion <= hi, `${difficulty} champion ${p.champion}`);
+    assert.ok(p.champion < previous, difficulty);
+    previous = p.champion;
+    if (difficulty === 'pro') assert.ok(p.group <= 0.22, `pro group exit ${p.group}`);
+  }
+  // The final is the strongest opponent of a run, and a recognisable side for the level.
+  const finalFloor = { amateur: 78.5, semipro: 80.5, pro: 85, worldclass: 86, legendary: 87.5 };
+  for (const [difficulty, floor] of Object.entries(finalFloor))
+    for (const seed of [3, 4]) {
+      const run = createCupRun(catalog, { mode: 'nations', difficulty, seed, user });
+      const final = run.opponents[6].effective;
+      assert.ok(final >= floor, `${difficulty} final ${run.opponents[6].name} ${final}`);
+      assert.ok(
+        run.opponents.slice(0, 6).every(o => o.effective <= final + 1.5),
+        difficulty,
+      );
+    }
 });

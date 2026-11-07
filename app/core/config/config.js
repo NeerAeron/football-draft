@@ -153,7 +153,7 @@ export const DEFAULT_CONFIG = {
     shotFrequency: 2,
     shotScatter: 1.08,
     shotPower: 1,
-    saveAbility: 1,
+    saveAbility: 0.9,
     passCompletion: 1,
     passError: 1,
     routinePassError: 0.6,
@@ -174,6 +174,11 @@ export const DEFAULT_CONFIG = {
     markingDistance: 1,
     pressDistance: 1,
     restartSetup: 1,
+    markingLapses: 1,
+    deliveryDeflections: 1,
+    runsInBehind: 1,
+    crossWillingness: 1.5,
+    keeperRange: 1,
   },
   discipline: {
     yellowSeverity: 0.75,
@@ -206,7 +211,7 @@ export const DEFAULT_CONFIG = {
       directness: 2.8,
       shotUrge: 5,
       spread: 0.34,
-      saveBoost: 0,
+      saveBoost: -0.1,
       release: 0.85,
       runSupport: 16,
       passUrge: 0.4,
@@ -220,7 +225,7 @@ export const DEFAULT_CONFIG = {
       readWindow: 0.94,
       directness: 2,
       shotUrge: 4,
-      spread: 0.475,
+      spread: 0.43,
       saveBoost: 0,
       release: 1.05,
       runSupport: 20,
@@ -708,6 +713,11 @@ const labels = {
   markingDistance: 'Marking distance',
   pressDistance: 'Pressing distance',
   restartSetup: 'Restart preparation time',
+  markingLapses: 'Marking lapses (ball-watching)',
+  deliveryDeflections: 'Deflected deliveries in the box',
+  runsInBehind: 'Runs in behind the defensive line',
+  crossWillingness: 'Crossing willingness',
+  keeperRange: 'Keeper rating influence',
   minimumLeaguePlayers: 'Minimum league player pool',
   minimumFit: 'Club XI minimum position fit',
   halftimeRecovery: 'Half-time stamina recovery',
@@ -803,7 +813,15 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   let [min, max, step] = ranges[f.key] || [0, 100, 0.01];
   if (f.path.startsWith('gameplay.') || ['drain', 'sprintDrain', 'sprintRecovery'].includes(f.key))
     [min, max, step] = [0.5, 2, 0.01];
-  if (['receptionError', 'difficultReceptionError'].includes(f.key))
+  if (
+    [
+      'receptionError',
+      'difficultReceptionError',
+      'markingLapses',
+      'deliveryDeflections',
+      'runsInBehind',
+    ].includes(f.key)
+  )
     [min, max, step] = [0, 2, 0.01];
   if (['controlQuality', 'passingQuality', 'defensiveQuality', 'creativeQuality'].includes(f.key))
     [min, max, step] = [0, 2, 0.01];

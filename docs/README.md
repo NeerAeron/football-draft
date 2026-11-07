@@ -21,12 +21,14 @@ Keep these current when you change the code they describe.
 
 | Document | Covers |
 | --- | --- |
-| [`calibration.md`](calibration.md) | Match engine calibration: method, `match-calibration.mjs` runs, before/after of the engine package |
+| [`calibration.md`](calibration.md) | Match engine calibration: method, `match-calibration.mjs` runs, before/after of the engine package and the Phase 3 goals-and-drama pass |
 | [`retention-calibration.md`](retention-calibration.md) | Possession and shot-volume calibration of the engine (method, runners, results) |
 | [`cards-calibration.md`](cards-calibration.md) | Loose-ball recovery and discipline (fouls, cards) validation |
 
 Calibration runners live in `tools/calibration/` (manual, not part of `npm test`); the draft
-baselines behind the opponent ladder come from `tools/calibration/draft-baselines.mjs`.
+baselines behind the opponent ladder come from `tools/calibration/draft-baselines.mjs`, the
+fast rating model and the World Cup Run offsets from `tools/calibration/cup-calibration.mjs`
+(`competition-api.md`).
 
 ## History
 

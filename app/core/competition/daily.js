@@ -8,7 +8,7 @@ import { FORMATIONS } from '../players/formations.js';
 import { catalogIndex, draftRules, callUps, roleRating, isKeeper } from '../draft/pools.js';
 import { seedValue } from '../draft/session.js';
 import { chooseOpponent } from '../draft/opponents.js';
-import { CUP_TUNING } from './cup.js';
+import { cupOffsets } from './cup.js';
 
 /** Daily #1. */
 export const DAILY_EPOCH = '2026-11-01';
@@ -67,7 +67,7 @@ export function dailyChallenge(catalog, date) {
     if (b >= a) b++;
     return { spin: field[a].id, alternate: field[b].id };
   });
-  const offsets = [...CUP_TUNING.groupOffsets, ...CUP_TUNING.knockoutOffsets],
+  const offsets = cupOffsets(DAILY_RULES.difficulty),
     opponents = [];
   for (const offset of offsets)
     opponents.push(

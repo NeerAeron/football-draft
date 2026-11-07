@@ -75,7 +75,7 @@ export class ShootingMethods {
           (1 + pressure * 0.5) *
           balance) /
           foot.quality) *
-        (header ? 1.7 : 1) *
+        (header ? 1.5 : 1) *
         (p.has('finisher') && box ? 0.93 : 1) *
         (shotType === 'Curler' && p.has('curve') ? 0.88 : 1) *
         (1 + (1 - spatial.openness) * 0.4) *

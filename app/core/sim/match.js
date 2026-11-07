@@ -263,6 +263,7 @@ export class Match {
       p.receivedAt = -10;
       p.possessionAt = -10;
       p.comboRun = null;
+      p.runBehind = null;
       p.finishUntil = 0;
       p.finishTarget = null;
       p.goalKickExempt = false;

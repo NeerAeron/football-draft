@@ -149,6 +149,7 @@ export class PassingMethods {
       .map(q => this.rel(q.x, p.team))
       .sort((a, b) => b - a)[1];
     const counter = tac.style === 'counter' && this.elapsed - this.possessionStart < 7;
+    const fromX = this.rel(p.x, p.team);
     for (const r of this.activePlayers) {
       if (r.team !== p.team || r.id === p.id) continue;
       const distance = dist(p, r);
@@ -248,7 +249,7 @@ export class PassingMethods {
           clamp((p.vision() + p.skill('composure') - 140) * 0.006, 0, 0.35) +
           (tac.style === 'possession' ? 0.25 * identity : 0);
         const turnoverCost =
-          (held ? 7 : 4.8 + Math.max(0, 55 - this.rel(p.x, p.team)) * 0.035) *
+          (held ? 7 : 4.8 + Math.max(0, 55 - fromX) * 0.035) *
           (1.25 - p.tendency('risk') * 0.55) *
           judgment *
           (1 - tac.lean * 0.12);

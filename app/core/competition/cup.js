@@ -37,10 +37,31 @@ export const STAGE_LABELS = {
 };
 const STAGE_ORDER = ['group', 'r16', 'qf', 'sf', 'final', 'champion'];
 /**
- * Opponent strength per round, as offsets to the level's target (effective rating). The
- * group is drawn from "lower pots" (weaker than the level), knockouts escalate past it.
+ * Opponent strength per round and difficulty: offsets (effective rating) to the level's ladder
+ * target, in round order MD1, MD2, MD3, R16, QF, SF, final. The group is drawn from "lower
+ * pots" (weaker than the level); the knockouts escalate so the final is a top side for that
+ * difficulty. Tuned with tools/calibration/cup-calibration.mjs (docs/competition-api.md).
  */
-export const CUP_TUNING = { groupOffsets: [-4.5, -3.5, -2.5], knockoutOffsets: [-2, -1, 0, 1] };
+export const CUP_TUNING = {
+  amateur: [-10.5, -9.5, -9, -8.5, -8, -5, 3],
+  semipro: [-11, -9.5, -8, -7, -4, -1, 2],
+  pro: [-12.5, -11, -9.5, -8.5, -5.5, -2.5, 2.5],
+  worldclass: [-12.5, -11, -9.5, -8.5, -5.5, -2.5, 0],
+  legendary: [-13, -11.5, -10, -9, -6, -3, -1],
+};
+/**
+ * Rating points the fast model adds to the user in his knockout matches (projectRun,
+ * simulateNext). In the engine a drafted XI goes through 77.6% of its cup knockout ties where
+ * independent Poisson goals at the same ratings say 73.0% (584 ties,
+ * tools/calibration/cup-calibration.mjs runs --engine): the engine converts a rating edge into
+ * wins a little more reliably than the model. Group matches agree with the model (81.7% vs
+ * 79.7% wins), so they get no edge.
+ */
+export const KNOCKOUT_EDGE = 1.5;
+/** The seven round offsets (group ×3, R16, QF, SF, final) of a difficulty. */
+export function cupOffsets(difficulty = 'pro', tuning = CUP_TUNING) {
+  return [...(tuning[difficulty] ?? tuning.pro)];
+}
 export const CUP_FORMAT = 1;
 const USER = 'user';
 const round2 = x => Math.round(x * 100) / 100;
@@ -301,7 +322,10 @@ export class CupRun {
   simulateNext(random = lcg(this.matchSeed(this.matches.length))) {
     const m = this.nextMatch();
     if (!m) return null;
-    const r = simulateResult(m.home.effective, m.away.effective, random, { knockout: m.knockout });
+    const edge = m.knockout ? KNOCKOUT_EDGE : 0,
+      r = simulateResult(m.home.effective + edge, m.away.effective, random, {
+        knockout: m.knockout,
+      });
     return this.recordResult({
       goalsFor: r.goals[0],
       goalsAgainst: r.goals[1],
@@ -507,7 +531,7 @@ export function createCupRun(catalog, options) {
   const rngSeed = seedValue(seed),
     random = lcg(mixSeed(rngSeed ^ 0x632be5ab));
   // Opponents: fixed keys (daily) or the ladder with round offsets, never repeating.
-  const offsets = [...CUP_TUNING.groupOffsets, ...CUP_TUNING.knockoutOffsets],
+  const offsets = cupOffsets(difficulty),
     opponents = [],
     avoid = [];
   const byKey = new Map(opponentCandidates(catalog, { rules }).map(c => [c.key, c]));
@@ -603,7 +627,7 @@ export function projectRun({
   runs = 300,
   seed = 1,
 }) {
-  const offsets = [...CUP_TUNING.groupOffsets, ...CUP_TUNING.knockoutOffsets],
+  const offsets = cupOffsets(difficulty),
     targets = offsets.map(o => ladderTarget(mode, difficulty, { offset: o, rules, rerolls })),
     random = lcg(mixSeed(seed >>> 0)),
     reached = Object.fromEntries(STAGE_ORDER.map(s => [s, 0]));
@@ -625,7 +649,7 @@ export function projectRun({
     if (standings(keys, fixtures).findIndex(r => r.key === USER) < 2) {
       stage = 'r16';
       for (let r = 3; r < 7; r++) {
-        const res = simulateResult(rating, targets[r], random, { knockout: true });
+        const res = simulateResult(rating + KNOCKOUT_EDGE, targets[r], random, { knockout: true });
         const won = res.goals[0] > res.goals[1] || res.shootout?.winner === 0;
         if (!won) break;
         stage = r === 6 ? 'champion' : CUP_ROUNDS[r + 1].stage;
