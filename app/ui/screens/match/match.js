@@ -1,7 +1,7 @@
 // #/match — the match screen. Plays the request handed over with requestMatch()
 // (lib/match-store.js, docs/ui-match.md): pre-kickoff → Key Moments / Full / Instant →
 // full-time report. `?demo=1` builds a request from two real club XIs.
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
 import { navigate } from '../../lib/router.js';
@@ -66,7 +66,7 @@ function NoMatch() {
   </div>`;
 }
 
-function Playing({ request, onExit }) {
+function Playing({ request, onExit, restarted }) {
   const controller = useMemo(() => new MatchController(request), [request]);
   useEffect(() => () => controller.dispose(), [controller]);
   const phase = useStore(controller.hud, s => s.phase);
@@ -93,6 +93,7 @@ function Playing({ request, onExit }) {
   if (phase === 'pre')
     return html`<${PreMatch}
         controller=${controller}
+        restarted=${restarted}
         onExit=${() => onExit(false)}
         onTactics=${openTactics}
       />${sheet}`;
@@ -119,6 +120,14 @@ export default function MatchScreen({ query = {} }) {
   const demo = useDemo(query);
   const state = useStore(matchStore);
   const [confirm, setConfirm] = useState(false);
+  // A match finished in this view keeps its own full-time beat; a stored result shows directly.
+  const played = useRef(null);
+  const restarted = useRef(
+    state?.status === 'live' ? `${state.request.id}:${state.request.seed}` : null,
+  );
+  const key = state?.request ? `${state.request.id}:${state.request.seed}` : null;
+  const showStored = state?.status === 'done' && !!state.result && played.current !== key;
+  if (!showStored && key && demo !== 'loading') played.current = key;
   if (demo === 'loading')
     return html`<div class="screen match-screen" data-screen="match" aria-busy="true">
       <h1 class="visually-hidden">Loading match</h1>
@@ -129,14 +138,14 @@ export default function MatchScreen({ query = {} }) {
   if (demo === 'error' || !state?.request) return html`<${NoMatch} />`;
   const request = state.request;
   const leave = () => navigate(request.meta.returnTo || '#/');
-  const body =
-    state.status === 'done' && state.result
-      ? html`<${Finished} result=${state.result} />`
-      : html`<${Playing}
-          key=${`${request.id}:${request.seed}`}
-          request=${request}
-          onExit=${midMatch => (midMatch ? setConfirm(true) : leave())}
-        />`;
+  const body = showStored
+    ? html`<${Finished} result=${state.result} />`
+    : html`<${Playing}
+        key=${key}
+        request=${request}
+        restarted=${restarted.current === key}
+        onExit=${midMatch => (midMatch ? setConfirm(true) : leave())}
+      />`;
   return html`<div class="screen match-screen" data-screen="match">
     ${body}
     <${Modal}

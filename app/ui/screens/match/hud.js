@@ -311,16 +311,19 @@ export function GoalOverlay({ goal, teams = [], replay = false, onSkip }) {
             <span class="goal__replay-who">${goal.scorer || team.name} ${goal.minute}</span>
           </div>`
         : html`<div class="goal__banner">
-            <span class="goal__word">${goal.ownGoal ? 'Own goal' : 'Goal'}</span>
+            <span class="goal__word"
+              >${goal.kind === 'shootout' ? 'Winners' : goal.ownGoal ? 'Own goal' : 'Goal'}</span
+            >
             <div class="goal__line">
               <${TeamMark} team=${team} size=${28} />
               <span class="goal__score num"
                 >${goal.score[0]}<span class="goal__dash">–</span>${goal.score[1]}</span
               >
+              ${goal.kind === 'shootout' && html`<span class="goal__pens">pens</span>`}
             </div>
             <p class="goal__who">
               <strong>${goal.scorer || team.name}</strong>
-              <span class="num">${goal.minute}</span>
+              <span class=${goal.kind === 'shootout' ? 'goal__how' : 'num'}>${goal.minute}</span>
               ${goal.penalty && html`<span class="goal__pen">(pen)</span>`}
             </p>
             ${goal.assist && html`<p class="goal__assist">Assist ${goal.assist}</p>`}

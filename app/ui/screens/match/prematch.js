@@ -74,7 +74,7 @@ function Lineup({ team, players }) {
   </div>`;
 }
 
-export function PreMatch({ controller, onExit, onTactics }) {
+export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
   const request = controller.request;
   const meta = request.meta;
   const { view, tactics, access } = useStore(
@@ -152,6 +152,12 @@ export function PreMatch({ controller, onExit, onTactics }) {
               />
             </div>`,
         )}
+        ${
+          restarted &&
+          html`<p class="prematch__note" role="status">
+            The page was reloaded, so the match restarts from kick-off.
+          </p>`
+        }
         <${Button}
           variant="primary"
           size="xl"

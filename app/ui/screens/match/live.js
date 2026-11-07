@@ -72,12 +72,19 @@ function useFullscreen(ref) {
 function Scoreline({ controller, teams }) {
   const s = useStore(
     controller.hud,
-    h => ({ score: h.score, clock: h.clock, period: h.period, pens: h.pens, phase: h.phase }),
+    h => ({
+      score: h.score,
+      clock: h.clock,
+      period: h.period,
+      pens: h.pens,
+      phase: h.phase,
+      goal: !!h.goal && !h.replay,
+    }),
     shallowEqual,
   );
   const small = useMedia('(max-width: 559px)');
   return html`<${ScoreBug}
-    class="match-bug"
+    class=${cx('match-bug', s.goal && 'is-flash')}
     size=${small ? 'sm' : 'md'}
     home=${bugTeam(teams[0], s.score[0])}
     away=${bugTeam(teams[1], s.score[1])}
@@ -278,8 +285,7 @@ function Controls({ controller, teams, onTactics }) {
   const playing = h.phase === 'playing';
   const full = h.view === 'full';
   const users = controller.userSides;
-  const mentalityTeam = users[0];
-  const showMentality = full && mentalityTeam != null && !h.shootout;
+  const showMentality = full && users.length > 0 && !h.shootout;
   return html`<div class="match-controls" role="toolbar" aria-label="Match controls">
     <div class="match-controls__main">
       <${IconButton}
@@ -287,6 +293,7 @@ function Controls({ controller, teams, onTactics }) {
         label=${h.paused ? 'Play' : 'Pause'}
         variant="secondary"
         disabled=${!playing}
+        aria-keyshortcuts="Space"
         data-testid="play-pause"
         onClick=${() => controller.togglePause()}
       />
@@ -305,6 +312,7 @@ function Controls({ controller, teams, onTactics }) {
               variant="secondary"
               icon="skip-forward"
               disabled=${!playing}
+              aria-keyshortcuts="N"
               data-testid="skip-moment"
               onClick=${() => controller.skipToMoment()}
               >Next moment<//
@@ -314,6 +322,7 @@ function Controls({ controller, teams, onTactics }) {
               variant="secondary"
               icon="skip-forward"
               disabled=${!playing}
+              aria-keyshortcuts="N"
               data-testid="next-clip"
               onClick=${() => controller.nextClip()}
               >Next clip<//
@@ -323,13 +332,19 @@ function Controls({ controller, teams, onTactics }) {
     ${
       showMentality &&
       html`<div class="match-controls__mentality">
-        <${MentalityControl}
-          team=${mentalityTeam}
-          name=${teams[mentalityTeam].name}
-          value=${h.tactics[mentalityTeam].mentality}
-          onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
-          disabled=${!h.access[mentalityTeam]?.mentality}
-        />
+        ${users.map(
+          t =>
+            html`<div key=${t} class="match-controls__side">
+              ${users.length > 1 && html`<span class="match-controls__team">${teams[t].short}</span>`}
+              <${MentalityControl}
+                team=${t}
+                name=${teams[t].name}
+                value=${h.tactics[t].mentality}
+                onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
+                disabled=${!h.access[t]?.mentality}
+              />
+            </div>`,
+        )}
       </div>`
     }
     ${
@@ -378,6 +393,24 @@ function Overlays({ controller, teams }) {
       </button>`
     }
   `;
+}
+
+function FullTime({ controller, teams }) {
+  const h = useStore(controller.hud, s => ({ phase: s.phase, result: s.result }), shallowEqual);
+  if (h.phase !== 'fulltime' || !h.result) return null;
+  const r = h.result;
+  return html`<div class="stage-panel fulltime" role="status">
+    <p class="eyebrow">Full time</p>
+    <p class="fulltime__score num">
+      <span>${teams[0].short}</span> ${r.score[0]}–${r.score[1]} <span>${teams[1].short}</span>
+    </p>
+    ${r.shootout && html`<p class="fulltime__pens">${r.shootout.score[0]}–${r.shootout.score[1]} on penalties</p>`}
+  </div>`;
+}
+
+function Cut({ controller }) {
+  const cut = useStore(controller.hud, s => s.cut);
+  return cut ? html`<span key=${cut} class="stage-cut" aria-hidden="true"></span>` : null;
 }
 
 function Shootout({ controller, teams }) {
@@ -478,7 +511,9 @@ export function LiveMatch({ controller, teams, onExit, onTactics }) {
           <${StageChips} controller=${controller} />
           <${Overlays} controller=${controller} teams=${teams} />
           <${Halftime} controller=${controller} teams=${teams} onTactics=${onTactics} />
+          <${Cut} controller=${controller} />
           <${Shootout} controller=${controller} teams=${teams} />
+          <${FullTime} controller=${controller} teams=${teams} />
           <${Loading} controller=${controller} />
         </div>
         <${TickerLine} controller=${controller} />

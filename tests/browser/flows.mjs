@@ -197,6 +197,12 @@ const matchFlows = [
         await page.keyboard.press('Escape');
         await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
       });
+      await step('leave asks first', async () => {
+        await page.click('button[aria-label="Leave match"]');
+        await visible(page, 'dialog.modal[open] >> text=Leave the match?');
+        await page.click('dialog.modal[open] button:has-text("Keep watching")');
+        await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
+      });
       const perf = await framePerf(page);
       if (perf)
         console.log(

@@ -476,6 +476,18 @@ export class MatchController {
   goalInfo(e) {
     const m = this.presented();
     const name = id => (id != null ? m.players[id]?.name : null);
+    if (e.type === 'shootout') {
+      const winner = e.outcome === 'goal' ? e.team : 1 - e.team;
+      return {
+        id: e.id,
+        kind: 'shootout',
+        team: winner,
+        scorer: name(e.outcome === 'goal' ? e.playerId : e.keeperId),
+        story: [],
+        minute: e.outcome === 'goal' ? 'scores the decisive kick' : 'makes the decisive save',
+        score: [...(e.shootoutScore || [0, 0])],
+      };
+    }
     return {
       id: e.id,
       team: e.team,
@@ -553,8 +565,24 @@ export class MatchController {
     const result = summarizeMatch(m, this.request);
     saveMatchResult(result);
     this.finalMatch = m;
-    this.hud.set({ phase: 'finished', presenting: 'idle', result, goal: null, replay: false });
+    this.trail = [];
+    this.flash = 0;
+    const instant = this.request.view === 'instant';
+    this.hud.set({
+      phase: instant ? 'finished' : 'fulltime',
+      presenting: 'idle',
+      result,
+      goal: null,
+      replay: false,
+      clip: null,
+      shootout: null,
+    });
     this.requestDraw();
+    if (!instant)
+      this.fulltimeTimer = setTimeout(
+        () => !this.disposed && this.hud.set({ phase: 'finished' }),
+        isReducedMotion() ? 1200 : 2200,
+      );
   }
 
   // ---------- events ----------
@@ -624,7 +652,8 @@ export class MatchController {
         });
       }
     }
-    if (e.type === 'goal' && recent && !this.seenGoals.has(e.id)) {
+    const celebrated = e.type === 'goal' || (e.type === 'shootout' && e.decisive);
+    if (celebrated && recent && !this.seenGoals.has(e.id)) {
       this.seenGoals.add(e.id);
       return e;
     }
@@ -1022,6 +1051,7 @@ export class MatchController {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     clearTimeout(this.prefetchTimer);
+    clearTimeout(this.fulltimeTimer);
     for (const name of Object.keys(this.jobs)) this.cancelJob(name);
     this.awaiting?.cancel();
     this.ro?.disconnect();

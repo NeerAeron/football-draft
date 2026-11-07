@@ -219,10 +219,9 @@ function drawTrail(ctx, P, trail, ball, t, dpr) {
   ctx.save();
   ctx.lineCap = 'round';
   ctx.strokeStyle = color;
-  if (kind === 'shot' && strength > 0.7) {
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 8 * dpr;
-  }
+  // Glow for hard shots: a wide faint pass under the core line (no canvas shadows — they are
+  // expensive to rasterise on phones).
+  const glow = kind === 'shot' && strength > 0.7;
   for (let i = 1; i < trail.length; i++) {
     const a = trail[i - 1],
       b = trail[i];
@@ -231,14 +230,17 @@ function drawTrail(ctx, P, trail, ball, t, dpr) {
     const [ax, ay] = P(a.x, a.y),
       [bx, by] = P(b.x, b.y),
       k = i / trail.length;
-    ctx.globalAlpha = k * (kind === 'shot' ? 0.85 : 0.22);
-    ctx.lineWidth = Math.max(
-      1.2 * dpr,
-      (kind === 'shot' ? 0.32 + strength * 0.25 : 0.18) * t.s * k,
-    );
+    const width = Math.max(1.2 * dpr, (kind === 'shot' ? 0.32 + strength * 0.25 : 0.18) * t.s * k);
     ctx.beginPath();
     ctx.moveTo(ax, ay - (a.z || 0) * 0.6 * t.s);
     ctx.lineTo(bx, by - (b.z || 0) * 0.6 * t.s);
+    if (glow) {
+      ctx.globalAlpha = k * 0.22;
+      ctx.lineWidth = width * 3;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = k * (kind === 'shot' ? 0.85 : 0.22);
+    ctx.lineWidth = width;
     ctx.stroke();
   }
   ctx.restore();
@@ -250,14 +252,14 @@ function drawBall(ctx, P, ball, t, dpr) {
     x = gx,
     y = gy - z * 0.6 * t.s,
     br = Math.max(0.42 * t.s, 3.4 * dpr) * (1 + Math.min(z, 6) * 0.07);
-  ctx.save();
-  ctx.shadowColor = 'rgba(255,255,255,0.45)';
-  ctx.shadowBlur = 5 * dpr;
+  ctx.beginPath();
+  ctx.arc(x, y, br * 1.7, 0, TAU);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.13)';
+  ctx.fill();
   ctx.beginPath();
   ctx.arc(x, y, br, 0, TAU);
   ctx.fillStyle = '#fbfdf7';
   ctx.fill();
-  ctx.restore();
   ctx.lineWidth = Math.max(1, br * 0.18);
   ctx.strokeStyle = 'rgba(12, 22, 16, 0.85)';
   ctx.stroke();
