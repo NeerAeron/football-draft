@@ -1,9 +1,9 @@
-import { rateClubCatalog } from '../app/team-ratings.js';
+import { rateClubCatalog } from '../app/core/players/team-ratings.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { compilePlayer, parseCSV, COMPILER_VERSION, SOURCE_URL } from './compile-players.mjs';
-import { ATTRS } from '../app/ratings.js';
+import { ATTRS } from '../app/core/players/ratings.js';
 
 export function compileLeagueCatalog(rows, reference, hash = null) {
   const seen = new Set();
@@ -114,9 +114,16 @@ export function compileLeagueCatalog(rows, reference, hash = null) {
   };
 }
 async function main() {
-  const [csv, referencePath, output] = process.argv.slice(2);
+  const [csv, referencePath, output, runtimeArg] = process.argv.slice(2);
   if (!csv || !referencePath || !output)
-    throw Error('Usage: compile-league-catalog.mjs CSV REFERENCE OUTPUT');
+    throw Error('Usage: compile-league-catalog.mjs CSV REFERENCE OUTPUT [RUNTIME_OUTPUT]');
+  // The full catalog (with provenance) stays in the repo-root data/ folder; the
+  // runtime subset is the only file the browser fetches, so it lives in app/data/.
+  const runtimeOutput =
+    runtimeArg ||
+    (output.endsWith('players-fc26.json')
+      ? fileURLToPath(new URL('../app/data/players-runtime.json', import.meta.url))
+      : output.replace(/\.json$/, '') + '-runtime.json');
   const bytes = await readFile(csv),
     reference = JSON.parse(await readFile(referencePath, 'utf8'));
   const catalog = compileLeagueCatalog(
@@ -147,12 +154,7 @@ async function main() {
       };
     }),
   };
-  await writeFile(
-    output.endsWith('players-fc26.json')
-      ? output.replace(/players-fc26\.json$/, 'players-runtime.json')
-      : output.replace(/\.json$/, '') + '-runtime.json',
-    JSON.stringify(runtime) + '\n',
-  );
+  await writeFile(runtimeOutput, JSON.stringify(runtime) + '\n');
   console.log(
     JSON.stringify({
       players: catalog.players.length,

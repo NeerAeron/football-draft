@@ -1,10 +1,10 @@
-import { CONFIG } from '../app/config.js';
+import { CONFIG } from '../app/core/config/config.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { Draft } from '../app/draft.js';
-import { leagueWeight, teamWeight } from '../app/leagues.js';
-import { clubSquads, assignClubLineup } from '../app/club-lineups.js';
+import { Draft } from '../app/core/draft/draft.js';
+import { leagueWeight, teamWeight } from '../app/core/draft/leagues.js';
+import { clubSquads, assignClubLineup } from '../app/core/players/club-lineups.js';
 import {
   overallRating,
   playerTier,
@@ -13,14 +13,14 @@ import {
   OVERALL_WEIGHTS,
   OVERALL_OFFSETS,
   RATING_GROUPS,
-} from '../app/ratings.js';
-import { BADGES } from '../app/traits.js';
-import { FORMATIONS, formationLabel } from '../app/formations.js';
+} from '../app/core/players/ratings.js';
+import { BADGES } from '../app/core/players/traits.js';
+import { FORMATIONS, formationLabel } from '../app/core/players/formations.js';
 
 // A reproducible, read-only export of the shipped catalog and opening draft pools.
 const output = resolve(process.argv[2] || '/tmp/football-draft-audit');
 mkdirSync(output, { recursive: true });
-const bytes = readFileSync(new URL('../app/data/players-fc26.json', import.meta.url)),
+const bytes = readFileSync(new URL('../data/players-fc26.json', import.meta.url)),
   catalog = JSON.parse(bytes);
 const draft = new Draft(catalog, { seed: 1 }),
   opening = draft.leagueOptions(),

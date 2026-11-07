@@ -1,5 +1,5 @@
 import { Match, Player, clamp } from './engine.js';
-import { normalizeAttributes } from './ratings.js';
+import { normalizeAttributes } from '../players/ratings.js';
 export const RECORD_STEP = 3; // 20 stored frames/s; interpolate display, retain 60 Hz physics.
 export function snapshot(m) {
   const positions = new Float32Array(22 * 9);

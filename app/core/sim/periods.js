@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config/config.js';
 export function stoppageMinutes(seed, tuning = CONFIG.periods) {
   let state = (seed ^ 0x81ab27d5) >>> 0;
   const random = () => {

@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
+import { Match } from '../app/core/sim/engine.js';
 import {
   selectHighlights,
   simulateComplete,
   applyReplayFrame,
   performanceRating,
-} from '../app/replay.js';
+} from '../app/core/sim/replay.js';
 
 test('highlights keep every goal, run chronologically, and total exactly one minute', () => {
   for (const goalCount of [0, 4, 12]) {

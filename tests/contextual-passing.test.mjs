@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
-import { DEFAULT_CONFIG, loadConfig, normalizeConfig, saveConfig } from '../app/config.js';
+import { Match } from '../app/core/sim/engine.js';
+import {
+  DEFAULT_CONFIG,
+  loadConfig,
+  normalizeConfig,
+  saveConfig,
+} from '../app/core/config/config.js';
 
 function scene() {
   const m = new Match(27, 300);

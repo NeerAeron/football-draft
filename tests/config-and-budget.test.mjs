@@ -9,13 +9,13 @@ import {
   setRuntimeConfig,
   saveConfig,
   loadConfig,
-} from '../app/config.js';
-import { Draft } from '../app/draft.js';
-import { createAIOpponent } from '../app/ai.js';
-import { clubSquads } from '../app/club-lineups.js';
-import { clubRating } from '../app/team-ratings.js';
-import { playerTier, overallRating } from '../app/ratings.js';
-import { Match } from '../app/engine.js';
+} from '../app/core/config/config.js';
+import { Draft } from '../app/core/draft/draft.js';
+import { createAIOpponent } from '../app/core/draft/opponent.js';
+import { clubSquads } from '../app/core/players/club-lineups.js';
+import { clubRating } from '../app/core/players/team-ratings.js';
+import { playerTier, overallRating } from '../app/core/players/ratings.js';
+import { Match } from '../app/core/sim/engine.js';
 const catalog = JSON.parse(
   readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
 );

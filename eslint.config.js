@@ -2,14 +2,14 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['node_modules/', 'app/data/', 'app/assets/', '.shots/'] },
+  { ignores: ['node_modules/', 'app/data/', 'app/assets/', 'data/', '.shots/'] },
   js.configs.recommended,
   {
     files: ['app/**/*.js'],
     languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: { ...globals.browser } },
   },
   {
-    files: ['scripts/**/*.mjs', 'tests/**/*.mjs', 'eslint.config.js'],
+    files: ['scripts/**/*.mjs', 'tests/**/*.mjs', 'tools/**/*.mjs', 'eslint.config.js'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',

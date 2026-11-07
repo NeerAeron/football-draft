@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js';
-import { clubRating } from './team-ratings.js';
+import { CONFIG } from '../config/config.js';
+import { clubRating } from '../players/team-ratings.js';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export function leagueWeight(league) {
   const c = CONFIG.draft;

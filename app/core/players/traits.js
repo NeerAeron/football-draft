@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config/config.js';
 // Badges add small execution bonuses and contextual preferences; tendencies stay continuous and hidden.
 export const BADGES = [
   ['speedster', 'Quick Step', 'Gone in a heartbeat.', 'Attack', { pace: 2, acceleration: 3 }],

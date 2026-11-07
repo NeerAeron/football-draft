@@ -1,14 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Match, Player } from '../app/engine.js';
-import { FORMATIONS, formationLines, formationLabel } from '../app/formations.js';
-import { Draft, KITS, bestSlots } from '../app/draft.js';
-import { DIFFICULTIES, tacticAccess } from '../app/ai.js';
-import { playerTier, overallRating, normalizeAttributes, POSITIONS } from '../app/ratings.js';
-import { preference } from '../app/player-model.js';
-import { TAGS } from '../app/traits.js';
-const catalog = JSON.parse(readFileSync(new URL('../app/data/players-fc26.json', import.meta.url))),
+import { Match, Player } from '../app/core/sim/engine.js';
+import { FORMATIONS, formationLines, formationLabel } from '../app/core/players/formations.js';
+import { Draft, KITS, bestSlots } from '../app/core/draft/draft.js';
+import { DIFFICULTIES, tacticAccess } from '../app/core/draft/opponent.js';
+import {
+  playerTier,
+  overallRating,
+  normalizeAttributes,
+  POSITIONS,
+} from '../app/core/players/ratings.js';
+import { preference } from '../app/core/sim/player-model.js';
+import { TAGS } from '../app/core/players/traits.js';
+const catalog = JSON.parse(readFileSync(new URL('../data/players-fc26.json', import.meta.url))),
   profiles = catalog.players;
 function choosePick(d) {
   d.spinLeague();

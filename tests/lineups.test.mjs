@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Match } from '../app/engine.js';
-import { randomLineups, playerInitials } from '../app/lineups.js';
-import { positionFamiliarity } from '../app/ratings.js';
-import { simulateComplete } from '../app/replay.js';
+import { Match } from '../app/core/sim/engine.js';
+import { randomLineups, playerInitials } from '../app/core/players/lineups.js';
+import { positionFamiliarity } from '../app/core/players/ratings.js';
+import { simulateComplete } from '../app/core/sim/replay.js';
 const pool = JSON.parse(
-  readFileSync(new URL('../app/data/players-fc26.json', import.meta.url)),
+  readFileSync(new URL('../data/players-fc26.json', import.meta.url)),
 ).players;
 const ids = players => players.map(p => p.profileId);
 

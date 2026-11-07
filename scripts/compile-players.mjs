@@ -8,10 +8,10 @@ import {
   normalizeAttributes,
   overallRating,
   playerTier,
-} from '../app/ratings.js';
-import { makeIdentity } from '../app/player-model.js';
-import { TAGS } from '../app/traits.js';
-import { compileBadges } from '../app/badges.js';
+} from '../app/core/players/ratings.js';
+import { makeIdentity } from '../app/core/sim/player-model.js';
+import { TAGS } from '../app/core/players/traits.js';
+import { compileBadges } from '../app/core/players/badges.js';
 
 export const COMPILER_VERSION = '1.7.0';
 export const SOURCE_URL = 'https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data';

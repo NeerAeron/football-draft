@@ -1,12 +1,12 @@
-import { CONFIG, normalizeConfig } from './config.js';
-import { FORMATIONS } from './formations.js';
-import { coachAI } from './ai.js';
+import { CONFIG, normalizeConfig } from '../config/config.js';
+import { FORMATIONS } from '../players/formations.js';
+import { coachAI } from '../draft/opponent.js';
 import { goalZone, goalGeometry } from './goal-zones.js';
 import { makeIdentity, preference, footExecution } from './player-model.js';
 import { offsideSnapshot, offenceInBox, targetChance } from './rules.js';
 import { cardRisk } from './discipline.js';
-import { STYLES, DEFAULT_TAGS, badgeBoost } from './traits.js';
-import { normalizeBadges } from './badges.js';
+import { STYLES, DEFAULT_TAGS, badgeBoost } from '../players/traits.js';
+import { normalizeBadges } from '../players/badges.js';
 import { stoppageMinutes } from './periods.js';
 import {
   normalizeAttributes,
@@ -14,8 +14,8 @@ import {
   passingAbility,
   shootingAbility,
   playerTier,
-} from './ratings.js';
-export { ATTRS } from './ratings.js';
+} from '../players/ratings.js';
+export { ATTRS } from '../players/ratings.js';
 // Flow: deterministic, fixed-step, continuous 11v11 football simulation.
 export const W = 105,
   H = 68,

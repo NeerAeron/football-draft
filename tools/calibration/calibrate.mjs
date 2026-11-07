@@ -1,4 +1,4 @@
-import { Match, DURATION_PROFILES } from '../app/engine.js';
+import { Match, DURATION_PROFILES } from '../../app/core/sim/engine.js';
 const count = Number(process.argv[2] || 48),
   firstSeed = Number(process.argv[3] || 1001);
 const median = a => {

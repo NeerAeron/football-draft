@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Draft } from '../app/draft.js';
-import { FORMATIONS } from '../app/formations.js';
-import { overallRating, POSITIONS } from '../app/ratings.js';
+import { Draft } from '../app/core/draft/draft.js';
+import { FORMATIONS } from '../app/core/players/formations.js';
+import { overallRating, POSITIONS } from '../app/core/players/ratings.js';
 import {
   rankPlayers,
   squadOrder,
   miniPitch,
   renderSquadList,
   showPlayerCard,
-} from '../app/squad-ui.js';
+} from '../app/legacy/squad-ui.js';
 
 const catalog = JSON.parse(
   readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
-import { stoppageMinutes, matchClock } from '../app/periods.js';
-import { simulateHalf, applyReplayFrame } from '../app/replay.js';
+import { Match } from '../app/core/sim/engine.js';
+import { stoppageMinutes, matchClock } from '../app/core/sim/periods.js';
+import { simulateHalf, applyReplayFrame } from '../app/core/sim/replay.js';
 
 test('seeded added time varies around a bell curve without consuming match randomness', () => {
   const samples = Array.from({ length: 4000 }, (_, i) => stoppageMinutes(i));

@@ -11,8 +11,8 @@
 // Options: --quick (fewer matches), --compare <file>, --json (print JSON only).
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { Match } from '../../app/engine.js';
-import { randomLineups } from '../../app/lineups.js';
+import { Match } from '../../app/core/sim/engine.js';
+import { randomLineups } from '../../app/core/players/lineups.js';
 
 const args = process.argv.slice(2);
 const quick = args.includes('--quick');

@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config/config.js';
 import { clubRating } from './team-ratings.js';
 import { FORMATIONS } from './formations.js';
 import { overallRating, positionFamiliarity } from './ratings.js';

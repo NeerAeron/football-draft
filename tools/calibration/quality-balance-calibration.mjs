@@ -1,18 +1,18 @@
 // Paired close-rating fixtures reuse roles, identities and hidden tendencies.
 // Runtime badge minima still apply equally under both engine versions.
 // CALIBRATION_ENGINE=file:///.../engine.js CALIBRATION_PART=0 CALIBRATION_PARTS=4
-// node tests/quality-balance-calibration.mjs /tmp/balance.json
+// node tools/calibration/quality-balance-calibration.mjs /tmp/balance.json
 import { readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { overallRating } from '../app/ratings.js';
+import { overallRating } from '../../app/core/players/ratings.js';
 const { Match } = await import(
-  process.env.CALIBRATION_ENGINE || new URL('../app/engine.js', import.meta.url)
+  process.env.CALIBRATION_ENGINE || new URL('../../app/core/sim/engine.js', import.meta.url)
 );
 const original = JSON.parse(
-  readFileSync(new URL('./fixtures/quality-gap-squads.json', import.meta.url)),
+  readFileSync(new URL('../../tests/fixtures/quality-gap-squads.json', import.meta.url)),
 );
 const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
+  readFileSync(new URL('../../app/data/players-runtime.json', import.meta.url)),
 ).players;
 const byId = new Map(catalog.map(p => [p.profileId, p]));
 const base = original.find(f => f.pair === 1 && f.duration === 180),

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseCSV, compileRows, compilePlayer } from '../scripts/compile-players.mjs';
-import { Match } from '../app/engine.js';
+import { Match } from '../app/core/sim/engine.js';
 import {
   ATTRS,
   OVERALL_WEIGHTS,
@@ -13,13 +13,13 @@ import {
   passingAbility,
   normalizeAttributes,
   playerTier,
-} from '../app/ratings.js';
-import { simulateComplete } from '../app/replay.js';
+} from '../app/core/players/ratings.js';
+import { simulateComplete } from '../app/core/sim/replay.js';
 const fixture = parseCSV(
   readFileSync(new URL('./fixtures/fc26-sample.csv', import.meta.url), 'utf8'),
 );
 const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-fc26.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../data/players-fc26.json', import.meta.url), 'utf8'),
 );
 const setup = (seed = 77) => {
   const m = new Match(seed, 300);

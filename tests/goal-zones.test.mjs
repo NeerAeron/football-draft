@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { goalZone, goalGeometry, GOAL_ZONES, GOAL_REFERENCE } from '../app/goal-zones.js';
-import { Match } from '../app/engine.js';
+import { goalZone, goalGeometry, GOAL_ZONES, GOAL_REFERENCE } from '../app/core/sim/goal-zones.js';
+import { Match } from '../app/core/sim/engine.js';
 
 test('goal tiles preserve the real penalty and six-yard landmarks', () => {
   assert.equal(goalZone(100, 34), 'six_central');
@@ -30,7 +30,7 @@ test('central shots have better geometry and empirical priors than side shots', 
 
 test('six pooled priors reconcile to the attributed source data', () => {
   const raw = JSON.parse(
-      fs.readFileSync(new URL('../app/data/goal-location-reference.json', import.meta.url)),
+      fs.readFileSync(new URL('../data/goal-location-reference.json', import.meta.url)),
     ),
     combined = raw.results.find(r => r.competition === 'Combined');
   assert.equal(

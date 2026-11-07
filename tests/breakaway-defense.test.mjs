@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Match } from '../app/engine.js';
+import { Match } from '../app/core/sim/engine.js';
 
 // Captured before the last CB abandoned the line in seed 90540. Preserve the
 // positions instead of depending on an identical sequence of random actions.

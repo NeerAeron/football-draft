@@ -1,12 +1,12 @@
 // Descriptive neutral-squad sample, not a scoring quota or automated pass/fail gate.
-// node tests/format-calibration.mjs [matchesPerFormat=16] [firstSeed=42501] [output] [duration]
+// node tools/calibration/format-calibration.mjs [matchesPerFormat=16] [firstSeed=42501] [output] [duration]
 import { readFileSync, writeFileSync } from 'node:fs';
-import { Match, DURATION_PROFILES } from '../app/engine.js';
-import { randomLineups } from '../app/lineups.js';
+import { Match, DURATION_PROFILES } from '../../app/core/sim/engine.js';
+import { randomLineups } from '../../app/core/players/lineups.js';
 const count = Number(process.argv[2] || 16),
   firstSeed = Number(process.argv[3] || 42501),
-  output = process.argv[4] || 'tests/format-calibration-results.json';
-const catalog = JSON.parse(readFileSync(new URL('../app/data/players-fc26.json', import.meta.url)));
+  output = process.argv[4] || '/tmp/football-format-calibration.json';
+const catalog = JSON.parse(readFileSync(new URL('../../data/players-fc26.json', import.meta.url)));
 const mean = a => a.reduce((s, n) => s + n, 0) / a.length,
   of = a => a.filter((_, i) => i % 11);
 const results = [],

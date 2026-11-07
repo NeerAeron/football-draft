@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config/config.js';
 import { overallRating } from './ratings.js';
 export function clubRating(players) {
   const best = players

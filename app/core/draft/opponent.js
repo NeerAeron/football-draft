@@ -1,9 +1,9 @@
-import { clubRating } from './team-ratings.js';
-import { CONFIG } from './config.js';
-import { overallRating, positionFamiliarity } from './ratings.js';
-import { FORMATIONS } from './formations.js';
+import { clubRating } from '../players/team-ratings.js';
+import { CONFIG } from '../config/config.js';
+import { overallRating, positionFamiliarity } from '../players/ratings.js';
+import { FORMATIONS } from '../players/formations.js';
 import { bestSlots } from './draft.js';
-import { assignClubLineup, clubSquads } from './club-lineups.js';
+import { assignClubLineup, clubSquads } from '../players/club-lineups.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 export const DIFFICULTIES = {
   veryeasy: {

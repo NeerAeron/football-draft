@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
+import { Match } from '../app/core/sim/engine.js';
 import {
   DEFAULT_CONFIG,
   CONFIG_FIELDS,
   normalizeConfig,
   loadConfig,
   saveConfig,
-} from '../app/config.js';
+} from '../app/core/config/config.js';
 
 function scene() {
   const m = new Match(721, 300);

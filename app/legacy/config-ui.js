@@ -8,11 +8,11 @@ import {
   setRuntimeConfig,
   configValue,
   setConfigValue,
-} from './config.js';
-import { draftLeagues, leagueWeight, teamWeight } from './leagues.js';
-import { clubSquads } from './club-lineups.js';
-import { BADGES } from './traits.js';
-import { ATTRS, overallRating, playerTier } from './ratings.js';
+} from '../core/config/config.js';
+import { draftLeagues, leagueWeight, teamWeight } from '../core/draft/leagues.js';
+import { clubSquads } from '../core/players/club-lineups.js';
+import { BADGES } from '../core/players/traits.js';
+import { ATTRS, overallRating, playerTier } from '../core/players/ratings.js';
 const $ = s => document.querySelector(s),
   esc = x =>
     String(x ?? '').replace(

@@ -1,11 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
-import { Draft } from '../app/draft.js';
-import { createAIOpponent, coachAI } from '../app/ai.js';
-import { overallRating } from '../app/ratings.js';
-const bytes = await readFile(new URL('../app/data/players-fc26.json', import.meta.url)),
+import { Match } from '../../app/core/sim/engine.js';
+import { Draft } from '../../app/core/draft/draft.js';
+import { createAIOpponent, coachAI } from '../../app/core/draft/opponent.js';
+import { overallRating } from '../../app/core/players/ratings.js';
+const bytes = await readFile(new URL('../../data/players-fc26.json', import.meta.url)),
   catalog = JSON.parse(bytes);
 const report = {
   purpose: 'Bounded integration checks, not score or win-rate calibration',
@@ -85,6 +85,6 @@ for (const [index, level] of ['easy', 'medium', 'hard', 'impossible'].entries())
     console.log(level, duration, ai.name, match.score.join('–'), 'passed');
   }
 await writeFile(
-  process.argv[2] || new URL('./league-integration-results.json', import.meta.url),
+  process.argv[2] || '/tmp/football-league-integration.json',
   JSON.stringify(report, null, 2) + '\n',
 );

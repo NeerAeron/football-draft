@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
-import { offsideSnapshot } from '../app/rules.js';
-import { footExecution } from '../app/player-model.js';
-import { PlaybackClock } from '../app/playback.js';
+import { Match } from '../app/core/sim/engine.js';
+import { offsideSnapshot } from '../app/core/sim/rules.js';
+import { footExecution } from '../app/core/sim/player-model.js';
+import { PlaybackClock } from '../app/services/playback.js';
 
 const setup = () => {
   const m = new Match(731, 300);

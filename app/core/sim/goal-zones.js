@@ -1,6 +1,7 @@
 // Derived from StatsBomb Open Data: all115 matches of WorldCup2022 + Euro2024.
 // Snapshot4b73468fc5b0f1950f9f66fada70ad3a4f9327cb;2,734 non-penalty shots.
-// Excludes shootouts, penalty kicks and own-goal events. See data/goal-location-reference.json.
+// Excludes shootouts, penalty kicks and own-goal events. See data/goal-location-reference.json
+// (repo root; tools/research/research-goal-locations.py regenerates it).
 // Match landmarks, rather than globally scaling StatsBomb's120×80 coordinates.
 export const GOAL_ZONES = {
   six_central: { label: 'Central six-yard area', shots: 208, goals: 54 },

@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js';
-import { Draft, KITS, BUDGET_LABELS } from './draft.js';
-import { FORMATIONS, formationLabel } from './formations.js';
-import { DIFFICULTIES, createAIOpponent, chooseAIFormation } from './ai.js';
-import { overallRating, playerTier, POSITIONS } from './ratings.js';
+import { CONFIG } from '../core/config/config.js';
+import { Draft, KITS, BUDGET_LABELS } from '../core/draft/draft.js';
+import { FORMATIONS, formationLabel } from '../core/players/formations.js';
+import { DIFFICULTIES, createAIOpponent, chooseAIFormation } from '../core/draft/opponent.js';
+import { overallRating, playerTier, POSITIONS } from '../core/players/ratings.js';
 import {
   miniPitch,
   renderSquadList,
@@ -11,13 +11,13 @@ import {
   abilitySummary,
 } from './squad-ui.js';
 export { miniPitch } from './squad-ui.js';
-import { TAGS, badgeDescription } from './traits.js';
-import { clubSquads, assignClubLineup, partialClubLineup } from './club-lineups.js';
-import { randomLineups } from './lineups.js';
-import { Match } from './engine.js';
+import { TAGS, badgeDescription } from '../core/players/traits.js';
+import { clubSquads, assignClubLineup, partialClubLineup } from '../core/players/club-lineups.js';
+import { randomLineups } from '../core/players/lineups.js';
+import { Match } from '../core/sim/engine.js';
 import { createDraftReel } from './draft-reel.js';
 import { createBudgetConfirmation } from './budget-confirmation.js';
-import { selectionSound } from './sound.js';
+import { selectionSound } from '../services/sound.js';
 const esc = s =>
   String(s ?? '').replace(
     /[&<>"']/g,

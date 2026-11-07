@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
+import { Match } from '../app/core/sim/engine.js';
 
 // A carrier is still outside the pressing radius, but is running toward two
 // goal-side backs. Previously the designated presser dropped toward his own

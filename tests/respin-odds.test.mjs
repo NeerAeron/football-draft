@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Draft } from '../app/draft.js';
-import { CONFIG, DEFAULT_CONFIG, normalizeConfig } from '../app/config.js';
-import { leagueWeight, teamWeight, respinMultiplier } from '../app/leagues.js';
+import { Draft } from '../app/core/draft/draft.js';
+import { CONFIG, DEFAULT_CONFIG, normalizeConfig } from '../app/core/config/config.js';
+import { leagueWeight, teamWeight, respinMultiplier } from '../app/core/draft/leagues.js';
 
 const catalog = JSON.parse(
   readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),

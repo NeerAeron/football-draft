@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Draft } from '../app/draft.js';
-import { overallRating, playerTier } from '../app/ratings.js';
-import { createAIOpponent } from '../app/ai.js';
-import { leagueWeight, teamWeight } from '../app/leagues.js';
+import { Draft } from '../app/core/draft/draft.js';
+import { overallRating, playerTier } from '../app/core/players/ratings.js';
+import { createAIOpponent } from '../app/core/draft/opponent.js';
+import { leagueWeight, teamWeight } from '../app/core/draft/leagues.js';
 const catalog = JSON.parse(
   readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
 );

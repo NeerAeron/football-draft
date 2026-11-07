@@ -1,6 +1,12 @@
-import { ATTRS, overallRating, playerTier, categoryRating, RATING_GROUPS } from './ratings.js';
-import { playerInitials } from './lineups.js';
-import { TAGS, badgeDescription } from './traits.js';
+import {
+  ATTRS,
+  overallRating,
+  playerTier,
+  categoryRating,
+  RATING_GROUPS,
+} from '../core/players/ratings.js';
+import { playerInitials } from '../core/players/lineups.js';
+import { TAGS, badgeDescription } from '../core/players/traits.js';
 
 const esc = s =>
   String(s ?? '').replace(

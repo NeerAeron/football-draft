@@ -1,6 +1,6 @@
 import { BADGES, badgeEligible } from './traits.js';
 import { playerTier } from './ratings.js';
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config/config.js';
 const weights = {
   slalom: { dribbling: 0.45, acceleration: 0.35, control: 0.2 },
   pressescape: { control: 0.5, composure: 0.35, strength: 0.15 },

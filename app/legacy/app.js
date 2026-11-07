@@ -1,18 +1,23 @@
-import { CONFIG } from './config.js';
-import { createGameAudio, MatchSoundEvents } from './sound.js';
-import { receiptLabel } from './player-labels.js';
-import { rateClubCatalog } from './team-ratings.js';
-import { normalizeBadges } from './badges.js';
-import { compileBadges } from './badges.js';
-import { FORMATIONS, formationLabel, formationLines } from './formations.js';
-import { KITS, bestSlots } from './draft.js';
+import { CONFIG } from '../core/config/config.js';
+import { createGameAudio, MatchSoundEvents } from '../services/sound.js';
+import { receiptLabel } from '../core/players/player-labels.js';
+import { rateClubCatalog } from '../core/players/team-ratings.js';
+import { normalizeBadges } from '../core/players/badges.js';
+import { compileBadges } from '../core/players/badges.js';
+import { FORMATIONS, formationLabel, formationLines } from '../core/players/formations.js';
+import { KITS, bestSlots } from '../core/draft/draft.js';
 import { createGameUI } from './game-ui.js';
 import { miniPitch, renderSquadList, showPlayerCard, rankPlayers } from './squad-ui.js';
-import { tacticAccess, coachAI, DIFFICULTIES } from './ai.js';
-import { Match, ATTRS, W, H, LENGTHS, clamp } from './engine.js';
-import { GOAL_ZONES } from './goal-zones.js';
-import { TAGS, STYLES, TACTICS, badgeEligible, badgeDescription } from './traits.js';
-import { simulateComplete, simulateHalf, applyReplayFrame, performanceRating } from './replay.js';
+import { tacticAccess, coachAI, DIFFICULTIES } from '../core/draft/opponent.js';
+import { Match, ATTRS, W, H, LENGTHS, clamp } from '../core/sim/engine.js';
+import { GOAL_ZONES } from '../core/sim/goal-zones.js';
+import { TAGS, STYLES, TACTICS, badgeEligible, badgeDescription } from '../core/players/traits.js';
+import {
+  simulateComplete,
+  simulateHalf,
+  applyReplayFrame,
+  performanceRating,
+} from '../core/sim/replay.js';
 import {
   overallRating,
   OVERALL_WEIGHTS,
@@ -25,11 +30,11 @@ import {
   POSITIONS,
   teamRatings,
   playerTier,
-} from './ratings.js';
-import { bindPitchFullscreen } from './fullscreen.js';
-import { PlaybackClock, bindPlaybackButton } from './playback.js';
-import { randomLineups, playerInitials } from './lineups.js';
-import { matchClock } from './periods.js';
+} from '../core/players/ratings.js';
+import { bindPitchFullscreen } from '../services/fullscreen.js';
+import { PlaybackClock, bindPlaybackButton } from '../services/playback.js';
+import { randomLineups, playerInitials } from '../core/players/lineups.js';
+import { matchClock } from '../core/sim/periods.js';
 let gameMode = 'sandbox',
   difficulty = 'medium',
   screen = 'home',

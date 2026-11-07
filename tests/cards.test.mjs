@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match, Player } from '../app/engine.js';
-import { snapshot, applyReplayFrame, simulateHalf } from '../app/replay.js';
-import { offsideSnapshot } from '../app/rules.js';
-import { cardRisk } from '../app/discipline.js';
+import { Match, Player } from '../app/core/sim/engine.js';
+import { snapshot, applyReplayFrame, simulateHalf } from '../app/core/sim/replay.js';
+import { offsideSnapshot } from '../app/core/sim/rules.js';
+import { cardRisk } from '../app/core/sim/discipline.js';
 
 function playing(seed = 86) {
   const m = new Match(seed, 180);

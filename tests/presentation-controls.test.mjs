@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bindPitchFullscreen } from '../app/fullscreen.js';
-import { createDraftReel } from '../app/draft-reel.js';
+import { bindPitchFullscreen } from '../app/services/fullscreen.js';
+import { createDraftReel } from '../app/legacy/draft-reel.js';
 
 const classes = () => {
   const set = new Set();

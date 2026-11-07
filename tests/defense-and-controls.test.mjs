@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
-import { OVERALL_WEIGHTS, OVERALL_OFFSETS, overallRating } from '../app/ratings.js';
-import { PlaybackClock, bindPlaybackButton } from '../app/playback.js';
+import { Match } from '../app/core/sim/engine.js';
+import { OVERALL_WEIGHTS, OVERALL_OFFSETS, overallRating } from '../app/core/players/ratings.js';
+import { PlaybackClock, bindPlaybackButton } from '../app/services/playback.js';
 
 test('every role has a normalized overall, with heading contributing to striker ability', () => {
   const m = new Match(60),

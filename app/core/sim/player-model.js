@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config/config.js';
 // Stable preferences describe what a player tries; abilities describe execution.
-import { normalizeAttributes } from './ratings.js';
+import { normalizeAttributes } from '../players/ratings.js';
 const bound = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-export { OVERALL_WEIGHTS, overallRating } from './ratings.js';
+export { OVERALL_WEIGHTS, overallRating } from '../players/ratings.js';
 export function makeIdentity(role, slot, random, attrs) {
   attrs = normalizeAttributes(attrs);
   const back = ['LB', 'RB'].includes(role),

@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config/config.js';
 // The draw is resolved by Draft; this renderer never changes its RNG or result.
 export function createDraftReel(container, renderItem) {
   let animation = null,

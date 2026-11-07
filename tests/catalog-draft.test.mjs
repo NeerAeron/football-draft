@@ -1,21 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { Match, Player } from '../app/engine.js';
-import { BADGES, badgeEligible } from '../app/traits.js';
+import { Match, Player } from '../app/core/sim/engine.js';
+import { BADGES, badgeEligible } from '../app/core/players/traits.js';
 import {
   playerTier,
   normalizeAttributes,
   overallRating,
   positionFamiliarity,
-} from '../app/ratings.js';
-import { Draft } from '../app/draft.js';
-import { draftLeagues, leagueWeight, teamWeight } from '../app/leagues.js';
-import { createAIOpponent, chooseAIFormation } from '../app/ai.js';
-import { clubSquads, assignClubLineup, partialClubLineup } from '../app/club-lineups.js';
-import { FORMATIONS } from '../app/formations.js';
-import { CONFIG } from '../app/config.js';
-const catalog = JSON.parse(readFileSync(new URL('../app/data/players-fc26.json', import.meta.url))),
+} from '../app/core/players/ratings.js';
+import { Draft } from '../app/core/draft/draft.js';
+import { draftLeagues, leagueWeight, teamWeight } from '../app/core/draft/leagues.js';
+import { createAIOpponent, chooseAIFormation } from '../app/core/draft/opponent.js';
+import {
+  clubSquads,
+  assignClubLineup,
+  partialClubLineup,
+} from '../app/core/players/club-lineups.js';
+import { FORMATIONS } from '../app/core/players/formations.js';
+import { CONFIG } from '../app/core/config/config.js';
+const catalog = JSON.parse(readFileSync(new URL('../data/players-fc26.json', import.meta.url))),
   profiles = catalog.players;
 function random(seed) {
   let state = seed >>> 0;

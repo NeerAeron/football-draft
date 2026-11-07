@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/engine.js';
-import { commonName, receiptLabel } from '../app/player-labels.js';
-import { snapshot, applyReplayFrame } from '../app/replay.js';
+import { Match } from '../app/core/sim/engine.js';
+import { commonName, receiptLabel } from '../app/core/players/player-labels.js';
+import { snapshot, applyReplayFrame } from '../app/core/sim/replay.js';
 
 test('receipt names preserve football names, appear on control, fade and reset on the next receipt', () => {
   for (const [name, expected] of [

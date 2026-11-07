@@ -1,19 +1,19 @@
 // Fixed real-club XIs. Observation only; never loaded by the game.
-// node tests/quality-gap-calibration.mjs /tmp/quality-gap.json (30 fixtures)
+// node tools/calibration/quality-gap-calibration.mjs /tmp/quality-gap.json (30 fixtures)
 // CALIBRATION_ENGINE=file:///absolute/path/engine.js compares a frozen engine.
 import { readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 const { Match } = await import(
-  process.env.CALIBRATION_ENGINE || new URL('../app/engine.js', import.meta.url)
+  process.env.CALIBRATION_ENGINE || new URL('../../app/core/sim/engine.js', import.meta.url)
 );
 const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
+  readFileSync(new URL('../../app/data/players-runtime.json', import.meta.url)),
 ).players;
 const byId = new Map(catalog.map(p => [p.profileId, p]));
 const cases = JSON.parse(
   readFileSync(
     process.env.CALIBRATION_FIXTURES ||
-      new URL('./fixtures/quality-gap-squads.json', import.meta.url),
+      new URL('../../tests/fixtures/quality-gap-squads.json', import.meta.url),
   ),
 ).slice(0, Number(process.env.CASE_LIMIT) || Infinity);
 const rows = [];
