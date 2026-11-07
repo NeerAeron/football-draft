@@ -352,6 +352,15 @@ export class PlanningMethods {
         1,
       );
       const cushion = this.canScreenOutlet(t, q, p, coordination) ? 0.25 : 1;
+      const lapse = this.markLapse(p, q, qr, coordination);
+      if (lapse) {
+        // Ball-watching: the marker holds his line and loses the runner.
+        const hold = weight * (1 - lapse);
+        x = lerp(x, this.rel(point.x, t), hold);
+        y = lerp(y, point.y, hold);
+        p.aim(this.abs(x, t), y, 'shape', 'Ball-watching');
+        return;
+      }
       x = Math.min(lerp(x, this.rel(point.x, t), weight), qr - cushion);
       y = lerp(y, point.y, weight);
       const recovering = this.rel(p.x, t) > qr - 0.7 || (dist(p, point) > 4.5 && qr < 55);
@@ -374,6 +383,53 @@ export class PlanningMethods {
         recovering || tac.fluidity < 3 ? 'Recovering defensive shape' : 'Keeping defensive shape',
       );
     }
+  }
+  // Concentration: a marker near his own goal sometimes watches the ball and
+  // loses his runner. Deterministic (a slow per-player rhythm, no RNG); far
+  // likelier for poor readers, tired legs and a badly organised back line.
+  markLapse(p, q, qr, coordination) {
+    const k = this.tuning.gameplay.markingLapses;
+    if (!k || qr > 40) return 0;
+    const b = this.ball;
+    if (b.owner === q.id || dist(q, b) < 9) return 0;
+    const focus = p.awareness() * 0.7 + p.skill('composure') * 0.3,
+      share =
+        clamp((90 - focus) / 45, 0, 0.6) * (1.4 - 0.4 * p.energy) * (1 - coordination * 0.5) * k;
+    if (share <= 0) return 0;
+    return Math.sin(this.elapsed * 0.9 + p.id * 2.39) > Math.cos(Math.PI * Math.min(share, 0.5))
+      ? 0.7
+      : 0;
+  }
+  // A run in behind: an attacker level with the second-last defender bursts
+  // past the line while a teammate on the ball can still play it, and keeps
+  // going for about a second. Starts onside; the passer still has to time it.
+  // Deterministic: a per-player rhythm and the tendencies decide when.
+  runBehind(p, c, base) {
+    const k = this.tuning.gameplay.runsInBehind,
+      { owner, oppLine, t } = c;
+    if (!k || !owner || owner.id === p.id || owner.role === 'GK') return null;
+    if (p.runBehind && p.runBehind.until > this.elapsed) return p.runBehind;
+    if (base < 45 || (base <= 60 && p.tendency('advance') < 0.6)) return null;
+    if (p.runBehind && this.elapsed < p.runBehind.until + 2.5) return null;
+    const rx = this.rel(p.x, t),
+      ownerRx = this.rel(owner.x, t),
+      gap = dist(owner, p);
+    if (rx > oppLine + 0.05 || rx < oppLine - 7 || oppLine > 90 || ownerRx > oppLine - 3)
+      return null;
+    if (gap < 8 || gap > 40) return null;
+    c.ownerPressure ??= this.pressure(owner);
+    if (c.ownerPressure > 1.1) return null;
+    const timing = p.tendency('timing') * p.familiarity(),
+      urge = clamp((0.24 + (p.tendency('advance') + timing) * 0.54) * k, 0, 1.8);
+    if (Math.sin(this.elapsed * 0.7 + p.id * 2.3) < 1 - urge) return null;
+    p.runBehind = {
+      until: this.elapsed + 1.1 + timing * 0.5,
+      x: Math.min(101, oppLine + 7 + timing * 4),
+      y: clamp(lerp(p.y, 34, 0.35), 8, 60),
+    };
+    // The run is the cue: the carrier looks up now rather than after his next touch.
+    if (owner.think > 0.06) owner.think = 0.06;
+    return p.runBehind;
   }
   // In possession: support positions, runs, overlaps and box attacks.
   planSupport(p, c, base, sideY, role) {
@@ -559,6 +615,13 @@ export class PlanningMethods {
       y = p.comboRun.y;
       intent = 'run';
       action = 'Making a third-man run';
+    }
+    const behind = this.runBehind(p, c, base);
+    if (behind) {
+      x = behind.x;
+      y = behind.y;
+      intent = 'run';
+      action = 'Running in behind';
     }
     if (owner && dist(p, b) < 7) {
       y += sideY < 34 ? -5 : 5;

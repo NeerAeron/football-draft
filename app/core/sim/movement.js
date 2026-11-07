@@ -306,7 +306,7 @@ export class MovementMethods {
     // First contact helps a little; defenders facing the ball in front of
     // their own goal (or rising with the keeper behind them) help a lot.
     const wins = sigmoid(
-      (power(p) - power(rival)) / 9 + 0.15 + (home(p) ? 0.85 : 0) - (home(rival) ? 0.85 : 0),
+      (power(p) - power(rival)) / 9 + 0.15 + (home(p) ? 0.7 : 0) - (home(rival) ? 0.7 : 0),
     );
     if (this.rand() < wins) return false;
     const height = this.ball.z;
@@ -333,12 +333,18 @@ export class MovementMethods {
     b.penaltyTaker = null;
     b.restartTaker = null;
     b.offsideState = null;
+    // A header under challenge from an attacker is glanced behind more often.
+    let contest = 0;
+    const k = this.tuning.gameplay.deliveryDeflections;
+    if (k)
+      for (const q of this.activePlayers)
+        if (q.team !== d.team && q.role !== 'GK' && dist(q, d) < 2) contest = 0.14 * k;
     const glancing =
       Math.abs(b.y - 34) > 5 &&
-      this.rand() < 0.24 + clamp((72 - d.skill('heading')) / 100, 0, 0.15);
+      this.rand() < 0.24 + clamp((72 - d.skill('heading')) / 100, 0, 0.15) + contest;
     if (glancing) {
-      b.vx = -out * (3 + this.rand() * 2.5);
-      b.vy = side * (3 + this.rand() * 3);
+      b.vx = -out * (5 + this.rand() * 4);
+      b.vy = side * (3 + this.rand() * 4);
       b.vz = 2 + this.rand();
     } else {
       b.vx = out * (9 + this.rand() * 6 + d.skill('heading') * 0.03);
@@ -350,11 +356,41 @@ export class MovementMethods {
     d.action = 'Heading clear';
     this.planTimer = 0;
   }
+  // A defender in his own box meets a fast low delivery with an attacker on
+  // him: he stabs a leg at it instead of controlling it. Faster balls, closer
+  // attackers and poorer technique make the deflection likelier.
+  deflectChance(d, speed) {
+    const k = this.tuning.gameplay.deliveryDeflections;
+    if (!k || speed < 9) return 0;
+    let near = 9;
+    for (const q of this.activePlayers)
+      if (q.team !== d.team && q.role !== 'GK') near = Math.min(near, dist(q, d));
+    if (near > 3) return 0;
+    const calm = d.skill('control') * 0.5 + d.skill('composure') * 0.5;
+    return (
+      clamp(
+        (0.12 + (speed - 9) * 0.022 + (3 - near) * 0.07) * (1 + (75 - calm) * 0.02),
+        0.02,
+        0.6,
+      ) * k
+    );
+  }
   // A cross struck into a defender standing near the crosser: it deflects,
-  // often behind for a corner.
-  blockCross(d) {
+  // often behind for a corner. `deflection`: a stab at a delivery in the box.
+  blockCross(d, deflection = false) {
     const b = this.ball,
       out = this.direction(d.team);
+    if (deflection) {
+      const side = Math.abs(d.y - 34) > 0.5 ? Math.sign(d.y - 34) : b.vy >= 0 ? 1 : -1,
+        central = Math.abs(d.y - 34) < 6;
+      if (this.rand() < 0.7) {
+        b.vx = -out * (central ? 2.5 + this.rand() * 3 : 4 + this.rand() * 5);
+        b.vy = side * (central ? 5 + this.rand() * 3 : 1.5 + this.rand() * 3) + b.vy * 0.15;
+      } else {
+        b.vx = out * (2 + this.rand() * 5);
+        b.vy = this.noise() * 4;
+      }
+    }
     b.kind = 'loose';
     b.owner = null;
     b.target = null;
@@ -365,25 +401,34 @@ export class MovementMethods {
     b.age = 0;
     b.offsideState = null;
     b.restartTaker = null;
-    if (this.rand() < 0.65) {
-      b.vx = -out * (4 + this.rand() * 4);
-      b.vy = b.vy * 0.3 + this.noise() * 2;
-    } else {
-      b.vx *= -0.25;
-      b.vy = this.noise() * 4;
+    if (deflection) b.vz = 0.6 + this.rand() * 2.2;
+    else {
+      if (this.rand() < 0.65) {
+        b.vx = -out * (6 + this.rand() * 6);
+        b.vy = b.vy * 0.3 + this.noise() * 2;
+      } else {
+        b.vx *= -0.25;
+        b.vy = this.noise() * 4;
+      }
+      b.vz = 1.5 + this.rand() * 1.5;
     }
-    b.vz = 1.5 + this.rand() * 1.5;
     d.cooldown = 0.3;
     d.stats.blocks++;
-    this.addEvent(`${d.name.split(' ').pop()} blocks the cross.`, d.team, 'block', {
-      playerId: d.id,
-      strength: 0.35,
-      cross: true,
-      shotEventId: null,
-      shooterId: null,
-      xg: null,
-      bigChance: false,
-    });
+    const who = d.name.split(' ').pop();
+    this.addEvent(
+      deflection ? `${who} deflects it.` : `${who} blocks the cross.`,
+      d.team,
+      'block',
+      {
+        playerId: d.id,
+        strength: 0.35,
+        cross: true,
+        shotEventId: null,
+        shooterId: null,
+        xg: null,
+        bigChance: false,
+      },
+    );
     this.planTimer = 0;
   }
 }

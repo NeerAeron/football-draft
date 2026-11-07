@@ -80,7 +80,7 @@ export class BallMethods {
         if (this.rand() < 0.35 + p.skill('defending') * 0.003) {
           this.resolveShot('blocked');
           // A block either kills the shot or deflects it on, often behind for a corner.
-          if (this.rand() < 0.55) {
+          if (this.rand() < 0.55 + 0.1 * this.tuning.gameplay.deliveryDeflections) {
             const keep = 0.35 + this.rand() * 0.3;
             b.vx *= keep;
             b.vy = b.vy * keep + this.noise() * 4;
@@ -144,6 +144,14 @@ export class BallMethods {
         }
         if ((b.delivery === 'cross' || b.delivery === 'cutback') && b.age < 0.35 && b.z < 1.6) {
           this.blockCross(p);
+          return;
+        }
+        const deflect =
+          b.z < 1.1 && b.delivery !== 'clearance' && this.inBox(p, 1 - p.team)
+            ? this.deflectChance(p, speed)
+            : 0;
+        if (deflect > 0 && this.rand() < deflect) {
+          this.blockCross(p, true);
           return;
         }
       }

@@ -18,6 +18,15 @@ export class KeeperMethods {
       dive = (2.4 + gk * 0.032) * (0.8 + 0.2 * g.energy);
     return 0.85 + gk * 0.003 + dive * clamp(age - this.keeperReaction(g), 0, 0.42);
   }
+  // Shot-stopping quality before stretch and power (0.6–1): a rating-80 keeper
+  // is 0.904; keeperRange scales how far ratings move it either way.
+  keeperQuality(g) {
+    return clamp(
+      0.904 + (g.skill('goalkeeping') - 80) * 0.0048 * this.tuning.gameplay.keeperRange,
+      0.6,
+      1,
+    );
+  }
   // The keeper g meets an incoming ball. Returns true when he handled it
   // (the frame's contacts end), false when it is out of reach.
   keeperSave(g) {
@@ -41,7 +50,7 @@ export class KeeperMethods {
       power = clamp((speed - 15) / 17, 0, 1),
       onTarget = this.projectedOnTarget(),
       record = b.shotRecord;
-    const quality = clamp(0.52 + gk * 0.0048, 0.6, 1);
+    const quality = this.keeperQuality(g);
     const prob = clamp(
       quality * (1 - 0.6 * stretch * stretch - 0.22 * power * stretch) +
         this.profile.saveBoost +
