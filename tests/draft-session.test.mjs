@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import {
   createDraftSession,
   restoreDraftSession,
@@ -16,9 +16,7 @@ import { FORMATIONS } from '../app/core/players/formations.js';
 import { lcg } from '../app/core/util/rng.js';
 import { Match } from '../app/core/sim/engine.js';
 
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+const catalog = loadRuntimeCatalog();
 const index = catalogIndex(catalog);
 const byId = new Map(catalog.players.map(p => [p.profileId, p]));
 

@@ -5,15 +5,14 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { overallRating } from '../../app/core/players/ratings.js';
+import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
 const { Match } = await import(
   process.env.CALIBRATION_ENGINE || new URL('../../app/core/sim/engine.js', import.meta.url)
 );
 const original = JSON.parse(
   readFileSync(new URL('../../tests/fixtures/quality-gap-squads.json', import.meta.url)),
 );
-const catalog = JSON.parse(
-  readFileSync(new URL('../../app/data/players-runtime.json', import.meta.url)),
-).players;
+const catalog = loadRuntimeCatalog().players;
 const byId = new Map(catalog.map(p => [p.profileId, p]));
 const base = original.find(f => f.pair === 1 && f.duration === 180),
   baseTeam = base.weakTeam;

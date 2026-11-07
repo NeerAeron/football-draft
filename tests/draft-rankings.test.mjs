@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Draft } from '../app/core/draft/draft.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { overallRating, POSITIONS } from '../app/core/players/ratings.js';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import {
   rankPlayers,
   squadOrder,
@@ -12,9 +12,7 @@ import {
   showPlayerCard,
 } from '../app/legacy/squad-ui.js';
 
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+const catalog = loadRuntimeCatalog();
 function draw() {
   const d = new Draft(catalog, { seed: 27 });
   d.weighted = options => options.find(o => o.id === '13' || o.name === 'Liverpool') || options[0];

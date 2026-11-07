@@ -1,13 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { badgeBoost, GOALKEEPING_BADGE_CAP } from '../app/core/players/traits.js';
 import { normalizeBadges } from '../app/core/players/badges.js';
 import { overallRating, playerTier } from '../app/core/players/ratings.js';
 
-const catalog = JSON.parse(
-  readFileSync(new URL('../app/data/players-runtime.json', import.meta.url)),
-);
+const catalog = loadRuntimeCatalog();
 
 test('goalkeeping badges no longer stack onto a keeper’s single rating', () => {
   const keeper = catalog.players.find(p => p.primaryPosition === 'GK');

@@ -2,8 +2,8 @@ import { CONFIG } from '../core/config/config.js';
 import { escapeHtml, searchKey } from '../core/util/text.js';
 import { createGameAudio, MatchSoundEvents } from '../services/sound.js';
 import { receiptLabel } from '../core/players/player-labels.js';
-import { rateClubCatalog } from '../core/players/team-ratings.js';
-import { normalizeBadges, compileBadges } from '../core/players/badges.js';
+import { loadCatalog as fetchCatalog } from '../services/catalog.js';
+import { compileBadges } from '../core/players/badges.js';
 import { FORMATIONS, formationLabel, formationLines } from '../core/players/formations.js';
 import { KITS, bestSlots } from '../core/draft/draft.js';
 import { createGameUI } from './game-ui.js';
@@ -65,7 +65,6 @@ let recording = null,
   started = false,
   halftimeShown = false;
 let catalog = null,
-  catalogLoading = null,
   rosterReady = false,
   catalogLimit = 80;
 const formatTime = t =>
@@ -346,30 +345,8 @@ function renderCatalog() {
   if (!profiles.length) $('#catalog-status').textContent = 'No players match these filters.';
 }
 async function loadCatalog() {
-  if (catalog) return catalog;
-  catalogLoading ??= fetch('./data/players-runtime.json')
-    .then(r => {
-      if (!r.ok) throw new Error('Catalog unavailable');
-      return r.json();
-    })
-    .then(data => {
-      if (
-        ![1, 2].includes(data.schemaVersion) ||
-        !Array.isArray(data.players) ||
-        data.players.length < 22
-      )
-        throw new Error('Invalid catalog');
-      data.teams = rateClubCatalog(data);
-      for (const p of data.players) p.tags = normalizeBadges(p, p.tags);
-      return data;
-    });
-  try {
-    catalog = await catalogLoading;
-    return catalog;
-  } catch (error) {
-    catalogLoading = null;
-    throw error;
-  }
+  catalog ??= await fetchCatalog();
+  return catalog;
 }
 async function openCatalog() {
   if (catalogLocked()) return;

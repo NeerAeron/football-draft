@@ -12,6 +12,7 @@ import {
 } from '../core/config/config.js';
 import { draftLeagues, leagueWeight, teamWeight } from '../core/draft/leagues.js';
 import { clubSquads } from '../core/players/club-lineups.js';
+import { loadCatalog } from '../services/catalog.js';
 import { BADGES } from '../core/players/traits.js';
 import { ATTRS, overallRating, playerTier } from '../core/players/ratings.js';
 import { escapeHtml } from '../core/util/text.js';
@@ -20,7 +21,6 @@ const $ = s => document.querySelector(s),
 let draft = loadConfig(),
   active = 'draft',
   data = null,
-  loading = null,
   clubLeague = '',
   clubQuery = '',
   clubLimit = 40,
@@ -191,12 +191,7 @@ function groupLabel(path) {
   );
 }
 async function catalog() {
-  if (data) return data;
-  loading ??= fetch('./data/players-runtime.json').then(r => {
-    if (!r.ok) throw Error('Catalog unavailable');
-    return r.json();
-  });
-  data = await loading;
+  data ??= await loadCatalog();
   return data;
 }
 function navigation() {
