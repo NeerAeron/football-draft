@@ -28,7 +28,9 @@ export function makeIdentity(role, slot, random, attrs) {
     },
   };
 }
-export function preference(p, key) {
+// The attribute-driven part of a tendency. It depends only on p.attrs and on
+// whether the player is a centre-back (Player memoises it on exactly those).
+export function tendencyAbility(p, key) {
   const a = p.attrs,
     recovery = 0.55 * a.pace + 0.45 * a.acceleration,
     back = p.role === 'CB';
@@ -58,15 +60,19 @@ export function preference(p, key) {
     aerial: 0.4 + (a.heading + a.strength - 140) * 0.006,
     sweep: 0.4 + (a.acceleration + a.vision - 120) * 0.004,
   };
+  return bound(ability[key] ?? 0.5, 0.05, 0.95);
+}
+// Blend the stored tendency with the ability-driven one and add badge nudges.
+export function blendPreference(p, key, ability) {
   const sourceWeight = (p.tuning?.ratings || CONFIG.ratings).storedTendencyWeight;
-  let value =
-    sourceWeight * (p.tendencies?.[key] ?? 0.5) +
-    (1 - sourceWeight) * bound(ability[key] ?? 0.5, 0.05, 0.95);
-  for (const [tag, change] of Object.entries(
-    (p.tuning?.badges || CONFIG.badges).tendencies[key] || {},
-  ))
-    if (p.tags?.includes(tag)) value += change;
+  let value = sourceWeight * (p.tendencies?.[key] ?? 0.5) + (1 - sourceWeight) * ability;
+  const changes = (p.tuning?.badges || CONFIG.badges).tendencies[key],
+    tags = p.tags;
+  if (changes && tags) for (const tag in changes) if (tags.includes(tag)) value += changes[tag];
   return bound(value, 0.05, 0.95);
+}
+export function preference(p, key) {
+  return blendPreference(p, key, tendencyAbility(p, key));
 }
 export function footExecution(p, angle) {
   const turn = Math.atan2(Math.sin(angle - p.facing), Math.cos(angle - p.facing));

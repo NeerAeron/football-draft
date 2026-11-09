@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match, LENGTHS } from '../app/core/sim/engine.js';
+import { Match, LENGTHS, ATTRS } from '../app/core/sim/engine.js';
 
 test('full matches finish with finite positions, valid stats, and varied play', () => {
   for (const duration of [180, 300]) {
@@ -472,4 +472,64 @@ test('a keeper checks the release lane and can throw a clearance above a nearby 
   assert.ok(m.ball.vz > 0);
   m.moveBall(1 / 60);
   assert.notEqual(m.ball.owner, a.id);
+});
+
+test('ratings read inside a step follow in-place edits made between steps', () => {
+  const m = new Match(5, 180),
+    p = m.players[7];
+  // Run `read` while a step is active (the per-step cache and its memo are in use).
+  const inStep = read => {
+    let value;
+    m.stepInner = () => (value = read());
+    m.step(1 / 60);
+    delete m.stepInner;
+    return value;
+  };
+  // Outside a step every reader computes from scratch: the reference value.
+  const check = (read, label) => {
+    const before = inStep(read);
+    return edit => {
+      edit();
+      const after = inStep(read);
+      assert.equal(after, read(), `${label}: step value matches a fresh read`);
+      assert.notEqual(after, before, `${label}: the edit is visible`);
+    };
+  };
+  p.tags = [];
+  for (const key of Object.keys(ATTRS))
+    check(() => p.skill(key), `attrs.${key}`)(() => (p.attrs[key] += p.attrs[key] > 50 ? -20 : 20));
+  check(() => p.skill('pace'), 'tags in place')(() => p.tags.push('speedster'));
+  check(() => p.skill('pace'), 'tags entry')(() => (p.tags[0] = 'dribbler'));
+  check(() => p.skill('dribbling'), 'attribute cap')(() => (m.tuning.badges.attributeCap = 1));
+  check(() => p.skill('pace'), 'chemistry')(() => (p.chem = 2));
+  check(() => p.skill('pace'), 'quality impact')(() => (m.tuning.gameplay.qualityImpact = 0.5));
+  check(() => p.skill('pace'), 'new attrs object')(() => (p.attrs = { ...p.attrs, pace: 31 }));
+  check(() => p.baseSpeed(), 'movement speed')(() => (m.tuning.gameplay.movementSpeed = 0.9));
+  check(() => p.acceleration(), 'acceleration')(() => (m.tuning.gameplay.acceleration = 0.9));
+  check(() => p.familiarity(), 'role')(() => (p.role = p.role === 'CB' ? 'ST' : 'CB'));
+  check(() => p.familiarity(), 'primary position')(() => (p.primaryPosition = p.role));
+  check(
+    () => p.familiarity(),
+    'familiarity tuning',
+  )(() => {
+    p.role = p.role === 'GK' ? 'ST' : 'GK';
+    m.tuning.ratings.unfamiliarFit = 0.4;
+  });
+  check(() => p.awareness(), 'awareness')(() => (m.tuning.ratings.unfamiliarFit = 0.6));
+  check(() => p.tendency('carry'), 'tendency attrs')(() => (p.attrs.dribbling = 99));
+  check(() => p.tendency('carry'), 'stored tendency')(() => (p.tendencies.carry = 0.9));
+  check(
+    () => p.tendency('carry'),
+    'tendency weight',
+  )(() => (m.tuning.ratings.storedTendencyWeight = 0.1));
+  check(
+    () => p.tendency('carry'),
+    'badge tendency',
+  )(() => {
+    p.tags = ['dribbler'];
+    m.tuning.badges.tendencies.carry.dribbler = 0.3;
+  });
+  // A keeper's technique comes from the goalkeeping rating: the role matters.
+  const keeper = m.players[0];
+  check(() => keeper.skill('vision'), 'keeper role')(() => (keeper.role = 'CB'));
 });
