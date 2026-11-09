@@ -11,6 +11,11 @@ test('the preload block of app/index.html lists the first screen (run `npm run p
     html,
     'app/index.html is out of date: an import or stylesheet changed — run `npm run preload`',
   );
+  // Preloaded modules import 'preact' by name: the import map has to be registered first.
+  assert.ok(
+    html.indexOf('<script type="importmap">') < html.indexOf('<!-- preload:start'),
+    'the preload block must come after the import map',
+  );
   // The entry graph: the shell, the Home screen, the vendored libraries, every stylesheet.
   assert.ok(modules > 20 && styles > 20);
   for (const needed of [
