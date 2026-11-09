@@ -288,6 +288,33 @@ export class Match {
       offside: false,
       deflectedBy: null,
       deflectedAt: -10,
+      // Fields set later by passes, shots and restarts, declared up front (undefined reads
+      // the same as absent) so the ball keeps one object shape: it is read in every hot loop.
+      offsideState: undefined,
+      restartTaker: undefined,
+      delivery: undefined,
+      strength: undefined,
+      chance: undefined,
+      pendingPass: undefined,
+      destination: undefined,
+      deliveryDemand: undefined,
+      missedReceiver: undefined,
+      saver: undefined,
+      deliveryOrigin: undefined,
+      passCraft: undefined,
+      roll: undefined,
+      curve: undefined,
+      shotTeam: undefined,
+      shotOrigin: undefined,
+      shotType: undefined,
+      shotRecord: undefined,
+      assist: undefined,
+      goalCredit: undefined,
+      indirect: undefined,
+      penaltyTaker: undefined,
+      previous: undefined,
+      heldSince: undefined,
+      penaltyKick: undefined,
     };
     for (const p of this.players) {
       p.stats = freshStats();
