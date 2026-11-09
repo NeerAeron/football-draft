@@ -176,6 +176,8 @@ export class RestartMethods {
         d.ty = a.ty + (34 - a.ty) * 0.15;
         d.markId = a.id;
       } else {
+        // Zonal defenders mark nobody (the plan() before this set-up assigned open-play marks).
+        d.markId = null;
         const zones = [
           [103.2, 34 + near * 3],
           [99.5, 34],

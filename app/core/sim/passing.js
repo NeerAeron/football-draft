@@ -94,13 +94,34 @@ export class PassingMethods {
           ? 9.81 * total * 0.46 * flight - 4.905 * flight * flight
           : lerp(start, landing, f) + 4.905 * total * total * f * (1 - f);
     }
-    const point = LANE_POINT;
+    const point = LANE_POINT,
+      laneX = end.x - p.x,
+      laneY = end.y - p.y,
+      launch = loft ? 1 : this.passSpeed(length, false);
     let risk = 0;
     for (const q of this.activePlayers) {
       if (q.team === p.team) continue;
       const reaction = 0.1 + (100 - q.pressAwareness()) * 0.002,
         reach = delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007;
       let threat = 0;
+      // A defender already standing in the lane of a ground pass does not have to get
+      // anywhere: the ball is played into him. (The arrival times below include turning and
+      // accelerating, which understates a body that is simply in the way.)
+      // He is judged where his run takes him by the time the ball gets there, so a presser
+      // charging across the lane counts too.
+      if (!loft && length > 1) {
+        const now = ((q.x - p.x) * laneX + (q.y - p.y) * laneY) / (length * length);
+        if (now > 0 && now < 1) {
+          const when = (now * length) / launch,
+            qx = q.x + q.vx * when - p.x,
+            qy = q.y + q.vy * when - p.y,
+            along = (qx * laneX + qy * laneY) / (length * length);
+          if (along > 0.05 && along < 0.92) {
+            const off = Math.abs(qx * laneY - qy * laneX) / length;
+            if (off < 1.6) threat = 2 * clamp((1.6 - off) / 0.8, 0, 1);
+          }
+        }
+      }
       for (let i = 0; i < 5; i++) {
         if (loft && LANE_Z[i] > reach) continue;
         point.x = LANE_X[i];

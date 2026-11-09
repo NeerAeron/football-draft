@@ -13,10 +13,12 @@ export class KeeperMethods {
     return 0.2 - (g.skill('goalkeeping') - 50) * 0.0022 - (g.has('reflexes') ? 0.04 : 0);
   }
   // How far (m) the keeper can reach when the ball passes at ball age `age`.
+  // A dive covers ground for 0.42 s; with more time than that he has moved his feet first.
   keeperReach(g, age = this.ball.age) {
     const gk = g.skill('goalkeeping'),
-      dive = (2.4 + gk * 0.032) * (0.8 + 0.2 * g.energy);
-    return 0.85 + gk * 0.003 + dive * clamp(age - this.keeperReaction(g), 0, 0.42);
+      dive = (2.4 + gk * 0.032) * (0.8 + 0.2 * g.energy),
+      time = age - this.keeperReaction(g);
+    return 0.85 + gk * 0.003 + dive * clamp(time, 0, 0.42) + 2 * clamp(time - 0.42, 0, 0.45);
   }
   // Shot-stopping quality before stretch and power (0.6–1): a rating-80 keeper
   // is 0.904; keeperRange scales how far ratings move it either way.
@@ -41,7 +43,8 @@ export class KeeperMethods {
     // a comfortable catch; reach: dive time left before the ball passes.
     const high = clamp((b.z - 1.8) / 0.65, 0, 1),
       miss = hypot(lateral, Math.max(0, b.z - 1.8) * 1.1),
-      reach = this.keeperReach(g, b.age + Math.max(0, along) / speed);
+      arrival = b.age + Math.max(0, along) / speed,
+      reach = this.keeperReach(g, arrival);
     if (miss > reach) return false;
     if (b.saver === g.id) return false;
     b.saver = g.id;
@@ -50,10 +53,21 @@ export class KeeperMethods {
       power = clamp((speed - 15) / 17, 0, 1),
       onTarget = this.projectedOnTarget(),
       record = b.shotRecord;
-    const quality = this.keeperQuality(g);
+    // Time to set himself: 0 for a point-blank reflex save, 1 once he has seen the shot all
+    // the way (roughly 20 m and out). A set keeper is surer of his hands and a stretch costs
+    // him less, so shots from distance need a corner AND pace to beat him. Penalties are a
+    // guess, and a header from a cross arrives while he is still moving across his line.
+    const time = arrival - this.keeperReaction(g),
+      set = b.penaltyKick
+        ? 0
+        : clamp((time - 0.15) / 0.3, 0, 1) * (b.shotType === 'Header' ? 0.4 : 1);
+    const quality = this.keeperQuality(g),
+      sure = quality - 0.03 * (1 - set) + Math.max(0, 0.985 - quality) * 0.85 * set;
     const prob = clamp(
-      quality * (1 - 0.6 * stretch * stretch - 0.22 * power * stretch) +
-        this.profile.saveBoost +
+      sure * (1 - (0.6 * stretch * stretch + 0.22 * power * stretch) * (1.6 - 1.35 * set)) +
+        // The format's save adjustment weighs most on reflex saves: a short match needs its
+        // box chances to count, not soft goals from distance.
+        this.profile.saveBoost * (1 - 0.6 * set) +
         (b.penaltyKick ? -0.3 : 0) +
         (record ? 0 : 0.15) +
         (g.has('gkoneonone') &&
@@ -136,7 +150,7 @@ export class KeeperMethods {
       b.vx = -out * (3 + this.rand() * 2);
       b.vy *= 0.3;
     } else if (
-      this.rand() < clamp(0.3 + (gk - 70) * 0.012 + stretch * 0.3 - power * 0.1, 0.15, 0.85)
+      this.rand() < clamp(0.42 + (gk - 70) * 0.012 + stretch * 0.3 - power * 0.1, 0.2, 0.9)
     ) {
       type = 'parry';
       b.vy = side * (5 + this.rand() * 4);
@@ -145,7 +159,7 @@ export class KeeperMethods {
       const behind = -out * (1.5 + this.rand() * 2.5),
         crossing = b.y + (b.vy * depth) / Math.abs(behind);
       b.vx =
-        this.rand() < 0.75 && Math.abs(crossing - 34) > GOAL / 2 + 0.8
+        this.rand() < 0.85 && Math.abs(crossing - 34) > GOAL / 2 + 0.8
           ? behind
           : out * (0.5 + this.rand() * 2);
     } else {

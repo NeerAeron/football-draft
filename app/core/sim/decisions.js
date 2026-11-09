@@ -112,6 +112,22 @@ export class DecisionMethods {
         this.pass(p, better);
         return;
       }
+      // Outside the box with a team-mate free inside it: play him in rather than shoot
+      // from range (the pass is the better chance).
+      const feed =
+        !box &&
+        opts.find(
+          o =>
+            o.delivery !== 'cross' &&
+            this.inBox({ x: o.aim.x, y: o.aim.y, team: p.team }) &&
+            o.margin > 0.05 &&
+            o.risk < 0.5 &&
+            o.chance > 0.62,
+        );
+      if (feed && p.hold > releaseAfter) {
+        this.pass(p, feed);
+        return;
+      }
       const nextTouch = {
           x: p.x + this.direction(p.team) * Math.min(4, dGoal - 8),
           y: lerp(p.y, 34, 0.25),
@@ -148,10 +164,14 @@ export class DecisionMethods {
           0.3 *
           (specialist ? 1.6 : 1) *
           (spatial.central ? 1 : 0.5) *
-          clamp((32 - dGoal) / 12, 0.08, 1) *
+          // Long-shot specialists try from further out; everyone else needs to be
+          // within about 27 m before a shot is worth more than keeping the ball.
+          (specialist ? clamp((32 - dGoal) / 12, 0.08, 1) : clamp((28 - dGoal) / 9, 0, 1)) *
           0.55 ** blocks;
       if (spatial.zone === 'deep_central') urge *= this.profile.deepUrge;
-      if (!box && (blocks > 3 || pressure > 1.1 || p.hold < 0.2)) urge = 0;
+      if (!box && (blocks > 2 || pressure > 1.1 || p.hold < 0.2)) urge = 0;
+      // With room to drive into, a carrier outside the box takes the ball closer first.
+      if (!box && urge > 0 && dGoal > 17 && !specialist && this.openCarry(p)) urge *= 0.3;
       if (
         this.rand() <
         urge *
