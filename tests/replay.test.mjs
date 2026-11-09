@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from '../app/core/sim/engine.js';
+import { Match, MATCH_SECONDS } from '../app/core/sim/engine.js';
 import {
   selectHighlights,
   simulateComplete,
@@ -30,14 +30,14 @@ test('AI recorded, instant, and direct full simulations resolve the same match',
   config.competition = { mode: 'ai', difficulty: 'hard' };
   const record = await simulateComplete(config, 54, true);
   const instant = await simulateComplete(config, 54, false);
-  const direct = new Match(54, 300);
+  const direct = new Match(54, MATCH_SECONDS);
   direct.importConfig(config);
   while (!direct.finished) direct.step(1 / 60);
   assert.deepEqual(record.result.score, direct.score);
   assert.deepEqual(instant.result.stats, direct.stats);
   assert.deepEqual(record.result.goalHistory, direct.goalHistory);
   assert.equal(instant.frames.length, 0);
-  const target = new Match(54, 300);
+  const target = new Match(54, MATCH_SECONDS);
   target.importConfig(config);
   applyReplayFrame(target, record, 10);
   assert.ok(target.elapsed >= 0 && target.elapsed <= record.result.elapsed);

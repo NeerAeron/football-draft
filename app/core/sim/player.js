@@ -1,7 +1,7 @@
 // Player: per-player ratings view (skill, awareness, speed) and kinematic helpers.
 import { CONFIG } from '../config/config.js';
 import { clamp } from '../util/math.js';
-import { preference } from './player-model.js';
+import { preference, tendencyAbility, blendPreference } from './player-model.js';
 import { badgeBoost } from '../players/traits.js';
 import { ATTRS, normalizeAttributes, positionFamiliarity } from '../players/ratings.js';
 import { dist } from './constants.js';
@@ -18,11 +18,17 @@ const KEEPER_TECHNIQUE = new Set([
 // computes it from club / nation / league links; matches default to 0.
 export const normalizeChem = value =>
   Number.isFinite(value) ? Math.max(0, Math.min(2, value)) : 0;
-const TAG_ALIAS = { creator: 'vision', byline: 'cutback' };
 // Per-step cache of skill values and familiarity. It is only active while a
 // Match step runs (stamp != 0): inside one step attributes, badges, tuning and
 // roles are fixed, while code outside a step (tests, UI, setup) mutating
 // p.attrs / p.tags / tuning in place always reads fresh values.
+//
+// Behind it sits a memo that survives from step to step, so a step normally
+// recomputes nothing. Once per step and player (in syncCache) the memo is
+// checked against everything its values were computed from: the attrs object
+// and each attribute, the badge list, chemistry, positions and the tuning
+// values involved. The role can change during a step (formation changes,
+// stand-in keepers), so it is compared on every memo lookup instead.
 const SKILL_KEYS = Object.keys(ATTRS),
   SKILL_SLOT = Object.fromEntries(SKILL_KEYS.map((key, i) => [key, i]));
 let stamp = 0,
@@ -45,6 +51,112 @@ const TENDENCY_KEYS = [
   TENDENCY_SLOT = Object.fromEntries(TENDENCY_KEYS.map((key, i) => [key, i]));
 export const beginStepCache = () => (stamp = ++stamps);
 export const endStepCache = () => (stamp = 0);
+const NO_ATTRS = Object.freeze({});
+const newMemo = () => ({
+  role: undefined,
+  attrs: NO_ATTRS,
+  values: new Array(SKILL_KEYS.length).fill(undefined),
+  tags: undefined,
+  tagList: [],
+  chem: NaN,
+  primary: undefined,
+  secondary: undefined,
+  tuning: undefined,
+  quality: NaN,
+  boosts: undefined,
+  cap: NaN,
+  familiarityBase: NaN,
+  familiarityBonus: NaN,
+  familiarityDecay: NaN,
+  secondaryDistance: NaN,
+  unfamiliarFit: NaN,
+  skills: new Float64Array(SKILL_KEYS.length), // rawSkill per attribute
+  abilities: new Float64Array(TENDENCY_KEYS.length), // tendencyAbility per tendency
+  familiarity: NaN,
+});
+// True when any input of the memoised values differs from the memo's snapshot.
+// The attribute comparisons are spelled out (plain property loads, no keyed
+// access): they must list every key of ATTRS, in SKILL_KEYS order.
+function memoStale(p, m) {
+  const a = p.attrs,
+    v = m.values,
+    tags = p.tags,
+    tuning = p.tuning;
+  if (
+    a !== m.attrs ||
+    tags !== m.tags ||
+    tuning !== m.tuning ||
+    p.chem !== m.chem ||
+    p.primaryPosition !== m.primary ||
+    p.secondaryPositions !== m.secondary ||
+    a.pace !== v[0] ||
+    a.acceleration !== v[1] ||
+    a.shooting !== v[2] ||
+    a.power !== v[3] ||
+    a.longShots !== v[4] ||
+    a.penalties !== v[5] ||
+    a.heading !== v[6] ||
+    a.shortPassing !== v[7] ||
+    a.longPassing !== v[8] ||
+    a.crossing !== v[9] ||
+    a.vision !== v[10] ||
+    a.dribbling !== v[11] ||
+    a.control !== v[12] ||
+    a.composure !== v[13] ||
+    a.defending !== v[14] ||
+    a.awareness !== v[15] ||
+    a.stamina !== v[16] ||
+    a.strength !== v[17] ||
+    a.goalkeeping !== v[18]
+  )
+    return true;
+  if (tags) {
+    const list = m.tagList;
+    if (tags.length !== list.length) return true;
+    for (let i = 0; i < tags.length; i++) if (tags[i] !== list[i]) return true;
+  }
+  const badges = tuning?.badges || CONFIG.badges,
+    ratings = tuning?.ratings || CONFIG.ratings;
+  return (
+    (tuning || CONFIG).gameplay.qualityImpact !== m.quality ||
+    badges.boosts !== m.boosts ||
+    badges.attributeCap !== m.cap ||
+    ratings.familiarityBase !== m.familiarityBase ||
+    ratings.familiarityBonus !== m.familiarityBonus ||
+    ratings.familiarityDecay !== m.familiarityDecay ||
+    ratings.secondaryDistance !== m.secondaryDistance ||
+    ratings.unfamiliarFit !== m.unfamiliarFit
+  );
+}
+function resetMemo(p, m) {
+  const a = p.attrs,
+    tags = p.tags,
+    tuning = p.tuning,
+    badges = tuning?.badges || CONFIG.badges,
+    ratings = tuning?.ratings || CONFIG.ratings;
+  m.role = p.role;
+  // Without an attrs object nothing is memoised: NO_ATTRS never matches.
+  m.attrs = a || NO_ATTRS;
+  for (let i = 0; i < SKILL_KEYS.length; i++) m.values[i] = a ? a[SKILL_KEYS[i]] : undefined;
+  m.tags = tags;
+  m.tagList.length = 0;
+  if (tags) for (let i = 0; i < tags.length; i++) m.tagList.push(tags[i]);
+  m.chem = p.chem;
+  m.primary = p.primaryPosition;
+  m.secondary = p.secondaryPositions;
+  m.tuning = tuning;
+  m.quality = (tuning || CONFIG).gameplay.qualityImpact;
+  m.boosts = badges.boosts;
+  m.cap = badges.attributeCap;
+  m.familiarityBase = ratings.familiarityBase;
+  m.familiarityBonus = ratings.familiarityBonus;
+  m.familiarityDecay = ratings.familiarityDecay;
+  m.secondaryDistance = ratings.secondaryDistance;
+  m.unfamiliarFit = ratings.unfamiliarFit;
+  m.skills.fill(NaN);
+  m.abilities.fill(NaN);
+  m.familiarity = NaN;
+}
 export class Player {
   constructor(data) {
     Object.assign(this, data);
@@ -63,32 +175,65 @@ export class Player {
     this.actionSince = 0;
     this.bylineAt = null;
     this._stamp = 0;
+    // Per-step values; bit i of _skillBits / _tendencyBits says slot i is set.
     this._skills = null;
     this._tendencies = null;
+    this._skillBits = 0;
+    this._tendencyBits = 0;
     this._familiarity = NaN;
     this._awareness = NaN;
+    this._pressAwareness = NaN;
     this._baseSpeed = NaN;
     this._acceleration = NaN;
+    this._memo = null;
   }
   skill(key) {
     if (stamp !== 0) {
       const slot = SKILL_SLOT[key];
       if (slot !== undefined) {
         if (this._stamp !== stamp) this.syncCache();
-        const cached = this._skills[slot];
-        return cached === cached ? cached : (this._skills[slot] = this.rawSkill(key));
+        const bit = 1 << slot;
+        if ((this._skillBits & bit) !== 0) return this._skills[slot];
+        const memo = this.memo(),
+          known = memo.skills[slot],
+          value = known === known ? known : (memo.skills[slot] = this.rawSkill(key));
+        // NaN (a broken attribute) is never kept, as before: every read recomputes.
+        if (value === value) {
+          this._skills[slot] = value;
+          this._skillBits |= bit;
+        }
+        return value;
       }
     }
     return this.rawSkill(key);
   }
   syncCache() {
-    (this._skills ??= new Float64Array(SKILL_KEYS.length)).fill(NaN);
-    (this._tendencies ??= new Float64Array(TENDENCY_KEYS.length)).fill(NaN);
+    if (this._skills === null) {
+      this._skills = new Float64Array(SKILL_KEYS.length);
+      this._tendencies = new Float64Array(TENDENCY_KEYS.length);
+    }
+    this._skillBits = 0;
+    this._tendencyBits = 0;
     this._familiarity = NaN;
     this._awareness = NaN;
+    this._pressAwareness = NaN;
     this._baseSpeed = NaN;
     this._acceleration = NaN;
     this._stamp = stamp;
+    const memo = (this._memo ??= newMemo());
+    if (memoStale(this, memo)) resetMemo(this, memo);
+  }
+  // The step-to-step memo for the current role (see the note above; only
+  // called after syncCache in the same step, so _memo exists and is checked).
+  memo() {
+    const memo = this._memo;
+    if (memo.role !== this.role) {
+      memo.role = this.role;
+      memo.skills.fill(NaN);
+      memo.abilities.fill(NaN);
+      memo.familiarity = NaN;
+    }
+    return memo;
   }
   rawSkill(key) {
     // Natural keepers have one technical rating. Their imported outfield
@@ -106,13 +251,18 @@ export class Player {
     );
   }
   has(tag) {
-    return this.tags?.includes(TAG_ALIAS[tag] || tag);
+    // Two legacy names are aliases of current badges.
+    return this.tags?.includes(tag === 'creator' ? 'vision' : tag === 'byline' ? 'cutback' : tag);
   }
   familiarity() {
     if (stamp === 0) return positionFamiliarity(this);
     if (this._stamp !== stamp) this.syncCache();
     const cached = this._familiarity;
-    return cached === cached ? cached : (this._familiarity = positionFamiliarity(this));
+    if (cached === cached) return cached;
+    const memo = this.memo(),
+      known = memo.familiarity;
+    return (this._familiarity =
+      known === known ? known : (memo.familiarity = positionFamiliarity(this)));
   }
   awareness() {
     if (stamp !== 0 && this._stamp === stamp && this._awareness === this._awareness)
@@ -129,12 +279,16 @@ export class Player {
     );
   }
   pressAwareness() {
+    if (stamp !== 0 && this._stamp === stamp && this._pressAwareness === this._pressAwareness)
+      return this._pressAwareness;
     const base = this.awareness(),
       read = this.vision() * 0.6 + this.skill('composure') * this.familiarity() * 0.4 - 10;
-    return (
+    const value =
       base +
-      Math.max(0, read - base) * clamp((this.tuning || CONFIG).gameplay.defensiveQuality, 0, 1)
-    );
+      Math.max(0, read - base) * clamp((this.tuning || CONFIG).gameplay.defensiveQuality, 0, 1);
+    // awareness() above has synced the per-step cache, so the value belongs to this step.
+    if (stamp !== 0) this._pressAwareness = value;
+    return value;
   }
   pressingReading() {
     return Math.max(
@@ -155,8 +309,19 @@ export class Player {
     const slot = TENDENCY_SLOT[key];
     if (slot === undefined) return preference(this, key);
     if (this._stamp !== stamp) this.syncCache();
-    const cached = this._tendencies[slot];
-    return cached === cached ? cached : (this._tendencies[slot] = preference(this, key));
+    const bit = 1 << slot;
+    if ((this._tendencyBits & bit) !== 0) return this._tendencies[slot];
+    // Only the attribute-driven part is memoised; the stored tendency, its
+    // weight and the badge adjustments are read live.
+    const memo = this.memo();
+    let ability = memo.abilities[slot];
+    if (ability !== ability) ability = memo.abilities[slot] = tendencyAbility(this, key);
+    const value = blendPreference(this, key, ability);
+    if (value === value) {
+      this._tendencies[slot] = value;
+      this._tendencyBits |= bit;
+    }
+    return value;
   }
   baseSpeed() {
     if (stamp !== 0 && this._stamp === stamp && this._baseSpeed === this._baseSpeed)
@@ -183,11 +348,19 @@ export class Player {
       (0.72 + this.energy * 0.28)
     );
   }
+  // Time to reach a target. It splits into two values that depend only on the
+  // player (arrivalSpeed, acceleration) and the per-target part (arrivalAt), so
+  // a loop over many targets can read the player's values once.
   arrival(target) {
+    return this.arrivalAt(target, this.arrivalSpeed(), this.acceleration());
+  }
+  arrivalSpeed() {
+    return this.topSpeed() * (this.sprint < 0.2 || this.sprintRest > 0 ? 0.73 : 0.97);
+  }
+  arrivalAt(target, speed, acceleration) {
     const d = dist(this, target),
-      speed = this.topSpeed() * (this.sprint < 0.2 || this.sprintRest > 0 ? 0.73 : 0.97),
       toward = ((target.x - this.x) * this.vx + (target.y - this.y) * this.vy) / (d || 1);
-    return d / speed + ((1 - clamp(toward / speed, -1, 1)) * 0.28 * 9.28) / this.acceleration();
+    return d / speed + ((1 - clamp(toward / speed, -1, 1)) * 0.28 * 9.28) / acceleration;
   }
   intercept(target, maxTime = 2.4) {
     const rx = target.x - this.x,
