@@ -132,7 +132,8 @@ export class MovementMethods {
   tacticalLoad(p) {
     const t = this.teams[p.team].tactics,
       attacking = this.lastTeam === p.team && this.ball.owner !== null;
-    const lean = t.mentality === 'push' ? 1 : t.mentality === 'hold' ? -1 : 0;
+    const mentality = this.mentality(p.team),
+      lean = mentality === 'push' ? 1 : mentality === 'hold' ? -1 : 0;
     return (
       (attacking
         ? 1 + (t.tempo - 3) * 0.07

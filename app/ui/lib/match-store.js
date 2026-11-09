@@ -13,7 +13,7 @@
 //   run.recordResult(runResultFor(result, 0));  // { goalsFor, goalsAgainst, shootout, players }
 //   clearMatch('run:qf');                       // once applied, so a refresh cannot apply it twice
 import { CONFIG } from '../../core/config/config.js';
-import { Match } from '../../core/sim/engine.js';
+import { Match, MATCH_SECONDS } from '../../core/sim/engine.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { matchSetup, applyMatchSetup } from '../../core/draft/session.js';
 import { nationKit, nationTrigram, teamCode } from './kits.js';
@@ -25,9 +25,8 @@ export const MATCH_KEY = 'football-draft-match';
 export const MATCH_ROUTE = '#/match';
 export const MATCH_VIEWS = ['key', 'full', 'instant'];
 export const MATCH_CONTEXTS = ['run', 'quick', 'versus', 'exhibition', 'daily', 'demo'];
-/** Real seconds of a Full match (90 minutes compressed); Key Moments / Instant use 300. */
-export const FULL_DURATION = 180;
-export const RECORDED_DURATION = 300;
+/** Real seconds of every match (90 minutes compressed): Full, Key Moments and Instant alike. */
+export const FULL_DURATION = MATCH_SECONDS;
 const FORMAT = 1;
 
 const DEFAULT_KITS = [
@@ -130,8 +129,10 @@ export function buildMatchConfig({ sides, competition = {}, tuning } = {}) {
   });
   config.tuning = structuredClone(tuning || CONFIG);
   config.teams = config.teams.map((team, i) => {
+    // A side that did not choose a mentality plays the game state ('auto': push when
+    // behind late, hold a late lead) — in instant sims and highlights too.
     const wanted = [home, away][i].tactics,
-      tactics = { ...team.tactics };
+      tactics = { ...team.tactics, mentality: 'auto' };
     for (const key of TACTIC_KEYS) if (wanted[key] != null) tactics[key] = wanted[key];
     return { ...team, tactics };
   });
@@ -168,13 +169,13 @@ export function randomSeed() {
  * Fill defaults and validate a request (throws on a malformed config):
  *   { id, seed, view, duration, config, meta: { context, title, sides, userSides, returnTo } }
  */
-export function createMatchRequest({ id, seed, view = 'key', duration, config, meta = {} } = {}) {
+export function createMatchRequest({ id, seed, view = 'key', config, meta = {} } = {}) {
   const s = Number.isFinite(seed) ? seed >>> 0 : randomSeed();
   const request = {
     id: String(id ?? `match-${s.toString(36)}`),
     seed: s,
     view: MATCH_VIEWS.includes(view) ? view : 'key',
-    duration: view === 'full' ? (duration === RECORDED_DURATION ? duration : FULL_DURATION) : 300,
+    duration: FULL_DURATION,
     config,
     meta: normalizeMeta(meta, config),
   };

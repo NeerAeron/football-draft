@@ -4,7 +4,7 @@ import { clamp } from '../util/math.js';
 import { CONFIG, normalizeConfig } from '../config/config.js';
 import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import { coachAI } from './coach.js';
+import { coachAI, gameStateMentality } from './coach.js';
 import { goalZone, goalGeometry } from './goal-zones.js';
 import { makeIdentity } from './player-model.js';
 import { STYLES, DEFAULT_TAGS } from '../players/traits.js';
@@ -314,9 +314,14 @@ export class Match {
     this.events.unshift(e);
     return e;
   }
+  // The mentality in effect: the side's own choice, or the game-state one for 'auto'.
+  mentality(team) {
+    const chosen = this.teams[team].tactics.mentality;
+    return chosen === 'auto' ? gameStateMentality(this, team) : chosen;
+  }
   settings(team) {
     const t = this.teams[team].tactics,
-      lean = MENTALITY_LEAN[t.mentality] ?? 0;
+      lean = MENTALITY_LEAN[this.mentality(team)] ?? 0;
     // Mentality leans the whole side: push = higher line, more bodies forward;
     // hold = deeper block, fewer runners, patient possession.
     return {

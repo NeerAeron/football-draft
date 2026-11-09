@@ -139,11 +139,13 @@ export class RestartMethods {
       ['far post', 1.2],
       ['edge', shooter ? 0.25 + clamp((longShot(shooter) - 70) / 40, 0, 0.4) : 0],
     ]);
+    // Spread across the box (a crowd, not a pile): front post, back post, the keeper's
+    // six-yard line, the penalty spot and the edge.
     const spots = {
-      'near post': [99.6, 34 + near * 2.6],
-      'far post': [98.6, 34 - near * 3.4],
-      six: [100.4, 34 - near * 0.4],
-      spot: [94, 34 + near],
+      'near post': [99, 34 + near * 4.2],
+      'far post': [97.6, 34 - near * 5.2],
+      six: [99.8, 34 - near * 0.8],
+      spot: [93.5, 34 + near * 1.6],
       edge: [87.5, 34 - near * 2],
     };
     const order =
@@ -172,16 +174,16 @@ export class RestartMethods {
     defenders.forEach((d, i) => {
       if (i < marked.length) {
         const a = marked[i];
-        d.tx = a.tx + this.direction(team) * 0.8;
-        d.ty = a.ty + (34 - a.ty) * 0.15;
+        d.tx = a.tx + this.direction(team) * 1.4;
+        d.ty = a.ty + (34 - a.ty) * 0.2;
         d.markId = a.id;
       } else {
         // Zonal defenders mark nobody (the plan() before this set-up assigned open-play marks).
         d.markId = null;
         const zones = [
-          [103.2, 34 + near * 3],
-          [99.5, 34],
-          [88, 34],
+          [103.6, 34 + near * 3.3],
+          [102.2, 34 - near * 2.6],
+          [89, 34 + near * 6],
           [80, 24],
           [80, 44],
           [72, 34],
@@ -189,6 +191,14 @@ export class RestartMethods {
         place(d, zones[Math.min(i - marked.length, zones.length - 1)]);
       }
     });
+    // A corner is a cut in the action: everyone is in position when it is awarded, not
+    // jumped there at the kick (a viewer sees the set-up, then the delivery).
+    for (const p of this.activePlayers)
+      if (p.id !== taker.id && p.role !== 'GK') {
+        p.x = p.tx;
+        p.y = p.ty;
+        p.vx = p.vy = 0;
+      }
     Object.assign(this.restart, {
       routine,
       target: target?.id ?? null,

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match, LENGTHS } from '../app/core/sim/engine.js';
+import { Match, MATCH_SECONDS } from '../app/core/sim/engine.js';
 
 test('full matches finish with finite positions, valid stats, and varied play', () => {
   for (const duration of [180, 300]) {
@@ -240,7 +240,7 @@ test('a goal-side defender closes diagonally after the original defender is beat
 });
 
 test('continuous lengths include regulation plus seeded added time', () => {
-  assert.deepEqual(LENGTHS, { full: 300, quick: 180, highlights: 60, instant: 0 });
+  assert.equal(MATCH_SECONDS, 180, 'the game plays one match length');
   for (const duration of [180, 300]) {
     const m = new Match(4, duration);
     let ticks = 0;

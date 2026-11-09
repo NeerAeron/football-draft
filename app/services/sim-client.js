@@ -103,7 +103,7 @@ export function createSimClient({ useWorker = true } = {}) {
   }
 
   return {
-    /** Whole match (300 s profile) → Instant result; `record` also returns frames/clips. */
+    /** Whole match → Instant result; `record` also returns frames/clips. */
     complete: (config, seed, { record = false, onProgress } = {}) =>
       run({ type: 'complete', config, seed, record }, { onProgress }),
     /** One half of `match` (kickoff → half-time, or half-time → the end) with highlight clips. */

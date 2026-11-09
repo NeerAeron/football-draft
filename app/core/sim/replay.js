@@ -1,4 +1,4 @@
-import { Match, Player, clamp } from './engine.js';
+import { Match, Player, clamp, MATCH_SECONDS } from './engine.js';
 import { normalizeAttributes } from '../players/ratings.js';
 export const RECORD_STEP = 3; // 20 stored frames/s; interpolate display, retain 60 Hz physics.
 export function snapshot(m) {
@@ -168,7 +168,7 @@ export async function simulateComplete(
   onProgress = () => {},
   cancelled = () => false,
 ) {
-  const m = new Match(seed, 300);
+  const m = new Match(seed, MATCH_SECONDS);
   m.importConfig(config);
   const frames = record ? [snapshot(m)] : [];
   let ticks = 0;
