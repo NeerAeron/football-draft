@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { Match, LENGTHS, ATTRS } from '../app/core/sim/engine.js';
 
 test('full matches finish with finite positions, valid stats, and varied play', () => {
@@ -532,4 +534,41 @@ test('ratings read inside a step follow in-place edits made between steps', () =
   // A keeper's technique comes from the goalkeeping rating: the role matters.
   const keeper = m.players[0];
   check(() => keeper.skill('vision'), 'keeper role')(() => (keeper.role = 'CB'));
+});
+
+// V8 keeps an object's properties either in fast slots or, after certain operations (a keyed
+// store that adds a property to a large object, Object.assign onto Object.create(proto)), in a
+// dictionary. A dictionary-mode Match or Player makes every property read in the engine a hash
+// lookup: imported squads once simulated about three times slower than the default lineups for
+// exactly this reason. The check needs a V8 intrinsic, so it runs in a child process.
+test('imported and restored matches keep fast-property objects in V8', t => {
+  const script = `
+    import { Match } from './app/core/sim/engine.js';
+    import { simulateHalf } from './app/core/sim/replay.js';
+    const m = new Match(3, 180), config = m.exportConfig();
+    config.players.forEach((p, i) =>
+      Object.assign(p, { fullName: 'Full ' + p.name, profileId: 'p' + i, sourcePlayerId: i,
+        sourceOverall: 80, source: { club: 'c' }, inference: { a: 1 } }));
+    m.importConfig(config);
+    for (let i = 0; i < 300; i++) m.step(1 / 60);
+    const half = (await simulateHalf(m)).result;
+    const slow = [];
+    for (const [name, match] of [['imported', m], ['restored', half]]) {
+      if (!%HasFastProperties(match)) slow.push(name + ' match');
+      if (!%HasFastProperties(match.ball)) slow.push(name + ' ball');
+      for (const p of match.players) {
+        if (!%HasFastProperties(p)) slow.push(name + ' player ' + p.id);
+        if (!%HasFastProperties(p.attrs)) slow.push(name + ' attrs ' + p.id);
+        if (!%HaveSameMap(p, match.players[0])) slow.push(name + ' player shape ' + p.id);
+        if (!%HaveSameMap(p.attrs, match.players[0].attrs)) slow.push(name + ' attrs shape ' + p.id);
+      }
+    }
+    console.log(JSON.stringify(slow));`;
+  const run = spawnSync(
+    process.execPath,
+    ['--allow-natives-syntax', '--input-type=module', '-e', script],
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' },
+  );
+  if (run.status !== 0) return t.skip(`V8 intrinsics unavailable: ${run.stderr.split('\n')[0]}`);
+  assert.deepEqual(JSON.parse(run.stdout), []);
 });
