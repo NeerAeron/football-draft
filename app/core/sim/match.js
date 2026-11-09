@@ -42,6 +42,46 @@ import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
 import { hypot } from './constants.js';
 
+// Cold start. V8 chooses how a field is stored from the first values written to it and, when
+// a later value does not fit (a whole-number field receives a fraction), re-shapes the object
+// and throws away the compiled code of every function that used it. A match begins with whole
+// numbers almost everywhere (y: 34, energy: 1, cooldown: 0) and meets its first fractions one
+// field at a time over the first seconds and minutes of play, so the first match of a page or
+// worker used to recompile its hot functions a couple of hundred times. primeShapes() writes a
+// fraction once into those fields of a throwaway match: the engine remembers the wider storage
+// for every match created afterwards. No value of a real match is touched.
+const WHOLE_NUMBER_FIELDS = new Set([
+  'id',
+  'team',
+  'slot',
+  'number',
+  'weakFoot',
+  'yellowCards',
+  'seed',
+  'duration',
+  'half',
+  'eventId',
+  'kickoffTeam',
+  'lastTeam',
+  'lastTouch',
+  'taker',
+]);
+let shapesPrimed = false;
+function primeShapes(duration) {
+  shapesPrimed = true;
+  try {
+    const m = new Match(1, duration);
+    m.importConfig(m.exportConfig());
+    const p = m.players[0];
+    for (const object of [m, m.ball, m.restart, m.stats[0], p, p.stats])
+      for (const key of Object.keys(object))
+        if (typeof object[key] === 'number' && key[0] !== '_' && !WHOLE_NUMBER_FIELDS.has(key))
+          object[key] = 0.5;
+  } catch {
+    // Only an optimisation: never let it stop a match from being created.
+  }
+}
+
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
     if (!DURATION_PROFILES[duration]) throw new RangeError('Unsupported match length');
@@ -141,6 +181,7 @@ export class Match {
     this._coverTop = null;
     for (const p of this.players) this.setTags(p.id, p.tags);
     this.reset();
+    if (!shapesPrimed) primeShapes(duration);
   }
   setDuration(duration) {
     if (!DURATION_PROFILES[duration]) throw new RangeError('Unsupported match length');
