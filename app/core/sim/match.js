@@ -385,8 +385,13 @@ export class Match {
       p.fullName = data.fullName || p.name;
       p.primaryPosition = data.primaryPosition || p.primaryPosition;
       p.secondaryPositions = [...(data.secondaryPositions || [])];
-      for (const key of ['profileId', 'sourcePlayerId', 'sourceOverall', 'source', 'inference'])
-        p[key] = data[key] == null ? null : structuredClone(data[key]);
+      // Named stores, not `p[key] = …`: a keyed store that adds a property turns
+      // an object this large into a dictionary (slow property access everywhere).
+      p.profileId = data.profileId == null ? null : structuredClone(data.profileId);
+      p.sourcePlayerId = data.sourcePlayerId == null ? null : structuredClone(data.sourcePlayerId);
+      p.sourceOverall = data.sourceOverall == null ? null : structuredClone(data.sourceOverall);
+      p.source = data.source == null ? null : structuredClone(data.source);
+      p.inference = data.inference == null ? null : structuredClone(data.inference);
       p.foot = data.foot === 'left' ? 'left' : 'right';
       p.weakFoot = data.weakFoot ?? p.weakFoot;
       p.tendencies = { ...p.tendencies, ...data.tendencies };
