@@ -1,21 +1,20 @@
 // Fast seeded result model for matches that are not simulated by the engine (AI vs AI in a
 // cup group, projections, optional quick-sims). Independent Poisson goals:
 //   lambda_A = goals * exp(+slope * (rA - rB)),  lambda_B = goals * exp(-slope * (rA - rB))
-// with ratings on the effective scale (team OVR + mean link chem). Fitted by Poisson maximum
-// likelihood to 840 engine matches of the Phase 3 engine (tools/calibration/cup-calibration.mjs
-// gaps): a typically drafted XI against ladder opponents at gaps of −12…+20, the AI coach at
-// each difficulty's level, 180 s and 300 s alternating (640 at gaps −12…+12, 200 at +8…+20).
-// goals 1.82 per side at gap 0 (1.58 for 180 s, 2.06 for 300 s; same slope), slope 0.0525 per
-// rating point: gap 0 → 39% W / 22% D / 39% L; +4 → 55/21/24; +8 → 70/16/14; +12 → 83/10/7.
-// Engine vs model by gap: −8…−4 19/15/66 vs 21/19/60, +4…+8 59/25/17 vs 63/18/19, +8…+13
-// 80/14/6 vs 78/13/9. No home or coach constant (the AI coach's level moves the user's edge by
-// at most ±1 rating point, with no trend), and Poisson draws match (16.4% vs 16.9%).
+// with ratings on the effective scale (team OVR + mean link chem). Fitted to 792 matches of the
+// engine in the game's 180 s match (tools/calibration/cup-calibration.mjs gaps): a typically
+// drafted XI against ladder opponents at gaps of −12…+20, the AI coach at each difficulty's
+// level. goals 1.6 per side at gap 0 and slope 0.0575 per rating point reproduce both the
+// scoring level (3.4 goals a match on those gaps) and win/draw/loss by gap:
+// gap 0 → 38% W / 23% D / 39% L; engine vs model −8…−4 19/21/60 vs 20/20/60, +4…+8 67/18/15
+// vs 62/19/18, +8…+13 76/15/9 vs 78/13/9, +13…+17 91/5/4 vs 89/7/4. No home or coach constant
+// (the AI coach's level moves the user's edge by at most ±2 rating points, with no trend).
 // Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
 // rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 
 export const MATCH_MODEL = {
-  goals: 1.82,
-  slope: 0.0525,
+  goals: 1.6,
+  slope: 0.0575,
   maxGoals: 9,
   kick: 0.75,
   kickSlope: 0.005,

@@ -66,7 +66,8 @@ if (result) {
 
 Validates (`createMatchRequest`), stores and navigates to `#/match` (`go: false` to only
 store). Defaults: `id` = `match-<seed36>`, `seed` = random, `view` = `'key'`, `duration` =
-180 for Full (300 allowed), `meta.context` = `'quick'`, `meta.returnTo` = `'#/'`,
+180 (`MATCH_SECONDS`: every view plays the same 3-minute match), `meta.context` = `'quick'`,
+`meta.returnTo` = `'#/'`,
 `meta.userSides` = every side whose `kind` is not `'ai'`. Only one match is held at a time; a
 new request replaces the previous one (and its result).
 
@@ -74,11 +75,13 @@ Views:
 
 | `view` | What the user sees | Engine |
 | --- | --- | --- |
-| `key` | Key Moments: ~30 s of highlights per half, half-time talk (mentality/tactics), second half simulated after the edits; while the first half simulates the stage shows the line-ups walking out (team sheet + progress) | `simulateHalf` twice in a Web Worker on `new Match(seed, 300)` |
+| `key` | Key Moments: ~30 s of highlights per half, half-time talk (mentality/tactics), second half simulated after the edits; while the first half simulates the stage shows the line-ups walking out (team sheet + progress) | `simulateHalf` twice in a Web Worker on `new Match(seed, 180)` |
 | `full` | the whole match live (3 min), 1× / 2× / 4×, skip to next moment, live mentality + tactics | `new Match(seed, duration)` stepped on the main thread |
-| `instant` | a short "simulating" beat, then the result | `simulateComplete` in a Web Worker (300 s profile) |
+| `instant` | a short "simulating" beat, then the result | `simulateComplete` in a Web Worker |
 
-With no half-time edits, Key Moments and Instant give the same result for the same request.
+All three views run the same 180 s match: with no tactical edits along the way, a request gives
+the same result whichever way it is watched. A side that did not choose a mentality gets
+`'auto'` (`buildMatchConfig`): it pushes when behind late and holds a late lead.
 
 ## The result (`readMatchResult(id)`)
 
