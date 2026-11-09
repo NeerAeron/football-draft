@@ -35,6 +35,9 @@ import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
 
 const MENTALITY_LEAN = { push: 1, balanced: 0, hold: -1 };
+// formation(): the last formation name seen per side and its FORMATIONS rows.
+const FORMATION_NAME = [null, null],
+  FORMATION_ROWS = [null, null];
 import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
 import { hypot } from './constants.js';
@@ -465,9 +468,15 @@ export class Match {
     return this.rel(p.x, team) >= 88.5 && Math.abs(p.y - 34) <= 20.16;
   }
   formation(p) {
-    return p.emergencyKeeper
-      ? [4, 34, 'GK']
-      : FORMATIONS[this.teams[p.team].tactics.formation][p.slot];
+    if (p.emergencyKeeper) return [4, 34, 'GK'];
+    // Hot path: remember each side's rows instead of looking the name up every call.
+    const team = p.team,
+      name = this.teams[team].tactics.formation;
+    if (FORMATION_NAME[team] !== name) {
+      FORMATION_ROWS[team] = FORMATIONS[name];
+      FORMATION_NAME[team] = name;
+    }
+    return FORMATION_ROWS[team][p.slot];
   }
   keeper(team) {
     return this.activePlayers.find(p => p.team === team && p.role === 'GK');

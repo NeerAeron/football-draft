@@ -182,6 +182,7 @@ export class Player {
     this._tendencyBits = 0;
     this._familiarity = NaN;
     this._awareness = NaN;
+    this._pressAwareness = NaN;
     this._baseSpeed = NaN;
     this._acceleration = NaN;
     this._memo = null;
@@ -215,6 +216,7 @@ export class Player {
     this._tendencyBits = 0;
     this._familiarity = NaN;
     this._awareness = NaN;
+    this._pressAwareness = NaN;
     this._baseSpeed = NaN;
     this._acceleration = NaN;
     this._stamp = stamp;
@@ -277,12 +279,16 @@ export class Player {
     );
   }
   pressAwareness() {
+    if (stamp !== 0 && this._stamp === stamp && this._pressAwareness === this._pressAwareness)
+      return this._pressAwareness;
     const base = this.awareness(),
       read = this.vision() * 0.6 + this.skill('composure') * this.familiarity() * 0.4 - 10;
-    return (
+    const value =
       base +
-      Math.max(0, read - base) * clamp((this.tuning || CONFIG).gameplay.defensiveQuality, 0, 1)
-    );
+      Math.max(0, read - base) * clamp((this.tuning || CONFIG).gameplay.defensiveQuality, 0, 1);
+    // awareness() above has synced the per-step cache, so the value belongs to this step.
+    if (stamp !== 0) this._pressAwareness = value;
+    return value;
   }
   pressingReading() {
     return Math.max(
