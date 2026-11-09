@@ -1,7 +1,8 @@
 // Match screen controller: owns the Match objects, the playback loop (RAF only while
 // something moves), Key Moments reels from the worker, the Full-mode ring buffer (goal
-// replays, "skip to next moment"), commentary, sound and a throttled HUD store for Preact.
-// Never consumes simulation RNG for presentation.
+// replays, "skip to next moment"), the action camera, moment captions, commentary, sound and
+// a throttled HUD store for Preact. Never consumes simulation RNG for presentation, and the
+// frame loop reuses its view/scene objects (no per-frame allocations on this side).
 import { Match } from '../../../core/sim/engine.js';
 import { snapshot, applyReplayFrame, RECORD_STEP } from '../../../core/sim/replay.js';
 import { matchClock } from '../../../core/sim/periods.js';
@@ -16,15 +17,32 @@ import { markMatchLive, saveMatchResult, FULL_DURATION } from '../../lib/match-s
 import { commentary } from './commentary.js';
 import { summarizeMatch } from './report.js';
 import { forceShootout } from './demo.js';
-import { draw, makeKits, WORLD, SHOOTOUT_CAMERA, mixCamera } from './renderer/index.js';
+import { readJSON, writeJSON } from '../../lib/storage.js';
+import {
+  draw,
+  makeKits,
+  WORLD,
+  ActionCamera,
+  CAMERA_ZOOM,
+  createRenderState,
+  resetRenderState,
+  makeTransform,
+  paintPitch,
+  zoomLayerScale,
+} from './renderer/index.js';
 
 const RING_SECONDS = 12;
 const RING_SIZE = Math.ceil((RING_SECONDS * 60) / RECORD_STEP);
-const CELEBRATE = 2.6;
+const CELEBRATE = 2.2;
 const CELEBRATE_REDUCED = 1.8;
-const REPLAY_BEFORE = 2.6;
-const REPLAY_AFTER = 0.6;
-const REPLAY_RATE = 0.55;
+const REPLAY_BEFORE = 2.8;
+const REPLAY_AFTER = 0.7;
+const REPLAY_RATE = 0.6;
+const FLAIR_LIFE = 1.5;
+// A restart that moves several players at once (a corner being set up, a kick-off) is shown
+// as a cut — a short fade and a camera snap — never as tokens sliding across the pitch.
+const JUMP_PLAYERS = 4;
+const JUMP_SPEED = 13; // m/s no player reaches: anything faster is a reposition
 const FF_BUDGET_MS = 9;
 const SPEEDS = [1, 2, 4];
 
@@ -38,6 +56,18 @@ export function periodLabel(m) {
   if (m.mode === 'shootout' || m.penaltyEnd != null) return 'PENS';
   if (m.mode === 'halftime') return 'HT';
   return ['1H', '2H', 'ET1', 'ET2'][m.half - 1] || '';
+}
+
+/** Camera choice per view ('football-draft-match-camera'): the action camera or the full pitch. */
+export const CAMERA_KEY = 'football-draft-match-camera';
+const CAMERA_DEFAULTS = { key: 'action', full: 'wide' };
+const CAMERA_MODES = ['action', 'wide'];
+export function readCameraPrefs() {
+  const saved = readJSON(CAMERA_KEY, null);
+  const out = { ...CAMERA_DEFAULTS };
+  for (const view of Object.keys(out))
+    if (CAMERA_MODES.includes(saved?.[view])) out[view] = saved[view];
+  return out;
 }
 
 const viewDuration = (view, request) => (view === 'full' ? request.duration || FULL_DURATION : 300);
@@ -75,10 +105,37 @@ export class MatchController {
     this.clock = new PlaybackClock();
     this.sounds = new MatchSoundEvents((cue, options) => playCue(cue, options));
     this.ring = [];
-    this.trail = [];
     this.flash = 0;
-    this.camK = 0;
-    this.camTarget = 0;
+    this.camera = new ActionCamera();
+    this.cameraPrefs = readCameraPrefs();
+    // Reused every frame by render(): the renderer's view and scene (see renderer/draw.js)
+    this.fx = createRenderState();
+    this.flair = { text: '', tone: 'miss', x: 0, y: 0, age: 0, life: FLAIR_LIFE, on: false };
+    this.viewState = {
+      width: 0,
+      height: 0,
+      dpr: 1,
+      orientation: 'landscape',
+      camera: WORLD,
+      zoomed: false,
+      dt: undefined,
+    };
+    this.scene = {
+      match: null,
+      kits: this.kits,
+      fx: this.fx,
+      scorerId: null,
+      flair: null,
+      flash: 0,
+      flashColor: null,
+      dim: 0,
+      still: false,
+    };
+    this.scorerId = null;
+    this.jump = { x: new Float32Array(22), y: new Float32Array(22), match: null, elapsed: 0 };
+    this.baseT = {};
+    this.layered = false;
+    this.frameDt = undefined;
     this.presenting = 'idle';
     this.resumeTo = null;
     this.reel = null;
@@ -129,6 +186,7 @@ export class MatchController {
       result: null,
       halftime: null,
       cut: 0,
+      camera: this.cameraPrefs[request.view] || 'wide',
     });
     this.loop = this.loop.bind(this);
     this.prefetch();
@@ -185,7 +243,7 @@ export class MatchController {
     if (this.hud.get().phase !== 'pre' || view === this.request.view) return;
     this.request = { ...this.request, view, duration: viewDuration(view, this.request) };
     this.preview.setDuration(viewDuration(view, this.request));
-    this.hud.set({ view });
+    this.hud.set({ view, camera: this.cameraPrefs[view] || 'wide' });
     this.prefetch();
   }
 
@@ -318,7 +376,7 @@ export class MatchController {
       clip: 0,
       total: rec.clips.length,
     };
-    this.trail = [];
+    this.resetScene();
     this.sounds.reset(this.display);
     this.presenting = 'reel';
     this.clock.setPaused(this.hud.get().paused, performance.now());
@@ -339,7 +397,7 @@ export class MatchController {
     if (n !== r.clip) {
       const first = r.clip === 0;
       r.clip = n;
-      this.trail = [];
+      this.resetScene();
       this.sounds.reset(this.display);
       this.hud.set({
         clip: { n, total: r.total },
@@ -400,7 +458,7 @@ export class MatchController {
       t: 0,
       length: this.live.elapsed - start,
     };
-    this.trail = [];
+    this.resetScene();
     applyReplayFrame(this.display, this.rw.rec, 0);
     this.sounds.reset(this.display);
     this.presenting = 'rewind';
@@ -421,6 +479,8 @@ export class MatchController {
     this.presenting = 'celebrate';
     this.celebrateLeft = isReducedMotion() ? CELEBRATE_REDUCED : CELEBRATE;
     this.celebrateGoal = goal;
+    this.scorerId = goal.type === 'goal' && !goal.ownGoal ? (goal.playerId ?? null) : null;
+    this.flair.on = false;
     this.flash = isReducedMotion() ? 0 : 1;
     this.hud.set({ presenting: 'celebrate', goal: this.goalInfo(goal), replay: false });
   }
@@ -442,18 +502,22 @@ export class MatchController {
       t: 0,
       length: end - start,
     };
-    this.trail = [];
+    // Show the first replay frame straight away (never a stale frame of the display match)
+    applyReplayFrame(this.display, this.rp.rec, 0);
     this.presenting = 'replay';
     this.hud.set({ presenting: 'replay', replay: true });
+    this.cut();
   }
 
   endCelebration(skipped = false) {
     if (this.presenting !== 'celebrate' && this.presenting !== 'replay') return;
     const back = this.resumeTo || 'live';
+    const replayed = this.presenting === 'replay';
     this.resumeTo = null;
     this.rp = null;
-    this.trail = [];
     this.hud.set({ goal: null, replay: false });
+    if (replayed) this.cut();
+    else this.resetScene();
     if (back === 'reel') {
       this.presenting = 'reel';
       this.applyReel();
@@ -566,7 +630,9 @@ export class MatchController {
     const result = summarizeMatch(m, this.request);
     saveMatchResult(result);
     this.finalMatch = m;
-    this.trail = [];
+    this.resetScene();
+    this.scorerId = null;
+    this.flair.on = false;
     this.flash = 0;
     const instant = this.request.view === 'instant';
     this.hud.set({
@@ -643,6 +709,7 @@ export class MatchController {
       this.momentsDirty = true;
     }
     if (recent) {
+      this.momentFlair(e, m);
       this.feed = [line, ...this.feed.filter(x => x.id !== line.id)].slice(0, 40);
       this.feedDirty = true;
       if (line.level >= 3) {
@@ -660,6 +727,95 @@ export class MatchController {
     }
     if (e.type === 'goal') this.seenGoals.add(e.id);
     return null;
+  }
+
+  /** Woodwork, near misses and big saves get a caption on the pitch (renderer `flair`). */
+  momentFlair(e, m) {
+    const f = this.flair;
+    let text = null,
+      tone = 'miss';
+    if (e.type === 'post') {
+      text = e.frame === 'bar' ? 'OFF THE BAR!' : 'OFF THE POST!';
+      tone = 'gold';
+    } else if (e.type === 'near-miss') text = e.miss === 'over' ? 'JUST OVER!' : 'JUST WIDE!';
+    else if (e.type === 'save' && (e.difficulty ?? 0) >= 0.7) {
+      text = 'WHAT A SAVE!';
+      tone = 'save';
+    }
+    if (!text) return;
+    const keeper = e.type === 'save' ? m.players[e.playerId] : null,
+      b = m.ball,
+      end = (keeper ? keeper.x : b.x) > 52.5 ? 105 : 0;
+    f.text = text;
+    f.tone = tone;
+    f.x = keeper ? keeper.x : end;
+    f.y = keeper ? keeper.y : Math.max(28, Math.min(40, b.y));
+    f.age = 0;
+    f.on = true;
+  }
+
+  // ---------- camera ----------
+
+  /** 'action' (follow the ball) or 'wide' (the whole pitch) for the current view; persisted. */
+  setCamera(mode) {
+    if (!CAMERA_MODES.includes(mode)) return;
+    const view = this.request.view;
+    if (view in this.cameraPrefs) {
+      this.cameraPrefs[view] = mode;
+      writeJSON(CAMERA_KEY, this.cameraPrefs);
+    }
+    this.hud.set({ camera: mode });
+    this.kick();
+    this.requestDraw();
+  }
+
+  toggleCamera() {
+    this.setCamera(this.hud.get().camera === 'action' ? 'wide' : 'action');
+  }
+
+  /** What the camera should do for the match on screen. */
+  cameraMode(m) {
+    if (m.mode === 'shootout' || m.penaltyEnd != null) return 'shootout';
+    if (isReducedMotion()) return 'wide';
+    const p = this.presenting;
+    if (p === 'replay') return 'follow'; // the replay is always the close-up
+    if (p === 'idle' || p === 'ff') return 'wide';
+    return this.hud.get().camera === 'action' ? 'follow' : 'wide';
+  }
+
+  /** A cut: a short fade over the stage, the camera jumps, trails and label memory reset. */
+  cut() {
+    this.resetScene();
+    this.hud.set({ cut: this.hud.get().cut + 1 });
+  }
+
+  resetScene() {
+    resetRenderState(this.fx);
+    this.camera.snap();
+    this.jump.match = null;
+  }
+
+  /** Several players moved further than anyone can run: the engine set up a restart. */
+  jumped(m) {
+    const j = this.jump,
+      players = m.players,
+      same = j.match === m,
+      span = m.elapsed - j.elapsed,
+      reach = same && span >= 0 && span < 1 ? JUMP_SPEED * span + 1.5 : -1;
+    let count = 0;
+    for (let i = 0; i < players.length && i < 22; i++) {
+      const p = players[i];
+      if (reach >= 0 && !p.sentOff) {
+        const dx = p.x - j.x[i],
+          dy = p.y - j.y[i];
+        if (dx * dx + dy * dy > reach * reach) count++;
+      }
+      j.x[i] = p.x;
+      j.y[i] = p.y;
+    }
+    j.match = m;
+    j.elapsed = m.elapsed;
+    return count >= JUMP_PLAYERS;
   }
 
   /** Process everything up to now without ticker/overlays (cuts, half-time, instant). */
@@ -710,9 +866,18 @@ export class MatchController {
     this.setSpeed(SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, i + dir))]);
   }
 
-  attach(canvas) {
+  /**
+   * `canvas` shows the players. With `pitch` and `pitchZoom` (two canvases under it) the
+   * pitch is a layer of its own: painted once per size and moved by CSS when the camera
+   * zooms, so a frame redraws only the tokens.
+   */
+  attach(canvas, pitch = null, pitchZoom = null) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d', { alpha: false });
+    this.pitchCanvas = pitch;
+    this.zoomCanvas = pitchZoom;
+    this.layered = !!(pitch && pitchZoom);
+    this.viewState.pitch = !this.layered;
+    this.ctx = canvas.getContext('2d', { alpha: this.layered });
     this.resize();
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(canvas);
@@ -738,13 +903,60 @@ export class MatchController {
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.round(rect.width * dpr)),
       h = Math.max(1, Math.round(rect.height * dpr));
-    if (c.width !== w || c.height !== h) {
+    const resized = c.width !== w || c.height !== h;
+    if (resized) {
       c.width = w;
       c.height = h;
     }
     this.dpr = dpr;
     this.orientation = rect.height > rect.width * 1.02 ? 'portrait' : 'landscape';
+    this.camera.resize(w, h, this.orientation);
+    if (this.layered && (resized || this.pitchKey !== this.orientation)) {
+      this.pitchKey = this.orientation;
+      makeTransform({ width: w, height: h, orientation: this.orientation }, this.baseT);
+      paintPitch(this.pitchCanvas, w, h, this.orientation);
+      // The zoomed copy is painted ahead of the first camera move (not during a frame)
+      this.zoomPainted = false;
+      this.pitchZoomed = null;
+      clearTimeout(this.layerTimer);
+      if (!isReducedMotion()) this.layerTimer = setTimeout(() => this.paintZoom(), 300);
+    }
     this.requestDraw();
+  }
+
+  paintZoom() {
+    const c = this.canvas;
+    if (this.disposed || !this.layered || this.zoomPainted || !c?.width) return;
+    paintPitch(
+      this.zoomCanvas,
+      c.width,
+      c.height,
+      this.orientation,
+      zoomLayerScale(c.width, c.height),
+    );
+    this.zoomPainted = true;
+  }
+
+  /** Show the pitch layer that matches the camera and move the zoomed one under it. */
+  placePitch() {
+    const zoomed = this.camera.zoomed;
+    if (zoomed !== this.pitchZoomed) {
+      this.pitchZoomed = zoomed;
+      if (zoomed) this.paintZoom();
+      this.canvas.parentNode?.classList.toggle('is-zoomed', zoomed);
+    }
+    if (!zoomed) return;
+    // base (zoom 1) pixels → this frame's pixels: scale k about the origin, then translate
+    const t = this.fx.t,
+      b = this.baseT,
+      k = t.s / b.s,
+      x = (t.e - k * b.e) / this.dpr,
+      y = (t.f - k * b.f) / this.dpr;
+    if (x === this.pitchX && y === this.pitchY && k === this.pitchK) return;
+    this.pitchX = x;
+    this.pitchY = y;
+    this.pitchK = k;
+    this.zoomCanvas.style.transform = `translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) scale(${k.toFixed(5)})`;
   }
 
   /** Make sure the loop runs (it stops itself when nothing moves). */
@@ -759,6 +971,7 @@ export class MatchController {
     if (!this.raf && !this.disposed)
       this.raf = requestAnimationFrame(now => {
         this.raf = 0;
+        this.frameDt = undefined;
         this.render(now);
         if (this.moving()) this.kick();
       });
@@ -770,7 +983,7 @@ export class MatchController {
       !this.disposed &&
       ((!paused && this.presenting !== 'idle') ||
         this.flash > 0.01 ||
-        Math.abs(this.camK - this.camTarget) > 0.002)
+        (!paused && (!this.camera.settled || this.flair.on)))
     );
   }
 
@@ -780,6 +993,7 @@ export class MatchController {
     const t0 = performance.now();
     const dt = this.clock.frame(now, document.hidden);
     this.update(dt, now);
+    this.frameDt = dt;
     this.render(now);
     const spent = performance.now() - t0;
     const perf = this.perf;
@@ -839,13 +1053,29 @@ export class MatchController {
       }
     }
     this.flash = Math.max(0, this.flash - dt * 1.6);
-    const m = this.presented();
-    this.camTarget = m && (m.mode === 'shootout' || m.penaltyEnd != null) ? 1 : 0;
-    this.camK = isReducedMotion()
-      ? this.camTarget
-      : this.camK + (this.camTarget - this.camK) * Math.min(1, dt * 2.4);
-    if (['live', 'reel', 'rewind'].includes(this.presenting) && dt > 0)
-      this.sounds.update(m, { audible: !document.hidden });
+    const m = this.presented(),
+      p = this.presenting,
+      playing = p === 'live' || p === 'reel' || p === 'rewind';
+    if (this.flair.on && (this.flair.age += dt) >= this.flair.life) this.flair.on = false;
+    if (playing) {
+      // The scorer stays labelled until the game restarts
+      if (this.scorerId != null && !(m.mode === 'restart' && m.restart?.type === 'Goal'))
+        this.scorerId = null;
+      if (this.jumped(m)) this.cut();
+    }
+    const mode = this.cameraMode(m),
+      replay = p === 'replay';
+    if (isReducedMotion()) this.camera.snap();
+    // The camera holds still under the goal banner. Live, it keeps match time (it tracks as
+    // tightly at 2× / 4×, from a wider view).
+    if (p !== 'celebrate' || mode === 'shootout')
+      this.camera.update(
+        replay ? dt : dt * speed,
+        m,
+        mode,
+        replay ? CAMERA_ZOOM.replay : speed >= 4 ? 1.2 : speed >= 2 ? 1.35 : CAMERA_ZOOM.follow,
+      );
+    if (playing && dt > 0) this.sounds.update(m, { audible: !document.hidden });
     this.updateHud(m);
   }
 
@@ -1012,40 +1242,24 @@ export class MatchController {
     if (!this.ctx || !this.visible || !this.canvas.width) return;
     const m = this.presented();
     if (!m) return;
-    // ball trail of what is on screen
-    const b = m.ball,
-      lastPt = this.trail.at(-1);
-    if (lastPt && (Math.hypot(lastPt.x - b.x, lastPt.y - b.y) > 6 || lastPt.m !== m))
-      this.trail = [];
-    if (!lastPt || lastPt.x !== b.x || lastPt.y !== b.y)
-      this.trail.push({ x: b.x, y: b.y, z: b.z || 0, kind: b.kind, m });
-    if (this.trail.length > 16) this.trail.shift();
-    const k = this.camK;
-    draw(
-      this.ctx,
-      {
-        width: this.canvas.width,
-        height: this.canvas.height,
-        dpr: this.dpr || 1,
-        orientation: this.orientation || 'landscape',
-        camera:
-          k < 0.001
-            ? WORLD
-            : mixCamera(
-                WORLD,
-                SHOOTOUT_CAMERA[this.orientation === 'portrait' ? 'portrait' : 'landscape'],
-                k * k * (3 - 2 * k),
-              ),
-      },
-      {
-        match: m,
-        kits: this.kits,
-        trail: this.trail,
-        flash: this.flash,
-        flashColor: this.kits[this.celebrateGoal?.team ?? 0]?.primary,
-        dim: this.hud.get().paused && this.presenting !== 'idle' ? 1 : 0,
-      },
-    );
+    const cam = this.camera,
+      view = this.viewState,
+      scene = this.scene;
+    view.width = this.canvas.width;
+    view.height = this.canvas.height;
+    view.dpr = this.dpr || 1;
+    view.orientation = this.orientation || 'landscape';
+    view.zoomed = cam.zoomed;
+    view.camera = cam.zoomed ? cam.rect : WORLD;
+    view.dt = this.frameDt;
+    scene.match = m;
+    scene.scorerId = this.scorerId;
+    scene.flair = this.flair.on ? this.flair : null;
+    scene.flash = this.flash;
+    scene.flashColor = this.kits[this.celebrateGoal?.team ?? 0]?.primary;
+    scene.dim = this.hud.get().paused && this.presenting !== 'idle' ? 1 : 0;
+    draw(this.ctx, view, scene);
+    if (this.layered) this.placePitch();
   }
 
   dispose() {
@@ -1053,6 +1267,7 @@ export class MatchController {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.prefetchTimer);
     clearTimeout(this.fulltimeTimer);
+    clearTimeout(this.layerTimer);
     for (const name of Object.keys(this.jobs)) this.cancelJob(name);
     this.awaiting?.cancel();
     this.ro?.disconnect();

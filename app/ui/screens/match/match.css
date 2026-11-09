@@ -408,6 +408,28 @@
     margin-inline: auto;
   }
 }
+/* The pitch is its own layer under the players' canvas: painted once per size, and moved by
+   the compositor when the action camera zooms (the --zoom copy is a higher-resolution
+   bitmap shown only then). Each frame redraws just the tokens. */
+.match-stage__pitch {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.match-stage__pitch--zoom {
+  visibility: hidden;
+  will-change: transform;
+}
+.match-stage.is-zoomed .match-stage__pitch {
+  visibility: hidden;
+}
+.match-stage.is-zoomed .match-stage__pitch--zoom {
+  visibility: visible;
+}
 .match-stage__canvas {
   /* Out of flow: the stage's size comes from CSS only, never from the canvas bitmap. */
   position: absolute;
@@ -1026,8 +1048,17 @@
 .match-controls__mentality .segmented__item {
   flex: 1;
 }
-.match-controls__tactics {
+.match-controls__end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-left: auto;
+}
+/* Narrow phones: "Next" alone leaves room for the camera toggle on the one row */
+@media (max-width: 419px) {
+  .match-controls__word {
+    display: none;
+  }
 }
 .match-controls__mentality {
   display: flex;
@@ -1726,5 +1757,24 @@
   }
   .match-ticker {
     display: none;
+  }
+  /* A short stage: the goal banner shrinks so the pitch stays visible around it */
+  .goal__banner {
+    min-width: 0;
+    padding: var(--space-2) var(--space-5) var(--space-3);
+  }
+  .goal__word {
+    font-size: 2.4rem;
+  }
+  .goal__score {
+    font-size: var(--display-sm);
+  }
+  .goal__who {
+    margin-top: 0;
+    font-size: var(--text-md);
+  }
+  .goal__tag {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
   }
 }
