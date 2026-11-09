@@ -99,13 +99,15 @@ export class PassingMethods {
     for (const q of this.activePlayers) {
       if (q.team === p.team) continue;
       const reaction = 0.1 + (100 - q.pressAwareness()) * 0.002,
-        reach = delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007;
+        reach = delivery === 'cross' ? 2 : 1.6 + q.skill('heading') * 0.007,
+        speed = q.arrivalSpeed(),
+        acceleration = q.acceleration();
       let threat = 0;
       for (let i = 0; i < 5; i++) {
         if (loft && LANE_Z[i] > reach) continue;
         point.x = LANE_X[i];
         point.y = LANE_Y[i];
-        const arrival = q.arrival(point) + reaction;
+        const arrival = q.arrivalAt(point, speed, acceleration) + reaction;
         threat = Math.max(threat, sigmoid((LANE_T[i] - arrival + 0.04) * 5));
       }
       const disguise =

@@ -202,9 +202,11 @@ export class DefenceMethods {
             close = this.ball.owner === carrier.id ? clamp((10 - gap) / 4, 0, 1) : 0;
           const motion = close ? this.carrierMotion(p, carrier) : carrier;
           if (close)
+            // intercept() reads only the target's position and velocity.
             point = p.intercept(
               {
-                ...carrier,
+                x: carrier.x,
+                y: carrier.y,
                 vx: lerp(carrier.vx, motion.vx, close),
                 vy: lerp(carrier.vy, motion.vy, close),
               },

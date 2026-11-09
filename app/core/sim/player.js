@@ -175,8 +175,11 @@ export class Player {
     this.actionSince = 0;
     this.bylineAt = null;
     this._stamp = 0;
+    // Per-step values; bit i of _skillBits / _tendencyBits says slot i is set.
     this._skills = null;
     this._tendencies = null;
+    this._skillBits = 0;
+    this._tendencyBits = 0;
     this._familiarity = NaN;
     this._awareness = NaN;
     this._baseSpeed = NaN;
@@ -188,19 +191,28 @@ export class Player {
       const slot = SKILL_SLOT[key];
       if (slot !== undefined) {
         if (this._stamp !== stamp) this.syncCache();
-        const cached = this._skills[slot];
-        if (cached === cached) return cached;
+        const bit = 1 << slot;
+        if ((this._skillBits & bit) !== 0) return this._skills[slot];
         const memo = this.memo(),
-          known = memo.skills[slot];
-        return (this._skills[slot] =
-          known === known ? known : (memo.skills[slot] = this.rawSkill(key)));
+          known = memo.skills[slot],
+          value = known === known ? known : (memo.skills[slot] = this.rawSkill(key));
+        // NaN (a broken attribute) is never kept, as before: every read recomputes.
+        if (value === value) {
+          this._skills[slot] = value;
+          this._skillBits |= bit;
+        }
+        return value;
       }
     }
     return this.rawSkill(key);
   }
   syncCache() {
-    (this._skills ??= new Float64Array(SKILL_KEYS.length)).fill(NaN);
-    (this._tendencies ??= new Float64Array(TENDENCY_KEYS.length)).fill(NaN);
+    if (this._skills === null) {
+      this._skills = new Float64Array(SKILL_KEYS.length);
+      this._tendencies = new Float64Array(TENDENCY_KEYS.length);
+    }
+    this._skillBits = 0;
+    this._tendencyBits = 0;
     this._familiarity = NaN;
     this._awareness = NaN;
     this._baseSpeed = NaN;
@@ -291,14 +303,19 @@ export class Player {
     const slot = TENDENCY_SLOT[key];
     if (slot === undefined) return preference(this, key);
     if (this._stamp !== stamp) this.syncCache();
-    const cached = this._tendencies[slot];
-    if (cached === cached) return cached;
+    const bit = 1 << slot;
+    if ((this._tendencyBits & bit) !== 0) return this._tendencies[slot];
     // Only the attribute-driven part is memoised; the stored tendency, its
     // weight and the badge adjustments are read live.
     const memo = this.memo();
     let ability = memo.abilities[slot];
     if (ability !== ability) ability = memo.abilities[slot] = tendencyAbility(this, key);
-    return (this._tendencies[slot] = blendPreference(this, key, ability));
+    const value = blendPreference(this, key, ability);
+    if (value === value) {
+      this._tendencies[slot] = value;
+      this._tendencyBits |= bit;
+    }
+    return value;
   }
   baseSpeed() {
     if (stamp !== 0 && this._stamp === stamp && this._baseSpeed === this._baseSpeed)
@@ -325,11 +342,19 @@ export class Player {
       (0.72 + this.energy * 0.28)
     );
   }
+  // Time to reach a target. It splits into two values that depend only on the
+  // player (arrivalSpeed, acceleration) and the per-target part (arrivalAt), so
+  // a loop over many targets can read the player's values once.
   arrival(target) {
+    return this.arrivalAt(target, this.arrivalSpeed(), this.acceleration());
+  }
+  arrivalSpeed() {
+    return this.topSpeed() * (this.sprint < 0.2 || this.sprintRest > 0 ? 0.73 : 0.97);
+  }
+  arrivalAt(target, speed, acceleration) {
     const d = dist(this, target),
-      speed = this.topSpeed() * (this.sprint < 0.2 || this.sprintRest > 0 ? 0.73 : 0.97),
       toward = ((target.x - this.x) * this.vx + (target.y - this.y) * this.vy) / (d || 1);
-    return d / speed + ((1 - clamp(toward / speed, -1, 1)) * 0.28 * 9.28) / this.acceleration();
+    return d / speed + ((1 - clamp(toward / speed, -1, 1)) * 0.28 * 9.28) / acceleration;
   }
   intercept(target, maxTime = 2.4) {
     const rx = target.x - this.x,
