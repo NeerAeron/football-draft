@@ -3,7 +3,8 @@
 import { clamp, lerp } from '../util/math.js';
 import { H, dist, hypot } from './constants.js';
 
-const NONE = [];
+const NONE = [],
+  THREAT = new Float64Array(22); // scratch: threat value by player id
 
 export class DefenceMethods {
   markingPoint(team, attacker, defender, coordination = 0) {
@@ -251,13 +252,16 @@ export class DefenceMethods {
       x: clamp(press.point.x + ((goal.x - press.point.x) / gdist) * 5, 1, 104),
       y: clamp(press.point.y + ((34 - press.point.y) / gdist) * 5, 1, 67),
     };
+    // Each candidate's run to the cover point is computed once, not per comparison.
+    const excluded = [press.p.id];
     const alternatives = bids
       .slice(1)
-      .map(b => ({ ...b, abandonment: this.abandonment(team, b.p, carrier, [press.p.id]) }))
-      .sort(
-        (a, b) =>
-          a.p.arrival(coverPoint) + a.abandonment * 3 - b.p.arrival(coverPoint) - b.abandonment * 3,
-      );
+      .map(b => ({
+        ...b,
+        abandonment: this.abandonment(team, b.p, carrier, excluded),
+        arrival: b.p.arrival(coverPoint),
+      }))
+      .sort((a, b) => a.arrival + a.abandonment * 3 - b.arrival - b.abandonment * 3);
     const depth = this.rel(carrier.x, team),
       closing = -carrier.vx * this.direction(team),
       pressArrival = press.p.arrival(press.point);
@@ -268,18 +272,19 @@ export class DefenceMethods {
     const candidate = alternatives[0],
       needsCover = breaking || (depth < 45 && Math.abs(carrier.y - 34) < 22 && pressArrival > 0.5);
     const cover =
-      needsCover && candidate.abandonment < 0.28 && candidate.p.arrival(coverPoint) < 1.8
-        ? candidate.p.id
-        : null;
+      needsCover && candidate.abandonment < 0.28 && candidate.arrival < 1.8 ? candidate.p.id : null;
     return { press: press.p.id, point: press.point, cover, coverPoint };
   }
   assignMarks(team, carrier, defence, coordination = 0) {
     const defenders = this.activePlayers.filter(
       p => p.team === team && p.role !== 'GK' && p.id !== defence?.press && p.id !== defence?.cover,
     );
-    const attackers = this.activePlayers
-      .filter(p => p.team !== team && p.role !== 'GK' && p.id !== carrier?.id)
-      .sort((a, b) => this.threatValue(team, b) - this.threatValue(team, a) || a.id - b.id);
+    // Most dangerous first; each attacker's threat is computed once, not per comparison.
+    const attackers = this.activePlayers.filter(
+      p => p.team !== team && p.role !== 'GK' && p.id !== carrier?.id,
+    );
+    for (const a of attackers) THREAT[a.id] = this.threatValue(team, a);
+    attackers.sort((a, b) => THREAT[b.id] - THREAT[a.id] || a.id - b.id);
     const marks = new Map();
     for (const id of [defence?.press, defence?.cover])
       if (id != null) this.players[id].markId = null;
