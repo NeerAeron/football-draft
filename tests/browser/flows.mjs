@@ -380,10 +380,13 @@ export const flows = [
           .catch(() => {});
         await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
       });
-      await step('draft type switch', async () => {
-        await page.click('.home-hero__seg label:has-text("Clubs")');
+      await step('the World Cup is a Nations draft; no footer links', async () => {
+        if (await page.locator('.home-hero__seg').count()) throw new Error('draft type switch');
         const target = await page.getAttribute('[data-testid="start-run"]', 'href');
-        if (target !== '#/play/run?type=clubs') throw new Error(`CTA points to ${target}`);
+        if (target !== '#/play/run') throw new Error(`CTA points to ${target}`);
+        if (await page.locator('.home__footer a').count()) throw new Error('footer links');
+        const brand = await page.textContent('.brand__word');
+        if (!/World Cup\s*Draft/i.test(brand)) throw new Error(`brand reads ${brand}`);
       });
       await step('dismiss first-run tips', async () => {
         await page.click('button[aria-label="Hide how it works"]');
@@ -504,16 +507,19 @@ export const flows = [
       await seed(page, ONBOARDED);
       await page.goto(`${base}#/play/run`);
       await step('run setup', () => visible(page, '[data-screen="setup"][data-mode="run"]'));
-      await step('opponents loaded', () => visible(page, '.ladder__examples:not(.is-muted)'));
+      await step('World Cup is a Nations draft: no draft-type choice', async () => {
+        if (await page.locator('.type-card').count()) throw new Error('type cards on run setup');
+        const text = await page.textContent('[data-screen="setup"]');
+        if (/typical XI|Teams like|rated about/i.test(text))
+          throw new Error('setup still shows ratings or example teams');
+      });
       await page.evaluate(() => document.fonts.ready);
       await shot('run');
       if (viewport === 'mobile') await shot('run-full', { fullPage: true });
-      await step('choose clubs + world class + 4-4-2', async () => {
-        await page.click('.type-card:has-text("Clubs")');
+      await step('choose world class + 4-4-2', async () => {
         await page.click('.ladder__row:has-text("World Class")');
         await page.click('.formation-card:has-text("4–4–2")');
         for (const [name, value] of [
-          ['setup-type', 'clubs'],
           ['setup-difficulty', 'worldclass'],
           ['setup-formation', '442'],
         ])
@@ -534,6 +540,10 @@ export const flows = [
             throw new Error(`${name} is not ${value}`);
       });
       await shot('quick-challenge');
+      await step('quick match offers nations, leagues and clubs', async () => {
+        const types = await page.$$eval('input[name="setup-type"]', l => l.map(i => i.value));
+        if (types.join() !== 'nations,leagues,clubs') throw new Error(`types: ${types}`);
+      });
       await step('versus setup', async () => {
         await page.goto(`${base}#/play/versus`);
         await visible(page, '[data-screen="setup"][data-mode="versus"]');
@@ -793,10 +803,14 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('arrival', { fullPage: viewport === 'mobile' });
-      await step('play matchday 1', async () => {
+      await step('matchday 1 is played in the draft formation', async () => {
         await page.click('[data-testid="play-fixture"]');
-        await finishMatch(page);
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+        if (!(await page.isDisabled('[data-testid="formation-select"]')))
+          throw new Error('the formation can change before the first match');
       });
+      await shot('first-match-locked');
+      await step('play matchday 1', () => finishMatch(page));
       await step('result banner + record', async () => {
         await visible(page, '[data-testid="result-banner"]', 60000);
         const record = await page.textContent('.run-head__wdl');

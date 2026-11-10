@@ -1,6 +1,6 @@
 {
-  "name": "Football Draft",
-  "short_name": "Football Draft",
+  "name": "World Cup Draft",
+  "short_name": "WC Draft",
   "description": "Spin, pick and build an XI from real FC 26 players, then take it through a World Cup run in a live 2D match simulation.",
   "id": "./",
   "start_url": "./",

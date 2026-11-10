@@ -269,6 +269,7 @@ function Lineup({ side, index, players, title, hideRatings }) {
         <${Icon} name="layout-grid" size=${16} />
         <select
           value=${side.formation}
+          disabled=${side.formationLocked}
           onChange=${e => changeFormation(index, e.currentTarget.value)}
           data-testid="formation-select"
         >
@@ -276,6 +277,13 @@ function Lineup({ side, index, players, title, hideRatings }) {
         </select>
       </label>
     </div>
+    ${
+      side.formationLocked &&
+      html`<p class="lineup__locked" data-testid="formation-locked">
+        <${Icon} name="lock" size=${14} /> You play your draft formation in the first match. From
+        the second match on you can change it.
+      </p>`
+    }
     <p class="lineup__hint" aria-live="polite">
       ${
         pickedName

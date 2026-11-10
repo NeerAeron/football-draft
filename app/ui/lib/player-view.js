@@ -13,7 +13,7 @@
 //   nation?: { name: 'Egypt', code: 'eg' },
 //   club?: { name: 'Liverpool', short?: 'LIV', colors: ['#C8102E', '#FFFFFF'] },
 //   league?: { name: 'English Premier League', logo?: './assets/logos/…png', tier?: 'A' },
-//   stats?: [{ key: 'PAC', label: 'Pace', value: 89 }, …],  // six summary stats
+//   stats?: [{ key: 'PAC', label: 'Pace', value: 89 }, …],  // six summary stats, FC order
 //   badges?: [{ id: 'finisher', label: 'Clinical Finish' }],
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
@@ -46,6 +46,29 @@ export function summaryStats(attrs, position) {
     label: GROUP[group].label,
     value: categoryRating({ attrs }, GROUP[group]),
   }));
+}
+
+// The three stats a compact player row shows, by position: what that position is judged on.
+export const KEY_STATS = {
+  GK: ['GK', 'PAS', 'PHY'],
+  CB: ['DEF', 'PHY', 'PAC'],
+  LB: ['PAC', 'DEF', 'PAS'],
+  RB: ['PAC', 'DEF', 'PAS'],
+  DM: ['DEF', 'PAS', 'PHY'],
+  CM: ['PAS', 'DRI', 'PHY'],
+  AM: ['PAS', 'DRI', 'SHO'],
+  LM: ['PAC', 'DRI', 'PAS'],
+  RM: ['PAC', 'DRI', 'PAS'],
+  LW: ['PAC', 'DRI', 'SHO'],
+  RW: ['PAC', 'DRI', 'SHO'],
+  ST: ['SHO', 'PAC', 'PHY'],
+};
+
+/** The summary stats with the position's key stats first (compact rows show the first three). */
+export function keyStatsFirst(stats = [], position) {
+  const keys = KEY_STATS[position] || KEY_STATS.CM;
+  const first = keys.map(k => stats.find(s => s.key === k)).filter(Boolean);
+  return [...first, ...stats.filter(s => !keys.includes(s.key))];
 }
 
 /**

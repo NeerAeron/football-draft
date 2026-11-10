@@ -18,16 +18,18 @@ Home → Start (setup) → the reel is already spinning: two taps from Home to t
 
 | Param | Values | Notes |
 | --- | --- | --- |
-| `type` | `nations` · `leagues` · `clubs` · `club-country` (also `clubAndCountry`) | default: last Home choice (`prefs.draftType`) |
+| `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`). `club-country` is no longer offered and reads as `nations` |
 | `difficulty` | `amateur` · `semipro` · `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` |
 | `formation` | any `FORMATIONS` key (`433`, `4231-wide`, …) | default: last choice, else `433` |
 | `seed` | digits (uint32) or any string (FNV-1a, like the core) | **implies standard rules** (`useDefaultRules`), shows the Challenge banner |
 | `hide` / `unique` | `1` / `0` | Ball Knower / one player per nation (nation spins only) |
 
 Last choices per mode are remembered in `football-draft-setup` (`{ run: { difficulty, formation,
-uniqueNations, names, kits }, … }`). The difficulty ladder shows opponent strength (`ladderTarget`),
-re-rolls, example teams (`ladderPreview`) and, for runs, the stage a typical draft reaches
-(`projectRun` on the mode baseline).
+uniqueNations, names, kits }, … }`). The difficulty ladder shows each level's name, a
+word on the opponents and the re-rolls — no ratings or example teams — and, for runs, the stage
+"a good manager reaches" (`projectRun` on the mode baseline). The World Cup setup says the
+formation is played in the first match (`formationLocked` on that pre-match side, see
+`docs/ui-run.md`).
 
 ## `lib/draft-store.js` (framework-free, Node-tested)
 

@@ -35,7 +35,7 @@ const stageUnlessNamed = (stageLabel, grade) =>
  * extras: { title, daily: { number, id }, rating (team OVR), perfectPct, points, hideRatings,
  *           uniqueNations, url }
  *
- *   ⚽ Football Draft · Daily #7
+ *   ⚽ World Cup Draft · Daily #7
  *   🟩🟩🟨 🟩🟩🟥
  *   5-1-1 · B+ Semi-final Heartbreak          (the stage only when the verdict does not name it)
  *   XI 82.9 · 98.6% of perfect · 1,104 pts
@@ -44,7 +44,7 @@ const stageUnlessNamed = (stageLabel, grade) =>
  */
 export function shareText(snapshot, extras = {}) {
   const {
-    title = 'Football Draft',
+    title = 'World Cup Draft',
     daily = null,
     rating = null,
     perfectPct = null,

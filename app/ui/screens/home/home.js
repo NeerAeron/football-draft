@@ -11,7 +11,6 @@ import { Button, IconButton } from '../../components/button.js';
 import { Card } from '../../components/card.js';
 import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
-import { Segmented } from '../../components/segmented.js';
 import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { HeroArt } from './hero-art.js';
@@ -21,15 +20,7 @@ export const DRAFT_TYPE_OPTIONS = [
   { value: 'nations', label: 'Nations' },
   { value: 'leagues', label: 'Leagues' },
   { value: 'clubs', label: 'Clubs' },
-  { value: 'club-country', label: 'Club & Country' },
 ];
-
-const TYPE_HINT = {
-  nations: 'Spin a nation, pick from its best 23 call-ups.',
-  leagues: 'Spin a league, pick anyone who plays there.',
-  clubs: 'One spin lands a league and a club — pick from that squad.',
-  'club-country': 'Alternate nation and league spins. Overlaps link up.',
-};
 
 const TYPE_LABEL = Object.fromEntries(DRAFT_TYPE_OPTIONS.map(o => [o.value, o.label]));
 
@@ -89,7 +80,7 @@ function RunPath({ stage = null, record = null, perfect = true }) {
   </div>`;
 }
 
-function Hero({ type }) {
+function Hero() {
   return html`<section class="home-hero card card--hero" aria-labelledby="home-hero-title">
     <div class="home-hero__art"><${HeroArt} /></div>
     <div class="home-hero__content">
@@ -104,22 +95,13 @@ function Hero({ type }) {
       </div>
       <${RunPath} />
       <div class="home-hero__launch">
-        <${Segmented}
-          label="Draft from"
-          options=${DRAFT_TYPE_OPTIONS}
-          value=${type}
-          onChange=${v => setPref('draftType', v)}
-          block
-          size="sm"
-          class="home-hero__seg"
-        />
-        <p class="home-hero__hint" aria-live="polite">${TYPE_HINT[type]}</p>
+        <p class="home-hero__hint">Spin a nation, pick from its best 23 call-ups.</p>
         <${Button}
           variant="primary"
           size="xl"
           block
           iconEnd="arrow-right"
-          href=${href('/play/:mode', { mode: 'run' }, { type })}
+          href=${href('/play/:mode', { mode: 'run' })}
           class="home-hero__cta"
           data-testid="start-run"
           >Start World Cup Run<//
@@ -180,7 +162,9 @@ const DRAFT_KIND = {
 function DraftCard({ draft }) {
   const kind = DRAFT_KIND[draft.context.kind] || 'Draft';
   const type =
-    TYPE_LABEL[draft.context.type === 'clubAndCountry' ? 'club-country' : draft.context.type];
+    draft.context.type === 'clubAndCountry' || draft.context.type === 'club-country'
+      ? 'Club & Country'
+      : TYPE_LABEL[draft.context.type];
   const total = draft.total || 11;
   const pct = Math.round((draft.picks / total) * 100);
   return html`<${Card}
@@ -378,11 +362,7 @@ function FirstRun() {
 }
 
 export default function Home() {
-  const { draftType, onboarded } = useStore(
-    prefs,
-    p => p,
-    (a, b) => a.draftType === b.draftType && a.onboarded === b.onboarded,
-  );
+  const onboarded = useStore(prefs, p => p.onboarded);
   const run = useMemo(readSavedRun, []);
   const draft = useMemo(readSavedDraft, []);
   const daily = useMemo(readDailyStatus, []);
@@ -393,7 +373,7 @@ export default function Home() {
   }, []);
   return html`<div class="screen home" data-screen="home">
     <div class="container home__grid">
-      <div class="home__main"><${Hero} type=${draftType} /></div>
+      <div class="home__main"><${Hero} /></div>
       ${!onboarded && html`<div class="home__first"><${FirstRun} /></div>`}
       <div class="home__side">
         <div class="home__cards">
@@ -406,10 +386,6 @@ export default function Home() {
       ${records.runs > 0 && html`<div class="home__records"><${Cabinet} records=${records} /></div>`}
     </div>
     <footer class="container home__footer">
-      <nav class="home__links" aria-label="More">
-        <a href=${href('/settings', {}, { section: 'credits' })}>Credits & licences</a>
-        <a href="./config.html">Advanced tuning</a>
-      </nav>
       <p>Unofficial fan project. Player data: rovnez / Kaggle, CC BY 4.0.</p>
     </footer>
   </div>`;

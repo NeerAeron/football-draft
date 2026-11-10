@@ -684,16 +684,3 @@
   font-size: var(--text-xs);
   text-align: center;
 }
-.home__links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-1) var(--space-5);
-}
-.home__links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--touch);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-}

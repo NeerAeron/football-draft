@@ -15,7 +15,7 @@ Mobile-first single column (390 px) that becomes a two-pane layout from 960 px.
 app/
   index.html              the app shell page (import map → ui/main.js)
   gallery.html            component gallery (design review + screenshot QA)
-  config.html             Advanced tuning page (plain DOM, app/tuning/; linked from Home/Settings)
+  config.html             developer tuning page (plain DOM, app/tuning/; not linked from the game)
   assets/fonts/           Barlow Condensed + Inter woff2 subsets + OFL texts
 ui/
   main.js                 entry: render the shell
@@ -142,7 +142,7 @@ Hash routes (static hosting, back button works). Table in `app/ui/routes.js`:
 | Route         | Owner (P2)   | Meaning                                                         |
 | ------------- | ------------ | --------------------------------------------------------------- |
 | `#/`          | foundation   | Home                                                            |
-| `#/play/:mode`| RUN/DRAFT    | setup for `run · quick · versus · daily`; `?type=` nations · leagues · clubs · club-country |
+| `#/play/:mode`| RUN/DRAFT    | setup for `run · quick · versus · daily`; `?type=` nations · leagues · clubs (`run` is always nations) |
 | `#/draft`     | DRAFT-UI     | the draft board                                                 |
 | `#/match`     | MATCH-UI     | match screen                                                    |
 | `#/run`       | RUN-UI       | World Cup Run hub (Home's "Continue" goes here)                 |

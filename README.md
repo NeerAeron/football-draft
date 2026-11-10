@@ -1,4 +1,4 @@
-# Football Draft Challenge
+# World Cup Draft
 
 A browser football (soccer) game. Spin for nations, leagues or clubs, draft an XI from 15,378
 real EA SPORTS FC 26 player profiles, then take it through a World Cup in a continuous,
@@ -9,14 +9,16 @@ Everything you do is saved in your own browser.
 
 ## How to play
 
-1. **Pick a mode and a draft type**, then a difficulty and a formation.
+1. **Pick a mode**, then a difficulty and a formation (Quick Match and Versus also pick a draft
+   type).
 2. **Spin.** One tap spins the reel; where it lands is decided before it moves. You get the
    players of what it lands on: a nation's best 23 call-ups, a league, or a club's squad.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
 4. **Links.** Players sharing a club, nation or league link up and get a small boost.
-5. **Play.** Before kick-off you can swap players, change formation and set tactics. Watch
+5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
+   Cup Run the first match is played in the formation you drafted in). Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
    minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
    are the same match: one seed, one result, however you watch it. The action camera follows the
@@ -27,23 +29,22 @@ Everything you do is saved in your own browser.
 
 | Mode | What it is |
 | --- | --- |
-| **World Cup Run** | Draft, then a group of four (three matches, top two advance), Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all seven for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result, and a title goes into the trophy cabinet on Home (one cup per difficulty). "Sim rest of run" plays the remaining matches for you. |
+| **World Cup Run** | A Nations draft, then a group of four (three matches, top two advance), Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all seven for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result, and a title goes into the trophy cabinet on Home (one cup per difficulty). "Sim rest of run" plays the remaining matches for you. |
 | **Daily Challenge** | One run a day, the same for everyone: the same eleven Nations spins, re-roll alternates and seven opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
-| **Quick Match** | Draft any way, then one match against an AI team at your difficulty. |
-| **Versus** | Two players on one device: a coin toss, alternating picks, then kick off. |
+| **Quick Match** | Draft from nations, leagues or clubs, then one match against an AI team at your difficulty. |
+| **Versus** | Two players on one device, drafting from nations, leagues or clubs: a coin toss, alternating picks, then kick off. |
 | **Exhibition** | Any two real teams, clubs or national sides, with no draft. |
 
-### Draft types
+### Draft types (Quick Match and Versus; the World Cup is always Nations)
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
 | **Nations** | one of the 48 strongest football nations (in four pots) | its best 23 available call-ups |
 | **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
-| **Club & Country** | alternately a nation and a league | as above; overlaps link up |
 
 Difficulties run Amateur, Semi-pro, Pro, World Class and Legendary: they set your re-rolls and how
-strong the opponents are compared with a typical drafted XI. **Ball Knower** hides every rating
+strong the opponents are. **Ball Knower** hides every rating
 until the end; **one player per nation** is an extra challenge for nation spins. Results can be
 shared as text or an image, and **Challenge a friend** links replay the same spins and opponents.
 
@@ -58,7 +59,8 @@ Without Node.js, serve `app/` with any static server, for example
 `python3 -m http.server 8000 --bind 127.0.0.1 --directory app`. Opening the HTML from `file://`
 does not work (modules, workers and the player catalog have to load over HTTP).
 
-Pages: `index.html` is the game, `config.html` the **Advanced tuning** page (every engine, draft
+Pages: `index.html` is the game, `config.html` a developer tuning page that the game does not
+link to (every engine, draft
 and rating parameter, saved on your device, with import/export) and `gallery.html` the component
 gallery.
 
@@ -103,7 +105,7 @@ keep (determinism, per-match config snapshots, hot paths, behaviour-neutral refa
 ```
 app/                  the deployed site, served as-is
   index.html          the game (loads ui/main.js)
-  config.html         Advanced tuning page (tuning/)
+  config.html         developer tuning page (tuning/), not linked from the game
   gallery.html        component gallery
   manifest.webmanifest, sw.js   install metadata and the offline service worker
   core/               pure logic, no DOM or storage; runs in Node
@@ -115,7 +117,7 @@ app/                  the deployed site, served as-is
     util/             seeded RNG, math and text helpers
   services/           catalog loader, simulation worker + client, sound, playback clock
   ui/                 the interface: Preact + htm (vendored), shell, components, screens
-  tuning/             the Advanced tuning page script and styles
+  tuning/             the tuning page script and styles
   data/               catalog.v3.json, the compiled player catalog the game fetches
   assets/             league logos, flags, fonts, app icons, the link-preview card
 data/                 compiler inputs and reference data (not deployed)

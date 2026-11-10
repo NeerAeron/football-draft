@@ -158,7 +158,7 @@ test('share text: emoji row, record, grade, numbers, mode flags and link', () =>
     url,
   });
   const lines = text.split('\n');
-  assert.equal(lines[0], '⚽ Football Draft · Daily #7');
+  assert.equal(lines[0], '⚽ World Cup Draft · Daily #7');
   assert.equal(lines[1], '🟩🟨🟩 🟨🟥');
   assert.equal(lines[2], '2-2-1 · C Quarter-finalists');
   assert.equal(lines[3], `XI ${side.rating.toFixed(1)} · 98.4% of perfect · 1,104 pts`);

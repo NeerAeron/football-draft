@@ -227,7 +227,13 @@ export class MatchController {
         user &&
         !!m &&
         (phase === 'pre' || phase === 'halftime' || (phase === 'playing' && !!this.live));
-      return { tactics, mentality, formation: tactics && !!m && !m.lineupFixed() };
+      const locked = (this.request.meta?.formationLocked || []).includes(team);
+      return {
+        tactics,
+        mentality,
+        formation: tactics && !!m && !m.lineupFixed() && !locked,
+        formationLocked: locked,
+      };
     });
   }
 

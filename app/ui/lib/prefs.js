@@ -12,11 +12,10 @@ const DEFAULTS = {
   motion: 'system', // 'system' | 'reduce' | 'full'
   hideRatings: false, // default for the "Hide ratings" (Ball Knower) toggle in draft setup
   onboarded: false, // first-run "How it works" dismissed
-  draftType: 'nations', // last draft type picked on Home: nations | leagues | clubs | club-country
-  autoSpin: true, // after a pick the next reel starts by itself (not in Versus)
+  draftType: 'nations', // last draft type picked for Quick Match / Versus: nations | leagues | clubs
 };
 
-export const DRAFT_TYPES = ['nations', 'leagues', 'clubs', 'club-country'];
+export const DRAFT_TYPES = ['nations', 'leagues', 'clubs'];
 
 function load() {
   const saved = readJSON(PREFS_KEY, {});
@@ -25,7 +24,6 @@ function load() {
   if (typeof saved?.hideRatings === 'boolean') out.hideRatings = saved.hideRatings;
   if (typeof saved?.onboarded === 'boolean') out.onboarded = saved.onboarded;
   if (DRAFT_TYPES.includes(saved?.draftType)) out.draftType = saved.draftType;
-  if (typeof saved?.autoSpin === 'boolean') out.autoSpin = saved.autoSpin;
   return out;
 }
 

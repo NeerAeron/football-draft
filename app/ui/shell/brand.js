@@ -1,5 +1,5 @@
 // Brand mark + wordmark. The mark is a volt badge with a ball glyph; the wordmark sets
-// "Football" in white and "Draft" in volt, condensed caps.
+// "World Cup" in white and "Draft" in volt, condensed caps.
 import { html, cx } from '../lib/html.js';
 
 export function BrandMark({ size = 32, class: className }) {
@@ -25,9 +25,9 @@ export function Brand({ href = '#/', compact = false }) {
   return html`<a
     class=${cx('brand', compact && 'brand--compact')}
     href=${href}
-    aria-label="Football Draft — home"
+    aria-label="World Cup Draft — home"
   >
     <${BrandMark} />
-    <span class="brand__word" aria-hidden="true">Football<b>Draft</b></span>
+    <span class="brand__word" aria-hidden="true">World Cup<b>Draft</b></span>
   </a>`;
 }

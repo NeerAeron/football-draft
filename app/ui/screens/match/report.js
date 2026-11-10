@@ -322,7 +322,7 @@ export function shareLine(result) {
   }
   const goals = [...scorers].map(([n, mins]) => `${n} ${mins.join(' ')}`).join(', ');
   const motm = result.motm ? ` · MOTM ${result.motm.name} ${fmt1(result.motm.rating)}` : '';
-  return `⚽ ${home.name} ${result.score[0]}–${result.score[1]} ${away.name}${pens}${goals ? ` · ${goals}` : ''}${motm} · Football Draft`;
+  return `⚽ ${home.name} ${result.score[0]}–${result.score[1]} ${away.name}${pens}${goals ? ` · ${goals}` : ''}${motm} · World Cup Draft`;
 }
 
 /** A finished Match + its request → the stored result (docs/ui-match.md). */

@@ -1,7 +1,7 @@
-# Football Draft Challenge — agent guide
+# World Cup Draft — agent guide
 
-Browser football (soccer) game: draft an XI from real EA FC 26 players, then play it through a
-continuous 2D 11v11 physics simulation in a World Cup Run, the Daily Challenge, a Quick Match,
+Browser football (soccer) game, **World Cup Draft**: draft an XI from real EA FC 26 players, then
+play it through a continuous 2D 11v11 physics simulation in a World Cup Run (Nations draft only), the Daily Challenge, a Quick Match,
 local Versus or an Exhibition. Static site, **no build step**: `app/` is served as-is (native ES
 modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dependencies
 (Prettier, ESLint, svgo, flag-icons for the data build).
@@ -37,7 +37,7 @@ Never `npm i playwright` or run `playwright install` locally (CI installs its ow
 app/                     served statically (deploy = publish this folder); runtime files only
   index.html             the game: import map (preact, htm), fonts → ui/main.js
   gallery.html           component gallery (design review, screenshot QA)
-  config.html            Advanced tuning page → tuning/ (plain DOM, no framework)
+  config.html            developer tuning page → tuning/ (plain DOM; the game no longer links it)
   manifest.webmanifest   install metadata (icons, shortcuts); og/twitter preview tags live in index.html
   sw.js                  offline service worker, network first (registered by ui/lib/offline.js)
   core/                  pure logic: no DOM, no storage, Node-testable

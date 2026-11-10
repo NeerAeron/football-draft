@@ -1,7 +1,7 @@
 // Setup screen model (#/play/:mode): copy, defaults from the query / last choices / prefs,
 // and the startDraft() context. Framework-free (Node tests import it).
 import { DIFFICULTIES, DIFFICULTY_LABELS } from '../../../core/draft/session.js';
-import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
+import { ladderTarget } from '../../../core/draft/opponents.js';
 import { FORMATIONS } from '../../../core/players/formations.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../../core/config/config.js';
 import { draftMode, draftType, parseSeed, KIT_COLORS } from '../../lib/draft-store.js';
@@ -47,12 +47,6 @@ export const TYPE_INFO = [
     icon: 'shield',
     text: 'One spin lands a league, then a club. Pick from that squad. The hardest.',
   },
-  {
-    value: 'club-country',
-    label: 'Club & Country',
-    icon: 'shuffle',
-    text: 'Nation and league spins take turns. Mix them and chase links.',
-  },
 ];
 
 /** Formations shown first; the rest sit behind "More formations". */
@@ -77,9 +71,6 @@ const LEVEL_TEXT = {
 const truthy = v => v === '1' || v === 'true' || v === 'yes' || v === true;
 const pick = (value, list) => (list.includes(value) ? value : null);
 
-/** Typical drafted team OVR of a draft type (MODE_BASELINES, rounded). */
-export const typicalOvr = type => Math.round(MODE_BASELINES[draftMode(type)].ovr);
-
 /** Facts for a difficulty level: re-rolls and the opponent target (effective rating). */
 export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
   const rules = useDefaultRules ? DEFAULT_CONFIG.draft : CONFIG.draft;
@@ -102,7 +93,9 @@ export const difficultyLevels = (type, options) =>
  * ?hide ?unique — challenge links land here), the last choices for this mode, and prefs.
  */
 export function setupDefaults(mode, { query = {}, saved = {}, prefs = {} } = {}) {
-  const type = query.type ? draftType(query.type) : draftType(prefs.draftType || 'nations');
+  // The World Cup is a Nations draft; Quick Match and Versus offer Nations, Leagues and Clubs.
+  const asked = query.type ? draftType(query.type) : draftType(prefs.draftType || 'nations');
+  const type = mode === 'run' || !TYPE_INFO.some(t => t.value === asked) ? 'nations' : asked;
   const seed = parseSeed(query.seed);
   const difficulty =
     pick(query.difficulty, DIFFICULTIES) ||
@@ -138,7 +131,7 @@ export const savedChoices = state => ({
 });
 
 /** Does the type spin nations (so "one player per nation" applies)? */
-export const spinsNations = type => ['nations', 'club-country'].includes(draftType(type));
+export const spinsNations = type => draftType(type) === 'nations';
 
 /** The startDraft() context for a setup state. */
 export function setupContext(mode, state) {
