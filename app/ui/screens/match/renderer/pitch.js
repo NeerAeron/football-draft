@@ -216,9 +216,11 @@ export function pitchLayer(t, width, height) {
 }
 
 // A moving camera cannot redraw the pitch every frame: the full-pitch view is rendered once
-// at a higher resolution and each frame blits the part the camera sees.
-const ZOOM_LAYER_SCALE = 1.6,
-  ZOOM_LAYER_PIXELS = 4.5e6;
+// at a higher resolution and each frame shows the part the camera sees. 1.25× is measured:
+// on a phone profile without GPU compositing a 1.6× layer cost one frame in six, 1.25× keeps
+// 60 fps, and the pitch stays crisp enough at the 1.5–1.7× camera zoom.
+const ZOOM_LAYER_SCALE = 1.25,
+  ZOOM_LAYER_PIXELS = 3.2e6;
 const zoom = { width: 0, height: 0, orientation: '', canvas: null, t: {} };
 
 /** Build (or reuse) the high-resolution layer for a canvas size; call ahead to avoid a hitch. */

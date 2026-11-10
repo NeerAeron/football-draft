@@ -47,7 +47,7 @@ const HIT_STOP = { shot: 0.055, save: 0.09, post: 0.11 };
 const JUMP_PLAYERS = 4;
 const JUMP_SPEED = 13; // m/s no player reaches: anything faster is a reposition
 const JUMP_BALL_SPEED = 50; // … and no ball
-const FF_BUDGET_MS = 9;
+const FF_BUDGET_MS = 6; // fast-forward steps per frame: leaves room to draw at 60 fps on a phone
 const SPEEDS = [1, 2, 4];
 
 let sharedSim = null;
@@ -722,7 +722,8 @@ export class MatchController {
     if (recent) {
       this.momentFlair(e, m);
       if (e.type === 'post') this.impact('post', 1);
-      else if (e.type === 'save' && (e.difficulty ?? 0) >= 0.45) this.impact('save', e.difficulty);
+      else if (e.type === 'save' && ((e.difficulty ?? 0) >= 0.2 || e.bigChance))
+        this.impact('save', Math.max(e.difficulty ?? 0, e.bigChance ? 0.5 : 0));
       else if (e.type === 'goal') this.shake(6);
       this.feed = [line, ...this.feed.filter(x => x.id !== line.id)].slice(0, 40);
       this.feedDirty = true;
@@ -743,18 +744,25 @@ export class MatchController {
     return null;
   }
 
-  /** Woodwork, near misses and big saves get a caption on the pitch (renderer `flair`). */
+  /**
+   * Woodwork, near misses, good saves and wasted big chances get a caption on the pitch
+   * (renderer `flair`). Saves are rated by the engine's `difficulty` (most are routine).
+   */
   momentFlair(e, m) {
-    const f = this.flair;
+    const f = this.flair,
+      d = e.difficulty ?? 0;
     let text = null,
       tone = 'miss';
     if (e.type === 'post') {
       text = e.frame === 'bar' ? 'OFF THE BAR!' : 'OFF THE POST!';
       tone = 'gold';
     } else if (e.type === 'near-miss') text = e.miss === 'over' ? 'JUST OVER!' : 'JUST WIDE!';
-    else if (e.type === 'save' && (e.difficulty ?? 0) >= 0.7) {
-      text = 'WHAT A SAVE!';
+    else if (e.type === 'save' && d >= 0.3) {
+      text = d >= 0.6 ? 'WHAT A SAVE!' : 'GREAT SAVE!';
       tone = 'save';
+    } else if (e.type === 'shot' && e.outcome === 'off target' && e.bigChance) {
+      if (f.on && f.age < 0.4) return; // a near miss already said it better
+      text = 'CHANCE MISSED!';
     }
     if (!text) return;
     const keeper = e.type === 'save' ? m.players[e.playerId] : null,
