@@ -161,15 +161,22 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 
 ### Fast rating model (`model.js`)
 
-Independent Poisson goals on effective ratings: `λA = 1.6·e^{0.0575(rA−rB)}`,
-`λB = 1.6·e^{−0.0575(rA−rB)}` — gap 0: 38% W / 23% D / 39% L. Fitted to 792 matches of the
-engine in the game's 180 s match (`cup-calibration.mjs gaps`: a typically drafted XI against
-ladder opponents at gaps of −12…+20, the AI coach at each difficulty's level). The engine by
-gap (W/D/L) against the model: −8…−4 19/21/60 vs 20/20/60; +4…+8 67/18/15 vs 62/19/18; +8…+13
-76/15/9 vs 78/13/9; +13…+17 91/5/4 vs 89/7/4, and 3.4 goals a match on those gaps for both.
-(The earlier 1.82 / 0.0525 fit, made when instant results used a 300 s match, predicts the
-same win/draw/loss within a point; only the scoring level changed.) No home or coach constant:
-the AI coach's level moves the user's edge by at most ±2 rating points with no trend. Shootouts: five kicks each then sudden
+Independent Poisson goals on effective ratings: `λA = 1.84·e^{0.0525(rA−rB)}`,
+`λB = 1.84·e^{−0.0525(rA−rB)}` — gap 0: 39% W / 22% D / 39% L; gap 6: 63 / 18 / 19; gap 10:
+77 / 13 / 10. Fitted to 2,592 matches of the engine in the game's 180 s match
+(`cup-calibration.mjs gaps`: a typically drafted XI against ladder opponents at gaps of
+−12…+20, the AI coach at each difficulty's level, both sides on the game-state mentality).
+The engine by gap (W/D/L) against the model: −8…−4 19/20/61 vs 21/19/61; −4…−1.5 25/23/51 vs
+28/21/51; +1.5…+4 60/18/22 vs 51/21/28; +4…+8 69/19/12 vs 63/18/19; +8…+13 83/11/5 vs
+77/13/10; +13…+17 91/5/4 vs 90/7/4, and 3.9 goals a match on those gaps for both. The fit
+follows three engine changes (docs/calibration.md, Phase 5): mentality that opens or closes
+the game, out-of-position ratings in line with EA's, and `gameplay.qualityImpact` 1.25, which
+makes the stronger side win 2–5 points more often at gaps of 2–13 (the engine before it refits
+to 1.74 / 0.0500 on the same matches; the earlier 1.6 / 0.0575 was fitted to an older engine).
+No home or coach constant in the model: the user's drafted XI does a little better than its
+rating says (worth about 0.8 rating points, 0.4 before), which the cup's own measured edges
+sit on top of, and the AI coach's level moves the user's edge by at most ±1 rating point with
+no trend. Shootouts: five kicks each then sudden
 death, each scored with p = 0.75 ± 0.005 per rating point (340 engine shootouts: a side 6 points
 stronger wins 62%, 6 weaker 41%; `MATCH_MODEL`).
 

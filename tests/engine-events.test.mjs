@@ -253,8 +253,12 @@ test('links chemistry is bounded, exported and added to every skill', () => {
     [9, 1, 2, 3].map(i => m.players[i].chem),
     [1.5, 5, 0, 0],
   );
+  // Added on top of the skill (which tops out at 99).
   for (const key of ['pace', 'shooting', 'composure'])
-    assert.ok(Math.abs(m.players[9].skill(key) - plain.players[9].skill(key) - 1.5) < 1e-9);
+    assert.ok(
+      Math.abs(m.players[9].skill(key) - Math.min(99, plain.players[9].skill(key) + 1.5)) < 1e-9,
+    );
+  assert.ok(m.players[9].skill('stamina') > plain.players[9].skill('stamina'));
   assert.ok(m.players[4].skill('pace') <= 99);
   assert.equal(m.exportConfig().players[9].chem, 1.5);
   assert.equal(m.playerProfile(m.players[1]).chem, 5);

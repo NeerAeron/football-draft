@@ -97,24 +97,31 @@ export const POSITIONS = Object.keys(OVERALL_WEIGHTS);
 const distances = Object.fromEntries(
   POSITIONS.map(a => [a, Object.fromEntries(POSITIONS.map(b => [b, a === b ? 0 : Infinity]))]),
 );
+// Position distances in steps: 1 = a neighbouring role (costs about a rating point on top of
+// what the role's own attribute weights say), twin wide roles a quarter step, a striker
+// dropping to No. 10 three quarters. Familiarity falls
+// off slowly at first and faster for far moves (see positionFamiliarity); the steps were set
+// against EA's own per-position ratings (docs/calibration.md, "Out of position").
 for (const [a, b, d] of [
-  ['RW', 'RM', 0.035],
-  ['LW', 'LM', 0.035],
-  ['CB', 'DM', 0.6],
-  ['CB', 'LB', 0.65],
-  ['CB', 'RB', 0.65],
-  ['LB', 'RB', 0.35],
-  ['DM', 'CM', 0.45],
-  ['CM', 'AM', 0.45],
-  ['AM', 'ST', 0.65],
-  ['AM', 'LW', 0.45],
-  ['AM', 'RW', 0.45],
-  ['CM', 'LM', 0.5],
-  ['CM', 'RM', 0.5],
-  ['LB', 'LM', 0.75],
-  ['RB', 'RM', 0.75],
-  ['LW', 'RW', 0.3],
-  ['LM', 'RM', 0.3],
+  ['RW', 'RM', 0.25],
+  ['LW', 'LM', 0.25],
+  ['LW', 'RW', 1],
+  ['LM', 'RM', 1],
+  ['LB', 'RB', 1],
+  ['DM', 'CM', 1],
+  ['CM', 'AM', 1],
+  ['AM', 'ST', 0.75],
+  ['AM', 'LW', 1],
+  ['AM', 'RW', 1],
+  ['CM', 'LM', 1],
+  ['CM', 'RM', 1],
+  ['CB', 'DM', 1],
+  ['CB', 'LB', 1],
+  ['CB', 'RB', 1],
+  ['LB', 'LM', 1],
+  ['RB', 'RM', 1],
+  ['ST', 'LW', 1],
+  ['ST', 'RW', 1],
 ])
   distances[a][b] = distances[b][a] = d;
 for (const k of POSITIONS)
@@ -123,6 +130,9 @@ for (const k of POSITIONS)
       distances[a][b] = Math.min(distances[a][b], distances[a][k] + distances[k][b]);
 const familiarityCache = new WeakMap();
 const NO_POSITIONS = Object.freeze([]);
+// Familiarity multiplies the role rating: base + bonus * exp(-(decay * steps)^2), i.e. about
+// 0.985 one step away, 0.945 at two, 0.89 at three, 0.84 at four; no path (an outfielder in
+// goal, a keeper outfield) gives unfamiliarFit.
 // Hot path: called many times per simulation step. The cache compares the
 // tuning values directly (they can be edited in place) without allocating.
 export function positionFamiliarity(p, role = p.role) {
@@ -146,7 +156,8 @@ export function positionFamiliarity(p, role = p.role) {
   for (const secondaryRole of secondary)
     d = Math.min(d, tuning.secondaryDistance + (distances[secondaryRole]?.[role] ?? Infinity));
   const value = Number.isFinite(d)
-    ? tuning.familiarityBase + tuning.familiarityBonus * Math.exp(-tuning.familiarityDecay * d)
+    ? tuning.familiarityBase +
+      tuning.familiarityBonus * Math.exp(-((tuning.familiarityDecay * d) ** 2))
     : tuning.unfamiliarFit;
   familiarityCache.set(p, {
     role,

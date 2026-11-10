@@ -80,7 +80,9 @@ export class ShootingMethods {
         (p.has('finisher') && box ? 0.93 : 1) *
         (shotType === 'Curler' && p.has('curve') ? 0.88 : 1) *
         (1 + (1 - spatial.openness) * 0.4) *
-        clamp(1 / Math.sqrt(spatial.quality), 0.9, 1.2);
+        clamp(1 / Math.sqrt(spatial.quality), 0.9, 1.2) *
+        // Mentality: a side that commits bodies forward finds (and leaves) more room to shoot.
+        (1 / clamp(1 + this.shootingRoom(p.team), 0.5, 2));
     const ty = aimY + this.noise() * spread,
       angle = Math.atan2(ty - p.y, goalX - p.x);
     const speed =

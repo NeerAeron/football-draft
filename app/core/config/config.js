@@ -123,7 +123,7 @@ export const DEFAULT_CONFIG = {
   },
   ai: {
     // Club and national best XIs: minimum position familiarity per slot.
-    minimumFit: 0.85,
+    minimumFit: 0.965,
     coachInterval: 6,
     coach: {
       counterPace: 80,
@@ -144,7 +144,7 @@ export const DEFAULT_CONFIG = {
     },
   },
   gameplay: {
-    qualityImpact: 1,
+    qualityImpact: 1.25,
     controlQuality: 0.55,
     passingQuality: 0.65,
     defensiveQuality: 0.55,
@@ -180,6 +180,45 @@ export const DEFAULT_CONFIG = {
     runsInBehind: 1,
     crossWillingness: 1.5,
     keeperRange: 1,
+  },
+  // What a mentality changes, as differences from Balanced (which is all zeros). Push raises
+  // the chance of a goal at both ends, Hold lowers it at both ends (docs/calibration.md).
+  mentality: {
+    push: {
+      line: 8,
+      attacking: 20,
+      restDefence: 0,
+      runners: 0,
+      shotUrge: 0.15,
+      ambition: 0,
+      turnoverCost: 0,
+      join: 0.12,
+      lateRuns: 0.1,
+      pressing: 0,
+      restartTime: -0.15,
+      load: 0.05,
+      chances: 0.55,
+      exposure: 0.3,
+    },
+    hold: {
+      line: -10,
+      attacking: -20,
+      restDefence: 0,
+      runners: 0,
+      shotUrge: -0.15,
+      ambition: -0.03,
+      turnoverCost: 0.25,
+      join: -0.12,
+      lateRuns: -0.1,
+      pressing: 0,
+      restartTime: 0.25,
+      load: -0.05,
+      chances: -0.33,
+      exposure: -0.24,
+    },
+    // Rewards for the well-timed choice, read from the score at that moment.
+    chase: 0.1,
+    protect: 0.1,
   },
   discipline: {
     yellowSeverity: 0.75,
@@ -477,8 +516,8 @@ export const DEFAULT_CONFIG = {
     },
     familiarityBase: 0.72,
     familiarityBonus: 0.28,
-    familiarityDecay: 1.4,
-    secondaryDistance: 0.025,
+    familiarityDecay: 0.235,
+    secondaryDistance: 0.4,
     unfamiliarFit: 0.6,
     storedTendencyWeight: 0.7,
   },
@@ -751,7 +790,7 @@ const ranges = {
   bookedFoulRisk: [0, 1, 0.01],
   bookedRiskAversion: [0, 1, 0.01],
   minimumLeaguePlayers: [1, 20, 1],
-  minimumFit: [0.6, 1, 0.01],
+  minimumFit: [0.6, 1, 0.005],
   coachInterval: [1, 30, 1],
   halftimeRecovery: [0, 0.4, 0.01],
   halftimeVariation: [0, 2, 0.05],
@@ -762,8 +801,8 @@ const ranges = {
   attributeCap: [0, 15, 1],
   familiarityBase: [0.4, 0.9, 0.01],
   familiarityBonus: [0.1, 0.6, 0.01],
-  familiarityDecay: [0.1, 3, 0.05],
-  secondaryDistance: [0, 0.2, 0.005],
+  familiarityDecay: [0.05, 3, 0.005],
+  secondaryDistance: [0, 2, 0.005],
   unfamiliarFit: [0.2, 0.8, 0.01],
 };
 // Draft-session settings (draft.nations / leagueTierWeights / clubs / rerolls / ladder / links):
@@ -828,6 +867,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   if (['routinePassError', 'difficultPassError'].includes(f.key)) [min, max, step] = [0, 4, 0.01];
   const session = draftField(f.path);
   if (session) [, min, max, step] = session;
+  if (f.path.startsWith('mentality.')) [min, max, step] = [-100, 100, 0.001];
   if (f.path.startsWith('playerTiers.') || f.path.startsWith('teamTiers.'))
     [min, max, step] = [0, f.key.startsWith('badge') ? 10 : 99, 1];
   if (f.path.startsWith('ratings.roleWeights.')) [min, max, step] = [0, 100, 0.01];

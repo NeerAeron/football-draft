@@ -341,8 +341,9 @@ test('auto placement prefers a natural slot over a higher out-of-position rating
   const auto = s.autoSlot(fake.profileId),
     options = s.placementOptions(fake.profileId).filter(o => o.allowed),
     st = options.find(o => o.role === 'ST');
-  assert.equal(auto.role, 'CB');
-  assert.ok(auto.natural);
+  // A natural slot: his own position or a neighbouring one (CB, or a full-back).
+  assert.ok(['CB', 'LB', 'RB'].includes(auto.role), auto.role);
+  assert.ok(auto.natural && auto.familiarity >= NATURAL_FIT);
   assert.ok(st.rating > auto.rating && st.familiarity < NATURAL_FIT, JSON.stringify(st));
   // The pool shows his best rating anywhere (out of position); Auto still goes natural.
   const best = s.snapshot().pool.find(e => e.profileId === fake.profileId).best;

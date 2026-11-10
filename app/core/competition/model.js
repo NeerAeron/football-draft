@@ -1,20 +1,24 @@
 // Fast seeded result model for matches that are not simulated by the engine (AI vs AI in a
 // cup group, projections, optional quick-sims). Independent Poisson goals:
 //   lambda_A = goals * exp(+slope * (rA - rB)),  lambda_B = goals * exp(-slope * (rA - rB))
-// with ratings on the effective scale (team OVR + mean link chem). Fitted to 792 matches of the
+// with ratings on the effective scale (team OVR + mean link chem). Fitted to 2,592 matches of the
 // engine in the game's 180 s match (tools/calibration/cup-calibration.mjs gaps): a typically
 // drafted XI against ladder opponents at gaps of −12…+20, the AI coach at each difficulty's
-// level. goals 1.6 per side at gap 0 and slope 0.0575 per rating point reproduce both the
-// scoring level (3.4 goals a match on those gaps) and win/draw/loss by gap:
-// gap 0 → 38% W / 23% D / 39% L; engine vs model −8…−4 19/21/60 vs 20/20/60, +4…+8 67/18/15
-// vs 62/19/18, +8…+13 76/15/9 vs 78/13/9, +13…+17 91/5/4 vs 89/7/4. No home or coach constant
-// (the AI coach's level moves the user's edge by at most ±2 rating points, with no trend).
+// level, both sides on the game-state mentality. goals 1.84 per side at gap 0 and slope 0.0525
+// per rating point reproduce the scoring level (3.9 goals a match on those gaps) and
+// win/draw/loss by gap: gap 0 → 39% W / 22% D / 39% L, gap 6 → 63 / 18 / 19; engine vs model
+// −8…−4 19/20/61 vs 21/19/61, −4…−1.5 25/23/51 vs 28/21/51, +1.5…+4 60/18/22 vs 51/21/28,
+// +4…+8 69/19/12 vs 63/18/19, +8…+13 83/11/5 vs 77/13/10, +13…+17 91/5/4 vs 90/7/4. The user's
+// drafted XI does a little better than its rating says (a constant worth about 0.8 rating
+// points; it was 0.4 before `gameplay.qualityImpact` 1.25 made rating gaps count more); the
+// model stays symmetric and the cup's own edges (cup.js) are measured on top of it. The AI
+// coach's level moves the user's edge by at most ±1 rating point, with no trend.
 // Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
 // rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 
 export const MATCH_MODEL = {
-  goals: 1.6,
-  slope: 0.0575,
+  goals: 1.84,
+  slope: 0.0525,
   maxGoals: 9,
   kick: 0.75,
   kickSlope: 0.005,
