@@ -410,8 +410,9 @@ export const flows = [
           mode: 'run',
           type: 'nations',
           stage: 'QF',
-          record: { w: 3, d: 1, l: 0 },
+          record: { w: 4, d: 1, l: 0 },
           team: 'Brazil',
+          rounds: 8,
         },
         'football-draft-daily': { streak: 4, best: 9, lastPlayed: '2000-01-01' },
       });
