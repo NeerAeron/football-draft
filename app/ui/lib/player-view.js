@@ -15,6 +15,7 @@
 //   league?: { name: 'English Premier League', logo?: './assets/logos/…png', tier?: 'A' },
 //   stats?: [{ key: 'PAC', label: 'Pace', value: 89 }, …],  // six summary stats, FC order
 //   badges?: [{ id: 'finisher', label: 'Clinical Finish' }],
+//   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
 import { BADGES } from '../../core/players/traits.js';
@@ -94,6 +95,7 @@ export function playerView(p, { team, league, nation } = {}) {
         : undefined,
     league: league ? { name: league.name, logo: league.logo, tier: league.tier } : undefined,
     stats: summaryStats(p.attrs, position),
+    attrs: p.attrs, // every attribute (the draft's "All attributes" panel)
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };
 }

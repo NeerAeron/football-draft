@@ -6,6 +6,7 @@ import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
 import { PlayerCard, FitTag, Flag, Button, IconButton, Sheet } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
+import { AttributeDetails } from './attributes.js';
 import { fmt1, signed1 } from '../../lib/format.js';
 
 function Effects({ team, preview, hideRatings }) {
@@ -119,6 +120,7 @@ export function PickSheet({
           <${Effects} team=${team} preview=${preview} hideRatings=${hideRatings} />
         </div>
       </div>
+      <${AttributeDetails} view=${view} hideRatings=${hideRatings} />
       <p class="pick__hint">Tap a lit slot to play him there.</p>
       <${TeamPitch}
         team=${team}
@@ -183,5 +185,6 @@ export function PickDock({
       >
       <${IconButton} icon="x" label="Cancel selection" size="sm" onClick=${onCancel} />
     </div>
+    <${AttributeDetails} view=${view} hideRatings=${hideRatings} />
   </div>`;
 }
