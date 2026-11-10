@@ -3,7 +3,17 @@
 import { clamp, lerp } from '../util/math.js';
 import { goalZone } from './goal-zones.js';
 import { offsideSnapshot } from './rules.js';
-import { W, H, GOAL, segment, dist, hypot } from './constants.js';
+import {
+  W,
+  H,
+  GOAL,
+  segment,
+  dist,
+  hypot,
+  PASS_ROLL,
+  LOOSE_ROLL,
+  LOOSE_DRAG,
+} from './constants.js';
 
 export class BallMethods {
   moveBall(dt) {
@@ -21,7 +31,14 @@ export class BallMethods {
     if (b.z === 0) {
       b.vz = Math.abs(b.vz) > 0.9 ? -b.vz * 0.3 : 0;
       const speed = hypot(b.vx, b.vy),
-        drag = Math.max(0, 1 - ((b.kind === 'pass' ? b.roll || 3.8 : 2) * dt) / (speed || 1));
+        // A shot keeps its pace (2 m/s²: keepers and finishing are calibrated on it).
+        decel =
+          b.kind === 'pass'
+            ? b.roll || PASS_ROLL
+            : b.kind === 'shot'
+              ? 2
+              : LOOSE_ROLL + LOOSE_DRAG * speed,
+        drag = Math.max(0, 1 - (decel * dt) / (speed || 1));
       b.vx *= drag;
       b.vy *= drag;
     }

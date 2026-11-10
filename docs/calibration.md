@@ -98,6 +98,15 @@ the restart as often as before, and over 300 fixtures shots (8.3) and goals are 
 A first version that insisted on a safe ball (risk under 0.3) sent free kicks 10 m backwards
 on average and cost goals — dropped.
 
+**Ball on grass.** Ground balls looked frictionless: a loose ball slowed by only 2 m/s² and
+rolled 50 m, and a pass arrived at 14 m/s having barely slowed. Now (`constants.js`) a ground
+pass decelerates at `PASS_ROLL` 5.5 m/s² and is struck to arrive at `PASS_ARRIVAL` 13 m/s (a
+20 m pass leaves at ~18 m/s and visibly slows); a loose ball slows by 3.2 m/s² + 0.12 × speed;
+shots keep 2 m/s². The renderer rolls the ball (its panels turn with the distance covered). Over
+300 fixtures: loose balls lingering 4 s+ 0.66 → 0.47 a match, passes out of play 0.33 → 0.29,
+open danger-zone shots 0.31 → 0.25, goals 2.15 → 2.42; the paired 128-match calibration moves
+goals 2.50 → 2.58 and evens the halves (shots 2nd/1st 0.86 → 1.00).
+
 **Known gaps:** a free kick near the box is a pass or a shot, never a delivery with a set-up
 like a corner's; players are placed (not walked) into kick-off, penalty and goal-kick
 positions (the match view cuts there).

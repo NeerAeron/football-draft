@@ -1,7 +1,7 @@
 // Planning: every player picks a target (keeper, carrier, press, marking, support runs).
 // Methods are installed on Match.prototype by match.js.
 import { clamp, lerp } from '../util/math.js';
-import { H, GOAL, segment, dist, hypot } from './constants.js';
+import { H, GOAL, segment, dist, hypot, PASS_ROLL } from './constants.js';
 
 // Scratch result of receivePoint (planning runs for one match at a time; no allocation).
 const RECEIVE_POINT = { x: 0, y: 0 };
@@ -206,7 +206,7 @@ export class PlanningMethods {
     if (speed < 2) return null;
     const ux = b.vx / speed,
       uy = b.vy / speed,
-      roll = b.roll || 3.8,
+      roll = b.roll || PASS_ROLL,
       stop = (speed * speed) / (2 * roll),
       first = Math.max(0, (dest.x - b.x) * ux + (dest.y - b.y) * uy),
       run = p.topSpeed() * 0.92;

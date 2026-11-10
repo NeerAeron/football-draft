@@ -57,6 +57,11 @@ export function createRenderState() {
     ballR: 0,
     ballStretch: 0,
     ballAngle: 0,
+    // Rolling: the panels turn with the distance the ball covers (radians), along rollAngle.
+    rollPhase: 0,
+    rollAngle: 0,
+    rollWX: NaN,
+    rollWY: NaN,
     fontPx: 0,
     trail: {
       x: new Float32Array(TRAIL),
@@ -233,6 +238,15 @@ export function draw(ctx, view, state) {
     bSpeed = Math.sqrt(bvx * bvx + bvy * bvy);
   fx.ballStretch = !holder && bSpeed > 15 && !state.still ? Math.min((bSpeed - 15) / 16, 1) : 0;
   if (fx.ballStretch) fx.ballAngle = Math.atan2(t.b * bvx + t.d * bvy, t.a * bvx + t.c * bvy);
+  // A ball on the ground rolls: its panels turn by the distance covered over its radius, so a
+  // slowing ball visibly slows (a fixed pattern reads as sliding on ice). Cuts reset it.
+  const moved = Math.hypot(ball.x - fx.rollWX, ball.y - fx.rollWY);
+  if (moved > 0 && moved < 4 && bz < 0.3) {
+    fx.rollPhase = (fx.rollPhase + (moved * t.s) / (br * 1.6)) % TAU;
+    if (bSpeed > 0.4) fx.rollAngle = Math.atan2(t.b * bvx + t.d * bvy, t.a * bvx + t.c * bvy);
+  }
+  fx.rollWX = ball.x;
+  fx.rollWY = ball.y;
 
   // Intended pass: faint guide from the ball to the receiver
   if (receiverId >= 0) {
@@ -574,10 +588,20 @@ function drawBall(ctx, fx, dpr) {
   ctx.arc(x, y, br, 0, TAU);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x - br * 0.06, y - br * 0.04, br * 0.36, 0, TAU);
+  // Two dark panels on opposite sides of the ball travel across it as it rolls.
   ctx.fillStyle = 'rgba(16, 26, 22, 0.82)';
-  ctx.fill();
+  const ca = Math.cos(fx.rollAngle),
+    sa = Math.sin(fx.rollAngle);
+  for (let k = 0; k < 2; k++) {
+    const phase = fx.rollPhase + k * Math.PI,
+      front = Math.cos(phase);
+    if (front < -0.15) continue; // on the far side
+    const along = Math.sin(phase) * br * 0.62,
+      size = br * (0.18 + 0.2 * Math.max(0, front));
+    ctx.beginPath();
+    ctx.arc(x + ca * along, y + sa * along, size, 0, TAU);
+    ctx.fill();
+  }
 }
 
 // Label placements around a token, in order of preference: below, above, right, left, then

@@ -247,6 +247,11 @@ club metadata. After catalog changes, regenerate the gallery fixture
 - UI components never `innerHTML` catalog text (htm escapes interpolations). Plain-DOM code
   escapes catalog text with `escapeHtml` from `core/util/text.js`.
 - UI must work at 390 px wide (touch) and 1366 px desktop; respect `prefers-reduced-motion`.
+- **Mobile first: it must look great and run great on a mid-range phone**, not just fit. Check
+  every UI change in phone screenshots (`npm run shots`, iPhone-size viewport) as well as
+  desktop; keep animations on transform/opacity, the match frame loop allocation-free and 60 fps
+  with the CPU throttled ×4 (Chrome DevTools / CDP `Emulation.setCPUThrottlingRate`), and no
+  main-thread task over ~50 ms (heavy work goes to a worker or a step-wise generator).
 - Screen CSS is global (every stylesheet is imported by `styles/app.css`): prefix screen classes
   with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names like `.stage` collided.
 - Displayed numbers go through `ui/lib/format.js` ('.' decimals everywhere, whatever the locale).
