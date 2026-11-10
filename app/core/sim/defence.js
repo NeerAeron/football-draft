@@ -21,13 +21,17 @@ export class DefenceMethods {
     const beaten = this.rel(defender.x, team) > depth - 1;
     const closingRun = Math.max(0, -goalward),
       speedGap = Math.max(0, attacker.topSpeed() - defender.topSpeed());
-    // Tired markers give attackers more room late in a match.
+    // Tired markers give attackers more room late in a match. In and around his own box a
+    // marker gets touch-tight: nobody is left free in front of goal.
+    const tight =
+      Math.abs(attacker.y - 34) < 22 ? clamp(0.55 + ((depth - 8) / 20) * 0.45, 0.55, 1) : 1;
     const cushion =
-      1.25 +
-      (100 - defender.awareness()) * 0.012 +
-      (beaten ? 1.1 : 0) +
-      Math.min(0.9, closingRun * 0.07 + speedGap * 0.2) +
-      (1 - defender.energy) * 0.9;
+      (1.25 +
+        (100 - defender.awareness()) * 0.012 +
+        (beaten ? 1.1 : 0) +
+        Math.min(0.9, closingRun * 0.07 + speedGap * 0.2) +
+        (1 - defender.energy) * 0.9) *
+      tight;
     // Read the runner, stay between them and goal, shade toward the passing lane.
     const x = clamp(
       depth + goalward * lead - cushion * this.tuning.gameplay.markingDistance,

@@ -78,7 +78,9 @@ export class BallMethods {
       if (b.z > 1.6 + p.skill('heading') * 0.007) continue;
       if (b.kind === 'shot') {
         if (p.team === b.shotTeam) continue;
-        if (this.rand() < 0.35 + p.skill('defending') * 0.003) {
+        // A defender down the line of the shot has time to get in the way; the marker at
+        // the shooter's shoulder (the ball has only just left the foot) mostly does not.
+        if (this.rand() < (0.35 + p.skill('defending') * 0.003) * (b.age < 0.1 ? 0.5 : 1)) {
           this.resolveShot('blocked');
           // A block either kills the shot or deflects it on, often behind for a corner.
           if (this.rand() < 0.55 + 0.1 * this.tuning.gameplay.deliveryDeflections) {

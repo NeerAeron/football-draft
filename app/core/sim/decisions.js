@@ -164,14 +164,15 @@ export class DecisionMethods {
           0.3 *
           (specialist ? 1.6 : 1) *
           (spatial.central ? 1 : 0.5) *
-          // Long-shot specialists try from further out; everyone else needs to be
-          // within about 27 m before a shot is worth more than keeping the ball.
-          (specialist ? clamp((32 - dGoal) / 12, 0.08, 1) : clamp((28 - dGoal) / 9, 0, 1)) *
+          // Having a go from range is part of the fun: specialists from anywhere in
+          // sight of goal, everyone else from inside about 30 m.
+          (specialist ? clamp((34 - dGoal) / 12, 0.1, 1) : clamp((31 - dGoal) / 11, 0, 1)) *
           0.55 ** blocks;
       if (spatial.zone === 'deep_central') urge *= this.profile.deepUrge;
       if (!box && (blocks > 2 || pressure > 1.1 || p.hold < 0.2)) urge = 0;
-      // With room to drive into, a carrier outside the box takes the ball closer first.
-      if (!box && urge > 0 && dGoal > 17 && !specialist && this.openCarry(p)) urge *= 0.3;
+      // He has just beaten his man: the space he made is for shooting.
+      const beat = p.beatChain.length ? p.beatChain[p.beatChain.length - 1] : null;
+      if (beat && this.elapsed - beat.at < 1.3 && dGoal < 27) urge *= 2;
       if (
         this.rand() <
         urge *
@@ -256,7 +257,7 @@ export class DecisionMethods {
       if (
         q &&
         this.rand() <
-          (0.12 + p.tendency('carry') * 0.45) *
+          (0.17 + p.tendency('carry') * 0.5) *
             (tac.style === 'possession' ? 1 - retention * 0.45 : 1)
       )
         this.feint(p, q);

@@ -388,7 +388,7 @@ export class PlanningMethods {
         0.5,
         1,
       );
-      const cushion = this.canScreenOutlet(t, q, p, coordination) ? 0.25 : 1;
+      const cushion = this.canScreenOutlet(t, q, p, coordination) ? 0.25 : qr < 20 ? 0.6 : 1;
       const lapse = this.markLapse(p, q, qr, coordination);
       if (lapse) {
         // Ball-watching: the marker holds his line and loses the runner.
