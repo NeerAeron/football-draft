@@ -91,3 +91,32 @@ test('the player who deflects a ball cannot collect it again a frame later', () 
   m.elapsed += 0.5;
   assert.equal(m.canCollect(d), true);
 });
+
+test('restarts: the taker plays the best ball that is on, and a throw is short', () => {
+  const m = new Match(7, 180);
+  const option = (score, risk, margin, chance, d) => ({ score, risk, margin, chance, d });
+  // Sorted by score, as options() returns them.
+  const blocked = option(3, 1.2, 0.4, 0.45, 18),
+    late = option(2.6, 0.1, -0.4, 0.6, 20),
+    long = option(2.4, 0.1, 0.5, 0.8, 44),
+    on = option(2, 0.3, 0.2, 0.7, 14),
+    back = option(1, 0.02, 1, 0.9, 9);
+  assert.equal(m.restartOption([blocked, late, long, on, back], 'Free kick'), long);
+  assert.equal(m.restartOption([blocked, late, long, on, back], 'Throw-in'), on, 'no 44 m throw');
+  // Nothing clean: the safest ball rather than the most ambitious one.
+  assert.equal(m.restartOption([blocked, late], 'Free kick'), late);
+  assert.equal(m.restartOption([blocked], 'Throw-in'), blocked);
+
+  // At a throw-in two team-mates come to offer a short ball, one up the line, one infield.
+  for (let i = 0; i < 240; i++) m.step(1 / 60);
+  m.mode = 'play';
+  m.startRestart('Throw-in', 0, 60, 0.2);
+  const taker = m.players[m.restart.taker],
+    showing = m.activePlayers.filter(p => p.action === 'Showing for the throw');
+  assert.equal(showing.length, 2);
+  for (const p of showing) {
+    assert.equal(p.team, 0);
+    assert.notEqual(p.id, taker.id);
+    assert.ok(Math.hypot(p.tx - 60, p.ty - 0.2) < 11, 'within a short throw');
+  }
+});

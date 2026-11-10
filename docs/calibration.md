@@ -87,9 +87,20 @@ corner goals, as many more misses), more long-shot urge (0.3 → 0.4: same shot 
 goals — range shots replaced better chances), tempo knobs of the 180 s profile (shot volume is
 bound by real-time physics at about nine a match).
 
-**Known gaps:** restart giveaways (a throw-in or free kick straight to an opponent, 0.3 a
-match), throw-ins are modelled as ground passes of any length, players are placed (not walked)
-into corner and kick-off positions.
+**Restarts.** A free kick or throw-in was passed to the best-scored option whatever its risk:
+a quarter of the throw-ins in a side's own third and a fifth of the free kicks near the box
+went straight to an opponent, some "throws" travelled 55 m. The taker is unpressed and the
+defence is set, so he now takes the best ball that is on (`restartOption`: lane risk under
+0.5, receiver first to it, completion over 50%; otherwise the safest), a throw reaches 30 m
+at most, and the two nearest team-mates come short to offer one (`setupThrowIn`). Restart
+passes kept: 78–94% → 91–96%; restart giveaways 0.28 → 0.07 a match; a shot within 12 s of
+the restart as often as before, and over 300 fixtures shots (8.3) and goals are unchanged.
+A first version that insisted on a safe ball (risk under 0.3) sent free kicks 10 m backwards
+on average and cost goals — dropped.
+
+**Known gaps:** a free kick near the box is a pass or a shot, never a delivery with a set-up
+like a corner's; players are placed (not walked) into kick-off, penalty and goal-kick
+positions (the match view cuts there).
 
 ## Before / after (Phase 3: goals and drama)
 

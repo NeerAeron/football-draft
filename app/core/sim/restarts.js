@@ -1,7 +1,7 @@
 // Set pieces and restarts: positioning and execution.
 // Methods are installed on Match.prototype by match.js.
 import { clamp } from '../util/math.js';
-import { H, dist } from './constants.js';
+import { H, dist, hypot } from './constants.js';
 
 const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
 
@@ -114,8 +114,52 @@ export class RestartMethods {
       }
     }
     if (type === 'Corner') this.setupCorner(team, taker, y);
+    if (type === 'Throw-in') this.setupThrowIn(team, taker, x, y);
     taker.tx = x - this.direction(team) * 0.6;
     taker.ty = clamp(y, 1, 67);
+  }
+  // Throw-in: the two nearest team-mates show for the ball, one down the line and one
+  // infield, so the thrower has a short throw to a player coming to meet it (their markers
+  // went to where they stood, as at any check to the ball).
+  setupThrowIn(team, taker, x, y) {
+    const dir = this.direction(team),
+      infield = y < 34 ? 1 : -1,
+      line = [clamp(x + dir * 9, 2, 103), y + infield * 2.5],
+      inside = [clamp(x - dir * 1.5, 2, 103), y + infield * 9.5];
+    const near = this.activePlayers
+      .filter(p => p.team === team && p.role !== 'GK' && p.id !== taker.id)
+      .sort((a, c) => hypot(a.x - x, a.y - y) - hypot(c.x - x, c.y - y) || a.id - c.id)
+      .slice(0, 2);
+    if (near.length < 2) return;
+    const to = (p, spot) => hypot(p.x - spot[0], p.y - spot[1]),
+      [a, c] = near,
+      swap = to(a, inside) + to(c, line) < to(a, line) + to(c, inside);
+    for (const [p, spot] of [
+      [a, swap ? inside : line],
+      [c, swap ? line : inside],
+    ]) {
+      p.tx = spot[0];
+      p.ty = spot[1];
+      p.action = 'Showing for the throw';
+    }
+  }
+  // A restart is unhurried: nobody presses the taker and the defence is set, so he does not
+  // play the ball an opponent is standing on or one his team-mate is second to — he takes the
+  // best ball that is on (still the forward one when it is). A throw is not a long pass.
+  restartOption(opts, type) {
+    const reach = type === 'Throw-in' ? 30 : Infinity;
+    let safest = null,
+      safety = -Infinity;
+    for (const o of opts) {
+      if (o.d > reach) continue;
+      if (o.risk < 0.5 && o.margin > -0.1 && o.chance > 0.5) return o;
+      const value = o.chance - o.risk * 0.5 + clamp(o.margin, -1, 0.5) * 0.3;
+      if (value > safety) {
+        safety = value;
+        safest = o;
+      }
+    }
+    return safest ?? opts[0];
   }
   // Corner routine: near-post flick-on, far-post header or a ball to the
   // edge. The best headers take the box spots (the best of all attacks the
@@ -307,7 +351,7 @@ export class RestartMethods {
       this.rand() < 0.32 + taker.tendency('shoot') * 0.4
     )
       this.shoot(taker, { restart: true });
-    else if (opts.length) this.pass(taker, opts[0], r.type);
+    else if (opts.length) this.pass(taker, this.restartOption(opts, r.type), r.type);
     else this.own(taker);
   }
 }
