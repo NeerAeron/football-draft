@@ -13,7 +13,7 @@ import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
 import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
-import { HeroArt } from './hero-art.js';
+import { HeroPitch } from './hero-art.js';
 import { int } from '../../lib/format.js';
 
 export const DRAFT_TYPE_OPTIONS = [
@@ -82,32 +82,28 @@ function RunPath({ stage = null, record = null, perfect = true }) {
 
 function Hero() {
   return html`<section class="home-hero card card--hero" aria-labelledby="home-hero-title">
-    <div class="home-hero__art"><${HeroArt} /></div>
-    <div class="home-hero__content">
-      <div class="home-hero__intro">
-        <p class="eyebrow">Spin · Pick · Lift the cup</p>
-        <h1 class="home-hero__title" id="home-hero-title">
-          <span>World</span> <span>Cup</span> <em>Run</em>
-        </h1>
-        <p class="home-hero__lead">
-          Draft an XI one spin at a time, then take it through the group and five knockout rounds.
-        </p>
-      </div>
-      <${RunPath} />
-      <div class="home-hero__launch">
-        <p class="home-hero__hint">Spin a nation, pick from its best 23 call-ups.</p>
-        <${Button}
-          variant="primary"
-          size="xl"
-          block
-          iconEnd="arrow-right"
-          href=${href('/play/:mode', { mode: 'run' })}
-          class="home-hero__cta"
-          data-testid="start-run"
-          >Start World Cup Run<//
-        >
-      </div>
+    <div class="home-hero__beam home-hero__beam--l" aria-hidden="true"></div>
+    <div class="home-hero__beam home-hero__beam--r" aria-hidden="true"></div>
+    <div class="home-hero__head">
+      <h1 class="home-hero__title" id="home-hero-title">
+        <span>Draft an XI.</span> <em>Win it all.</em>
+      </h1>
+      <div class="home-hero__art"><${HeroPitch} /></div>
     </div>
+    <p class="home-hero__lead">
+      Spin nations, pick real players from their call-ups, then take your XI through a World Cup.
+    </p>
+    <${RunPath} />
+    <${Button}
+      variant="primary"
+      size="xl"
+      block
+      iconEnd="arrow-right"
+      href=${href('/play/:mode', { mode: 'run' })}
+      class="home-hero__cta"
+      data-testid="start-run"
+      >Start World Cup<//
+    >
   </section>`;
 }
 
