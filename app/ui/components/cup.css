@@ -1,0 +1,22 @@
+/* Cup, Medal, Prize: the trophies of a World Cup Run (components/cup.js). */
+.cup,
+.medal {
+  flex: none;
+  overflow: visible;
+}
+.cup--glow {
+  filter: drop-shadow(0 12px 30px rgb(245 200 76 / 0.35));
+}
+.cup--silver.cup--glow {
+  filter: drop-shadow(0 12px 30px rgb(207 216 230 / 0.3));
+}
+.cup--holo.cup--glow {
+  filter: drop-shadow(0 12px 30px rgb(143 123 240 / 0.45));
+}
+.cup--empty {
+  color: var(--text-3);
+  opacity: 0.55;
+}
+.cup--empty.cup--budget {
+  color: var(--budget);
+}

@@ -54,12 +54,24 @@ export const TYPE_INFO = [
 export const MAIN_FORMATIONS = ['433', '4231', '442', '4141', '41212', '352', '343', '532'];
 export const ALL_FORMATIONS = Object.keys(FORMATIONS);
 
-/** Versus offers re-rolls per player (mapped onto difficulty ids). */
+/**
+ * Versus offers re-rolls per player. `value` is the difficulty id the choice is stored under
+ * (there is no opponent ladder in Versus); `rerolls` is what the draft gets.
+ */
 export const VERSUS_REROLLS = [
-  { value: 'legendary', label: 'None', hint: '0 each' },
-  { value: 'pro', label: 'One', hint: '1 each' },
-  { value: 'amateur', label: 'Two', hint: '2 each' },
+  { value: 'legendary', label: 'None', hint: '0 each', rerolls: 0 },
+  { value: 'worldclass', label: 'One', hint: '1 each', rerolls: 1 },
+  { value: 'pro', label: 'Two', hint: '2 each', rerolls: 2 },
 ];
+/** Re-rolls per player of a Versus setup (its difficulty id → VERSUS_REROLLS). */
+export const versusRerolls = difficulty =>
+  (VERSUS_REROLLS.find(o => o.value === difficulty) ?? VERSUS_REROLLS[2]).rerolls;
+/** What each difficulty is, in a line (setup screen). Legendary is the game's main challenge. */
+export const DIFFICULTY_TEXT = {
+  pro: 'Good nations in your way and a heavyweight in the final. Where a title is won first.',
+  worldclass: 'The best nations from the quarter-finals on. One re-roll less to build with.',
+  legendary: 'The ultimate test: the whole World Cup field stands between you and the cup.',
+};
 
 const truthy = v => v === '1' || v === 'true' || v === 'yes' || v === true;
 const pick = (value, list) => (list.includes(value) ? value : null);
@@ -71,6 +83,7 @@ export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
   return {
     id: level,
     label: DIFFICULTY_LABELS[level],
+    text: DIFFICULTY_TEXT[level] ?? '',
     rerolls,
     gap: rules.ladder[level] ?? 0,
     target: Math.round(ladderTarget(draftMode(type), level, { rules })),
@@ -158,7 +171,9 @@ export function setupContext(mode, state) {
       ...(kind === 'run' && state.budget ? { budget: true } : {}),
     },
     ...(state.seed != null ? { seed: state.seed, useDefaultRules: true } : {}),
-    ...(kind === 'versus' ? { names: state.names, kits: state.kits } : {}),
+    ...(kind === 'versus'
+      ? { names: state.names, kits: state.kits, rerolls: versusRerolls(state.difficulty) }
+      : {}),
     ...(kind === 'run' ? { returnTo: '/run' } : {}),
   };
 }

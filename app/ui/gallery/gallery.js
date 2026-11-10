@@ -36,8 +36,9 @@ import {
   toast,
   achievement,
   ScoreBug,
-  GradeBadge,
-  GRADES,
+  Cup,
+  Medal,
+  Prize,
   Confetti,
   EmptyState,
   Skeleton,
@@ -684,7 +685,7 @@ function Overlays() {
 }
 
 function Results() {
-  return html`<${Section} id="results" title="ScoreBug & GradeBadge">
+  return html`<${Section} id="results" title="ScoreBug & trophies">
     <${Demo} label="ScoreBug sm / md (live) / lg (pens)" wide>
       <div class="g-col g-col--center">
         <${ScoreBug}
@@ -710,21 +711,18 @@ function Results() {
         />
       </div>
     <//>
-    <${Demo} label="Grades" wide>
-      <div class="cluster">
-        ${GRADES.map(g => html`<${GradeBadge} key=${g} grade=${g} size="sm" />`)}
-      </div>
-    <//>
-    <${Demo} label="Grade + verdict" wide>
+    <${Demo}
+      label="Cup, Medal and Prize (gold · silver · bronze · none; Budget; the ultimate)"
+      wide
+    >
       <div class="g-grades">
-        <${GradeBadge} grade="S+" size="lg" verdict="Perfect run" detail="8–0 · 1,148 pts" />
-        <${GradeBadge}
-          grade="B+"
-          size="lg"
-          verdict="Knockout heartbreak"
-          detail="5–1–1 · out in the SF"
-        />
-        <${GradeBadge} grade="F" size="md" verdict="Group stage exit" detail="0–1–2" />
+        <${Cup} size=${96} glow />
+        <${Medal} metal="silver" size=${84} />
+        <${Medal} metal="bronze" size=${84} />
+        <${Prize} size=${84} />
+        <${Cup} size=${84} budget />
+        <${Medal} metal="silver" size=${72} budget />
+        <${Cup} metal="holo" emblem="crown" size=${96} glow />
       </div>
     <//>
   <//>`;
@@ -779,7 +777,7 @@ const SECTIONS = [
   ['meters', 'Meters', Meters],
   ['reel', 'Reel', ReelDemo],
   ['overlays', 'Overlays', Overlays],
-  ['results', 'Score & grades', Results],
+  ['results', 'Score & trophies', Results],
   ['states', 'States & forms', States],
 ];
 

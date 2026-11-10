@@ -25,7 +25,7 @@
 @import url('../components/tabs.css') layer(components);
 @import url('../components/toast.css') layer(components);
 @import url('../components/score-bug.css') layer(components);
-@import url('../components/grade-badge.css') layer(components);
+@import url('../components/cup.css') layer(components);
 @import url('../components/confetti.css') layer(components);
 @import url('../components/empty-state.css') layer(components);
 @import url('../components/skeleton.css') layer(components);
@@ -34,6 +34,7 @@
 @import url('../shell/shell.css') layer(shell);
 
 @import url('../screens/home/home.css') layer(screens);
+@import url('../screens/home/cabinet.css') layer(screens);
 @import url('../screens/settings/settings.css') layer(screens);
 @import url('../screens/placeholder/placeholder.css') layer(screens);
 @import url('../screens/setup/setup.css') layer(screens);

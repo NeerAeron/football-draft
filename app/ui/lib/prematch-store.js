@@ -49,8 +49,6 @@ export const STYLE_OPTIONS = Object.entries(STYLES).map(([value, s]) => ({
 
 /** Engine coach level for a draft difficulty id (other values pass through). */
 export const COACH_LEVEL = {
-  amateur: 'veryeasy',
-  semipro: 'easy',
   pro: 'medium',
   worldclass: 'hard',
   legendary: 'impossible',
@@ -346,7 +344,11 @@ export function engineCompetition(data) {
   const mode = ['ai', 'pvp', 'sandbox'].includes(c.mode) ? c.mode : humans === 2 ? 'pvp' : 'ai';
   return {
     mode,
-    difficulty: COACH_LEVEL[c.difficulty] || c.difficulty || 'medium',
+    // A request saved on a removed level (Amateur, Semi-pro) is coached as Pro.
+    difficulty:
+      COACH_LEVEL[c.difficulty] ||
+      (c.difficulty === 'amateur' || c.difficulty === 'semipro' ? COACH_LEVEL.pro : c.difficulty) ||
+      'medium',
     knockout: !!c.knockout,
     ...(c.extraTime ? { extraTime: true } : {}),
   };

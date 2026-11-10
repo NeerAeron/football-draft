@@ -221,7 +221,7 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `Tabs` | `label`, `tabs [{id,label,icon,badge}]`, `value`, `onChange`, `variant` underline·pill, children(fn) |
 | `toast()` / `achievement()` | `{ title, message, tone, icon, duration, action }`; `<Toaster/>` is in the shell |
 | `ScoreBug` | `home/away { name, short, code, colors, score }`, `clock`, `period`, `live`, `pens`, `size` |
-| `GradeBadge` | `grade` S+…F, `size` sm·md·lg·xl, `verdict`, `detail` |
+| `Cup`, `Medal`, `Prize` | run trophies: `Cup` `metal` gold·silver·bronze·holo, `size`, `glow`, `empty`, `budget`, `emblem`; `Medal` `metal`, `size`, `budget`; `Prize` `medal` (gold → cup, silver/bronze → medal, none → unlit cup) |
 | `Confetti` | `fire` (change to burst), `count`, `origin`, `colors` (no-op with reduced motion) |
 | `EmptyState` / `Skeleton` | `icon tone title message action size` / `variant text·rect·circle·card·row`, `lines` |
 | `Switch` / `Range` / `Field` | native inputs: `label checked onChange` / `label value onInput valueText` |
@@ -244,7 +244,7 @@ Use custom properties only — no raw hex, px font sizes or durations in screen 
   `--sky-*`; semantic `--accent --positive --negative --warning --info --focus-ring`; pitch
   `--pitch-*`, `--pitch-stripe-a/b`, `--pitch-line`.
 - **Tiers:** `--tier-{superstar|star|starter|normal|bench|hidden}` (solid), `-frame` (foil
-  gradient), `-fill`, `-sheen`. Text helpers `.tier-text-<id>`; grades `--grade-{s,a,b,c,d,f}`.
+  gradient), `-fill`, `-sheen`. Text helpers `.tier-text-<id>`; medals `--medal-{gold,silver,bronze}`, Budget trophies `--budget`.
 - **Team colours:** `style=${teamStyle(colors)}` sets `--team --team-2 --team-ink` (contrast-safe,
   lifted when too dark for navy).
 - **Type:** `--font-display` (Barlow Condensed: headings, numerals, CTAs lg/xl) and `--font-ui`

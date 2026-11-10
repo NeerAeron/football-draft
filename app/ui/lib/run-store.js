@@ -13,13 +13,14 @@ import {
   CUP_ROUNDS,
   CUP_FORMAT,
   BEST_THIRD,
+  PLACE_LABELS,
 } from '../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../core/competition/model.js';
 import { encodeChallenge, decodeChallenge } from '../../core/competition/share.js';
 import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/competition/daily.js';
-import { seedNumber } from '../../core/draft/session.js';
+import { seedNumber, difficultyOf } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
-import { RUN_KEY, DAILY_KEY, STAGES } from './saved.js';
+import { RUN_KEY, DAILY_KEY, STAGES, PLAYOFF_STAGE, RUN_SUMMARY_FORMAT } from './saved.js';
 import { recordRun } from './records.js';
 import { teamCode } from './match-store.js';
 import { sideColors, nationTrigram } from './kits.js';
@@ -49,18 +50,36 @@ export const typeOf = mode => MODE_TO_TYPE[mode] || MODE_TO_TYPE[TYPE_TO_MODE[mo
 
 // ---- stages -------------------------------------------------------------------------------
 export const STAGE_IDS = STAGES.map(s => s.id); // G1 G2 G3 R32 R16 QF SF F
-/** Stage id ('G1'…'F') of the next match, or of the last match once the run is over. */
+/**
+ * Stage id ('G1'…'F', or '3P' for the third-place play-off) of the next match, or of the last
+ * match once the run is over.
+ */
 export function stageIdOf(snapshot) {
   const played = snapshot.rounds.filter(r => r.result).length;
   const index = snapshot.complete
     ? Math.max(0, played - 1)
     : Math.min(STAGE_IDS.length - 1, played);
-  return STAGE_IDS[index];
+  return snapshot.rounds[index]?.id === 'third' ? PLAYOFF_STAGE.id : STAGE_IDS[index];
 }
-export const roundLabel = round => CUP_ROUNDS[round]?.label ?? '';
-/** Short label for the path strip: 'MD1' … 'Final'. */
-export const roundShort = round =>
-  ['MD1', 'MD2', 'MD3', 'R32', 'R16', 'QF', 'SF', 'Final'][round] ?? '';
+const SHORT = {
+  group1: 'MD1',
+  group2: 'MD2',
+  group3: 'MD3',
+  r32: 'R32',
+  r16: 'R16',
+  qf: 'QF',
+  sf: 'SF',
+  final: 'Final',
+  third: '3rd',
+};
+// A round is a snapshot round ({ id, label }: the eighth is the final or the play-off) or its
+// index (0–7; 7 reads as the final).
+const roundOf = round => (typeof round === 'number' ? CUP_ROUNDS[round] : round);
+export const roundLabel = round => roundOf(round)?.label ?? '';
+/** Short label for the path strip: 'MD1' … 'Final' ('3rd' for the play-off). */
+export const roundShort = round => SHORT[roundOf(round)?.id] ?? '';
+/** "Matchday 1", "Quarter-final", "Third-place play-off": a round's name without the group. */
+export const roundName = round => roundLabel(round).replace('Group · ', '');
 
 // ---- kits -----------------------------------------------------------------------------------
 // National teams have no kit colours in the catalog: lib/kits.js holds their home kits.
@@ -112,7 +131,7 @@ const randomId = () => {
 export function createRunFromDraft(catalog, { session, context = {} }, { now = Date.now() } = {}) {
   const options = session.options || {};
   const mode = modeOf(context.type ?? session.mode);
-  const difficulty = context.difficulty ?? options.difficulty ?? 'pro';
+  const difficulty = difficultyOf(context.difficulty ?? options.difficulty);
   const seed = context.seed ?? options.seed ?? 1;
   const challenge = context.meta?.challenge ?? context.challenge ?? null;
   const defaultRules = !!(options.useDefaultRules || context.useDefaultRules || challenge);
@@ -134,8 +153,9 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
     seed: typeof seed === 'number' || typeof seed === 'string' ? seed : seedNumber(seed),
     hideRatings: !!(context.options?.hideRatings ?? options.hideRatings),
     uniqueNations: !!(context.options?.uniqueNations ?? options.uniqueNations),
-    budget: !!(context.options?.budget ?? options.budget),
     defaultRules,
+    // Budget mode (the draft's option): its trophies go into a cabinet of their own.
+    budget: !!(context.options?.budget ?? context.budget ?? options.budget),
     challenge: challenge ? sanitizeChallenge(challenge) : null,
     links: user.links ? { score: user.links.score, maxScore: user.links.maxScore } : null,
     startedAt: new Date(now).toISOString(),
@@ -150,6 +170,7 @@ const sanitizeChallenge = c =>
 /** Home's summary of a run ('football-draft-run'), see lib/saved.js. */
 export function runSummary(snapshot, meta = {}) {
   return {
+    format: RUN_SUMMARY_FORMAT,
     mode: 'run',
     type: meta.type || typeOf(snapshot.mode),
     stage: stageIdOf(snapshot),
@@ -157,8 +178,11 @@ export function runSummary(snapshot, meta = {}) {
     team: userTeamName(snapshot.user?.name),
     status: snapshot.status,
     complete: !!snapshot.complete,
-    grade: snapshot.grade?.grade ?? null,
-    verdict: snapshot.grade?.verdict ?? null,
+    place: snapshot.place ?? null,
+    placeLabel: snapshot.placeLabel ?? null,
+    medal: snapshot.medal ?? null,
+    perfect: !!snapshot.perfect,
+    budget: meta.budget === true,
     stageLabel: snapshot.stageLabel,
     difficulty: snapshot.difficulty,
     rounds: snapshot.rounds.length,
@@ -196,8 +220,9 @@ export function patchRunState(patch) {
 }
 /**
  * The raw saved state (tolerant: null for anything that does not look like ours). A run saved
- * in the seven-match format (cup format 1, before the Round of 32) cannot be resumed: it reads
- * as no run (Home's summary of a finished one stays, see lib/saved.js).
+ * in an older cup format (before the third-place play-off and the three difficulties, or the
+ * seven-match format before that) cannot be resumed: it reads as no run (Home's summary of a
+ * finished one stays, see lib/saved.js).
  */
 export function readRunState() {
   const state = readJSON(RUN_STATE_KEY, null);
@@ -344,35 +369,46 @@ export function pageBase(loc = globalThis.location) {
   if (!loc) return 'https://football-draft.example/';
   return `${loc.origin}${loc.pathname}`;
 }
-const GRADE_CODE = { '+': 'p', '-': 'm' };
-/** 'S+' → 'sp', 'B' → 'b' (URL-safe). */
-export const gradeToken = grade =>
-  String(grade || '')
-    .toLowerCase()
-    .replace(/[+-]/g, m => GRADE_CODE[m]);
-export const gradeFromToken = token =>
-  /^[sabcdf][pm]?$/.test(String(token || ''))
-    ? token[0].toUpperCase() + (token[1] === 'p' ? '+' : token[1] === 'm' ? '-' : '')
-    : null;
+// Where the friend finished, in the link: two letters per place (core cup.js PLACES). Links
+// from before the places carried a letter grade there ('sp', 'b', …): those read as no place.
+const PLACE_TOKENS = {
+  champion: 'ch',
+  final: 'ru',
+  third: 'th',
+  fourth: 'fo',
+  qf: 'qf',
+  r16: 'rs',
+  r32: 'rt',
+  group: 'gs',
+};
+const TOKEN_PLACES = Object.fromEntries(Object.entries(PLACE_TOKENS).map(([k, v]) => [v, k]));
+export const placeToken = place => PLACE_TOKENS[place] ?? '';
+export const placeFromToken = token => TOKEN_PLACES[String(token || '')] ?? null;
 
 /**
  * "Challenge a friend" URL for the run/daily that was just played:
- *   <page>#/challenge?c=<token>&r=<w>-<d>-<l>.<grade>
+ *   <page>#/challenge?c=<token>&r=<w>-<d>-<l>.<place>
  * The token is core/competition/share.js encodeChallenge; parseChallengeUrl reads it too.
  */
-export function challengeLink(challenge, { record = null, grade = null, base = pageBase() } = {}) {
+export function challengeLink(challenge, { record = null, place = null, base = pageBase() } = {}) {
   const token = encodeChallenge(challenge);
   const r =
     record && Number.isInteger(record.w)
-      ? `&r=${record.w}-${record.d}-${record.l}${grade ? '.' + gradeToken(grade) : ''}`
+      ? `&r=${record.w}-${record.d}-${record.l}${placeToken(place) ? '.' + placeToken(place) : ''}`
       : '';
   return `${String(base).split('#')[0]}#/challenge?c=${token}${r}`;
 }
-/** Parse the landing query: { challenge (decoded) | null, score: { w, d, l, grade } | null }. */
+/**
+ * Parse the landing query: { challenge (decoded) | null, score: { w, d, l, place, placeLabel }
+ * | null }. An old link's grade token is ignored (place: null).
+ */
 export function readChallengeQuery(query = {}) {
   const challenge = decodeChallenge(String(query.c || '').toLowerCase());
   const m = /^(\d)-(\d)-(\d)(?:\.([a-z]{1,2}))?$/.exec(String(query.r || ''));
-  const score = m ? { w: +m[1], d: +m[2], l: +m[3], grade: gradeFromToken(m[4]) } : null;
+  const place = m ? placeFromToken(m[4]) : null;
+  const score = m
+    ? { w: +m[1], d: +m[2], l: +m[3], place, placeLabel: place ? PLACE_LABELS[place] : null }
+    : null;
   return { challenge, score };
 }
 /** The challenge describing a run (for its "Challenge a friend" link). */
@@ -382,7 +418,7 @@ export function runChallenge(meta, snapshot) {
     mode: meta.mode || snapshot.mode,
     seed: meta.seed ?? 1,
     formation: meta.formation || '433',
-    difficulty: meta.difficulty || snapshot.difficulty || 'pro',
+    difficulty: difficultyOf(meta.difficulty || snapshot.difficulty),
     hideRatings: !!meta.hideRatings,
     uniqueNations: !!meta.uniqueNations,
   };

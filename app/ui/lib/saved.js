@@ -2,12 +2,14 @@
 // the writing side (lib/run-store.js) — keep these readers tolerant of older/partial shapes.
 //
 //   'football-draft-run'    World Cup Run summary (written after every match):
-//      { mode: 'run', type: 'nations', stage: 'QF', record: { w, d, l }, team?: 'name',
-//        status?: 'playing' | 'champion' | 'eliminated', complete?: bool, grade?: 'B+',
-//        verdict?: 'Semi-final Heartbreak', stageLabel?, difficulty?, rounds: 8,
-//        updatedAt: ISO string }
-//      rounds: the run's number of matches. A run in progress without rounds: 8 is from the
-//      seven-match format (before the Round of 32): it cannot be resumed and reads as no run.
+//      { format: 3, mode: 'run', type: 'nations', stage: 'QF', record: { w, d, l },
+//        team?: 'name', status?: 'playing' | 'champion' | 'eliminated', complete?: bool,
+//        place?: 'third', placeLabel?: 'Third place', medal?: 'bronze', perfect?, budget?,
+//        stageLabel?, difficulty?, rounds: 8, updatedAt: ISO string }
+//      stage: the next match ('3P' = the third-place play-off, in the final's slot).
+//      format: the cup format the run was saved in. A run in progress without format: 3 is
+//      from an older format (no play-off, five difficulties): it cannot be resumed and reads
+//      as no run. A finished one still shows as the last run (older ones without a place).
 //   'football-draft-daily'  Daily Challenge record:
 //      { streak: 3, best: 7, lastPlayed: 'YYYY-MM-DD' (UTC day), lastResult?: '5-1-1',
 //        streakState?: { current, best, last }, results?: { [day]: entry }, current?: {…} }
@@ -34,6 +36,12 @@ export const STAGES = [
   { id: 'F', short: 'F', label: 'Final' },
 ];
 
+/** The summary format of a resumable run (core cup.js CUP_FORMAT). */
+export const RUN_SUMMARY_FORMAT = 3;
+/** The semi-final loser's eighth match: it takes the final's place on the path. */
+export const PLAYOFF_STAGE = { id: '3P', short: '3rd', label: 'Third-place play-off' };
+const MEDALS = ['gold', 'silver', 'bronze'];
+
 export function readSavedRun() {
   const run = readJSON(RUN_KEY, null);
   if (!run || typeof run !== 'object') return null;
@@ -41,17 +49,31 @@ export function readSavedRun() {
   const status = ['playing', 'champion', 'eliminated'].includes(run.status)
     ? run.status
     : 'playing';
-  if (status === 'playing' && run.rounds !== STAGES.length) return null;
+  if (status === 'playing' && run.format !== RUN_SUMMARY_FORMAT) return null;
+  const playoff = run.stage === PLAYOFF_STAGE.id;
+  // How it finished: the place, or for a run of an older format its stage ('Champions', …).
+  const placeLabel =
+    typeof run.placeLabel === 'string'
+      ? run.placeLabel
+      : status !== 'playing' && typeof run.stageLabel === 'string'
+        ? run.stageLabel
+        : null;
   return {
     mode: run.mode || 'run',
     type: run.type || 'nations',
-    stage: STAGES.some(s => s.id === run.stage) ? run.stage : 'G1',
+    // The path position (the play-off sits in the final's slot) and what the match is called.
+    stage: playoff ? 'F' : STAGES.some(s => s.id === run.stage) ? run.stage : 'G1',
+    stageLabel: playoff
+      ? PLAYOFF_STAGE.label
+      : (STAGES.find(s => s.id === run.stage)?.label ?? STAGES[0].label),
     record: { w: record.w | 0, d: record.d | 0, l: record.l | 0 },
     team: typeof run.team === 'string' ? run.team : null,
     status,
     complete: status !== 'playing',
-    grade: typeof run.grade === 'string' ? run.grade : null,
-    verdict: typeof run.verdict === 'string' ? run.verdict : null,
+    placeLabel,
+    medal: MEDALS.includes(run.medal) ? run.medal : status === 'champion' ? 'gold' : null,
+    perfect: run.perfect === true,
+    budget: run.budget === true,
     updatedAt: run.updatedAt || null,
   };
 }
@@ -77,10 +99,18 @@ export function readDailyStatus(now = new Date()) {
     lastPlayed,
     playedToday: lastPlayed === today,
     lastResult: typeof daily.lastResult === 'string' ? daily.lastResult : null,
-    // Today's finished attempt (points, grade) when there is one.
+    // Today's finished attempt (points, where it finished) when there is one.
     todayResult:
       entry && typeof entry === 'object' && Number.isFinite(entry.points)
-        ? { points: entry.points, grade: typeof entry.grade === 'string' ? entry.grade : null }
+        ? {
+            points: entry.points,
+            placeLabel:
+              typeof entry.placeLabel === 'string'
+                ? entry.placeLabel
+                : typeof entry.stageLabel === 'string'
+                  ? entry.stageLabel
+                  : null,
+          }
         : null,
   };
 }

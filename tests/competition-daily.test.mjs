@@ -27,6 +27,8 @@ import {
   challengeUrl,
   parseChallengeUrl,
   challengeDraftOptions,
+  isUltimate,
+  ULTIMATE,
 } from '../app/core/competition/share.js';
 
 const catalog = loadRuntimeCatalog();
@@ -64,8 +66,9 @@ test('same date, same spins, alternates and opponents', () => {
     assert.ok(field.has(r.spin) && field.has(r.alternate));
     assert.notEqual(r.spin, r.alternate);
   }
-  assert.equal(new Set(a.opponents).size, 8);
-  assert.ok(a.opponents.every(k => k.startsWith('nation:') || k.startsWith('boss:')));
+  // Group ×3, five knockouts and the third-place play-off opponent: real nations only.
+  assert.equal(new Set(a.opponents).size, 9);
+  assert.ok(a.opponents.every(k => k.startsWith('nation:')));
   // The draft follows the schedule: spins land on it, a re-roll lands on the alternate.
   const s = createDraftSession(catalog, a.draft);
   for (let round = 0; round < 11; round++) {
@@ -127,9 +130,15 @@ test('the perfect XI bounds every draft and scores the daily', () => {
     ovr: 125,
     perfection: 175,
   });
+  // The place decides the bonus: the play-off is worth winning.
+  const bonus = place => dailyScore({ ...snapshot, place }, { rating: 70, perfect: 80 }).stage;
+  assert.deepEqual(
+    ['group', 'r32', 'r16', 'qf', 'fourth', 'third', 'final', 'champion'].map(bonus),
+    [0, 10, 20, 40, 80, 100, 120, 200],
+  );
 });
 
-test('share text: emoji row, record, grade, numbers, mode flags and link', () => {
+test('share text: emoji row, record, place, numbers, mode flags and link', () => {
   const day = dailyChallenge(catalog, '2026-11-07'),
     s = greedy(createDraftSession(catalog, day.draft)),
     side = s.matchSide(0),
@@ -161,32 +170,48 @@ test('share text: emoji row, record, grade, numbers, mode flags and link', () =>
   const lines = text.split('\n');
   assert.equal(lines[0], '⚽ World Cup Draft · Daily #7');
   assert.equal(lines[1], '🟩🟨🟩 🟨🟩🟥');
-  assert.equal(lines[2], '3-2-1 · C Quarter-finalists');
+  assert.equal(lines[2], '3-2-1 · Quarter-finals');
+  assert.ok(!/\b[SABCDF][+]? /.test(lines[2]), 'no letter grade');
   assert.equal(lines[3], `XI ${side.rating.toFixed(1)} · 98.4% of perfect · 1,104 pts`);
   assert.equal(lines[4], 'Nations · Pro · 🙈 Ratings hidden');
   assert.equal(lines[5], `https://example.com/play?x=1#c=c1.d.n.${day.formation}.p.0.7`);
-  // The stage is left out when the verdict names it, kept when it does not.
-  const summaryLine = (stageLabel, grade, verdict) =>
-    shareText({
-      record: { w: 4, d: 2, l: 1 },
-      results: ['W', 'D', 'W', 'W', 'D', 'W', 'L'],
-      status: 'eliminated',
-      stageLabel,
-      grade: { grade, verdict },
-      mode: 'nations',
-      difficulty: 'pro',
-    }).split('\n')[2];
-  assert.equal(summaryLine('Final', 'A', 'Final Heartbreak'), '4-2-1 · A Final Heartbreak');
+  // The summary line: where the run finished (or the stage of a run in progress).
+  const base = {
+    record: { w: 6, d: 1, l: 1 },
+    results: ['W', 'D', 'W', 'W', 'W', 'W', 'L', 'W'],
+    status: 'eliminated',
+    mode: 'nations',
+    difficulty: 'legendary',
+  };
+  const third = { ...base, stageLabel: 'Third place', placeLabel: 'Third place', medal: 'bronze' };
+  assert.equal(shareText(third).split('\n')[2], '6-1-1 · Third place');
+  assert.equal(resultEmoji(third), '🟩🟨🟩 🟩🟩🟩🟥🟩 🥉');
+  assert.equal(resultEmoji({ ...third, medal: 'silver' }).slice(-2), '🥈');
   assert.equal(
-    summaryLine('Final', 'A', 'Heartbreak on Penalties'),
-    '4-2-1 · Final · A Heartbreak on Penalties',
+    shareText({ ...base, stageLabel: 'Semi-finals', placeLabel: null }).split('\n')[2],
+    '6-1-1 · Semi-finals',
   );
-  assert.equal(summaryLine('Champions', 'A+', 'World Champions'), '4-2-1 · A+ World Champions');
-  assert.equal(summaryLine('Group stage', 'F', 'Group Stage Exit'), '4-2-1 · F Group Stage Exit');
+  // Budget mode is named; the ultimate achievement gets its own line.
+  assert.match(shareText(third, { budget: true }), /Nations · Legendary · 💰 Budget/);
+  const perfect = {
+    ...base,
+    record: { w: 8, d: 0, l: 0 },
+    results: Array(8).fill('W'),
+    status: 'champion',
+    stageLabel: 'Champions',
+    placeLabel: 'Champions',
+    medal: 'gold',
+    perfect: true,
+  };
+  assert.equal(isUltimate(perfect, true), true);
+  assert.equal(isUltimate(perfect, false), false);
+  assert.equal(isUltimate({ ...perfect, difficulty: 'worldclass' }, true), false);
+  assert.equal(isUltimate({ ...perfect, perfect: false }, true), false);
   assert.equal(
-    summaryLine('Round of 16', 'D', 'Out on Penalties'),
-    '4-2-1 · Round of 16 · D Out on Penalties',
+    shareText(perfect, { budget: true }).split('\n')[3],
+    `👑 ${ULTIMATE.name}: Legendary · Budget · 8-0-0`,
   );
+  assert.ok(!shareText(perfect).includes('👑'));
   // A champion row ends with a trophy.
   assert.equal(
     resultEmoji({ results: ['W', 'W', 'W', 'W', 'W', 'D', 'W'], status: 'champion' }),
@@ -196,7 +221,7 @@ test('share text: emoji row, record, grade, numbers, mode flags and link', () =>
 
 test('challenge links round-trip and replay the same spins', () => {
   for (const mode of ['nations', 'leagues', 'clubs', 'clubAndCountry'])
-    for (const difficulty of ['amateur', 'semipro', 'pro', 'worldclass', 'legendary'])
+    for (const difficulty of ['pro', 'worldclass', 'legendary'])
       for (const formation of ['433', '4231-wide', '352']) {
         const c = {
           kind: 'cup',
@@ -229,22 +254,29 @@ test('challenge links round-trip and replay the same spins', () => {
     42,
   ])
     assert.equal(decodeChallenge(bad), null, String(bad));
-  assert.deepEqual(parseChallengeUrl('https://x.io/?c=C1.Q.L.442.A.0.1A'), {
-    ...decodeChallenge('c1.q.l.442.a.0.1a'),
+  assert.deepEqual(parseChallengeUrl('https://x.io/?c=C1.Q.L.442.W.0.1A'), {
+    ...decodeChallenge('c1.q.l.442.w.0.1a'),
   });
+  // Old links on the removed difficulties (a: Amateur, s: Semi-pro) play as Pro.
+  for (const old of ['a', 's']) {
+    const c = decodeChallenge(`c1.c.n.433.${old}.0.1a`);
+    assert.equal(c.difficulty, 'pro');
+    assert.equal(challengeDraftOptions(c).difficulty, 'pro');
+  }
+  assert.throws(() => encodeChallenge({ difficulty: 'amateur', seed: 1 }), /Invalid challenge/);
   assert.equal(parseChallengeUrl('https://x.io/#nothing'), null);
   // A friend opening the link drafts with the very same spins.
   const original = createDraftSession(catalog, {
     mode: 'clubAndCountry',
     seed: 'friend',
-    difficulty: 'semipro',
+    difficulty: 'worldclass',
     useDefaultRules: true,
   });
   const link = challengeUrl('https://x.io/', {
     kind: 'cup',
     mode: 'clubAndCountry',
     seed: 'friend',
-    difficulty: 'semipro',
+    difficulty: 'worldclass',
   });
   const replay = createDraftSession(catalog, challengeDraftOptions(parseChallengeUrl(link)));
   for (let k = 0; k < 5; k++) {

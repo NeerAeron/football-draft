@@ -29,6 +29,7 @@ import {
   difficultyLevels,
   spinsNations,
   budgetCopy,
+  VERSUS_REROLLS,
 } from '../app/ui/screens/setup/setup-model.js';
 
 const catalog = await loadRuntimeCatalog();
@@ -166,11 +167,11 @@ test('projection: typical before picks, run stage, quick and versus win chances'
   assert.ok(est > 70 && est < 95);
   const run = draftProjection({ kind: 'run', mode: 'nations', difficulty: 'pro', teams: [team] });
   assert.equal(run.kind, 'run');
-  assert.ok(['group', 'r16', 'qf', 'sf', 'final', 'champion'].includes(run.stage));
+  assert.ok(['group', 'r32', 'r16', 'qf', 'sf', 'final', 'champion'].includes(run.stage));
   const quick = draftProjection({
     kind: 'quick',
     mode: 'nations',
-    difficulty: 'amateur',
+    difficulty: 'worldclass',
     teams: [team],
   });
   assert.match(quick.value, /^\d+%$/);
@@ -328,7 +329,7 @@ test('setup defaults: query beats saved choices beats prefs; challenge seeds use
   const q = setupDefaults('quick', {
     query: {
       type: 'nations',
-      difficulty: 'amateur',
+      difficulty: 'worldclass',
       formation: '4231',
       seed: '77',
       hide: '1',
@@ -338,7 +339,7 @@ test('setup defaults: query beats saved choices beats prefs; challenge seeds use
   });
   assert.deepEqual(
     [q.type, q.difficulty, q.formation, q.seed, q.hideRatings, q.uniqueNations],
-    ['nations', 'amateur', '4231', 77, true, true],
+    ['nations', 'worldclass', '4231', 77, true, true],
   );
   const ctx = setupContext('quick', q);
   assert.equal(ctx.useDefaultRules, true);
@@ -360,11 +361,26 @@ test('difficulty levels explain opponents and re-rolls', () => {
   const levels = difficultyLevels('nations');
   assert.deepEqual(
     levels.map(l => l.id),
-    ['amateur', 'semipro', 'pro', 'worldclass', 'legendary'],
+    ['pro', 'worldclass', 'legendary'],
   );
   for (let i = 1; i < levels.length; i++) assert.ok(levels[i].target > levels[i - 1].target);
-  assert.equal(levels[4].rerolls, 0);
-  assert.ok(levels[0].rerolls >= levels[2].rerolls);
+  // Every difficulty gets a re-roll: Pro 2, World Class 1, Legendary 1.
+  assert.deepEqual(
+    levels.map(l => l.rerolls),
+    [2, 1, 1],
+  );
+  assert.ok(levels.every(l => l.text.length > 20));
+  // A removed level in a link or a saved choice falls back to Pro.
+  assert.equal(setupDefaults('run', { query: { difficulty: 'amateur' } }).difficulty, 'pro');
+  assert.equal(setupDefaults('run', { saved: { difficulty: 'semipro' } }).difficulty, 'pro');
+  // Versus picks its re-rolls itself (None / One / Two), whatever the levels give.
+  assert.deepEqual(
+    VERSUS_REROLLS.map(
+      o => setupContext('versus', { ...setupDefaults('versus'), difficulty: o.value }).rerolls,
+    ),
+    [0, 1, 2],
+  );
+  assert.equal(setupContext('run', setupDefaults('run')).rerolls, undefined);
 });
 
 test('the armband and the boost chips on the pitch follow the core rule', async () => {

@@ -25,8 +25,6 @@ const mode = option('--mode', 'nations'),
   count = Number(option('--n', 24));
 // Same mapping as app/ui/lib/prematch-store.js (COACH_LEVEL).
 const COACH_LEVEL = {
-  amateur: 'veryeasy',
-  semipro: 'easy',
   pro: 'medium',
   worldclass: 'hard',
   legendary: 'impossible',

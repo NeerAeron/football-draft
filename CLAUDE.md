@@ -119,12 +119,14 @@ club-less national-team players have `source.club === null` and appear only in n
   `indexCatalog`), `catalog-derived.js` (precomputed badges/club data, `reconcileCatalog`).
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
-  `DIFFICULTIES`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
+  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; removed ids read as Pro via `difficultyOf`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
   `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem, the Captain boost),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
-  best thirds, `BEST_THIRD`) + five knockouts from the Round of 32, standings, grades, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
+  best thirds, `BEST_THIRD`) + five knockouts from the Round of 32 (the semi-final loser plays the
+  third-place play-off), places and medals instead of grades (`PLACES`), Pro / World Class on the
+  ladder (`CUP_TUNING`), Legendary on the real 48-nation field (`worldCupDraw`), standings, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
@@ -142,8 +144,8 @@ club-less national-team players have `source.club === null` and appear only in n
 - **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`), `router.js`
   (hash router), `prefs.js`, `audio.js`, `motion.js`, `draft-store.js` (draft hand-off),
   `prematch-store.js` (pre-match edits → kick-off), `match-store.js` (match requests/results),
-  `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: `recordRun`,
-  `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
+  `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: medals per difficulty, the Budget cabinet, the
+  ultimate achievement; `recordRun`, `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
   `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
   only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
   `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
@@ -175,7 +177,7 @@ club-less national-team players have `source.club === null` and appear only in n
 | `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |
 | `football-draft-daily` | `run-store.js` | daily streak, results, attempt in progress |
-| `football-draft-records` | `ui/lib/records.js` | trophy cabinet: finished runs, titles and best round per difficulty |
+| `football-draft-records` | `ui/lib/records.js` | trophy cabinet: runs, medals and best finish per difficulty, Budget-mode trophies, the ultimate achievement |
 | `football-draft-exhibition` | exhibition screen | last two teams |
 | `football-draft-dev` | tests only | `{ fastSim: true }`: auto-sims use the fast model |
 
