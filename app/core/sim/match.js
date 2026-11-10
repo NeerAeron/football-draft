@@ -4,7 +4,7 @@ import { clamp } from '../util/math.js';
 import { CONFIG, normalizeConfig } from '../config/config.js';
 import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import { coachAI } from './coach.js';
+import { coachAI, gameStateMentality } from './coach.js';
 import { goalZone, goalGeometry } from './goal-zones.js';
 import { makeIdentity } from './player-model.js';
 import { STYLES, DEFAULT_TAGS } from '../players/traits.js';
@@ -35,9 +35,52 @@ import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
 
 const MENTALITY_LEAN = { push: 1, balanced: 0, hold: -1 };
+// formation(): the last formation name seen per side and its FORMATIONS rows.
+const FORMATION_NAME = [null, null],
+  FORMATION_ROWS = [null, null];
 import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
 import { hypot } from './constants.js';
+
+// Cold start. V8 chooses how a field is stored from the first values written to it and, when
+// a later value does not fit (a whole-number field receives a fraction), re-shapes the object
+// and throws away the compiled code of every function that used it. A match begins with whole
+// numbers almost everywhere (y: 34, energy: 1, cooldown: 0) and meets its first fractions one
+// field at a time over the first seconds and minutes of play, so the first match of a page or
+// worker used to recompile its hot functions a couple of hundred times. primeShapes() writes a
+// fraction once into those fields of a throwaway match: the engine remembers the wider storage
+// for every match created afterwards. No value of a real match is touched.
+const WHOLE_NUMBER_FIELDS = new Set([
+  'id',
+  'team',
+  'slot',
+  'number',
+  'weakFoot',
+  'yellowCards',
+  'seed',
+  'duration',
+  'half',
+  'eventId',
+  'kickoffTeam',
+  'lastTeam',
+  'lastTouch',
+  'taker',
+]);
+let shapesPrimed = false;
+function primeShapes(duration) {
+  shapesPrimed = true;
+  try {
+    const m = new Match(1, duration);
+    m.importConfig(m.exportConfig());
+    const p = m.players[0];
+    for (const object of [m, m.ball, m.restart, m.stats[0], p, p.stats])
+      for (const key of Object.keys(object))
+        if (typeof object[key] === 'number' && key[0] !== '_' && !WHOLE_NUMBER_FIELDS.has(key))
+          object[key] = 0.5;
+  } catch {
+    // Only an optimisation: never let it stop a match from being created.
+  }
+}
 
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
@@ -138,6 +181,7 @@ export class Match {
     this._coverTop = null;
     for (const p of this.players) this.setTags(p.id, p.tags);
     this.reset();
+    if (!shapesPrimed) primeShapes(duration);
   }
   setDuration(duration) {
     if (!DURATION_PROFILES[duration]) throw new RangeError('Unsupported match length');
@@ -244,6 +288,33 @@ export class Match {
       offside: false,
       deflectedBy: null,
       deflectedAt: -10,
+      // Fields set later by passes, shots and restarts, declared up front (undefined reads
+      // the same as absent) so the ball keeps one object shape: it is read in every hot loop.
+      offsideState: undefined,
+      restartTaker: undefined,
+      delivery: undefined,
+      strength: undefined,
+      chance: undefined,
+      pendingPass: undefined,
+      destination: undefined,
+      deliveryDemand: undefined,
+      missedReceiver: undefined,
+      saver: undefined,
+      deliveryOrigin: undefined,
+      passCraft: undefined,
+      roll: undefined,
+      curve: undefined,
+      shotTeam: undefined,
+      shotOrigin: undefined,
+      shotType: undefined,
+      shotRecord: undefined,
+      assist: undefined,
+      goalCredit: undefined,
+      indirect: undefined,
+      penaltyTaker: undefined,
+      previous: undefined,
+      heldSince: undefined,
+      penaltyKick: undefined,
     };
     for (const p of this.players) {
       p.stats = freshStats();
@@ -314,9 +385,14 @@ export class Match {
     this.events.unshift(e);
     return e;
   }
+  // The mentality in effect: the side's own choice, or the game-state one for 'auto'.
+  mentality(team) {
+    const chosen = this.teams[team].tactics.mentality;
+    return chosen === 'auto' ? gameStateMentality(this, team) : chosen;
+  }
   settings(team) {
     const t = this.teams[team].tactics,
-      lean = MENTALITY_LEAN[t.mentality] ?? 0;
+      lean = MENTALITY_LEAN[this.mentality(team)] ?? 0;
     // Mentality leans the whole side: push = higher line, more bodies forward;
     // hold = deeper block, fewer runners, patient possession.
     return {
@@ -385,8 +461,13 @@ export class Match {
       p.fullName = data.fullName || p.name;
       p.primaryPosition = data.primaryPosition || p.primaryPosition;
       p.secondaryPositions = [...(data.secondaryPositions || [])];
-      for (const key of ['profileId', 'sourcePlayerId', 'sourceOverall', 'source', 'inference'])
-        p[key] = data[key] == null ? null : structuredClone(data[key]);
+      // Named stores, not `p[key] = …`: a keyed store that adds a property turns
+      // an object this large into a dictionary (slow property access everywhere).
+      p.profileId = data.profileId == null ? null : structuredClone(data.profileId);
+      p.sourcePlayerId = data.sourcePlayerId == null ? null : structuredClone(data.sourcePlayerId);
+      p.sourceOverall = data.sourceOverall == null ? null : structuredClone(data.sourceOverall);
+      p.source = data.source == null ? null : structuredClone(data.source);
+      p.inference = data.inference == null ? null : structuredClone(data.inference);
       p.foot = data.foot === 'left' ? 'left' : 'right';
       p.weakFoot = data.weakFoot ?? p.weakFoot;
       p.tendencies = { ...p.tendencies, ...data.tendencies };
@@ -460,9 +541,15 @@ export class Match {
     return this.rel(p.x, team) >= 88.5 && Math.abs(p.y - 34) <= 20.16;
   }
   formation(p) {
-    return p.emergencyKeeper
-      ? [4, 34, 'GK']
-      : FORMATIONS[this.teams[p.team].tactics.formation][p.slot];
+    if (p.emergencyKeeper) return [4, 34, 'GK'];
+    // Hot path: remember each side's rows instead of looking the name up every call.
+    const team = p.team,
+      name = this.teams[team].tactics.formation;
+    if (FORMATION_NAME[team] !== name) {
+      FORMATION_ROWS[team] = FORMATIONS[name];
+      FORMATION_NAME[team] = name;
+    }
+    return FORMATION_ROWS[team][p.slot];
   }
   keeper(team) {
     return this.activePlayers.find(p => p.team === team && p.role === 'GK');

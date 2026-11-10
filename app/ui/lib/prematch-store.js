@@ -27,6 +27,7 @@ export const VIEW_KEY = 'football-draft-match-view';
 const FORMAT = 1;
 const KINDS = ['user', 'ai', 'p2'];
 export const MENTALITIES = [
+  { value: 'auto', label: 'Auto', hint: 'Read the game' },
   { value: 'push', label: 'Push', hint: 'Go for it' },
   { value: 'balanced', label: 'Balanced', hint: 'Stay in shape' },
   { value: 'hold', label: 'Hold', hint: 'Sit deeper' },
@@ -36,7 +37,7 @@ export const TACTIC_DEFAULTS = {
   tempo: 3,
   width: 3,
   press: 3,
-  mentality: 'balanced',
+  mentality: 'auto',
 };
 export const TACTIC_SLIDERS = ['tempo', 'width', 'press'].map(key => ({ key, ...TACTICS[key] }));
 export const STYLE_OPTIONS = Object.entries(STYLES).map(([value, s]) => ({

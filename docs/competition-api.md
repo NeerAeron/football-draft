@@ -44,14 +44,14 @@ mode baseline (6,000 runs):
 
 | Difficulty | champions | out in the group | reached: group / R16 / QF / SF / final / champions | `projectRun` |
 | --- | --- | --- | --- | --- |
-| Amateur | 59.6% | 0.6% | 1 / 4 / 5 / 9 / 22 / 60 | 61% · Champions |
-| Semi-pro | 37.8% | 2.7% | 3 / 10 / 13 / 19 / 17 / 38 | 34% · Final |
-| Pro | 19.8% | 4.8% | 5 / 14 / 18 / 23 / 21 / 20 | 18% · Semi-finals |
-| World Class | 8.2% | 14.7% | 15 / 23 / 21 / 24 / 9 / 8 | 8% · Quarter-finals |
-| Legendary | 3.4% | 24.3% | 24 / 27 / 23 / 17 / 6 / 3 | 3% · Quarter-finals |
+| Amateur | 60.5% | 0.9% | 1 / 4 / 4 / 8 / 22 / 61 | 60% · Champions |
+| Semi-pro | 38.1% | 1.6% | 2 / 9 / 14 / 20 / 18 / 38 | 35% · Final |
+| Pro | 19.3% | 3.7% | 4 / 13 / 18 / 24 / 23 / 19 | 17% · Semi-finals |
+| World Class | 7.7% | 13.7% | 14 / 23 / 22 / 24 / 10 / 8 | 9% · Quarter-finals |
+| Legendary | 4.0% | 23.0% | 23 / 28 / 22 / 17 / 6 / 4 | 3% · Round of 16 |
 
-**Real engine** for the user's matches (30 runs per level, 180 s / 300 s alternating; ±9 points
-at this size): champions Amateur 46.7%, Semi-pro 40.0%, Pro 20.0% (no group exits), World Class
+**Real engine** for the user's matches (30 runs per level, measured with the Phase 3 engine
+when instant results still alternated 180 s / 300 s; ±9 points at this size): champions Amateur 46.7%, Semi-pro 40.0%, Pro 20.0% (no group exits), World Class
 3.3%, Legendary 10.0%. Match by match it agrees with the model plus `KNOCKOUT_EDGE`: group wins
 74.0% vs 75.1%, knockout ties won 74.8% vs 69.9% without the edge (≈ 74% with it). Re-check with
 `cup-calibration.mjs runs --runs 1000 --engine 30 --workers 2` after engine changes.
@@ -121,16 +121,15 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 
 ### Fast rating model (`model.js`)
 
-Independent Poisson goals on effective ratings: `λA = 1.82·e^{0.0525(rA−rB)}`,
-`λB = 1.82·e^{−0.0525(rA−rB)}` — gap 0: 39% W / 22% D / 39% L; gap +4: 55/21/24; gap +8:
-70/16/14; gap +12: 83/10/7. Fitted by Poisson maximum likelihood to 840 engine matches of the
-Phase 3 engine (`cup-calibration.mjs gaps`: a typically drafted XI against ladder opponents at
-gaps of −12…+20, the AI coach at each difficulty's level, 180 s and 300 s alternating). The
-engine by gap (W/D/L) against the model: −8…−4 19/15/66 vs 21/19/60; +4…+8 59/25/17 vs
-63/18/19; +8…+13 80/14/6 vs 78/13/9; +13…+17 88/7/5 vs 89/7/4. 180 s matches score less (1.58
-per side at gap 0) than 300 s (2.06) with the same slope; the model uses the blend. No home or
-coach constant: the AI coach's level moves the user's edge by at most ±1 rating point with no
-trend; Poisson draws match the engine (16.4% vs 16.9%). Shootouts: five kicks each then sudden
+Independent Poisson goals on effective ratings: `λA = 1.6·e^{0.0575(rA−rB)}`,
+`λB = 1.6·e^{−0.0575(rA−rB)}` — gap 0: 38% W / 23% D / 39% L. Fitted to 792 matches of the
+engine in the game's 180 s match (`cup-calibration.mjs gaps`: a typically drafted XI against
+ladder opponents at gaps of −12…+20, the AI coach at each difficulty's level). The engine by
+gap (W/D/L) against the model: −8…−4 19/21/60 vs 20/20/60; +4…+8 67/18/15 vs 62/19/18; +8…+13
+76/15/9 vs 78/13/9; +13…+17 91/5/4 vs 89/7/4, and 3.4 goals a match on those gaps for both.
+(The earlier 1.82 / 0.0525 fit, made when instant results used a 300 s match, predicts the
+same win/draw/loss within a point; only the scoring level changed.) No home or coach constant:
+the AI coach's level moves the user's edge by at most ±2 rating points with no trend. Shootouts: five kicks each then sudden
 death, each scored with p = 0.75 ± 0.005 per rating point (340 engine shootouts: a side 6 points
 stronger wins 62%, 6 weaker 41%; `MATCH_MODEL`).
 

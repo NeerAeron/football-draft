@@ -10,10 +10,10 @@
 //
 // gaps: team 0 is a typically drafted XI (nations mode, positional picks, the run's re-rolls),
 // team 1 a ladder opponent at a uniform gap of −12…+12 effective points, coached by the AI at
-// the level a difficulty uses (prematch-store COACH_LEVEL); 180 s and 300 s alternate. The user
-// side keeps default tactics (as an auto-simmed run does).
+// the level a difficulty uses (prematch-store COACH_LEVEL), in the game's 180 s match. The user
+// side keeps default tactics (as an auto-simmed run does: mentality 'auto').
 // runs: every difficulty; the user's matches use the fitted model, and with --engine N also
-// N runs per difficulty played by the real engine (180 s / 300 s alternating). Reports the
+// N runs per difficulty played by the real engine. Reports the
 // title / exit rates, the final opponents and what projectRun says for the same XI.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const imp = path => import(ROOT + path);
 const DIFFS = ['amateur', 'semipro', 'pro', 'worldclass', 'legendary'];
+const MATCH_SECONDS = 180; // the game's one match length (core/sim/constants.js)
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
 
 async function setup() {
@@ -93,7 +94,7 @@ function gapSpecs(count, { min = -12, max = 12, from = 0 } = {}) {
       seed: 41000 + i * 7,
       difficulty: DIFFS[i % 5],
       gap: min + ((i * 7919) % 97) * ((max - min) / 96),
-      duration: i % 2 ? 300 : 180,
+      duration: MATCH_SECONDS,
     });
   }
   return specs;
@@ -199,13 +200,6 @@ function fitReport(env, rows) {
       `  coach ${env.COACH_LEVEL[d].padEnd(10)} n=${rs.length} user wins ${(w * 100).toFixed(0)}% · edge to the user ${best.h.toFixed(2)} (≈ ${(best.h / flat.slope).toFixed(1)} rating pts)`,
     );
   }
-  for (const duration of [180, 300]) {
-    const rs = rows.filter(r => r.duration === duration),
-      f = fitModel(rs, { home: false });
-    console.log(
-      `  ${duration} s: n=${rs.length} goals ${f.goals.toFixed(2)} slope ${f.slope.toFixed(4)}`,
-    );
-  }
   return { fit, flat };
 }
 
@@ -219,7 +213,7 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
     const m = run.nextMatch();
     if (engine) {
       const config = env.fixtureConfig(m, difficulty);
-      const r = playEngine(env, Match, config, m.seed, matches % 2 ? 300 : 180);
+      const r = playEngine(env, Match, config, m.seed, MATCH_SECONDS);
       const draw = r.score[0] === r.score[1];
       games.push({
         knockout: m.knockout,

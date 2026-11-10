@@ -1,5 +1,5 @@
-import { Match, Player, clamp } from './engine.js';
-import { normalizeAttributes } from '../players/ratings.js';
+import { Match, Player, clamp, MATCH_SECONDS } from './engine.js';
+import { freshStats } from './constants.js';
 export const RECORD_STEP = 3; // 20 stored frames/s; interpolate display, retain 60 Hz physics.
 export function snapshot(m) {
   const positions = new Float32Array(22 * 9);
@@ -168,7 +168,7 @@ export async function simulateComplete(
   onProgress = () => {},
   cancelled = () => false,
 ) {
-  const m = new Match(seed, 300);
+  const m = new Match(seed, MATCH_SECONDS);
   m.importConfig(config);
   const frames = record ? [snapshot(m)] : [];
   let ticks = 0;
@@ -187,12 +187,31 @@ export async function simulateComplete(
   if (record && frames.at(-1)?.elapsed !== m.elapsed) frames.push(snapshot(m));
   return { result: m, frames, clips: record ? selectHighlights(m.events, m.elapsed, 60) : [] };
 }
+// A structured clone of a Match (plain data) → a working Match with the same state.
+// The state is copied onto objects built by the real constructors and literals (match,
+// players, ball, stats), so they get the hidden classes the engine's hot paths are optimised
+// for. Restoring prototypes with Object.assign(Object.create(proto), data) left the match and
+// all 22 players in dictionary mode (every property access a hash lookup, about 3x slower
+// per step).
+function restoreMatch(data) {
+  const m = new Match(data.seed, data.duration),
+    { ball, stats } = m;
+  Object.assign(m, data);
+  m.ball = Object.assign(ball, data.ball);
+  m.stats = data.stats.map((side, i) => Object.assign(stats[i] || {}, side));
+  m.players = data.players.map(source => {
+    const p = new Player(source);
+    // The constructor normalises attrs and resets its transient fields: put those back.
+    for (const key of Object.keys(source))
+      if (key !== 'attrs' && key[0] !== '_') p[key] = source[key];
+    p.stats = Object.assign(freshStats(), source.stats);
+    return p;
+  });
+  return m;
+}
 export async function simulateHalf(source, onProgress = () => {}, cancelled = () => false) {
   // Keep the authoritative simulation separate from the display snapshots.
-  const m = Object.assign(Object.create(Match.prototype), structuredClone(source));
-  m.players = m.players.map(p =>
-    Object.assign(Object.create(Player.prototype), p, { attrs: normalizeAttributes(p.attrs) }),
-  );
+  const m = restoreMatch(structuredClone(source));
   m.rebuildActive();
   m.pauseAtHalf = true;
   if (m.mode === 'halftime') m.resumeHalf();

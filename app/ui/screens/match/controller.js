@@ -59,7 +59,7 @@ export function periodLabel(m) {
   return ['1H', '2H', 'ET1', 'ET2'][m.half - 1] || '';
 }
 
-const viewDuration = (view, request) => (view === 'full' ? request.duration || FULL_DURATION : 300);
+const viewDuration = () => FULL_DURATION; // one match length for every view
 
 function shotStop(e) {
   switch (e.type) {

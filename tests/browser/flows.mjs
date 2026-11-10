@@ -224,7 +224,7 @@ const matchFlows = [
   },
   {
     name: 'match-full',
-    async run({ page, shot, step, base }) {
+    async run({ page, shot, step, base, note }) {
       await page.goto(`${base}${MATCH}&view=full`);
       await kickOff(page, step);
       await step('live canvas', () => visible(page, '.match-stage__canvas'));
@@ -261,8 +261,8 @@ const matchFlows = [
       });
       const perf = await framePerf(page);
       if (perf)
-        console.log(
-          `        frame ms avg ${perf.avg.toFixed(2)} p95 ${perf.p95.toFixed(2)} (${perf.frames} frames)`,
+        note(
+          `frame ms avg ${perf.avg.toFixed(2)} p95 ${perf.p95.toFixed(2)} (${perf.frames} frames)`,
         );
     },
   },

@@ -7,13 +7,13 @@
 // long sims never jank the page; the worker runs simulateHere() — the same deterministic loop —
 // and forwards its live ticker updates. Without Worker support (Node tests, old browsers) or if
 // the worker fails, simulateHere() runs on the main thread in short slices.
-import { Match } from '../../../core/sim/engine.js';
+import { Match, MATCH_SECONDS } from '../../../core/sim/engine.js';
 import { performanceRating } from '../../../core/sim/replay.js';
 import { PERIOD_END } from '../../../core/sim/periods.js';
 import { readJSON } from '../../lib/storage.js';
 
-/** Real seconds of the recorded profile (Instant / Key Moments use the same). */
-export const AUTO_DURATION = 300;
+/** Real seconds of an auto-simmed match: the game's one match length. */
+export const AUTO_DURATION = MATCH_SECONDS;
 const SLICE_MS = 14;
 
 /**

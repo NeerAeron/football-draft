@@ -21,12 +21,17 @@ export class MovementMethods {
     if (p.sentOff) return;
     let dx = p.tx - p.x,
       dy = p.ty - p.y;
-    const players = this.activePlayers;
+    // Separation from nearby players. Runs 22 x 22 times per step: reject on x
+    // before touching y (most pairs are far apart along the pitch).
+    const players = this.activePlayers,
+      px = p.x,
+      py = p.y;
     for (let i = 0; i < players.length; i++) {
       const q = players[i],
-        ox = p.x - q.x,
-        oy = p.y - q.y;
-      if (q === p || ox > 1.55 || ox < -1.55 || oy > 1.55 || oy < -1.55) continue;
+        ox = px - q.x;
+      if (ox > 1.55 || ox < -1.55 || q === p) continue;
+      const oy = py - q.y;
+      if (oy > 1.55 || oy < -1.55) continue;
       const d2 = ox * ox + oy * oy;
       if (d2 > 0.0001 && d2 < 2.4025) {
         const d = Math.sqrt(d2),
@@ -132,7 +137,8 @@ export class MovementMethods {
   tacticalLoad(p) {
     const t = this.teams[p.team].tactics,
       attacking = this.lastTeam === p.team && this.ball.owner !== null;
-    const lean = t.mentality === 'push' ? 1 : t.mentality === 'hold' ? -1 : 0;
+    const mentality = this.mentality(p.team),
+      lean = mentality === 'push' ? 1 : mentality === 'hold' ? -1 : 0;
     return (
       (attacking
         ? 1 + (t.tempo - 3) * 0.07

@@ -15,7 +15,9 @@ const SET_PIECES = {
   Offside: ['free kick', 10],
   'Throw-in': ['throw-in', 8],
 };
-export const MENTALITIES = ['push', 'balanced', 'hold'];
+// 'auto' follows the game state (coach.js gameStateMentality): push when behind late, hold a
+// late lead, balanced otherwise. Match.mentality(team) gives the one in effect.
+export const MENTALITIES = ['auto', 'push', 'balanced', 'hold'];
 export const SHOT_SITUATIONS = ['open play', 'counter', 'regain', 'set piece', 'penalty'];
 const LATE = 80 * 60;
 const MOMENTUM_STEP = 60; // match-clock seconds per sample

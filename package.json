@@ -21,7 +21,8 @@
     "verify": "npm run format:check && npm run lint && npm test && npm run test:browser",
     "sim:fingerprint": "node scripts/dev/sim-fingerprint.mjs",
     "data:fetch": "node scripts/data/fetch-source.mjs",
-    "data:build": "node scripts/data/build.mjs"
+    "data:build": "node scripts/data/build.mjs",
+    "preload": "node scripts/dev/preload.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
