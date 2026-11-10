@@ -101,7 +101,7 @@ on average and cost goals — dropped.
 **Ball on grass.** Ground balls looked frictionless: a loose ball slowed by only 2 m/s² and
 rolled 50 m, and a pass arrived at 14 m/s having barely slowed. Now (`constants.js`) a ground
 pass decelerates at `PASS_ROLL` 5.5 m/s² and is struck to arrive at `PASS_ARRIVAL` 13 m/s (a
-20 m pass leaves at ~18 m/s and visibly slows); a loose ball slows by 3.2 m/s² + 0.12 × speed;
+20 m pass leaves at ~20 m/s and visibly slows); a loose ball slows by 3.2 m/s² + 0.12 × speed;
 shots keep 2 m/s². The renderer rolls the ball (its panels turn with the distance covered). Over
 300 fixtures: loose balls lingering 4 s+ 0.66 → 0.47 a match, passes out of play 0.33 → 0.29,
 open danger-zone shots 0.31 → 0.25, goals 2.15 → 2.42; the paired 128-match calibration moves
