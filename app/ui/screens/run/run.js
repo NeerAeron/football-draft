@@ -131,9 +131,10 @@ function RunHeader({ snapshot, meta, nations }) {
               : [
                   html`<b class="num" key="o">${fmt1(snapshot.user.rating)}</b>`,
                   ' OVR',
-                  meta.links ? ' · Links ' : '',
-                  meta.links ? html`<b class="num" key="l">${meta.links.score}</b>` : '',
-                  meta.links ? `/${meta.links.maxScore}` : '',
+                  meta.links?.total != null ? ' · Boosts ' : '',
+                  meta.links?.total != null
+                    ? html`<b class="num" key="l">+${meta.links.total}</b>`
+                    : '',
                   ` · ${formationLabel(meta.formation || '433')}`,
                 ]
           }
@@ -468,7 +469,7 @@ function TeamPanel({ views, nations, meta, formation, snapshot }) {
     ${
       !meta.hideRatings &&
       html`<p class="run-xi__foot text-3 text-sm">
-        ${`Team OVR ${fmt1(snapshot.user.rating)} · effective ${fmt1(snapshot.user.effective)} with Links`}
+        ${`Team OVR ${fmt1(snapshot.user.rating)} · ${fmt1(snapshot.user.effective)} with boosts`}
       </p>`
     }
   </section>`;

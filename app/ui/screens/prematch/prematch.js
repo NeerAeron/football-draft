@@ -277,7 +277,7 @@ function Lineup({ side, index, players, title, hideRatings }) {
     />
     <p class="lineup__links">
       <${Icon} name="link" size=${14} />
-      Links <b class="num">${strength.links.score}</b>/${strength.links.maxScore}
+      Boosts <b class="num">+${strength.links.total}</b>
     </p>
   </section>`;
 }

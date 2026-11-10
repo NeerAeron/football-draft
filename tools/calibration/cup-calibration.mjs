@@ -8,6 +8,7 @@
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000            # fast model only
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000 --engine 24 --workers 2
 //   node tools/calibration/cup-calibration.mjs runs --runs 1000 --only pro --tuning '[-12.5, …]'
+//   CUP_BUDGET=1 node tools/calibration/cup-calibration.mjs runs …   # the user drafts in Budget mode
 //     (--tuning: try other CUP_TUNING offsets (nine: group ×3, R32, R16, QF, SF, final, play-off),
 //     a JSON array for --only's difficulty or a JSON object by difficulty; fast-model runs only.
 //     Legendary plays the real 48-nation field in a Nations draft (cup.js worldCupDraw), so
@@ -66,6 +67,7 @@ async function setup() {
   };
 }
 
+const BUDGET = process.argv.includes('--budget') || process.env.CUP_BUDGET === '1';
 // A typical draft: the session's suggested (positional) pick, a smart re-roll below 78.
 function draftXI(env, seed, difficulty) {
   const s = env.createDraftSession(env.catalog, {
@@ -73,6 +75,7 @@ function draftXI(env, seed, difficulty) {
     seed,
     rerolls: env.CONFIG.draft.rerolls[difficulty],
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
+    budget: BUDGET, // --budget: the user drafts in Budget mode (tier caps)
   });
   while (!s.complete) {
     s.spin();

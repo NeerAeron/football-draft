@@ -370,7 +370,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       ${
         entry.parts &&
         html`<p class="daily-card__parts text-3 text-sm">
-          ${`${int(entry.parts.matches)} results + ${int(entry.parts.stage)} stage bonus + ${int(entry.parts.ovr)} team OVR + ${int(entry.parts.perfection)} perfect XI = ${int(entry.points)} pts`}
+          ${`${int(entry.parts.matches)} results + ${int(entry.parts.stage)} place bonus + ${int(entry.parts.ovr)} team OVR + ${int(entry.parts.perfection)} perfect XI = ${int(entry.points)} pts`}
         </p>`
       }
       <div class="daily-card__foot">

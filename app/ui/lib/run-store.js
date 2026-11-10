@@ -157,7 +157,9 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
     // Budget mode (the draft's option): its trophies go into a cabinet of their own.
     budget: !!(context.options?.budget ?? context.budget ?? options.budget),
     challenge: challenge ? sanitizeChallenge(challenge) : null,
-    links: user.links ? { score: user.links.score, maxScore: user.links.maxScore } : null,
+    links: user.links
+      ? { score: user.links.score, maxScore: user.links.maxScore, total: user.links.total }
+      : null,
     startedAt: new Date(now).toISOString(),
   };
   return { run, meta };

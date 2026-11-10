@@ -27,9 +27,9 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
  * re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {
-  nations: { ovr: 82.89, sd: 1.07, chem: 1.52, effective: [83.92, 84.41, 84.59] },
-  leagues: { ovr: 81.47, sd: 1.72, chem: 1.33, effective: [82.1, 82.8, 83.39] },
-  clubs: { ovr: 77.71, sd: 1.71, chem: 0.87, effective: [78.03, 78.58, 78.98] },
+  nations: { ovr: 83.13, sd: 1.03, chem: 1.67, effective: [84.36, 84.79, 84.94] },
+  leagues: { ovr: 81.65, sd: 1.72, chem: 1.97, effective: [82.87, 83.61, 84.25] },
+  clubs: { ovr: 77.98, sd: 1.7, chem: 1.27, effective: [78.68, 79.25, 79.68] },
   clubAndCountry: { ovr: 82.3, sd: 1.46, chem: 0.41, effective: [82.17, 82.71, 83.24] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
