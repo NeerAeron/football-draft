@@ -81,6 +81,7 @@ function Playing({ request, onExit, restarted }) {
   const result = useStore(controller.hud, s => s.result);
   const [tacticsFor, setTacticsFor] = useState(null);
   const tactics = useStore(controller.hud, s => s.tactics);
+  const effective = useStore(controller.hud, s => s.effective);
   const access = useStore(controller.hud, s => s.access);
   const teams = useMemo(() => sidesOf(request), [request]);
   const openTactics = t => {
@@ -92,6 +93,7 @@ function Playing({ request, onExit, restarted }) {
     onClose=${() => setTacticsFor(null)}
     teams=${teams}
     tactics=${tactics}
+    effective=${effective}
     access=${access}
     userSides=${controller.userSides}
     onSet=${(t, k, v) => controller.setTactic(t, k, v)}

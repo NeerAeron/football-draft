@@ -156,7 +156,13 @@ function SidePanel({ controller, teams }) {
 function Halftime({ controller, teams, onTactics }) {
   const h = useStore(
     controller.hud,
-    s => ({ halftime: s.halftime, tactics: s.tactics, access: s.access, phase: s.phase }),
+    s => ({
+      halftime: s.halftime,
+      tactics: s.tactics,
+      effective: s.effective,
+      access: s.access,
+      phase: s.phase,
+    }),
     shallowEqual,
   );
   if (h.phase !== 'halftime' || !h.halftime) return null;
@@ -195,6 +201,7 @@ function Halftime({ controller, teams, onTactics }) {
             team=${t}
             name=${teams[t].name}
             value=${h.tactics[t].mentality}
+            effective=${h.effective[t]}
             onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
             disabled=${!h.access[t]?.mentality}
             size="md"
@@ -364,6 +371,7 @@ function Controls({ controller, teams, onTactics }) {
       speed: s.speed,
       presenting: s.presenting,
       tactics: s.tactics,
+      effective: s.effective,
       access: s.access,
       view: s.view,
       shootout: !!s.shootout,
@@ -428,6 +436,7 @@ function Controls({ controller, teams, onTactics }) {
                 team=${t}
                 name=${teams[t].name}
                 value=${h.tactics[t].mentality}
+                effective=${h.effective[t]}
                 onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
                 disabled=${!h.access[t]?.mentality}
               />

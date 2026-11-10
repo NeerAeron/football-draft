@@ -176,6 +176,7 @@ export class MatchController {
       progress: 0,
       shootout: null,
       tactics: this.preview.teams.map(t => ({ ...t.tactics })),
+      effective: this.effectiveMentality(this.preview), // mentality in effect per side
       access: this.accessFor(this.preview, 'pre'),
       announce: '',
       error: null,
@@ -231,8 +232,17 @@ export class MatchController {
     const phase = this.hud.get().phase;
     this.hud.set({
       tactics: m.teams.map(t => ({ ...t.tactics })),
+      effective: this.effectiveMentality(m),
       access: this.accessFor(this.editTarget(), phase),
     });
+  }
+
+  /** The mentality each side plays with right now ('auto' resolved by the engine). */
+  effectiveMentality(m) {
+    const cur = this.hud?.get().effective;
+    const a = m.mentality?.(0) ?? m.teams[0].tactics.mentality,
+      b = m.mentality?.(1) ?? m.teams[1].tactics.mentality;
+    return cur && cur[0] === a && cur[1] === b ? cur : [a, b];
   }
 
   setView(view) {
@@ -1185,6 +1195,8 @@ export class MatchController {
     if (force || now - this.statsAt > 900) {
       this.statsAt = now;
       patch.stats = this.statsOf(m);
+      // 'auto' follows the game state: keep the control's "in effect" mark current
+      if (this.live) patch.effective = this.effectiveMentality(this.live);
     }
     patch.shootout = m.shootout ? this.shootoutInfo(m) : null;
     if (

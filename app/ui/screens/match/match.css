@@ -1020,6 +1020,38 @@
   }
 }
 
+/* Mentality: while Auto is on, the mentality in effect carries a small live mark */
+.mentality__now {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mentality__now::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--volt-400);
+  box-shadow: 0 0 0 3px rgb(205 245 69 / 0.2);
+}
+.mentality .segmented__item:has(.mentality__now) .segmented__face {
+  color: var(--text-1);
+  box-shadow: inset 0 0 0 1px rgb(205 245 69 / 0.5);
+}
+/* Four choices on one phone row: tighter faces, and no icons on narrow screens */
+.mentality.segmented--sm .segmented__face {
+  padding-inline: 8px;
+}
+@media (max-width: 479px) {
+  .mentality .icon {
+    display: none;
+  }
+  .mentality .segmented__face {
+    padding-inline: 6px;
+  }
+}
+
 /* Controls */
 .match-controls {
   display: flex;
