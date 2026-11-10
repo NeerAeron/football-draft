@@ -23,6 +23,74 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 4: frustrating plays, one match length, fun over realism
+
+The steer for this pass: the engine should be fun to watch (long shots, dribbles, saves) and
+free of moments that look stupid. Two tools find and measure those moments:
+
+```sh
+node tools/calibration/blunders.mjs --matches 60 --out /tmp/after.json     # counts per match
+node tools/calibration/blunders.mjs --engine /tmp/before/app --out /tmp/before.json
+node tools/calibration/blunders.mjs --compare /tmp/before.json /tmp/after.json
+node tools/calibration/blunders.mjs --list giveaway --limit 10             # samples: fixture + time
+node tools/calibration/watch.mjs --fixture 3 --at 81.4                     # contact sheet PNG
+```
+
+`blunders.mjs` replays club fixtures (`lib/fixtures.mjs`: real club XIs within 6 rating points,
+the 180 s match, team 1 AI-coached) step by step and flags what a viewer would call dumb;
+`watch.mjs` renders any moment as a strip of frames. What each finding means is in `DETECTORS`.
+
+**What was wrong and what changed** (60 fixtures, per match, before → after):
+
+| | before | after | cause → fix |
+| --- | --- | --- | --- |
+| plain pass rolled out of play | 1.53 | 0.35 | every ground pass arrives at 14 m/s and the receiver's reach was 1.1 m, so a pass 1.5 m off his feet ran 25 m past him. The intended receiver now stretches (reach +0.7 m, a heavier touch the further he reaches) and a late receiver runs to where he can meet the ball (`receivePoint`). Passes missing their receiver: 9.1 → 4.8. |
+| unpressed pass cut out | 1.72 | 0.32 | `laneRisk` counted a defender standing in the lane as someone who still had to arrive (turning + accelerating). A body in — or running into — the lane is now a block. |
+| shot from 28 m+ with xG < 0.03 | 1.13 | 0.62 | non-specialists stop at about 30 m; nobody shoots through three bodies; a carrier outside the box feeds a free team-mate inside it. |
+| danger-zone shot by an unmarked player, set defence | 0.53 | 0.20 | deliberate ball-watching lapses (`markingLapses`) are off by default, and in and around his own box a marker stands within a stride of his man (`markingPoint`'s cushion × 0.55–1). |
+| pass received unmarked in the danger zone | 0.52 | 0.30 | as above; what remains is late runs from deep and balls in behind. |
+
+**Keepers.** A save ignored how much time the keeper had: on-target shots beat him 40–60% of
+the time from 25 m as from 12 m. `keeperSave` now measures the time he has to set himself
+(`set`: 0 point-blank … 1 from about 20 m): set, he is surer and a stretch costs less; at
+point-blank a finish is harder to stop. The blanket `saveAbility: 0.9` is back to 1 and the
+180 s profile's `saveBoost` weighs mostly on reflex saves. Scored per shot, by distance (60
+fixtures): under 8 m 60%, 8–14 m 49%, 14–20 m 28%, 20–28 m 10%, 28 m+ 3% (before: 39 / 37 /
+17 / 10 / 10%).
+
+**Fun over realism.** With defenders no longer gifting chances, goals come from attacking
+skill: a marked striker still gets his shot away (pressure costs half the accuracy it did, the
+marker at his shoulder blocks half as often), long shots are frequent again (3.3 a match from
+20 m+, accuracy no longer falls off a cliff at the edge of the box, a struck shot into a corner
+beats a set keeper), take-ons are up (9.1 → 12.7 attempts, 5.1 → 6.7 won) and a player who
+has just beaten his man shoots while the space is there.
+
+**One match length.** The game now plays every match on the 180 s profile (`MATCH_SECONDS`);
+the 300 s profile remains for tests and tools. Calibrate with `--duration 180`:
+
+| 128 matches, 180 s | Phase 3 | Phase 4 |
+| --- | --- | --- |
+| goals / match | 2.73 | 2.54 |
+| 0–0 | 5% | 5% |
+| shots · on target · saves | 9.1 · 4.7 · 2.3 | 9.1 · 5.4 · 3.0 |
+| box shots | 5.0 | 5.5 |
+| xG / match | 0.79 | 0.82 |
+| take-ons won | 5.1 | 6.7 |
+| pass completion | 77% | 83% |
+
+A drafted XI against ladder opponents (`cup-calibration.mjs gaps`, 792 matches) averages 3.4
+goals; the fast model (`competition-api.md`) was refitted to that sample.
+
+**Tried and dropped:** softer pass weights (the reach fix was enough), `runsInBehind` 1.6 and
+`markingLapses` 1.5 (no measurable gain), clinical finishers aiming for the corners (more
+corner goals, as many more misses), more long-shot urge (0.3 → 0.4: same shot count, fewer
+goals — range shots replaced better chances), tempo knobs of the 180 s profile (shot volume is
+bound by real-time physics at about nine a match).
+
+**Known gaps:** restart giveaways (a throw-in or free kick straight to an opponent, 0.3 a
+match), throw-ins are modelled as ground passes of any length, players are placed (not walked)
+into corner and kick-off positions.
+
 ## Before / after (Phase 3: goals and drama)
 
 Before = `claude/cool-mccarthy-rlaa0m` at cdece64 (Phase 1 engine, stage 4); after = this
