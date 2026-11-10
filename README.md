@@ -59,10 +59,9 @@ Without Node.js, serve `app/` with any static server, for example
 `python3 -m http.server 8000 --bind 127.0.0.1 --directory app`. Opening the HTML from `file://`
 does not work (modules, workers and the player catalog have to load over HTTP).
 
-Pages: `index.html` is the game, `config.html` a developer tuning page that the game does not
-link to (every engine, draft
-and rating parameter, saved on your device, with import/export) and `gallery.html` the component
-gallery.
+Pages: `index.html` is the game and `gallery.html` the component gallery. Engine, draft and
+rating parameters are tuned in code (`DEFAULT_CONFIG` in `app/core/config/config.js`), not by
+players.
 
 ### Install it, play offline
 
@@ -105,7 +104,6 @@ keep (determinism, per-match config snapshots, hot paths, behaviour-neutral refa
 ```
 app/                  the deployed site, served as-is
   index.html          the game (loads ui/main.js)
-  config.html         developer tuning page (tuning/), not linked from the game
   gallery.html        component gallery
   manifest.webmanifest, sw.js   install metadata and the offline service worker
   core/               pure logic, no DOM or storage; runs in Node
@@ -117,7 +115,6 @@ app/                  the deployed site, served as-is
     util/             seeded RNG, math and text helpers
   services/           catalog loader, simulation worker + client, sound, playback clock
   ui/                 the interface: Preact + htm (vendored), shell, components, screens
-  tuning/             the tuning page script and styles
   data/               catalog.v3.json, the compiled player catalog the game fetches
   assets/             league logos, flags, fonts, app icons, the link-preview card
 data/                 compiler inputs and reference data (not deployed)

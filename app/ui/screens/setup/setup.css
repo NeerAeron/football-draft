@@ -183,7 +183,7 @@
 }
 .ladder__row {
   display: grid;
-  grid-template-columns: minmax(84px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--touch);
@@ -195,13 +195,6 @@
   font-weight: var(--weight-heavy);
   text-transform: uppercase;
   line-height: 1;
-}
-.ladder__text {
-  color: var(--text-3);
-  font-size: var(--text-xs);
-}
-.ladder__row.is-selected .ladder__text {
-  color: var(--text-2);
 }
 .ladder__detail {
   display: grid;

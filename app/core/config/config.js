@@ -1160,7 +1160,12 @@ export function saveConfig(value, { storage = defaultStorage(), warn = defaultWa
   }
   return next;
 }
-export const CONFIG = loadConfig();
+/**
+ * The live config. Tuning is a developer job (DEFAULT_CONFIG in code; tools pass patches): the
+ * game does not read players' saved overrides any more (the tuning page is gone), so every
+ * device plays the same engine. loadConfig()/saveConfig() remain for tools and tests.
+ */
+export const CONFIG = clone(DEFAULT_CONFIG);
 function copyInto(target, source) {
   for (const [key, value] of Object.entries(source)) {
     if (value && typeof value === 'object') {

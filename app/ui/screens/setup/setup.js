@@ -109,7 +109,7 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
   }, [mode, type, value, selected.rerolls]);
   return html`<${ChoiceGroup}
     legend="Difficulty"
-    hint="Sets how strong your opponents are and how many re-rolls you get."
+    hint="Difficulty sets how strong your opponents are and how many re-rolls you get. The match engine is the same at every level."
   >
     <div class="ladder">
       ${levels.map(
@@ -127,7 +127,6 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
               onChange=${() => onChange(l.id)}
             />
             <span class="ladder__name">${l.label}</span>
-            <span class="ladder__text">${l.text}</span>
             <${Pips} count=${l.rerolls} label=${rerollText(l.rerolls)} />
           </label>`,
       )}
@@ -135,7 +134,7 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
     <div class="ladder__detail" aria-live="polite">
       <p>
         <b>${selected.label}:</b>
-        ${' '}${selected.text}, ${rerollText(selected.rerolls).toLowerCase()} per draft.
+        ${' '}${rerollText(selected.rerolls)} per draft.
       </p>
       ${
         typical &&

@@ -27,7 +27,6 @@ const SECTIONS = [
 // and are listed once.
 const KEY_LABELS = {
   'football-draft-sound': 'Sound settings',
-  'football-draft-settings-v1': 'Advanced tuning overrides',
   'football-draft-ui': 'Interface preferences',
   'football-draft-setup': 'Last game setup',
   'football-draft-draft': 'Draft in progress',
@@ -226,7 +225,7 @@ function DataPanel() {
       onClose=${() => setConfirm(false)}
       size="sm"
       title="Reset local data?"
-      description="This clears your sound and display settings, tuning overrides, saved run, trophy cabinet and daily streak on this device. It cannot be undone."
+      description="This clears your sound and display settings, saved run, trophy cabinet and daily streak on this device. It cannot be undone."
       footer=${html`<${Button} variant="ghost" onClick=${() => setConfirm(false)}>Cancel<//>
         <${Button} variant="danger" icon="trash" onClick=${reset} data-testid="confirm-reset"
           >Reset<//

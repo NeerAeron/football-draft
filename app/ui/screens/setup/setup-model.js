@@ -60,14 +60,6 @@ export const VERSUS_REROLLS = [
   { value: 'amateur', label: 'Two', hint: '2 each' },
 ];
 
-const LEVEL_TEXT = {
-  amateur: 'Weaker opponents',
-  semipro: 'A little weaker',
-  pro: 'Your level',
-  worldclass: 'Stronger',
-  legendary: 'The bosses',
-};
-
 const truthy = v => v === '1' || v === 'true' || v === 'yes' || v === true;
 const pick = (value, list) => (list.includes(value) ? value : null);
 
@@ -78,7 +70,6 @@ export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
   return {
     id: level,
     label: DIFFICULTY_LABELS[level],
-    text: LEVEL_TEXT[level],
     rerolls,
     gap: rules.ladder[level] ?? 0,
     target: Math.round(ladderTarget(draftMode(type), level, { rules })),

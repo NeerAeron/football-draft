@@ -15,7 +15,6 @@ Mobile-first single column (390 px) that becomes a two-pane layout from 960 px.
 app/
   index.html              the app shell page (import map → ui/main.js)
   gallery.html            component gallery (design review + screenshot QA)
-  config.html             developer tuning page (plain DOM, app/tuning/; not linked from the game)
   assets/fonts/           Barlow Condensed + Inter woff2 subsets + OFL texts
 ui/
   main.js                 entry: render the shell
