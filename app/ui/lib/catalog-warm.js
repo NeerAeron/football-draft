@@ -1,8 +1,9 @@
 // Catalog warm-up in small main-thread slices. The first draft-related call on a fresh
 // catalog (core/draft/pools.js catalogIndex: nation fields, best XIs, league/club pools)
 // computes thousands of role ratings in one synchronous block — 300–500 ms on a laptop,
-// seconds on a phone. Ratings are cached per player (pools.js), so filling that cache in
-// ≤ 8 ms slices first turns the index into a short task and keeps taps responsive.
+// seconds on a phone. Ratings are cached per player (pools.js), so they are filled in ≤ 8 ms
+// slices first, and the index and the opponent list are then built through core's step-wise
+// builders (catalogIndexSteps, opponentCandidatesSteps) the same way: taps stay responsive.
 //
 //   await warmCatalog(catalog);   // idempotent per catalog; resolves when catalogIndex is built
 //   await loadWarmCatalog();      // loadCatalog() + warmCatalog(): what draft/run screens use
@@ -15,10 +16,10 @@ import {
   roleRating,
   roleFit,
   isKeeper,
-  catalogIndex,
+  catalogIndexSteps,
 } from '../../core/draft/pools.js';
-import { opponentCandidates } from '../../core/draft/opponents.js';
-import { loadCatalog } from '../../services/catalog.js';
+import { opponentCandidatesSteps } from '../../core/draft/opponents.js';
+import { loadCatalog, stepped } from '../../services/catalog.js';
 
 const SLICE_MS = 8;
 // Mirrors pools.js candidates(): only a nation's best 80 outfielders and 5 keepers can make
@@ -79,7 +80,7 @@ export function warmCatalog(catalog) {
         }
     });
     await yieldToMain();
-    catalogIndex(catalog);
+    await stepped(catalogIndexSteps(catalog));
     await yieldToMain();
     return catalog;
   })().catch(error => {
@@ -102,7 +103,7 @@ export function warmOpponents(catalog) {
   if (!job) {
     job = warmCatalog(catalog)
       .then(yieldToMain)
-      .then(() => opponentCandidates(catalog))
+      .then(() => stepped(opponentCandidatesSteps(catalog)))
       // Resolve in a fresh task: the caller's next step (a render) must not join this one.
       .then(yieldToMain)
       .then(() => catalog);

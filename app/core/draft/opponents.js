@@ -14,6 +14,7 @@ import {
   refreshRatings,
   naturalRating,
   isKeeper,
+  catalogIndexSteps,
 } from './pools.js';
 import { clubSquads, clubLineupStamp } from '../players/club-lineups.js';
 import { teamLinks } from './links.js';
@@ -88,11 +89,21 @@ function xiFor(index, kind, id, exclude) {
  * [{ key, kind, id, name, code, color, secondary, formation, rating, chem, effective }].
  * Cached per catalog, ratings and link rules.
  */
-export function opponentCandidates(catalog, { rules = CONFIG.draft } = {}) {
+export function opponentCandidates(catalog, options) {
+  const steps = opponentCandidatesSteps(catalog, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/**
+ * The same list, built in steps (a few teams per step) so a UI can spread the work over
+ * frames: call next() until done. The finished list is what opponentCandidates() returns.
+ */
+export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {}) {
   const stamp = refreshRatings() + JSON.stringify([rules.links, CONFIG.ai.minimumFit]);
   const cached = candidateCache.get(catalog);
   if (cached?.stamp === stamp) return cached.list;
-  const index = catalogIndex(catalog),
+  const index = yield* catalogIndexSteps(catalog),
     list = [];
   const add = (kind, id, meta, xi) => {
     if (!xi) return;
@@ -110,19 +121,22 @@ export function opponentCandidates(catalog, { rules = CONFIG.draft } = {}) {
   };
   const none = new Set();
   for (const n of index.nations.values())
-    if (n.players.length >= 11 && n.goalkeepers >= 1)
+    if (n.players.length >= 11 && n.goalkeepers >= 1) {
       add(
         'nation',
         n.id,
         { name: n.name, code: n.code, flag: n.flag, color: null, secondary: null },
         xiFor(index, 'nation', n.id, none),
       );
+      yield;
+    }
   // Club XIs: the catalog's precomputed best lineups when they match the live configuration
   // (same assignment and tie-break as bestEleven), otherwise computed here (~0.3 s).
   const squads =
     catalog.precomputed?.lineups === clubLineupStamp()
       ? new Map(clubSquads(catalog).map(s => [String(s.id), s]))
       : null;
+  let clubs = 0;
   for (const c of index.clubs.values()) {
     const pre = squads?.get(c.id);
     if (pre?.bestFormation) {
@@ -154,6 +168,7 @@ export function opponentCandidates(catalog, { rules = CONFIG.draft } = {}) {
         },
         xiFor(index, 'club', c.id, none),
       );
+    if (++clubs % 12 === 0) yield;
   }
   for (const [id, b] of Object.entries(BOSSES))
     add(
@@ -163,6 +178,9 @@ export function opponentCandidates(catalog, { rules = CONFIG.draft } = {}) {
       bossXI(index, id),
     );
   list.sort((a, b) => b.effective - a.effective || (a.key < b.key ? -1 : 1));
+  // Someone needed it synchronously meanwhile: keep theirs, so there is one list.
+  const raced = candidateCache.get(catalog);
+  if (raced?.stamp === stamp) return raced.list;
   candidateCache.set(catalog, { stamp, list });
   return list;
 }
