@@ -826,6 +826,10 @@ export const flows = [
         await visible(page, '[data-testid="run-end"]');
       });
       await step('the run is in the trophy cabinet on Home', async () => {
+        // Let the reloaded page finish its font requests: leaving mid-download aborts them,
+        // and the runner reports every failed request.
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForLoadState('networkidle');
         await page.goto(base);
         await visible(page, '.home-records');
         const foot = await page.textContent('.home-records__foot');
