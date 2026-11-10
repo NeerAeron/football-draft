@@ -243,3 +243,18 @@ then `createDraftSession(catalog, challengeDraftOptions(c))` replays the same sp
 DEFAULT_CONFIG.draft, user })` the same opponents and AI results). Daily links carry the
 challenge number: `dailyIdFromNumber(c.daily)`. Pass `catalog: catalogStamp(catalog)` to detect
 a friend on a different player database.
+
+## Title odds after the Phase 5 engine (three levels, Budget mode)
+
+Played by the real engine (`cup-calibration.mjs runs --engine 500`, typical Nations draft; `CUP_BUDGET=1`
+for Budget mode), before World Class was moved up by half a point per round:
+
+| | Pro | World Class | Legendary (real field) |
+| --- | --- | --- | --- |
+| Normal | 23.0% | 14.8% | 5.8% |
+| Budget mode | 9.2% | 4.8% | 1.0% |
+
+World Class offsets then went +0.5 on every round (fast model: 10.6% → 8.2% normal, 4.0% → 3.0%
+Budget; expect about 11% and 3.7% in the engine). Legendary is the real 48-nation field and is not
+tuned. The engine gives the drafted XI more than the fast model does (it beats its rating by
+about 0.8 points), so the model's own numbers read lower: 20.7 / 8.2 / 4.4% and 10.5 / 3.0 / 1.9%.

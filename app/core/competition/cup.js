@@ -93,7 +93,7 @@ export const MEDALS = { champion: 'gold', final: 'silver', third: 'bronze' };
  */
 export const CUP_TUNING = {
   pro: [-12.5, -11, -9.5, -9.5, -9, -6, -3, 2, -3],
-  worldclass: [-13.5, -12, -10.5, -10.5, -10, -6.5, -3.5, -0.5, -3.5],
+  worldclass: [-13, -11.5, -10, -10, -9.5, -6, -3, 0, -3],
   legendary: [-13, -11.5, -10, -10, -9.5, -6.5, -3.5, -1, -3.5],
 };
 /**
