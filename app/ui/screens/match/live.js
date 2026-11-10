@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { useStore, shallowEqual } from '../../lib/store.js';
 import { soundStore, toggleSound, getAudio } from '../../lib/audio.js';
+import { useReducedMotion } from '../../lib/motion.js';
 import {
   Button,
   IconButton,
@@ -155,7 +156,13 @@ function SidePanel({ controller, teams }) {
 function Halftime({ controller, teams, onTactics }) {
   const h = useStore(
     controller.hud,
-    s => ({ halftime: s.halftime, tactics: s.tactics, access: s.access, phase: s.phase }),
+    s => ({
+      halftime: s.halftime,
+      tactics: s.tactics,
+      effective: s.effective,
+      access: s.access,
+      phase: s.phase,
+    }),
     shallowEqual,
   );
   if (h.phase !== 'halftime' || !h.halftime) return null;
@@ -194,6 +201,7 @@ function Halftime({ controller, teams, onTactics }) {
             team=${t}
             name=${teams[t].name}
             value=${h.tactics[t].mentality}
+            effective=${h.effective[t]}
             onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
             disabled=${!h.access[t]?.mentality}
             size="md"
@@ -332,6 +340,28 @@ function StageChips({ controller }) {
   </div>`;
 }
 
+/** Action camera (follow the ball) ↔ full pitch; there is no camera under reduced motion. */
+function CameraToggle({ controller }) {
+  const h = useStore(
+    controller.hud,
+    s => ({ camera: s.camera, phase: s.phase, shootout: !!s.shootout }),
+    shallowEqual,
+  );
+  const reduced = useReducedMotion();
+  if (reduced) return null;
+  const on = h.camera === 'action';
+  return html`<${IconButton}
+    icon=${on ? 'crosshair' : 'maximize'}
+    label=${on ? 'Action camera on: show the full pitch' : 'Full pitch: switch to the action camera'}
+    variant="secondary"
+    pressed=${on}
+    disabled=${h.phase !== 'playing' || h.shootout}
+    aria-keyshortcuts="C"
+    data-testid="camera-toggle"
+    onClick=${() => controller.toggleCamera()}
+  />`;
+}
+
 function Controls({ controller, teams, onTactics }) {
   const h = useStore(
     controller.hud,
@@ -341,6 +371,7 @@ function Controls({ controller, teams, onTactics }) {
       speed: s.speed,
       presenting: s.presenting,
       tactics: s.tactics,
+      effective: s.effective,
       access: s.access,
       view: s.view,
       shootout: !!s.shootout,
@@ -380,7 +411,7 @@ function Controls({ controller, teams, onTactics }) {
               aria-keyshortcuts="N"
               data-testid="skip-moment"
               onClick=${() => controller.skipToMoment()}
-              >Next moment<//
+              >Next<span class="match-controls__word"> moment</span><//
             >`
           : html`<${Button}
               size="sm"
@@ -390,7 +421,7 @@ function Controls({ controller, teams, onTactics }) {
               aria-keyshortcuts="N"
               data-testid="next-clip"
               onClick=${() => controller.nextClip()}
-              >Next clip<//
+              >Next<span class="match-controls__word"> clip</span><//
             >`
       }
     </div>
@@ -405,6 +436,7 @@ function Controls({ controller, teams, onTactics }) {
                 team=${t}
                 name=${teams[t].name}
                 value=${h.tactics[t].mentality}
+                effective=${h.effective[t]}
                 onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
                 disabled=${!h.access[t]?.mentality}
               />
@@ -412,17 +444,19 @@ function Controls({ controller, teams, onTactics }) {
         )}
       </div>`
     }
-    ${
-      users.length > 0 &&
-      html`<${IconButton}
-        icon="sliders-horizontal"
-        label="Tactics"
-        variant="secondary"
-        class="match-controls__tactics"
-        data-testid="open-tactics"
-        onClick=${() => onTactics(users[0])}
-      />`
-    }
+    <div class="match-controls__end">
+      <${CameraToggle} controller=${controller} />
+      ${
+        users.length > 0 &&
+        html`<${IconButton}
+          icon="sliders-horizontal"
+          label="Tactics"
+          variant="secondary"
+          data-testid="open-tactics"
+          onClick=${() => onTactics(users[0])}
+        />`
+      }
+    </div>
   </div>`;
 }
 
@@ -510,7 +544,7 @@ function Announcer({ controller }) {
   return html`<p class="visually-hidden" aria-live="polite" aria-atomic="true">${announce}</p>`;
 }
 
-/** Keyboard: Space play/pause, ←/→ (↓/↑) speed, N next moment/clip. */
+/** Keyboard: Space play/pause, ←/→ (↓/↑) speed, N next moment/clip, C camera. */
 function useMatchKeys(controller) {
   useEffect(() => {
     const onKey = e => {
@@ -531,7 +565,7 @@ function useMatchKeys(controller) {
       } else if (e.key === 'n' || e.key === 'N') {
         if (controller.request.view === 'full') controller.skipToMoment();
         else controller.nextClip();
-      }
+      } else if (e.key === 'c' || e.key === 'C') controller.toggleCamera();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -540,12 +574,14 @@ function useMatchKeys(controller) {
 
 export function LiveMatch({ controller, teams, onExit, onTactics }) {
   const canvas = useRef(null);
+  const pitch = useRef(null);
+  const pitchZoom = useRef(null);
   const root = useRef(null);
   const [tv, toggleTv] = useFullscreen(root);
   getAudio();
   const sound = useStore(soundStore);
   useEffect(() => {
-    controller.attach(canvas.current);
+    controller.attach(canvas.current, pitch.current, pitchZoom.current);
   }, [controller]);
   useMatchKeys(controller);
   const meta = controller.request.meta;
@@ -580,12 +616,20 @@ export function LiveMatch({ controller, teams, onExit, onTactics }) {
     <div class="live__main">
       <div class="live__stage-col">
         <div class="match-stage">
-          <canvas
-            ref=${canvas}
-            class="match-stage__canvas"
-            aria-label="Match pitch"
-            role="img"
-          ></canvas>
+          <div class="match-stage__scene">
+            <canvas ref=${pitch} class="match-stage__pitch" aria-hidden="true"></canvas>
+            <canvas
+              ref=${pitchZoom}
+              class="match-stage__pitch match-stage__pitch--zoom"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              ref=${canvas}
+              class="match-stage__canvas"
+              aria-label="Match pitch"
+              role="img"
+            ></canvas>
+          </div>
           <${StageChips} controller=${controller} />
           <${Overlays} controller=${controller} teams=${teams} />
           <${Halftime} controller=${controller} teams=${teams} onTactics=${onTactics} />

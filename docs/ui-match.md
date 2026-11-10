@@ -140,7 +140,11 @@ from kickoff (same seed); a refresh after full time shows the result again.
 two real club XIs (`loadCatalog()` → `clubSquads` → best XI; `buildDemoRequest` in
 `screens/match/demo.js`). `pens=1` sets `meta.forceShootout`: the match jumps straight to a
 level knockout's penalty shootout (`forceShootout`, demo/test only — never in real requests). Browser flows: `match-key`,
-`match-full`, `match-instant`, `match-pens` in `tests/browser/flows.mjs`.
+`match-full`, `match-camera`, `match-instant`, `match-auto`, `match-pens` in
+`tests/browser/flows.mjs`. The flows emulate reduced motion, which hides every animation;
+`match-camera` turns motion back on (`football-draft-ui` → `{ motion: 'full' }`) to exercise the
+action camera. To judge motion by eye, open the demo with normal motion and take bursts of
+screenshots.
 
 ## Off-main-thread simulation (`app/services/sim-client.js`)
 
@@ -161,14 +165,62 @@ structured-cloned and rehydrated). Recorded frames are trimmed to the highlight 
 | File | Role |
 | --- | --- |
 | `match.js` | route entry: demo/request → pre-kickoff, live view or stored result; leave confirmation |
-| `controller.js` | `MatchController`: Match objects, RAF loop (runs only while something moves), Key Moments reels from the worker (half 1 is prefetched while the pre-kickoff is open), Full-mode ring buffer (12 s) for goal replays and "Next moment" (fast-forward, then the build-up at 1×), commentary, sound (`MatchSoundEvents`), throttled HUD store |
-| `renderer/` | pure canvas renderer `draw(ctx, view, state)`: cached Floodlit-night pitch layer, kit tokens with numbers, ball height/shadow, shot/pass trails, labels only for carrier + receiver, goal flash; landscape or portrait (rotated) with a shootout camera |
+| `controller.js` | `MatchController`: Match objects, RAF loop (runs only while something moves), Key Moments reels from the worker (half 1 is prefetched while the pre-kickoff is open), Full-mode ring buffer (12 s) for goal replays and "Next moment" (fast-forward, then the build-up at 1×), the action camera, cuts, moment captions, hit-stop and shake, commentary, sound (`MatchSoundEvents`), throttled HUD store |
+| `renderer/` | canvas renderer `draw(ctx, view, state)` (`draw.js`: kit tokens with numbers, ball height/shadow, shot/pass trails, labels, effects, captions), `camera.js` (`ActionCamera`), `geometry.js` (transforms, `fullView`), `pitch.js` (the Floodlit-night pitch, painted once per size), `kits.js` |
+| `camera-prefs.js` | camera choice per view (`football-draft-match-camera`: `{ key, full }`, each `'action'` or `'wide'`) |
 | `commentary.js`, `report.js`, `demo.js` | pure helpers (Node-tested): event lines, result summary, analysis chips, share line, demo request |
 | `prematch.js`, `live.js`, `hud.js`, `tactics.js`, `result.js` | Preact views |
 
 Controls: Space play/pause, ←/→ (or ↓/↑) speed 1×/2×/4×, N next moment (Full) / next clip (Key
-Moments). Mentality (Push / Balanced / Hold) is live in Full and at half-time in Key Moments; the
-tactics sheet follows `tacticAccess` (formation only at half-time in AI/Versus matches). Goals
-(and the deciding penalty) get a celebration banner, team-colour confetti and a slow-motion
-replay (reduced motion: a static banner, no confetti, no replay, no camera moves). Screen
-readers hear goals only (`aria-live`, never per tick).
+Moments), C camera. Mentality (Auto / Hold / Balanced / Push) is live in Full and at half-time
+in Key Moments: Auto is the default (`tactics.mentality === 'auto'`), the control marks the
+mentality in effect (`match.mentality(team)` → HUD `effective`), and picking one of the other
+three overrides it until Auto is picked again. The tactics sheet follows `tacticAccess`
+(formation only at half-time in AI/Versus matches). Goals (and the deciding penalty) get a
+celebration banner, team-colour confetti and a slow-motion replay (reduced motion: a static
+banner, no confetti, no replay, no camera moves). Screen readers hear goals only (`aria-live`,
+never per tick).
+
+### How the stage is drawn
+
+Presentation reads match state and never writes it or draws simulation RNG (the renderer and
+camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
+
+- **Layers.** `.match-stage__scene` holds two pitch canvases and the players' canvas. The pitch
+  is painted once per size (`paintPitch`): a 1:1 copy for the full-pitch view and a 1.25×
+  copy that CSS moves (`translate3d … scale`) when the camera zooms. A frame clears and redraws
+  only the transparent players' canvas. Backing stores are capped at DPR 2 (measured: DPR 3 on
+  a phone cost a third of the frames without making tokens easier to read).
+- **No per-frame allocations** in `draw()` or the controller's `render()`: the view/scene
+  objects are reused, positions, crowd scales, the ball trail and label boxes live in typed
+  arrays (`createRenderState()`), font strings and text widths are cached (cleared when web
+  fonts load). Keep it that way: no closures per token, no `measureText` per frame, no array
+  literals in the draw path. Preact only re-renders through the HUD store (throttled to ~9 Hz,
+  stats and the mentality mark about once a second).
+- **Readability.** Token radius ≈ 1.06 m on screen (min 6.4 px, × DPR); tokens shrink to 66 %
+  when another is within about two radii; draw order is by id with the receiver, scorer and
+  carrier on top. The ball is at least 4 px in radius with a dark keyline and a halo, sits just
+  outside the carrier's token, rises off its shadow with height, stretches along its path
+  when struck and leaves a trail on passes and shots. Labels: the carrier (or set-piece taker),
+  the intended receiver and — after a goal and through its replay — the scorer; each is placed
+  in whichever of eight spots around the token covers the fewest tokens.
+- **Camera** (`ActionCamera`): `'wide'` is the whole pitch; `'follow'` tracks the ball at
+  1.5× (1.7× in goal replays, wider at 2× / 4× speed, tighter on stages much wider than the
+  pitch), easing out for long passes, shots (the goal stays in frame) and set pieces, and wide
+  for kick-offs and goal kicks; the ball can never leave the frame. Key Moments default to the
+  action camera, Full to the whole pitch; the toggle in the controls (C) stores the choice per
+  view. Goal replays are always the close-up. The shootout close-up goes through the same
+  camera. Reduced motion: no camera at all (the toggle is hidden; the shootout view is set
+  without easing).
+- **Cuts.** When a restart repositions four or more players at once (corners, kick-offs,
+  penalties) or places the ball outside the zoomed view, the controller shows a cut — a short
+  fade (`.stage-cut`) and a camera snap — instead of tokens sliding across the pitch. Clip
+  changes and replays cut the same way.
+- **Moments.** Engine effects are drawn with their labels (shot type, SAVED / PARRIED / TIPPED
+  OVER, FOUL, OFFSIDE, cards, PENALTY; SCORED / SAVED / MISSED in a shootout). The controller
+  adds captions from events: OFF THE POST! / OFF THE BAR!, JUST WIDE! / JUST OVER!, GREAT SAVE!
+  (save `difficulty` ≥ 0.3) / WHAT A SAVE! (≥ 0.6), CHANCE MISSED! (a big chance off target).
+  A take-on shows afterimages and a swoosh on the dribbler and leaves the beaten defender
+  faded and spinning. Hard shots, saves that mattered and the woodwork get a hit-stop (55–110
+  ms of frozen picture — the simulation is stepped exactly as before, just later) and a short
+  scene shake; goals shake too. Only at 1× speed and never under reduced motion.
