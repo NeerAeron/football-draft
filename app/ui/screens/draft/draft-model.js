@@ -284,6 +284,7 @@ export function draftProjection({ kind, mode, difficulty, teams, side = 0, rules
   });
   const short = {
     group: 'Group',
+    r32: 'Last 32',
     r16: 'Last 16',
     qf: 'Quarters',
     sf: 'Semis',

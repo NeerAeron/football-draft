@@ -31,8 +31,8 @@ Everything you do is saved in your own browser.
 
 | Mode | What it is |
 | --- | --- |
-| **World Cup Run** | A Nations draft, then a group of four (three matches, top two advance), Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all seven for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result, and a title goes into the trophy cabinet on Home (one cup per difficulty). "Sim rest of run" plays the remaining matches for you. |
-| **Daily Challenge** | One run a day, the same for everyone: the same eleven Nations spins, re-roll alternates and seven opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
+| **World Cup Run** | A Nations draft, then a group of four (three matches; the top two advance, and so does a third place on 4 points, or 3 with goal difference −2 or better, as the 2026 format's best thirds), Round of 32, Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all eight for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result, and a title goes into the trophy cabinet on Home (one cup per difficulty). "Sim rest of run" plays the remaining matches for you. |
+| **Daily Challenge** | One run a day, the same for everyone: the same eleven Nations spins, re-roll alternates and eight opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
 | **Quick Match** | Draft from nations, leagues or clubs, then one match against an AI team at your difficulty. |
 | **Versus** | Two players on one device, drafting from nations, leagues or clubs: a coin toss, alternating picks, then kick off. |
 | **Exhibition** | Any two real teams, clubs or national sides, with no draft. |

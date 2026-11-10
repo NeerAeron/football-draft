@@ -123,8 +123,8 @@ club-less national-team players have `source.club === null` and appear only in n
   `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem, the Captain boost),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
-- **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group + four
-  knockouts, standings, grades, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
+- **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
+  best thirds, `BEST_THIRD`) + five knockouts from the Round of 32, standings, grades, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI

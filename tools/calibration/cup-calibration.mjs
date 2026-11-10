@@ -7,6 +7,9 @@
 //   node tools/calibration/cup-calibration.mjs fit /tmp/gaps.json /tmp/big.json
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000            # fast model only
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000 --engine 24 --workers 2
+//   node tools/calibration/cup-calibration.mjs runs --runs 1000 --only pro --tuning '[-12.5, …]'
+//     (--tuning: try other CUP_TUNING offsets, a JSON array for --only's difficulty or a JSON
+//     object by difficulty; fast-model runs only)
 //
 // gaps: team 0 is a typically drafted XI (nations mode, positional picks, the run's re-rolls),
 // team 1 a ladder opponent at a uniform gap of −12…+12 effective points, coached by the AI at
@@ -249,8 +252,8 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
     engine: !!engine,
     rating: user.effective,
     stage: snap.stage,
-    final: snap.rounds[6].opponent.name,
-    finalRating: snap.rounds[6].opponent.effective,
+    final: snap.rounds.at(-1).opponent.name,
+    finalRating: snap.rounds.at(-1).opponent.effective,
     matches,
     games,
   };
@@ -289,7 +292,7 @@ function gamesReport(env, rows) {
 }
 function runsReport(env, rows) {
   gamesReport(env, rows);
-  const stages = ['group', 'r16', 'qf', 'sf', 'final', 'champion'];
+  const stages = ['group', 'r32', 'r16', 'qf', 'sf', 'final', 'champion'];
   for (const engine of [false, true]) {
     const rs = rows.filter(r => r.engine === engine);
     if (!rs.length) continue;
@@ -382,11 +385,21 @@ async function main() {
       engine = Number(flag('--engine', 0)),
       rows = [];
     const { Match } = await imp('app/core/sim/engine.js');
-    for (const difficulty of DIFFS)
+    const only = flag('--only', null),
+      tuning = flag('--tuning', null);
+    if (tuning) {
+      const parsed = JSON.parse(tuning);
+      // Mutate in place: createCupRun and projectRun read the module's CUP_TUNING.
+      for (const [d, offsets] of Object.entries(
+        Array.isArray(parsed) ? { [only]: parsed } : parsed,
+      ))
+        env.CUP_TUNING[d].splice(0, Infinity, ...offsets);
+    }
+    for (const difficulty of only ? [only] : DIFFS)
       for (let i = 0; i < n; i++)
         rows.push(runCup(env, Match, { seed: 90000 + i * 31, difficulty, engine: false }));
     if (engine) {
-      const specs = DIFFS.flatMap(difficulty =>
+      const specs = (only ? [only] : DIFFS).flatMap(difficulty =>
         Array.from({ length: engine }, (_, i) => ({
           seed: 70000 + (Number(flag('--from', 0)) + i) * 37,
           difficulty,

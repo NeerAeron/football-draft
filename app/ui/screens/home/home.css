@@ -233,7 +233,7 @@
   text-transform: uppercase;
 }
 .run-path__group {
-  width: calc((100% - 6 * 6px - 12px) * 3 / 7 + 12px);
+  width: calc((100% - 7 * 6px - 12px) * 3 / 8 + 12px);
 }
 .run-path__perfect,
 .run-path__record {

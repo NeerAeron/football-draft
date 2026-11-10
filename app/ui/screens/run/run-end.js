@@ -58,10 +58,10 @@ function celebrate(snapshot, meta, onCelebrated) {
     level = levelLabel(snapshot.difficulty);
   if (snapshot.status === 'champion')
     achievement({
-      title: g?.grade === 'S+' ? 'Perfect Seven' : 'World Champions',
+      title: g?.grade === 'S+' ? 'Perfect Eight' : 'World Champions',
       description:
         g?.grade === 'S+'
-          ? 'Seven matches, seven wins. The perfect run.'
+          ? 'Eight matches, eight wins. The perfect run.'
           : `You lifted the cup with a ${snapshot.record.w}-${snapshot.record.d}-${snapshot.record.l} run.`,
     });
   if (news.includes('cabinet'))

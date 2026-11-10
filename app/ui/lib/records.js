@@ -3,15 +3,17 @@
 // No core imports: Home loads this on the first screen (LEVELS mirrors core's DIFFICULTIES and
 // DIFFICULTY_LABELS; tests/run-ui-store.test.mjs keeps them in step).
 //
-//   { format: 1, runs, titles, perfect,
-//     levels: { pro: { runs, titles, perfect, best } },   best: furthest round, 0–6 (7 = won)
+//   { format: 2, runs, titles, perfect,
+//     levels: { pro: { runs, titles, perfect, best } },   best: furthest round, 0–7 (8 = won)
 //     seen: [run ids already counted, newest last],
 //     last: { id, level, news: ['title' | 'perfect' | 'best' | 'cabinet'] } }
 import { readJSON, writeJSON } from './storage.js';
 import { STAGES } from './saved.js';
 
 export const RECORDS_KEY = 'football-draft-records';
-export const RECORDS_FORMAT = 1;
+// Format 2 added the Round of 32 (round 3): a format-1 `best` of 3 (Round of 16) or more moves
+// up by one when read, so an old Round of 16 stays a Round of 16 and an old title a title.
+export const RECORDS_FORMAT = 2;
 export const LEVELS = [
   { id: 'amateur', label: 'Amateur' },
   { id: 'semipro', label: 'Semi-pro' },
@@ -38,9 +40,13 @@ const levelOf = raw => {
 /** The stored records, whatever is in storage (missing, older or broken data reads as empty). */
 function load() {
   const raw = readJSON(RECORDS_KEY, null);
-  const data = raw && typeof raw === 'object' && raw.format === RECORDS_FORMAT ? raw : {};
+  const old = raw && typeof raw === 'object' && raw.format === 1;
+  const data = raw && typeof raw === 'object' && (raw.format === RECORDS_FORMAT || old) ? raw : {};
   const levels = {};
-  for (const { id } of LEVELS) levels[id] = levelOf(data.levels?.[id]);
+  for (const { id } of LEVELS) {
+    const level = data.levels?.[id];
+    levels[id] = levelOf(old && level?.best >= 3 ? { ...level, best: level.best + 1 } : level);
+  }
   const last = data.last;
   return {
     levels,
@@ -103,8 +109,8 @@ export function readRecords() {
 
 /**
  * Count a finished run (Home's summary of it, see run-store runSummary) once. Returns what is
- * new about it — 'title' (first cup on this difficulty), 'perfect' (first seven wins out of
- * seven on it), 'best' (went further than ever on it), 'cabinet' (that was the last missing
+ * new about it — 'title' (first cup on this difficulty), 'perfect' (first eight wins out of
+ * eight on it), 'best' (went further than ever on it), 'cabinet' (that was the last missing
  * cup) — or null when the run is unfinished, unknown or already counted.
  */
 export function recordRun(summary, id) {

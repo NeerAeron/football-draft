@@ -4,7 +4,10 @@
 //   'football-draft-run'    World Cup Run summary (written after every match):
 //      { mode: 'run', type: 'nations', stage: 'QF', record: { w, d, l }, team?: 'name',
 //        status?: 'playing' | 'champion' | 'eliminated', complete?: bool, grade?: 'B+',
-//        verdict?: 'Semi-final Heartbreak', stageLabel?, difficulty?, updatedAt: ISO string }
+//        verdict?: 'Semi-final Heartbreak', stageLabel?, difficulty?, rounds: 8,
+//        updatedAt: ISO string }
+//      rounds: the run's number of matches. A run in progress without rounds: 8 is from the
+//      seven-match format (before the Round of 32): it cannot be resumed and reads as no run.
 //   'football-draft-daily'  Daily Challenge record:
 //      { streak: 3, best: 7, lastPlayed: 'YYYY-MM-DD' (UTC day), lastResult?: '5-1-1',
 //        streakState?: { current, best, last }, results?: { [day]: entry }, current?: {…} }
@@ -24,6 +27,7 @@ export const STAGES = [
   { id: 'G1', short: '1', label: 'Group match 1' },
   { id: 'G2', short: '2', label: 'Group match 2' },
   { id: 'G3', short: '3', label: 'Group match 3' },
+  { id: 'R32', short: 'R32', label: 'Round of 32' },
   { id: 'R16', short: 'R16', label: 'Round of 16' },
   { id: 'QF', short: 'QF', label: 'Quarter-final' },
   { id: 'SF', short: 'SF', label: 'Semi-final' },
@@ -37,6 +41,7 @@ export function readSavedRun() {
   const status = ['playing', 'champion', 'eliminated'].includes(run.status)
     ? run.status
     : 'playing';
+  if (status === 'playing' && run.rounds !== STAGES.length) return null;
   return {
     mode: run.mode || 'run',
     type: run.type || 'nations',

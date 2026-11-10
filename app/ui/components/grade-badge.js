@@ -1,13 +1,28 @@
 /**
  * GradeBadge — run/match grade plaque, S+ … F, with an optional verdict.
- *   grade    'S+' | 'S' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D' | 'F'
+ *   grade    'S+' | 'S' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D+' | 'D' | 'F'
  *   size     'sm' (32) | 'md' (56) | 'lg' (88) | 'xl' (128)                default 'md'
  *   verdict  named verdict next to it ('Knockout heartbreak');  detail  small line ('964 pts')
  * Colour family by letter: S holo, A gold, B volt, C sky, D amber, F coral.
  */
 import { html, cx } from '../lib/html.js';
 
-export const GRADES = ['S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
+export const GRADES = [
+  'S+',
+  'S',
+  'A+',
+  'A',
+  'A-',
+  'B+',
+  'B',
+  'B-',
+  'C+',
+  'C',
+  'C-',
+  'D+',
+  'D',
+  'F',
+];
 
 export const gradeFamily = grade => String(grade || 'F')[0].toLowerCase();
 
