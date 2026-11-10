@@ -182,6 +182,45 @@ export const DEFAULT_CONFIG = {
     crossWillingness: 1.5,
     keeperRange: 1,
   },
+  // What a mentality changes, as differences from Balanced (which is all zeros). Push raises
+  // the chance of a goal at both ends, Hold lowers it at both ends (docs/calibration.md).
+  mentality: {
+    push: {
+      line: 8,
+      attacking: 20,
+      restDefence: 0,
+      runners: 0,
+      shotUrge: 0.15,
+      ambition: 0,
+      turnoverCost: 0,
+      join: 0.12,
+      lateRuns: 0.1,
+      pressing: 0,
+      restartTime: -0.15,
+      load: 0.05,
+      chances: 0.55,
+      exposure: 0.3,
+    },
+    hold: {
+      line: -10,
+      attacking: -20,
+      restDefence: 0,
+      runners: 0,
+      shotUrge: -0.15,
+      ambition: -0.03,
+      turnoverCost: 0.25,
+      join: -0.12,
+      lateRuns: -0.1,
+      pressing: 0,
+      restartTime: 0.25,
+      load: -0.05,
+      chances: -0.33,
+      exposure: -0.24,
+    },
+    // Rewards for the well-timed choice, read from the score at that moment.
+    chase: 0.1,
+    protect: 0.1,
+  },
   discipline: {
     yellowSeverity: 0.75,
     redSeverity: 1,
@@ -831,6 +870,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   if (['routinePassError', 'difficultPassError'].includes(f.key)) [min, max, step] = [0, 4, 0.01];
   const session = draftField(f.path);
   if (session) [, min, max, step] = session;
+  if (f.path.startsWith('mentality.')) [min, max, step] = [-100, 100, 0.001];
   if (f.path.startsWith('playerTiers.') || f.path.startsWith('teamTiers.'))
     [min, max, step] = [0, f.key.startsWith('badge') ? 10 : 99, 1];
   if (f.path.startsWith('ratings.roleWeights.')) [min, max, step] = [0, 100, 0.01];

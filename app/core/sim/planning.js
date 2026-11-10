@@ -338,6 +338,7 @@ export class PlanningMethods {
         : br < 43 ||
           pressDistance <
             10 +
+              tac.shift.pressing +
               tac.pressing * 0.25 +
               (coordination * 5 * (tac.press - 1)) / 4 +
               (tac.style === 'press' ? 9 * this.tuning.gameplay.teamCharacter : 0);
@@ -457,7 +458,11 @@ export class PlanningMethods {
     c.ownerPressure ??= this.pressure(owner);
     if (c.ownerPressure > 1.1) return null;
     const timing = p.tendency('timing') * p.familiarity(),
-      urge = clamp((0.24 + (p.tendency('advance') + timing) * 0.54) * k, 0, 1.8);
+      urge = clamp(
+        (0.24 + (p.tendency('advance') + timing) * 0.54) * k * (1 + c.tac.shift.runners),
+        0,
+        1.8,
+      );
     if (Math.sin(this.elapsed * 0.7 + p.id * 2.3) < 1 - urge) return null;
     p.runBehind = {
       until: this.elapsed + 1.1 + timing * 0.5,
@@ -475,7 +480,8 @@ export class PlanningMethods {
     let x, y;
     const attackBias = (tac.attacking - 50) * 0.1;
     if (base < 30) {
-      x = clamp(br - 24 + (base - 22) * 0.7 + attackBias, 20, 70);
+      // Rest defence: how far the back line follows the attack (metres; push steps up, hold stays).
+      x = clamp(br - 24 + (base - 22) * 0.7 + attackBias + tac.shift.restDefence, 20, 70);
       if (role === 'CB') {
         const recovery = 0.55 * p.skill('pace') + 0.45 * p.skill('acceleration'),
           slow = clamp((75 - recovery) / 30, 0, 1),
@@ -580,7 +586,7 @@ export class PlanningMethods {
           Math.min(backCover, 3) * 0.06 -
           (otherHigh ? 0.25 : 0) -
           (tac.style === 'bus' ? 0.17 : 0) +
-          tac.lean * 0.12,
+          tac.shift.join,
         0.05,
         0.97,
       );
@@ -612,7 +618,7 @@ export class PlanningMethods {
       br > 74 &&
       Math.abs(b.y - 34) > 11 &&
       p.tendency('hold') < 0.6 &&
-      p.tendency('advance') > 0.42 - tac.lean * 0.1 &&
+      p.tendency('advance') > 0.42 - tac.shift.lateRuns &&
       owner?.role !== 'GK'
     ) {
       // Late run to the edge / penalty spot: the cutback zone.
