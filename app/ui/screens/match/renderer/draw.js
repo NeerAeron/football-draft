@@ -581,46 +581,11 @@ function drawBall(ctx, fx, dpr) {
 }
 
 // Label placements around a token, in order of preference: below, above, right, left, then
-// the four diagonals. Outputs go to module variables (no allocation).
+// the four diagonals — as multipliers of the offsets (plain loops, nothing allocated).
 const SLOT_COST = [0, 0.3, 0.6, 0.6, 0.9, 0.9, 1, 1];
-let slotX = 0,
-  slotY = 0;
-function slotPosition(slot, px, py, r, w, h, gap) {
-  const dx = r + gap + w / 2,
-    dy = r + gap + h / 2,
-    side = r * 0.5 + w / 2;
-  slotX = px;
-  slotY = py;
-  switch (slot) {
-    case 0:
-      slotY = py + dy;
-      break;
-    case 1:
-      slotY = py - dy;
-      break;
-    case 2:
-      slotX = px + dx;
-      break;
-    case 3:
-      slotX = px - dx;
-      break;
-    case 4:
-      slotX = px + side;
-      slotY = py + dy;
-      break;
-    case 5:
-      slotX = px - side;
-      slotY = py + dy;
-      break;
-    case 6:
-      slotX = px + side;
-      slotY = py - dy;
-      break;
-    default:
-      slotX = px - side;
-      slotY = py - dy;
-  }
-}
+const SLOT_X = [0, 0, 1, -1, 0, 0, 0, 0], // × (radius + gap + half width)
+  SLOT_SIDE = [0, 0, 0, 0, 1, -1, 1, -1], // × (half radius + half width)
+  SLOT_Y = [1, -1, 0, 0, 1, 1, -1, -1]; // × (radius + gap + half height)
 
 const circleHitsBox = (cx, cy, cr, x, y, w, h) => {
   const dx = Math.max(Math.abs(cx - x) - w / 2, 0),
@@ -641,15 +606,18 @@ function drawLabel(ctx, fx, players, p, role, dpr, width, height) {
     py = fx.sy[p.id],
     r = fx.rad[p.id] + (role ? 3.2 * dpr : 0),
     n = players.length;
+  const dx = r + gap + w / 2,
+    dy = r + gap + h / 2,
+    side = r * 0.5 + w / 2;
   let best = 0,
     bestCost = Infinity;
   for (let slot = 0; slot < 8; slot++) {
-    slotPosition(slot, px, py, r, w, h, gap);
-    const x = clamp(slotX, w / 2 + edge, width - w / 2 - edge),
-      y = slotY;
+    const wantX = px + SLOT_X[slot] * dx + SLOT_SIDE[slot] * side,
+      x = clamp(wantX, w / 2 + edge, width - w / 2 - edge),
+      y = py + SLOT_Y[slot] * dy;
     let cost = SLOT_COST[slot] - (fx.slot[p.id] === slot ? 0.8 : 0);
     if (y - h / 2 < edge || y + h / 2 > height - edge) cost += 50;
-    if (x !== slotX) cost += 1.5 + (circleHitsBox(px, py, r, x, y, w, h) ? 6 : 0);
+    if (x !== wantX) cost += 1.5 + (circleHitsBox(px, py, r, x, y, w, h) ? 6 : 0);
     for (let i = 0; i < n && cost < bestCost; i++) {
       const q = players[i];
       if (q === p) continue;
@@ -670,9 +638,12 @@ function drawLabel(ctx, fx, players, p, role, dpr, width, height) {
     }
   }
   fx.slot[p.id] = best;
-  slotPosition(best, px, py, r, w, h, gap);
-  const x = clamp(slotX, w / 2 + edge, width - w / 2 - edge),
-    y = clamp(slotY, h / 2 + edge, height - h / 2 - edge);
+  const x = clamp(
+      px + SLOT_X[best] * dx + SLOT_SIDE[best] * side,
+      w / 2 + edge,
+      width - w / 2 - edge,
+    ),
+    y = clamp(py + SLOT_Y[best] * dy, h / 2 + edge, height - h / 2 - edge);
   if (fx.boxCount < 4) {
     const o = fx.boxCount++ * 4;
     fx.boxes[o] = x;
