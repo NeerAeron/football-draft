@@ -39,6 +39,9 @@ const REPLAY_BEFORE = 2.8;
 const REPLAY_AFTER = 0.7;
 const REPLAY_RATE = 0.6;
 const FLAIR_LIFE = 1.5;
+// Game feel: a few frozen frames when the ball is struck hard, saved or hits the frame
+// (presentation timing only — the simulation is stepped exactly as before, just later).
+const HIT_STOP = { shot: 0.055, save: 0.09, post: 0.11 };
 // A restart that moves several players at once (a corner being set up, a kick-off) is shown
 // as a cut — a short fade and a camera snap — never as tokens sliding across the pitch.
 const JUMP_PLAYERS = 4;
@@ -131,6 +134,7 @@ export class MatchController {
     };
     this.baseT = {};
     this.layered = false;
+    this.hitStop = 0;
     this.frameDt = undefined;
     this.presenting = 'idle';
     this.resumeTo = null;
@@ -689,6 +693,7 @@ export class MatchController {
       const e = fresh[i];
       if (e.type === 'shot' && (e.outcome === 'in flight' || e.outcome == null)) {
         this.pendingShots.set(e.id, e.elapsed);
+        if (live && m.elapsed - e.elapsed < 0.2) this.impact('shot', m.ball.strength ?? 0.4);
         continue;
       }
       const g = this.handleEvent(e, m, live && m.elapsed - e.elapsed < 3);
@@ -716,6 +721,9 @@ export class MatchController {
     }
     if (recent) {
       this.momentFlair(e, m);
+      if (e.type === 'post') this.impact('post', 1);
+      else if (e.type === 'save' && (e.difficulty ?? 0) >= 0.45) this.impact('save', e.difficulty);
+      else if (e.type === 'goal') this.shake(6);
       this.feed = [line, ...this.feed.filter(x => x.id !== line.id)].slice(0, 40);
       this.feedDirty = true;
       if (line.level >= 3) {
@@ -758,6 +766,29 @@ export class MatchController {
     f.y = keeper ? keeper.y : Math.max(28, Math.min(40, b.y));
     f.age = 0;
     f.on = true;
+  }
+
+  /** A beat for a big moment: freeze a few frames and shake the scene (normal speed only). */
+  impact(kind, strength = 0.5) {
+    if (isReducedMotion() || this.hud.get().speed !== 1 || this.presenting === 'ff') return;
+    if (kind === 'shot' && strength < 0.55) return;
+    this.hitStop = Math.max(this.hitStop, HIT_STOP[kind] || 0);
+    this.shake(kind === 'post' ? 5 : kind === 'save' ? 2 + strength * 2 : 1.5 + strength * 3);
+  }
+
+  /** Shake the scene by up to `px` CSS pixels for a fifth of a second. */
+  shake(px) {
+    const el = this.canvas?.parentNode;
+    if (!el?.animate || isReducedMotion() || !(px > 0)) return;
+    el.animate(
+      [
+        { translate: `${px}px ${-px * 0.6}px` },
+        { translate: `${-px * 0.7}px ${px * 0.5}px` },
+        { translate: `${px * 0.4}px ${px * 0.3}px` },
+        { translate: '0 0' },
+      ],
+      { duration: 220, easing: 'ease-out' },
+    );
   }
 
   // ---------- camera ----------
@@ -1022,8 +1053,14 @@ export class MatchController {
     if (this.moving()) this.raf = requestAnimationFrame(this.loop);
   }
 
-  update(dt) {
+  update(real) {
     const speed = this.hud.get().speed;
+    // Hit-stop: the picture holds for a few frames; flashes, captions and the camera go on
+    let dt = real;
+    if (this.hitStop > 0) {
+      this.hitStop -= real;
+      dt = 0;
+    }
     switch (this.presenting) {
       case 'live':
         this.updateLive(dt * speed);
@@ -1070,11 +1107,11 @@ export class MatchController {
         break;
       }
     }
-    this.flash = Math.max(0, this.flash - dt * 1.6);
+    this.flash = Math.max(0, this.flash - real * 1.6);
     const m = this.presented(),
       p = this.presenting,
       playing = p === 'live' || p === 'reel' || p === 'rewind';
-    if (this.flair.on && (this.flair.age += dt) >= this.flair.life) this.flair.on = false;
+    if (this.flair.on && (this.flair.age += real) >= this.flair.life) this.flair.on = false;
     if (playing) {
       // The scorer stays labelled until the game restarts
       if (this.scorerId != null && !(m.mode === 'restart' && m.restart?.type === 'Goal'))

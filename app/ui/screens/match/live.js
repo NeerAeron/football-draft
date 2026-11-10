@@ -616,18 +616,20 @@ export function LiveMatch({ controller, teams, onExit, onTactics }) {
     <div class="live__main">
       <div class="live__stage-col">
         <div class="match-stage">
-          <canvas ref=${pitch} class="match-stage__pitch" aria-hidden="true"></canvas>
-          <canvas
-            ref=${pitchZoom}
-            class="match-stage__pitch match-stage__pitch--zoom"
-            aria-hidden="true"
-          ></canvas>
-          <canvas
-            ref=${canvas}
-            class="match-stage__canvas"
-            aria-label="Match pitch"
-            role="img"
-          ></canvas>
+          <div class="match-stage__scene">
+            <canvas ref=${pitch} class="match-stage__pitch" aria-hidden="true"></canvas>
+            <canvas
+              ref=${pitchZoom}
+              class="match-stage__pitch match-stage__pitch--zoom"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              ref=${canvas}
+              class="match-stage__canvas"
+              aria-label="Match pitch"
+              role="img"
+            ></canvas>
+          </div>
           <${StageChips} controller=${controller} />
           <${Overlays} controller=${controller} teams=${teams} />
           <${Halftime} controller=${controller} teams=${teams} onTactics=${onTactics} />

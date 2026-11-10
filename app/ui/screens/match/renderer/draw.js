@@ -55,6 +55,8 @@ export function createRenderState() {
     ballX: 0,
     ballY: 0,
     ballR: 0,
+    ballStretch: 0,
+    ballAngle: 0,
     fontPx: 0,
     trail: {
       x: new Float32Array(TRAIL),
@@ -225,6 +227,12 @@ export function draw(ctx, view, state) {
   fx.ballX = bx;
   fx.ballY = by - bz * 0.6 * t.s;
   fx.ballR = br * (1 + Math.min(bz, 6) * 0.07);
+  // A struck ball stretches along its path: speed you can see
+  const bvx = ball.vx || 0,
+    bvy = ball.vy || 0,
+    bSpeed = Math.sqrt(bvx * bvx + bvy * bvy);
+  fx.ballStretch = !holder && bSpeed > 15 && !state.still ? Math.min((bSpeed - 15) / 16, 1) : 0;
+  if (fx.ballStretch) fx.ballAngle = Math.atan2(t.b * bvx + t.d * bvy, t.a * bvx + t.c * bvy);
 
   // Intended pass: faint guide from the ball to the receiver
   if (receiverId >= 0) {
@@ -327,12 +335,54 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
     fill = keeper ? kit.gk || '#f2e14c' : kit.primary || '#cdf545',
     ink = keeper ? kit.gkInk || '#0a0f1c' : kit.ink || '#0a0f1c',
     ring = keeper ? 'rgba(6,10,20,0.85)' : kit.secondary || '#ffffff';
-  const x = fx.sx[p.id],
-    y = fx.sy[p.id],
-    r = fx.rad[p.id];
-  const a = p.animation;
+  let x = fx.sx[p.id];
+  const y = fx.sy[p.id],
+    r = fx.rad[p.id],
+    vx = p.vx || 0,
+    vy = p.vy || 0,
+    speed2 = vx * vx + vy * vy;
+  const a = p.animation,
+    ak = a ? (m.elapsed - a.start) / a.duration : 1;
+  let body = 1;
+  // A take-on reads as one player beating another: the dribbler leaves afterimages, the
+  // beaten defender is left spinning (and faded) for a moment; a failed one wobbles.
+  if (a && ak >= 0 && ak < 1) {
+    if (a.type === 'feint') {
+      // Afterimages behind the way he is going (the feint's escape angle)
+      const f = screenAngle(t, a.angle ?? (speed2 > 1 ? Math.atan2(vy, vx) : p.facing || 0)),
+        cos = Math.cos(f),
+        sin = Math.sin(f);
+      for (let g = 3; g >= 1; g--) {
+        const gx = x - cos * r * 1.05 * g,
+          gy = y - sin * r * 1.05 * g,
+          gr = r * (1 - g * 0.1);
+        ctx.globalAlpha = (0.62 - g * 0.14) * (1 - ak);
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.arc(gx, gy, gr, 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = ring;
+        ctx.lineWidth = 1.2 * dpr;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (a.type === 'beaten') {
+      body = 0.5 + 0.5 * ak;
+      ctx.globalAlpha = 1 - ak;
+      ctx.strokeStyle = '#ffd59a';
+      ctx.lineWidth = 1.8 * dpr;
+      ctx.setLineDash(DASH_RING);
+      ctx.lineDashOffset = -ak * 36 * dpr;
+      ctx.beginPath();
+      ctx.arc(x, y, r + 3.4 * dpr, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash(NO_DASH);
+      ctx.lineDashOffset = 0;
+      ctx.globalAlpha = 1;
+    } else if (a.type === 'stumble') x += Math.sin(ak * Math.PI * 4) * r * 0.3 * (1 - ak);
+  }
   if (a && (a.type === 'dive' || a.type === 'tackle')) {
-    const k = clamp((m.elapsed - a.start) / a.duration, 0, 1),
+    const k = clamp(ak, 0, 1),
       stretch = Math.sin(k * Math.PI);
     if (stretch > 0.02) {
       const ang = screenAngle(t, a.angle ?? p.facing);
@@ -348,9 +398,6 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
     }
   }
   // Speed lines for sprinting players
-  const vx = p.vx || 0,
-    vy = p.vy || 0,
-    speed2 = vx * vx + vy * vy;
   if (speed2 > 43.5 && !state.still) {
     const speed = Math.sqrt(speed2),
       ang = Math.atan2(t.b * vx + t.d * vy, t.a * vx + t.c * vy),
@@ -381,6 +428,7 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
     if (role === 2) ctx.setLineDash(NO_DASH);
   }
   // Body
+  ctx.globalAlpha = body;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, TAU);
   ctx.fillStyle = fill;
@@ -421,6 +469,7 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
     ctx.fill();
     ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 }
 const EMPTY = {};
 
@@ -489,7 +538,29 @@ function drawTrail(ctx, t, trail, ball, dpr, br) {
 function drawBall(ctx, fx, dpr) {
   const x = fx.ballX,
     y = fx.ballY,
-    br = fx.ballR;
+    br = fx.ballR,
+    stretch = fx.ballStretch;
+  if (stretch > 0) {
+    // In flight at speed: an ellipse along the direction of travel with a bright core
+    const rx = br * (1 + stretch * 0.9),
+      ry = br * (1 - stretch * 0.14);
+    ctx.translate(x, y);
+    ctx.rotate(fx.ballAngle);
+    ctx.beginPath();
+    ctx.ellipse(-br * stretch * 0.5, 0, rx * 1.8, ry * 1.8, 0, 0, TAU);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-br * stretch * 0.35, 0, rx + 1.1 * dpr, ry + 1.1 * dpr, 0, 0, TAU);
+    ctx.fillStyle = 'rgba(6, 14, 10, 0.92)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-br * stretch * 0.35, 0, rx, ry, 0, 0, TAU);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    return;
+  }
   // Soft halo, then a dark keyline so the ball reads on grass, lines and kits alike
   ctx.beginPath();
   ctx.arc(x, y, br * 1.9, 0, TAU);
@@ -679,6 +750,36 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
       continue;
     }
     const save = type === 'catch' || type === 'parry';
+    if (type === 'shot' && k < 0.22) {
+      // The strike: a quick flash off the boot, bigger for a harder hit
+      const hit = clamp(e.strength ?? 0.5, 0.2, 1);
+      ctx.globalAlpha = (1 - k / 0.22) * (0.35 + hit * 0.35);
+      ctx.fillStyle = effectColor(e, state);
+      ctx.beginPath();
+      ctx.arc(x, y, (1 + hit * 1.2 + k * 7) * t.s, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = clamp(e.life * 3, 0, 1);
+    } else if (type === 'feint') {
+      // Take-on: a swoosh around the beaten side
+      const dir = screenAngle(t, e.angle ?? 0),
+        turn = e.side < 0 ? -1 : 1;
+      ctx.globalAlpha = (1 - k) * 0.9;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = (3.2 - k * 1.6) * dpr;
+      ctx.beginPath();
+      ctx.arc(
+        x,
+        y,
+        r + (0.6 + k * 1.8) * t.s,
+        dir - turn * (1.9 - k * 0.5),
+        dir - turn * 0.2,
+        turn < 0,
+      );
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.globalAlpha = clamp(e.life * 3, 0, 1);
+    }
     if (type === 'shot' || save || type === 'whistle') {
       const color = type === 'whistle' ? 'rgba(255,255,255,0.7)' : effectColor(e, state);
       ctx.beginPath();
@@ -698,7 +799,11 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
     }
     // In a shootout only the verdict of each kick is captioned (SCORED / SAVED / MISSED)
     const kick = m.mode === 'shootout';
-    if (LABELLED_EFFECTS.has(type) && e.label && (!kick || type === 'whistle')) {
+    if (
+      e.label &&
+      (LABELLED_EFFECTS.has(type) || (type === 'feint' && e.label === 'SLALOM')) &&
+      (!kick || type === 'whistle')
+    ) {
       const text = upper(e.label),
         card = type === 'whistle' && (text === 'YELLOW CARD' || text === 'RED CARD'),
         // Saves, cards and penalties are the moments: a size up, with a quick pop on entry
@@ -730,17 +835,19 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle =
-        type !== 'whistle'
-          ? effectColor(e, state)
-          : text === 'RED CARD' || text === 'MISSED'
-            ? '#ff8a7f'
-            : text === 'YELLOW CARD'
-              ? '#ffd43b'
-              : text === 'SCORED'
-                ? '#7ee6a1'
-                : text === 'SAVED'
-                  ? SAVE_COLOR
-                  : '#ffffff';
+        type === 'feint'
+          ? '#ffffff'
+          : type !== 'whistle'
+            ? effectColor(e, state)
+            : text === 'RED CARD' || text === 'MISSED'
+              ? '#ff8a7f'
+              : text === 'YELLOW CARD'
+                ? '#ffd43b'
+                : text === 'SCORED'
+                  ? '#7ee6a1'
+                  : text === 'SAVED'
+                    ? SAVE_COLOR
+                    : '#ffffff';
       ctx.fillText(text, lx + (card ? (cardW + 5 * dpr) / 2 : 0), ly + 0.5 * dpr);
       if (pop !== 1) ctx.setTransform(1, 0, 0, 1, 0, 0);
     }

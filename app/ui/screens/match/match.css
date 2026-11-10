@@ -408,6 +408,12 @@
     margin-inline: auto;
   }
 }
+/* The scene: pitch layers and the players' canvas. It is what shakes on a thunderous strike,
+   the woodwork or a goal (controller.shake, never under reduced motion). */
+.match-stage__scene {
+  position: absolute;
+  inset: 0;
+}
 /* The pitch is its own layer under the players' canvas: painted once per size, and moved by
    the compositor when the action camera zooms (the --zoom copy is a higher-resolution
    bitmap shown only then). Each frame redraws just the tokens. */
@@ -424,10 +430,10 @@
   visibility: hidden;
   will-change: transform;
 }
-.match-stage.is-zoomed .match-stage__pitch {
+.is-zoomed > .match-stage__pitch {
   visibility: hidden;
 }
-.match-stage.is-zoomed .match-stage__pitch--zoom {
+.is-zoomed > .match-stage__pitch--zoom {
   visibility: visible;
 }
 .match-stage__canvas {
