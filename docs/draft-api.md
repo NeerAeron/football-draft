@@ -119,6 +119,16 @@ allowed, reason }`. `rating` is the OVR in that slot after familiarity (what the
 `'The draft is complete'`. Light up `allowed` slots; mark `familiarity < NATURAL_FIT` (0.95)
 as out of position.
 
+Familiarity (`positionFamiliarity`, `players/ratings.js`) multiplies the role rating and
+follows the steps between positions: 1 at his own position, ~0.997 at a listed secondary one,
+0.985–0.999 one step away (CM ↔ DM / AM / LM / RM, LW ↔ LM, wing ↔ wing, AM ↔ ST / wing,
+CB ↔ DM / full-back, full-back ↔ wide midfielder, ST ↔ wing), ~0.945 at two steps (CM → CB),
+~0.89 at three, 0.6 for an outfielder in goal. It is set against EA's own per-position
+ratings: a neighbouring role costs about what EA says (CM → DM −1, ST → AM −5, with the
+attribute weights doing most of it), so neighbouring roles count as natural (≥ 0.95) and far
+moves stay costly. Club and ladder XIs field a player only at `ai.minimumFit` 0.965 or better
+(his own, a secondary or a neighbouring role); the boss XIs at 0.99 (own or secondary).
+
 ## Links (chemistry)
 
 `teamLinks(players)` (players in slot order, `null` = open slot):

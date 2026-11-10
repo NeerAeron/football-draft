@@ -124,7 +124,7 @@ export const DEFAULT_CONFIG = {
   },
   ai: {
     // Club and national best XIs: minimum position familiarity per slot.
-    minimumFit: 0.85,
+    minimumFit: 0.965,
     coachInterval: 6,
     coach: {
       counterPace: 80,
@@ -517,8 +517,8 @@ export const DEFAULT_CONFIG = {
     },
     familiarityBase: 0.72,
     familiarityBonus: 0.28,
-    familiarityDecay: 1.4,
-    secondaryDistance: 0.025,
+    familiarityDecay: 0.235,
+    secondaryDistance: 0.4,
     unfamiliarFit: 0.6,
     storedTendencyWeight: 0.7,
   },
@@ -791,7 +791,7 @@ const ranges = {
   bookedFoulRisk: [0, 1, 0.01],
   bookedRiskAversion: [0, 1, 0.01],
   minimumLeaguePlayers: [1, 20, 1],
-  minimumFit: [0.6, 1, 0.01],
+  minimumFit: [0.6, 1, 0.005],
   coachInterval: [1, 30, 1],
   halftimeRecovery: [0, 0.4, 0.01],
   halftimeVariation: [0, 2, 0.05],
@@ -802,8 +802,8 @@ const ranges = {
   attributeCap: [0, 15, 1],
   familiarityBase: [0.4, 0.9, 0.01],
   familiarityBonus: [0.1, 0.6, 0.01],
-  familiarityDecay: [0.1, 3, 0.05],
-  secondaryDistance: [0, 0.2, 0.005],
+  familiarityDecay: [0.05, 3, 0.005],
+  secondaryDistance: [0, 2, 0.005],
   unfamiliarFit: [0.2, 0.8, 0.01],
 };
 // Draft-session settings (draft.nations / leagueTierWeights / clubs / rerolls / ladder / links):

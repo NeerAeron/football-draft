@@ -43,7 +43,7 @@ export const BOSSES = {
   'world-xi': { name: 'World XI', color: '#d2ae53', secondary: '#0b1426' },
   'all-stars': { name: 'All-Stars', color: '#f4f1e9', secondary: '#d2ae53' },
 };
-const BOSS_FIT = 0.95;
+const BOSS_FIT = 0.99;
 const round2 = x => Math.round(x * 100) / 100;
 
 /** Effective target rating for a mode, level and round offset (rules: a session's rules). */
