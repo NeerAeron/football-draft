@@ -153,7 +153,27 @@ test('position familiarity distinguishes main, secondary, adjacent and unrelated
   };
   assert.equal(positionFamiliarity(p), 1);
   assert.equal(overallRating(p), 81);
-  assert.ok(overallRating(p, false, 'CB') < 65);
+  // A far move stays costly; a neighbouring role costs about a point on top of what the
+  // role's own attribute weights say (EA's per-position ratings, docs/calibration.md).
+  assert.ok(overallRating(p, false, 'CB') < 72);
+  assert.ok(positionFamiliarity(p, 'CB') < 0.9);
+  assert.ok(positionFamiliarity(p, 'GK') <= 0.6);
+  for (const near of ['AM', 'LW', 'RW']) {
+    const cost = calibratedRoleAbility(p, near) - overallRating(p, false, near);
+    assert.ok(cost > 0 && cost < 2, near + ' ' + cost);
+  }
+  assert.ok(positionFamiliarity(p, 'AM') > positionFamiliarity(p, 'CM'));
+  assert.ok(positionFamiliarity(p, 'CM') > positionFamiliarity(p, 'DM'));
+  assert.ok(positionFamiliarity(p, 'DM') > positionFamiliarity(p, 'CB'));
+  for (const [primary, role] of [
+    ['CM', 'DM'],
+    ['LW', 'LM'],
+    ['DM', 'CB'],
+    ['LB', 'RB'],
+  ]) {
+    const q = { ...p, primaryPosition: primary, role };
+    assert.ok(positionFamiliarity(q, role) >= 0.975, primary + '>' + role);
+  }
   p.primaryPosition = 'RB';
   p.secondaryPositions = ['CB'];
   assert.ok(calibratedRoleAbility(p, 'CB') - overallRating(p, false, 'CB') < 1.2);
@@ -188,9 +208,9 @@ test('unfamiliar positions noticeably weaken tackling and decisions while preser
     results.push({ win, speed, think: p.think, reading: p.awareness() });
   }
   assert.equal(results[0].speed, results[1].speed);
-  assert.ok(results[1].win < results[0].win - 0.1);
-  assert.ok(results[1].think > results[0].think * 1.5);
-  assert.ok(results[1].reading < results[0].reading * 0.75);
+  assert.ok(results[1].win < results[0].win - 0.07);
+  assert.ok(results[1].think > results[0].think * 1.25);
+  assert.ok(results[1].reading < results[0].reading * 0.85);
 });
 test('every outfield detail contributes to every outfield role overall; GK overall stays one rating', () => {
   for (const [role, weights] of Object.entries(OVERALL_WEIGHTS)) {

@@ -8,23 +8,28 @@
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000            # fast model only
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000 --engine 24 --workers 2
 //   node tools/calibration/cup-calibration.mjs runs --runs 1000 --only pro --tuning '[-12.5, …]'
-//     (--tuning: try other CUP_TUNING offsets, a JSON array for --only's difficulty or a JSON
-//     object by difficulty; fast-model runs only)
+//   CUP_BUDGET=1 node tools/calibration/cup-calibration.mjs runs …   # the user drafts in Budget mode
+//     (--tuning: try other CUP_TUNING offsets (nine: group ×3, R32, R16, QF, SF, final, play-off),
+//     a JSON array for --only's difficulty or a JSON object by difficulty; fast-model runs only.
+//     Legendary plays the real 48-nation field in a Nations draft (cup.js worldCupDraw), so
+//     offsets do not move it: `--only legendary` measures the field as it is and prints the
+//     ratings met per round, the numbers behind FIELD_TYPICAL.)
 //
 // gaps: team 0 is a typically drafted XI (nations mode, positional picks, the run's re-rolls),
 // team 1 a ladder opponent at a uniform gap of −12…+12 effective points, coached by the AI at
 // the level a difficulty uses (prematch-store COACH_LEVEL), in the game's 180 s match. The user
 // side keeps default tactics (as an auto-simmed run does: mentality 'auto').
 // runs: every difficulty; the user's matches use the fitted model, and with --engine N also
-// N runs per difficulty played by the real engine. Reports the
-// title / exit rates, the final opponents and what projectRun says for the same XI.
+// N runs per difficulty played by the real engine. Reports the title rate, the share of every
+// finishing place (group … fourth, third, runners-up, champions), the final opponents, the mean
+// rating met per round and what projectRun says for the same XI.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const imp = path => import(ROOT + path);
-const DIFFS = ['amateur', 'semipro', 'pro', 'worldclass', 'legendary'];
+const DIFFS = ['pro', 'worldclass', 'legendary'];
 const MATCH_SECONDS = 180; // the game's one match length (core/sim/constants.js)
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
 
@@ -62,6 +67,7 @@ async function setup() {
   };
 }
 
+const BUDGET = process.argv.includes('--budget') || process.env.CUP_BUDGET === '1';
 // A typical draft: the session's suggested (positional) pick, a smart re-roll below 78.
 function draftXI(env, seed, difficulty) {
   const s = env.createDraftSession(env.catalog, {
@@ -69,6 +75,7 @@ function draftXI(env, seed, difficulty) {
     seed,
     rerolls: env.CONFIG.draft.rerolls[difficulty],
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
+    budget: BUDGET, // --budget: the user drafts in Budget mode (tier caps)
   });
   while (!s.complete) {
     s.spin();
@@ -95,7 +102,7 @@ function gapSpecs(count, { min = -12, max = 12, from = 0 } = {}) {
     specs.push({
       id: i,
       seed: 41000 + i * 7,
-      difficulty: DIFFS[i % 5],
+      difficulty: DIFFS[i % DIFFS.length],
       gap: min + ((i * 7919) % 97) * ((max - min) / 96),
       duration: MATCH_SECONDS,
     });
@@ -245,15 +252,18 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
     }
     matches++;
   }
-  const snap = run.snapshot();
+  const snap = run.snapshot(),
+    finalist = run.opponents[7];
   return {
     seed,
     difficulty,
     engine: !!engine,
     rating: user.effective,
-    stage: snap.stage,
-    final: snap.rounds.at(-1).opponent.name,
-    finalRating: snap.rounds.at(-1).opponent.effective,
+    stage: snap.place,
+    final: finalist.name,
+    finalRating: finalist.effective,
+    // Effective rating of the opponent of every round (group ×3 … final, play-off).
+    met: run.opponents.map(o => o.effective),
     matches,
     games,
   };
@@ -292,7 +302,7 @@ function gamesReport(env, rows) {
 }
 function runsReport(env, rows) {
   gamesReport(env, rows);
-  const stages = ['group', 'r32', 'r16', 'qf', 'sf', 'final', 'champion'];
+  const stages = env.PLACES;
   for (const engine of [false, true]) {
     const rs = rows.filter(r => r.engine === engine);
     if (!rs.length) continue;
@@ -330,6 +340,13 @@ function runsReport(env, rows) {
             .join(', '),
           `(mean rating ${(x.reduce((t, r) => t + r.finalRating, 0) / x.length).toFixed(1)})`,
         );
+        if (x[0].met)
+          console.log(
+            '    met (MD1 MD2 MD3 R32 R16 QF SF F 3rd):',
+            x[0].met
+              .map((_, i) => (x.reduce((t, r) => t + r.met[i], 0) / x.length).toFixed(1))
+              .join(' '),
+          );
       }
     }
   }

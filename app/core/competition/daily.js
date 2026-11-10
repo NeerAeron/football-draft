@@ -47,7 +47,7 @@ const challenges = new WeakMap();
  * The challenge of a day: {
  *   id, number, seed, mode, difficulty, rerolls, formation,
  *   schedule: { rounds: [{ spin, alternate }] × 11 }  (nation ids),
- *   opponents: 8 opponent keys (3 group, then R32, R16, QF, SF, final),
+ *   opponents: 9 opponent keys (3 group, then R32, R16, QF, SF, final, third-place play-off),
  *   draft: options for createDraftSession, cup: options for createCupRun (add `user`) }
  * Deterministic for the date and catalog; uses DEFAULT_CONFIG draft rules, not the device's.
  */
@@ -79,6 +79,7 @@ export function dailyChallenge(catalog, date) {
         rules,
         rerolls: DAILY_RULES.rerolls,
         random,
+        bosses: false,
       }).key,
     );
   const challenge = {
@@ -270,7 +271,8 @@ export const DAILY_POINTS = {
   win: 100,
   draw: 40,
   shootoutWin: 20,
-  stage: { group: 0, r32: 10, r16: 20, qf: 40, sf: 80, final: 120, champion: 200 },
+  // By place: out in a round, fourth / third (the play-off), runners-up, champions.
+  stage: { group: 0, r32: 10, r16: 20, qf: 40, fourth: 80, third: 100, final: 120, champion: 200 },
   ovrFrom: 70,
   perOvrPoint: 10,
   perfectFrom: 80,
@@ -278,7 +280,7 @@ export const DAILY_POINTS = {
 };
 /**
  * Points for a finished daily run: matches (W 100, D 40, +20 per shootout won), stage bonus
- * (R32 10, R16 20 … champion 200), team OVR (10 per point above 70) and perfection (10 per % above 80).
+ * (the place: R32 10, R16 20, QF 40, fourth 80, third 100, runners-up 120, champions 200), team OVR (10 per point above 70) and perfection (10 per % above 80).
  * `snapshot` = CupRun.snapshot(); rating = team OVR; perfect = perfectPercent().
  */
 export function dailyScore(snapshot, { rating, perfect }) {
@@ -294,7 +296,7 @@ export function dailyScore(snapshot, { rating, perfect }) {
     );
   const parts = {
     matches,
-    stage: P.stage[snapshot.stage] ?? 0,
+    stage: P.stage[snapshot.place ?? snapshot.stage] ?? 0,
     ovr: Math.round(Math.max(0, rating - P.ovrFrom) * P.perOvrPoint),
     perfection: Math.round(Math.max(0, perfect - P.perfectFrom) * P.perPerfectPoint),
   };

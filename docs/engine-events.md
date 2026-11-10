@@ -39,9 +39,23 @@ decides a level match by a penalty shootout (see below).
 | `mentality` | `'auto' | 'push' | 'balanced' | 'hold'` (engine default `'balanced'`; `MENTALITIES` in `insights.js`). `'auto'` follows the game state; `m.mentality(team)` returns the one in effect |
 
 Mentality is a live, replay-safe tactic like the others (part of `exportConfig`, never draws
-RNG). `push`: higher line (+8), more runners and overlaps, +15% shooting urge, riskier passes,
-quicker restarts, +5% energy cost. `hold`: deeper block (−10), fewer runners, safer passing,
-slower restarts (×1.25), −5% energy cost. `gameStateMentality(m, team)` (coach.js) returns the
+RNG). The rule: **Push raises the chance of a goal at both ends, Hold lowers it at both ends,
+Balanced is the zero point**; between even sides the three are worth about the same points, so
+the choice is about how open the game should be. What each changes is in
+`tuning.mentality.push` / `.hold` (differences from Balanced; `m.mentalityShift(team)` returns
+the set in effect, `m.lean(team)` +1 / 0 / −1). `push`: higher line (+8), more runners and
+overlaps, +15% shooting urge, quicker restarts (−15%), +5% energy cost, and room to shoot at
+both ends (`chances` 0.55 for its own shots, `exposure` 0.3 for the shots it concedes). `hold`:
+deeper block (−10), fewer runners, safer passing, slower restarts (×1.25), −5% energy cost, and
+less room at both ends (`chances` −0.33, `exposure` −0.24). `m.shootingRoom(team)` is the sum
+for a shot by `team` (its own `chances` + the defending side's `exposure`); a non-penalty
+shot's scatter is divided by `1 + room` (clamped to 0.5–2). Two small rewards for a well-timed
+choice are read from the score at the moment of the shot: a side that is behind and pushing
+gets `tuning.mentality.chase` (0.1) more room for its own shots, a side that is ahead and
+holding takes `protect` (0.1) off the opponent's. They apply to the mentality in effect, so
+`'auto'` earns them too when it resolves to push or hold. Over 1,400 even club fixtures, all
+match: push 1.51–1.41 goals, balanced 1.24–1.19, hold 0.94–0.89 (docs/calibration.md).
+`gameStateMentality(m, team)` (coach.js) returns the
 game-state choice — after 70' a trailing side pushes, from 75' a leading side holds. The AI
 coach applies it to team 1; a side whose mentality is `'auto'` gets it too (the UI's default
 for a side that did not choose, so instant sims and highlights also chase a game). Tactics also cost energy: press

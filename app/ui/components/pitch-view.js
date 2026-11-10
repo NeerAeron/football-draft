@@ -9,14 +9,19 @@
  *   players     array aligned with the slots: PlayerView | null per slot
  *   highlights  { [slotIndex]: fit } — FitTag fit objects ({ state: 'best'|'ok'|'penalty'|
  *               'swap'|'blocked', label?, from?, to? }); 'blocked' slots cannot be selected
- *   links       [{ from, to, strength: 1 | 2 | 3 }] slot-index pairs (1 = same league,
- *               2 = same nation, 3 = club teammates — the screen decides) → lines under tokens
+ *   links       [{ from, to, strength: 1 | 2 | 3 }] slot-index pairs (3 = nation mates: gold,
+ *               thickest; 2 = club mates: volt; 1 = a faint dashed line for other uses)
+ *               → lines under tokens
  *   linkMode    'quiet' (default): thin, faint lines; hovering/focusing a player (or the
  *               selected slot) lights his links and fades the rest. 'focus': only the active
  *               player's links (used automatically when there are more than 14, e.g. a club
  *               XI where everyone links). 'all': the full-strength style everywhere.
  *   selected    selected slot index (volt ring)
  *   onSelect    (index, slot) => void. Without it the pitch is display-only (no buttons).
+ *   boosts      the green "+2" chips on the tokens: mates (nation mate +2, club mate +2,
+ *               both +4) plus the Captain's +1. Default: worked out from the players (their `source`
+ *               and `captain`, lib/player-view.js mateBoosts); pass an array aligned with the
+ *               slots to override, or false for no chips. The OVR badge stays the plain rating.
  *   hideRatings hide OVR badges;  names (default true) show surname labels under tokens
  *   label       accessible name of the slot group (default 'Formation')
  *   aspect      CSS aspect-ratio of the pitch (default '4 / 5')
@@ -29,7 +34,8 @@ import { useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../lib/html.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { resolveTier } from '../lib/tiers.js';
-import { surname, captainSlot } from '../lib/player-view.js';
+import { surname, captainSlot, mateBoosts } from '../lib/player-view.js';
+import { fmt1 } from '../lib/format.js';
 import { Flag } from './flag.js';
 import { CaptainMark } from './captain-mark.js';
 import { Crest } from './crest.js';
@@ -105,7 +111,9 @@ function PitchMarkings() {
   </svg>`;
 }
 
-function SlotToken({ player, hideRatings, captain }) {
+const boostText = n => `+${Number.isInteger(n) ? n : fmt1(n)}`;
+
+function SlotToken({ player, hideRatings, captain, boost }) {
   if (!player) return html`<span class="pitch-slot__token pitch-slot__token--empty"></span>`;
   const t = resolveTier(player.tier, player.ovr);
   const face = player.nation
@@ -122,6 +130,7 @@ function SlotToken({ player, hideRatings, captain }) {
     <span class="pitch-slot__face">${face}</span>
     ${!hideRatings && html`<span class="pitch-slot__ovr num">${player.ovr}</span>`}
     ${captain && html`<${CaptainMark} class="pitch-slot__captain" />`}
+    ${boost > 0 && html`<span class="pitch-slot__boost num">${boostText(boost)}</span>`}
   </span>`;
 }
 
@@ -138,6 +147,7 @@ export function PitchView({
   selected = null,
   onSelect,
   hideRatings = false,
+  boosts,
   names = true,
   label = 'Formation',
   aspect = '4 / 5',
@@ -150,6 +160,10 @@ export function PitchView({
   const squat = aw > 0 && ah > 0 && aw / ah > 0.82;
   const slots = useMemo(() => layoutSlots(source, squat ? [86, 11] : TOP_BOTTOM), [source, squat]);
   const captainAt = captainSlot(players);
+  const boostAt = useMemo(
+    () => (boosts === false ? [] : Array.isArray(boosts) ? boosts : mateBoosts(players)),
+    [boosts, players],
+  );
   const refs = useRef([]);
   const interactive = typeof onSelect === 'function';
   const usable = i => highlights[i]?.state !== 'blocked';
@@ -234,7 +248,9 @@ export function PitchView({
         const description = [
           slot.role,
           player
-            ? `${player.fullName || player.name}${hideRatings ? '' : `, ${player.ovr}`}`
+            ? `${player.fullName || player.name}${hideRatings ? '' : `, ${player.ovr}`}${
+                boostAt[slot.index] > 0 ? `, boost ${boostText(boostAt[slot.index])}` : ''
+              }`
             : 'empty',
           fitText(fit, hideRatings),
         ]
@@ -251,6 +267,7 @@ export function PitchView({
               player=${player}
               hideRatings=${hideRatings}
               captain=${slot.index === captainAt}
+              boost=${player ? boostAt[slot.index] : 0}
             />
             ${!player && html`<span class="pitch-slot__role">${slot.role}</span>`}
           </span>

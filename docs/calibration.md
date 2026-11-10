@@ -23,6 +23,148 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 5: mentality, rating gaps, out-of-position ratings
+
+**Mentality means one thing.** Push raises the chance of a goal at both ends, Hold lowers it at
+both ends, Balanced is the zero point, and between even sides all three are worth the same
+points. Before, Push only made a side worse (1.11–1.23 goals against 1.22–1.16 by default over
+700 even club fixtures) and Hold was simply better (1.26–1.06).
+
+What was tried first: every positional lean on its own, at four to five times its old size
+(line ±5 m, support positions ±8 m, rest defence ±10 m, runs in behind ±60%, full-back and late
+runs, press distance, shot urge ±50–60%, restart time ×2), 400 fixtures each. None moved a
+side's goals by more than about 0.08: shot volume is bound by real-time physics at about nine
+a match whatever a side wants (as Phase 4 found), and a side's goals follow chance quality, not
+how many bodies it sends. Two things did move: risky passing (the old Push lean) just hands
+the ball over (own goals −0.2, conceded +0.05), and safe passing takes 0.1–0.2 goals off the
+opponent. Deliberate marking lapses for the pushing side would have worked too (+18% goals and
++11% shots when both sides lapse) but "attackers left free in the box" is exactly what Phase 4
+removed, so they stay off.
+
+What it is now (`tuning.mentality`, all differences from Balanced; `--tuning` patches work):
+the leans a viewer sees stay (line, runners, overlaps, shot urge, restart speed, energy), Push
+no longer passes riskier, Hold passes safer (`turnoverCost` +25%), and the effect itself is
+carried by **room to shoot**: a shot's scatter is divided by `1 + chances(shooting side) +
+exposure(defending side)` — Push 0.55 / 0.3, Hold −0.33 / −0.24 (`Match.shootingRoom`). A side
+that commits bodies forward finds, and leaves, more room; a side that sits in gives and gets
+less. Two small rewards for a well-timed choice, read from the score when the shot is taken: a
+side behind and pushing gets `chase` 0.1 more room for its own shots, a side ahead and holding
+takes `protect` 0.1 off the opponent's. They apply to the mentality in effect, so Auto earns
+them when the game state makes it push or hold (otherwise Auto would be a trap); an explicit
+choice works all match, Auto only late.
+
+| 1,400 even club fixtures, team 0 on the setting all match | goals for – against | total | shots for – against | W / D / L | points (opp.) |
+| --- | --- | --- | --- | --- | --- |
+| before: push | 1.11 – 1.23 | 2.33 | 4.27 – 4.43 | 32 / 30 / 38 | 1.25 (1.45) |
+| before: balanced | 1.20 – 1.14 | 2.34 | 4.44 – 4.31 | 37 / 31 / 33 | 1.41 (1.29) |
+| before: hold | 1.26 – 1.06 | 2.32 | 4.33 – 4.01 | 40 / 30 / 31 | 1.49 (1.21) |
+| push | 1.51 – 1.41 | 2.91 (+20%) | 4.47 – 4.39 | 39 / 26 / 36 | 1.42 (1.32) |
+| balanced | 1.24 – 1.19 | 2.43 | 4.40 – 4.34 | 36 / 28 / 36 | 1.36 (1.36) |
+| hold | 0.94 – 0.89 | 1.83 (−25%) | 4.37 – 3.93 | 34 / 32 / 34 | 1.33 (1.35) |
+
+(Before: 700 fixtures. Team 1 is AI-coached and follows the game state late on.) Goals move at
+both ends; shots barely do — more of them are on target. From the 60th minute, 2,000 fixtures,
+the matches in which team 0 is one goal down / up at that point:
+
+| from 60' | n | result | goals for – against after 60' |
+| --- | --- | --- | --- |
+| one down, stays balanced | 439 | draw or win 25.5% (win 3.9%) | 0.44 – 0.41 |
+| one down, pushes | 439 | draw or win 29.0% (win 6.2%) | 0.57 – 0.48 |
+| one up, stays balanced | 470 | keeps the win 74.3%, loses 4.0% | 0.50 – 0.47 |
+| one up, holds | 470 | keeps the win 76.4%, loses 1.9% | 0.47 – 0.38 |
+
+The fast model's logic says the same: with independent Poisson goals, scaling both sides'
+rates by 1.24 takes a side one down with a third of the match left from 23.7% to 26.5% (27.6%
+with the chase reward), and scaling them by 0.79 takes a side one up from 76.3% to 79.4% (80.3% with the protect
+reward).
+For a whole match the same arithmetic says the opposite of the folk rule: more goals favour the
+better side (a side 4 rating points better goes from 1.76 to 1.83 points a match by pushing,
+one 4 points worse from 0.98 to 0.94), so an underdog should hold and a favourite push — the
+game state, not the rating, is the reason to push. Default play (both sides on Auto, before
+the rating change below): goals 2.17 → 2.37 over 700 club fixtures, draws 32% → 28% (more
+late equalisers and killers).
+
+**Rating gaps count a little more.** `gameplay.qualityImpact` 1 → 1.25: every skill is
+`70 + (attribute − 70) × 1.25` (+ badges and chem, capped at 99), so differences between
+players and sides are a quarter larger. Tried and dropped: `keeperRange` 1.4 (no effect on the
+stronger side), the four "stat influence" knobs × 1.4 (+0.5 points), `qualityImpact` 1.15 /
+1.2 (+2 points at most). Stronger side's wins, same matches before → after:
+
+| | n | stronger side W / D / L before | after |
+| --- | --- | --- | --- |
+| club v club, gap 4–8, both on Auto | 1,217 | 51.8 / 29.5 / 18.7 | 57.4 / 25.7 / 16.9 |
+| drafted XI v ladder, gap 1.5–4 | 632 | 49.4 / 22.6 / 28.0 | 53.8 / 22.0 / 24.2 |
+| drafted XI v ladder, gap 4–8 | 1,362 | 62.8 / 20.1 / 17.2 | 64.8 / 19.7 / 15.6 |
+| drafted XI v ladder, gap 8–13 | 276 | 77.5 / 13.8 / 8.7 | 82.6 / 11.2 / 6.2 |
+
+Side effects: goals by level of the two clubs (700 fixtures, Auto) under 68 OVR 1.85 → 2.01,
+68–75 2.41 → 2.42, 75 and over 2.81 → 3.25 (the best attackers score more: 85+ attackers 0.44
+→ 0.98 goals a match in the calibration batch); attributes of 94 and over reach the 99 cap; the
+user's drafted XI gains about 0.4 rating points on ladder sides of the same rating (stars count
+for more). The fast model was refitted to 2,592 matches: goals 1.84, slope 0.0525
+(`competition-api.md`; the engine before this pass refits to 1.74 / 0.0500 — the 1.6 / 0.0575
+in use dated from an older engine). Shootouts were not re-measured.
+
+**Frustrating plays** (`blunders.mjs`, 120 fixtures, per match, before → after all three
+changes): unpressed pass cut out 0.37 → 0.36, pass out of play 0.35 → 0.34, restart giveaway
+0.23 → 0.07, open danger-zone shot against a set defence 0.38 → 0.25, unmarked receiver 0.41
+→ 0.28, hopeless long shot 0.78 → 0.70, soft goal 0.47 → 0.49, keeper off his line 0.29 →
+0.36 s, ping-pong 0.42 → 0.42; goals 2.29 → 2.40, shots 8.5 → 8.4. The paired 64-match 180 s
+calibration batch (which includes big gaps and all-star sides): goals 2.45 → 3.00, draws 37.5%
+→ 21.9%, 0–0 9.4% → 4.7%, pass completion 83.2% → 84.8%.
+
+**Out of position.** A player's rating in a role is his role rating (attribute weights fitted
+to FC 26) times a familiarity factor. EA publishes each player's rating at every position
+(`ls st rs lw … gk` in the source CSV); against those, for the 13,653 outfield players of the
+catalog, our attribute weights alone already agree (mean difference under a point for every
+neighbouring pair), so the old familiarity factor was a second penalty on top: 5–13 points too
+harsh everywhere (mean absolute difference from EA over the 110 outfield pairs: 8.0). Now
+familiarity follows steps between positions, `base + bonus · exp(−(decay · steps)²)` with
+`familiarityDecay` 0.235: 0.985 one step away (about a point), 0.945 at two, 0.89 at three,
+0.84 at four; twin wide roles (LW/LM, RW/RM) a quarter step, ST → AM three quarters, a listed
+secondary position 0.4 (`secondaryDistance`); an outfielder in goal stays at 0.6. Mean
+difference from EA is now 1.5 points, all of it on far moves, which stay costly on purpose.
+
+| primary → role (mean change in OVR) | ours before | ours now | EA |
+| --- | --- | --- | --- |
+| CM → DM | -4.8 | -1.3 | -1.9 |
+| DM → CM | -3.2 | -2.6 | -1.8 |
+| CM → AM | -5.7 | -0.8 | -0.5 |
+| AM → CM | -4.0 | -3.1 | -2.9 |
+| LW → LM | -0.6 | -0.1 | -0.8 |
+| LM → LW | -0.7 | -0.1 | 0.5 |
+| ST → AM | -12.3 | -4.7 | -3.3 |
+| AM → ST | -11.5 | -3.7 | -3.8 |
+| ST → LW | -14.2 | -4.6 | -2.9 |
+| LW → ST | -13.1 | -3.7 | -3.2 |
+| LW → RW | -4.1 | -0.7 | 0.0 |
+| AM → LW | -6.0 | -0.5 | -0.5 |
+| LW → AM | -8.9 | -2.5 | -1.4 |
+| CM → LM | -8.7 | -1.0 | -1.0 |
+| LM → CM | -14.1 | -7.1 | -5.2 |
+| LB → RB | -6.7 | -0.9 | 0.0 |
+| LB → LM | -4.8 | -3.6 | -2.1 |
+| LM → LB | -18.5 | -10.5 | -12.9 |
+| CB → DM | -12.7 | -4.1 | -3.9 |
+| DM → CB | -10.6 | -3.1 | -1.3 |
+| CB → LB | -13.1 | -4.8 | -4.7 |
+| LB → CB | -12.7 | -4.5 | -2.2 |
+| CM → CB | -15.9 | -7.4 | -5.4 |
+| CM → LB | -15.7 | -4.8 | -3.7 |
+| DM → LB | -15.6 | -4.7 | -2.2 |
+| ST → CM | -20.9 | -12.4 | -9.2 |
+| LB → ST | -22.1 | -11.5 | -7.5 |
+| ST → CB | -32.1 | -25.3 | -22.4 |
+| CB → ST | -28.7 | -21.0 | -16.8 |
+| ST → GK | -61.0 | -61.0 | -50.5 |
+
+Because a neighbouring role is now ≥ 0.985, the thresholds moved with the scale:
+`ai.minimumFit` 0.85 → 0.965 (club and ladder XIs: own, secondary or neighbouring role),
+the boss XIs 0.95 → 0.99 (own or secondary, as before); the draft's `NATURAL_FIT` 0.95 now
+also covers neighbouring roles (two steps is 0.945: still "out of position"). The catalog was
+rebuilt (club best XIs changed with the fit rule). In the engine a far move costs less than it
+did (a striker at centre-back reads the game at 82% of his awareness instead of 64%).
+
 ## Phase 4: frustrating plays, one match length, fun over realism
 
 The steer for this pass: the engine should be fun to watch (long shots, dribbles, saves) and

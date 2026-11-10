@@ -95,7 +95,7 @@ test('autoPick spins and picks in one press; auto-complete finishes run drafts t
 
 test('quick drafts reveal a ladder opponent and open the pre-match; kick-off requests the match', async () => {
   reset();
-  await draft.startDraft({ kind: 'quick', type: 'nations', difficulty: 'amateur', seed: 11 });
+  await draft.startDraft({ kind: 'quick', type: 'nations', difficulty: 'pro', seed: 11 });
   draft.autoComplete();
   const opponent = draft.quickOpponent();
   assert.ok(opponent.name);
@@ -139,7 +139,7 @@ test('quick drafts reveal a ladder opponent and open the pre-match; kick-off req
   assert.equal(request.config.teams[0].tactics.mentality, 'push');
   assert.equal(request.config.teams[0].tactics.formation, '442');
   assert.equal(request.config.competition.mode, 'ai');
-  assert.equal(request.config.competition.difficulty, 'veryeasy');
+  assert.equal(request.config.competition.difficulty, 'medium');
   assert.equal(currentRequest().id, data.id);
   assert.equal(readMatchResult(data.id), null);
 });

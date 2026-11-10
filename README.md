@@ -16,9 +16,11 @@ Everything you do is saved in your own browser.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
-4. **Links and the Captain.** Players sharing a club, nation or league link up and get a small
-   boost. A **Captain** (marked **C**: experienced players with a big international reputation)
-   lifts every player in his XI.
+4. **Mates and the Captain.** A player with a nation team-mate in your XI gets **+2**, with a
+   club mate **+2**, with both **+4** (shown as a green chip on the pitch). A **Captain** (marked **C**: experienced players with a big international
+   reputation) gives every player in his XI +1 on top.
+   **Budget mode** (a switch on the World Cup setup) is the hard way: only 1 player rated 88+,
+   2 rated 84–87 and 3 rated 80–83 — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
    Cup Run the first match is played in the formation you drafted in). Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
@@ -31,7 +33,7 @@ Everything you do is saved in your own browser.
 
 | Mode | What it is |
 | --- | --- |
-| **World Cup Run** | A Nations draft, then a group of four (three matches; the top two advance, and so does a third place on 4 points, or 3 with goal difference −2 or better, as the 2026 format's best thirds), Round of 32, Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all eight for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result, and a title goes into the trophy cabinet on Home (one cup per difficulty). "Sim rest of run" plays the remaining matches for you. |
+| **World Cup Run** | A Nations draft, then a group of four (three matches; the top two advance, and so does a third place on 4 points, or 3 with goal difference −2 or better, as the 2026 format's best thirds), Round of 32, Round of 16, quarter-final, semi-final and final — or the third-place play-off for the beaten semi-finalist. Three difficulties: Pro, World Class and Legendary, the main challenge. Win all eight for a perfect run; every run ends on a place (champions, runners-up, third, fourth or the round you went out in) with a Player of the Tournament and a shareable result, and gold, silver and bronze go into the trophy cabinet on Home (Budget-mode trophies in their own; the ultimate achievement is a perfect Legendary run in Budget mode). Each match can be watched as highlights (1 min) or in full (3 min), or simulated — one match or the whole cup. |
 | **Daily Challenge** | One run a day, the same for everyone: the same eleven Nations spins, re-roll alternates and eight opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
 | **Quick Match** | Draft from nations, leagues or clubs, then one match against an AI team at your difficulty. |
 | **Versus** | Two players on one device, drafting from nations, leagues or clubs: a coin toss, alternating picks, then kick off. |
@@ -45,7 +47,7 @@ Everything you do is saved in your own browser.
 | **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
-Difficulties run Amateur, Semi-pro, Pro, World Class and Legendary: they set your re-rolls and how
+Three difficulties — Pro, World Class and Legendary — set your re-rolls (2, 1, 1) and how
 strong the opponents are. **Ball Knower** hides every rating
 until the end; **one player per nation** is an extra challenge for nation spins. Results can be
 shared as text or an image, and **Challenge a friend** links replay the same spins and opponents.
@@ -111,7 +113,7 @@ app/                  the deployed site, served as-is
   core/               pure logic, no DOM or storage; runs in Node
     sim/              match engine, rules, cards, periods, replay, shootouts, AI coach
     players/          ratings, badges, formations, club lineups, catalog codec
-    draft/            draft session, pools, Links, opponent ladder
+    draft/            draft session, pools, mates boosts, Budget mode, opponent ladder
     competition/      World Cup Run, fast rating model, Daily Challenge, share links
     config/           tuning defaults, saved overrides, normalisation
     util/             seeded RNG, math and text helpers

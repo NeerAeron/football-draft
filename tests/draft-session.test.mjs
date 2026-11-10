@@ -15,7 +15,6 @@ import { overallRating, positionFamiliarity } from '../app/core/players/ratings.
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { lcg } from '../app/core/util/rng.js';
 import { Match } from '../app/core/sim/engine.js';
-import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 
 const catalog = loadRuntimeCatalog();
 const index = catalogIndex(catalog);
@@ -233,16 +232,17 @@ test('dead-end guard: a spin never lands on a pool that cannot fill an open slot
 
 test('re-rolls: count by difficulty, per side, never repeat a seen option', () => {
   for (const [difficulty, n] of Object.entries({
+    pro: 2,
+    worldclass: 1,
+    legendary: 1,
+    // A save or a link from before the three difficulties plays as Pro.
     amateur: 2,
     semipro: 2,
-    pro: 1,
-    worldclass: 1,
-    legendary: 0,
   })) {
     const s = createDraftSession(catalog, { seed: 8, difficulty });
     assert.equal(s.snapshot().rerolls[0], n);
   }
-  const s = createDraftSession(catalog, { seed: 8, difficulty: 'amateur' });
+  const s = createDraftSession(catalog, { seed: 8, difficulty: 'pro' });
   assert.throws(() => s.reroll(), /Spin first/);
   const seen = [s.spin().option.id];
   assert.equal(s.snapshot().canReroll, true);
@@ -341,8 +341,9 @@ test('auto placement prefers a natural slot over a higher out-of-position rating
   const auto = s.autoSlot(fake.profileId),
     options = s.placementOptions(fake.profileId).filter(o => o.allowed),
     st = options.find(o => o.role === 'ST');
-  assert.equal(auto.role, 'CB');
-  assert.ok(auto.natural);
+  // A natural slot: his own position or a neighbouring one (CB, or a full-back).
+  assert.ok(['CB', 'LB', 'RB'].includes(auto.role), auto.role);
+  assert.ok(auto.natural && auto.familiarity >= NATURAL_FIT);
   assert.ok(st.rating > auto.rating && st.familiarity < NATURAL_FIT, JSON.stringify(st));
   // The pool shows his best rating anywhere (out of position); Auto still goes natural.
   const best = s.snapshot().pool.find(e => e.profileId === fake.profileId).best;
@@ -412,7 +413,7 @@ test('snapshot carries the UI data: spin, pool fit, teams, links and flags', () 
 
 test('serialize/restore round-trips mid-spin and continues identically', () => {
   for (const mode of ['nations', 'clubs', 'clubAndCountry']) {
-    const a = createDraftSession(catalog, { mode, seed: 123, sides: 2, difficulty: 'amateur' });
+    const a = createDraftSession(catalog, { mode, seed: 123, sides: 2, difficulty: 'worldclass' });
     for (let k = 0; k < 5; k++) {
       a.spin();
       a.pick(a.suggestPick().profileId);
@@ -463,7 +464,7 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
   assert.equal(home.players.length, 11);
   home.players.forEach((p, i) => {
     assert.equal(p.role, FORMATIONS['4231'][i][2]);
-    assert.ok(p.chem >= 0 && p.chem <= 2 + DEFAULT_CONFIG.draft.links.captain);
+    assert.ok(p.chem >= 0 && p.chem <= 5 && Number.isInteger(p.chem));
   });
   const setup = matchSetup(home, { ...away, color: home.color });
   assert.notEqual(setup.teams[1].color, setup.teams[0].color, 'clashing kits switch');
@@ -476,7 +477,6 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
     match.players.map(p => p.profileId),
     [...home.players, ...away.players].map(p => p.profileId),
   );
-  // A national XI is fully linked: chem 2 for every player.
   const nation = index.nations.get('Brazil'),
     xi = buildSide({
       name: 'Brazil',
@@ -485,10 +485,12 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
       formation: '433',
       players: assignXI(nation.players),
     });
-  // A national XI is fully linked: chem 2, plus the captain's boost (Brazil has one).
+  // A national XI is all nation mates: +2 each (+4 for club mates inside it), plus the
+  // captain's +1 (Brazil has one).
   assert.ok(nation.players.some(p => p.captain));
-  assert.ok(xi.players.every(p => p.chem === 2 + DEFAULT_CONFIG.draft.links.captain));
-  assert.equal(xi.links.score, 33);
+  assert.ok(xi.players.every(p => p.chem === 3 || p.chem === 5));
+  assert.ok(xi.links.score >= 22 && xi.links.score <= 44);
+  assert.equal(xi.links.total, xi.links.score + 11);
 });
 
 function assignXI(players) {

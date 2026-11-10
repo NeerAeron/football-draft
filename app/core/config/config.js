@@ -50,41 +50,40 @@ export const DEFAULT_CONFIG = {
     },
     // Re-rolls per drafter by difficulty.
     rerolls: {
-      amateur: 2,
-      semipro: 2,
-      pro: 1,
+      pro: 2,
       worldclass: 1,
-      legendary: 0,
+      legendary: 1,
     },
     // Opponent strength vs the mode's typical drafted XI (effective rating, links included).
     ladder: {
-      amateur: -7,
-      semipro: -3.5,
       pro: 0,
       worldclass: 4,
       legendary: 7,
     },
-    // Links: a player's level is the sum of club / nation / league levels (teammates sharing
-    // it, the player included, reaching each threshold), capped at 3. chem = level / 3 * maxChem.
+    // Mates (draft/links.js): attribute points for a player with a nation team-mate and for
+    // one with a club mate in the XI — one mate is enough, and the two stack (+4 with both).
     links: {
-      club: {
-        level1: 2,
-        level2: 5,
-        level3: 8,
-      },
-      nation: {
-        level1: 2,
-        level2: 5,
-        level3: 8,
-      },
-      league: {
-        level1: 3,
-        level2: 5,
-        level3: 8,
-      },
-      maxChem: 2,
-      // A Captain in the XI: attribute points added to every player (draft/links.js).
+      nation: 2,
+      club: 2,
+      // A Captain in the XI: attribute points added to every player on top.
       captain: 1,
+    },
+    // Budget mode (session option `budget`): at most `slots` players rated `minimum` or more
+    // per band (by the rating shown on the player, bands highest first); players under the
+    // last band are free.
+    budget: {
+      band1: {
+        minimum: 88,
+        slots: 1,
+      },
+      band2: {
+        minimum: 84,
+        slots: 2,
+      },
+      band3: {
+        minimum: 80,
+        slots: 3,
+      },
     },
   },
   playerTiers: {
@@ -124,7 +123,7 @@ export const DEFAULT_CONFIG = {
   },
   ai: {
     // Club and national best XIs: minimum position familiarity per slot.
-    minimumFit: 0.85,
+    minimumFit: 0.965,
     coachInterval: 6,
     coach: {
       counterPace: 80,
@@ -145,7 +144,7 @@ export const DEFAULT_CONFIG = {
     },
   },
   gameplay: {
-    qualityImpact: 1,
+    qualityImpact: 1.25,
     controlQuality: 0.55,
     passingQuality: 0.65,
     defensiveQuality: 0.55,
@@ -181,6 +180,45 @@ export const DEFAULT_CONFIG = {
     runsInBehind: 1,
     crossWillingness: 1.5,
     keeperRange: 1,
+  },
+  // What a mentality changes, as differences from Balanced (which is all zeros). Push raises
+  // the chance of a goal at both ends, Hold lowers it at both ends (docs/calibration.md).
+  mentality: {
+    push: {
+      line: 8,
+      attacking: 20,
+      restDefence: 0,
+      runners: 0,
+      shotUrge: 0.15,
+      ambition: 0,
+      turnoverCost: 0,
+      join: 0.12,
+      lateRuns: 0.1,
+      pressing: 0,
+      restartTime: -0.15,
+      load: 0.05,
+      chances: 0.55,
+      exposure: 0.3,
+    },
+    hold: {
+      line: -10,
+      attacking: -20,
+      restDefence: 0,
+      runners: 0,
+      shotUrge: -0.15,
+      ambition: -0.03,
+      turnoverCost: 0.25,
+      join: -0.12,
+      lateRuns: -0.1,
+      pressing: 0,
+      restartTime: 0.25,
+      load: -0.05,
+      chances: -0.33,
+      exposure: -0.24,
+    },
+    // Rewards for the well-timed choice, read from the score at that moment.
+    chase: 0.1,
+    protect: 0.1,
   },
   discipline: {
     yellowSeverity: 0.75,
@@ -478,8 +516,8 @@ export const DEFAULT_CONFIG = {
     },
     familiarityBase: 0.72,
     familiarityBonus: 0.28,
-    familiarityDecay: 1.4,
-    secondaryDistance: 0.025,
+    familiarityDecay: 0.235,
+    secondaryDistance: 0.4,
     unfamiliarFit: 0.6,
     storedTendencyWeight: 0.7,
   },
@@ -752,7 +790,7 @@ const ranges = {
   bookedFoulRisk: [0, 1, 0.01],
   bookedRiskAversion: [0, 1, 0.01],
   minimumLeaguePlayers: [1, 20, 1],
-  minimumFit: [0.6, 1, 0.01],
+  minimumFit: [0.6, 1, 0.005],
   coachInterval: [1, 30, 1],
   halftimeRecovery: [0, 0.4, 0.01],
   halftimeVariation: [0, 2, 0.05],
@@ -763,8 +801,8 @@ const ranges = {
   attributeCap: [0, 15, 1],
   familiarityBase: [0.4, 0.9, 0.01],
   familiarityBonus: [0.1, 0.6, 0.01],
-  familiarityDecay: [0.1, 3, 0.05],
-  secondaryDistance: [0, 0.2, 0.005],
+  familiarityDecay: [0.05, 3, 0.005],
+  secondaryDistance: [0, 2, 0.005],
   unfamiliarFit: [0.2, 0.8, 0.01],
 };
 // Draft-session settings (draft.nations / leagueTierWeights / clubs / rerolls / ladder / links):
@@ -785,19 +823,17 @@ const DRAFT_FIELDS = {
   'draft.clubs.leagueTierWeights.': [null, 0, 50, 0.05],
   'draft.rerolls.': [null, 0, 5, 1],
   'draft.ladder.': [null, -15, 15, 0.5],
-  'draft.links.': [null, 1, 11, 1],
-  'draft.links.maxChem': ['Maximum link boost (attribute points)', 0, 4, 0.25],
+  'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
+  'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
+  'draft.budget.': [null, 0, 99, 1],
 };
 const LEVEL_LABELS = {
-  amateur: 'Amateur',
-  semipro: 'Semi-pro',
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',
-  level1: 'Level 1 at … players',
-  level2: 'Level 2 at … players',
-  level3: 'Level 3 at … players',
+  minimum: 'Budget band: rating from',
+  slots: 'Budget band: players allowed',
 };
 const draftField = path => {
   const key = Object.keys(DRAFT_FIELDS)
@@ -831,6 +867,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
   if (['routinePassError', 'difficultPassError'].includes(f.key)) [min, max, step] = [0, 4, 0.01];
   const session = draftField(f.path);
   if (session) [, min, max, step] = session;
+  if (f.path.startsWith('mentality.')) [min, max, step] = [-100, 100, 0.001];
   if (f.path.startsWith('playerTiers.') || f.path.startsWith('teamTiers.'))
     [min, max, step] = [0, f.key.startsWith('badge') ? 10 : 99, 1];
   if (f.path.startsWith('ratings.roleWeights.')) [min, max, step] = [0, 100, 0.01];
@@ -909,14 +946,17 @@ const CROSS_FIELD_RULES = [
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
   },
   {
-    message: 'Link thresholds must rise from level 1 to level 3.',
+    message: 'Mates and Captain boosts cannot total more than 5 (the engine cap).',
     reset: ['draft.links'],
-    ok: c =>
-      ['club', 'nation', 'league'].every(
-        k =>
-          c.draft.links[k].level1 <= c.draft.links[k].level2 &&
-          c.draft.links[k].level2 <= c.draft.links[k].level3,
-      ),
+    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain <= 5,
+  },
+  {
+    message: 'Budget bands must descend and their slots stay within an XI.',
+    reset: ['draft.budget'],
+    ok: ({ draft: { budget: b } }) =>
+      b.band1.minimum > b.band2.minimum &&
+      b.band2.minimum > b.band3.minimum &&
+      [b.band1, b.band2, b.band3].every(x => x.slots <= 11),
   },
   {
     message: 'Minimum added time exceeds maximum.',

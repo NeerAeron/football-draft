@@ -4,7 +4,8 @@ import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { createDraftSession, DIFFICULTIES, DIFFICULTY_LABELS } from '../app/core/draft/session.js';
-import { decodeChallenge } from '../app/core/competition/share.js';
+import { decodeChallenge, ULTIMATE } from '../app/core/competition/share.js';
+import { PLACES, PLACE_LABELS, MEDALS } from '../app/core/competition/cup.js';
 
 // A Map-backed localStorage for the browser-side helpers.
 const store = new Map();
@@ -42,7 +43,7 @@ test('saved.js readers tolerate missing and malformed data', () => {
   assert.equal(saved.readSavedRun(), null);
   store.set(
     saved.RUN_KEY,
-    JSON.stringify({ stage: 'X9', record: { w: 'a' }, status: 'weird', rounds: 8 }),
+    JSON.stringify({ stage: 'X9', record: { w: 'a' }, status: 'weird', rounds: 8, format: 3 }),
   );
   const run = saved.readSavedRun();
   assert.equal(run.stage, 'G1');
@@ -92,7 +93,12 @@ test('a run from a draft persists, restores and feeds the Home summary', () => {
   const done = saved.readSavedRun();
   assert.equal(done.complete, true);
   assert.ok(['champion', 'eliminated'].includes(done.status));
-  assert.equal(done.grade, back.run.grade().grade);
+  const end = back.run.snapshot();
+  assert.deepEqual(
+    [done.placeLabel, done.medal, done.perfect, done.budget],
+    [end.placeLabel, end.medal, end.perfect, false],
+  );
+  assert.equal('grade' in done, false);
   assert.equal(done.stage, runStore.stageIdOf(back.run.snapshot()));
   assert.equal(runStore.readRunState().pending, null);
 
@@ -110,66 +116,138 @@ test('a run from a draft persists, restores and feeds the Home summary', () => {
   assert.equal(records.readRecords().runs, 1, 'clearing the run keeps the records');
 });
 
-test('trophy cabinet: one cup per difficulty, every run counted once', () => {
+test('trophy cabinet: medals and best finish per difficulty, every run counted once', () => {
   assert.deepEqual(
     records.LEVELS.map(l => l.id),
     DIFFICULTIES,
   );
   for (const level of records.LEVELS) assert.equal(level.label, DIFFICULTY_LABELS[level.id]);
+  // The places, their labels and medals mirror the core's.
+  assert.deepEqual(
+    records.PLACES.map(p => p.id),
+    PLACES,
+  );
+  for (const p of records.PLACES) {
+    assert.equal(p.label, PLACE_LABELS[p.id]);
+    assert.equal(p.medal, MEDALS[p.id]);
+  }
+  assert.equal(records.ULTIMATE.name, ULTIMATE.name);
+  assert.equal(records.ULTIMATE.level, ULTIMATE.difficulty);
 
   const empty = records.readRecords();
   assert.equal(empty.runs, 0);
   assert.equal(empty.won, 0);
-  assert.equal(empty.levels.length, 5);
-  assert.equal(empty.levels[0].bestShort, '');
+  assert.equal(empty.levels.length, 3);
+  assert.deepEqual(
+    [empty.levels[0].bestShort, empty.levels[0].medal, empty.levels[0].budget.runs],
+    ['', null, 0],
+  );
+  assert.deepEqual([empty.ultimate.done, empty.ultimate.name], [false, 'Immortals']);
+  assert.match(empty.ultimate.requirement, /Legendary.*Budget.*eight/);
 
-  const out = (stage, w, l) => ({
+  const out = (place, w, l, difficulty = 'pro') => ({
     complete: true,
     status: 'eliminated',
-    difficulty: 'pro',
-    stage,
+    difficulty,
+    place,
     record: { w, d: 0, l },
   });
   const won = (difficulty, w = 7) => ({
     complete: true,
     status: 'champion',
     difficulty,
-    stage: 'F',
+    place: 'champion',
     record: { w, d: 8 - w, l: 0 },
   });
-  // Unfinished, unknown or id-less runs are not counted.
-  assert.equal(records.recordRun({ ...out('QF', 3, 1), complete: false }, 'a'), null);
-  assert.equal(records.recordRun({ ...out('QF', 3, 1), difficulty: 'godlike' }, 'a'), null);
-  assert.equal(records.recordRun(out('QF', 3, 1), undefined), null);
+  const level = (id, cabinet = records.readRecords()) => cabinet.levels.find(l => l.id === id);
+  // Unfinished, unknown or id-less runs are not counted; nor is a removed difficulty.
+  assert.equal(records.recordRun({ ...out('qf', 3, 1), complete: false }, 'a'), null);
+  assert.equal(records.recordRun({ ...out('qf', 3, 1), difficulty: 'godlike' }, 'a'), null);
+  assert.equal(records.recordRun(out('qf', 3, 1, 'amateur'), 'a'), null);
+  assert.equal(records.recordRun(out('qf', 3, 1), undefined), null);
   assert.equal(records.readRecords().runs, 0);
 
-  assert.deepEqual(records.recordRun(out('G3', 1, 2), 'a'), [], 'a first run is no "best"');
-  assert.equal(records.recordRun(out('G3', 1, 2), 'a'), null, 'counted once');
-  assert.deepEqual(records.recordRun(out('SF', 5, 1), 'b'), ['best']);
-  assert.deepEqual(records.recordRun(out('QF', 3, 1), 'c'), []);
-  let pro = records.readRecords().levels.find(l => l.id === 'pro');
+  assert.deepEqual(records.recordRun(out('group', 1, 2), 'a'), [], 'a first run is no "best"');
+  assert.equal(records.recordRun(out('group', 1, 2), 'a'), null, 'counted once');
+  assert.deepEqual(records.recordRun(out('fourth', 5, 2), 'b'), ['best']);
+  assert.deepEqual(records.recordRun(out('qf', 3, 1), 'c'), []);
+  let pro = level('pro');
   assert.deepEqual(
-    [pro.runs, pro.titles, pro.best, pro.bestShort, pro.bestLabel],
-    [3, 0, 6, 'SF', 'Semi-final'],
+    [pro.runs, pro.titles, pro.best, pro.bestShort, pro.bestLabel, pro.medal],
+    [3, 0, 4, '4th', 'Fourth place', null],
   );
-  assert.deepEqual(records.runNews('b'), { level: null, news: [] }, 'only the last run has news');
+  assert.deepEqual(
+    records.runNews('b'),
+    { level: null, budget: false, news: [] },
+    'only the last run has news',
+  );
+  // Bronze, then silver: each a new best, each a medal.
+  assert.deepEqual(records.recordRun(out('third', 6, 1), 'c3'), ['best']);
+  assert.deepEqual(records.recordRun(out('final', 7, 1), 'c2'), ['best']);
+  assert.deepEqual(records.recordRun(out('third', 6, 1), 'c4'), []);
+  pro = level('pro');
+  assert.deepEqual(
+    [pro.gold, pro.silver, pro.bronze, pro.bestLabel, pro.bestShort, pro.medal],
+    [0, 1, 2, 'Runners-up', '2nd', 'silver'],
+  );
 
   assert.deepEqual(records.recordRun(won('pro'), 'd'), ['title']);
   assert.deepEqual(records.recordRun(won('pro', 8), 'e'), ['perfect']);
   assert.deepEqual(records.recordRun(won('pro', 8), 'f'), []);
-  assert.deepEqual(records.recordRun(out('F', 7, 1), 'g'), [], 'a final is no best after a title');
-  pro = records.readRecords().levels.find(l => l.id === 'pro');
-  assert.deepEqual([pro.runs, pro.titles, pro.perfect, pro.bestShort], [7, 3, 2, 'Won']);
+  assert.deepEqual(records.recordRun(out('final', 7, 1), 'g'), [], 'no best after a title');
+  pro = level('pro');
+  assert.deepEqual(
+    [pro.runs, pro.titles, pro.gold, pro.silver, pro.bronze, pro.perfect, pro.bestShort, pro.medal],
+    [10, 3, 3, 2, 2, 2, 'Won', 'gold'],
+  );
 
-  for (const [i, level] of ['amateur', 'semipro', 'worldclass'].entries())
-    assert.deepEqual(records.recordRun(won(level), `h${i}`), ['title']);
+  assert.deepEqual(records.recordRun(won('worldclass'), 'h'), ['title']);
   assert.deepEqual(records.recordRun(won('legendary', 8), 'last'), ['title', 'perfect', 'cabinet']);
   const full = records.readRecords();
-  assert.deepEqual([full.runs, full.titles, full.perfect, full.won], [11, 7, 3, 5]);
+  assert.deepEqual([full.runs, full.titles, full.perfect, full.won], [12, 5, 3, 3]);
+  assert.deepEqual(full.medals, { gold: 5, silver: 2, bronze: 2 });
   assert.deepEqual(records.runNews('last'), {
     level: 'legendary',
+    budget: false,
     news: ['title', 'perfect', 'cabinet'],
   });
+
+  // Budget mode: a cabinet of its own. A perfect standard Legendary run is not the ultimate.
+  assert.equal(full.ultimate.done, false);
+  assert.equal(full.budgetRuns, 0);
+  const budget = summary => ({ ...summary, budget: true });
+  assert.deepEqual(records.recordRun(budget(out('third', 6, 1, 'legendary')), 'b1'), []);
+  assert.deepEqual(records.recordRun(budget(won('legendary')), 'b2'), ['title']);
+  assert.deepEqual(records.recordRun(budget(won('pro', 8)), 'b3'), ['title', 'perfect']);
+  let cabinet = records.readRecords();
+  assert.equal(cabinet.ultimate.done, false, 'needs Legendary, Budget and 8–0 together');
+  assert.deepEqual(
+    [level('legendary', cabinet).runs, level('legendary', cabinet).gold],
+    [1, 1],
+    'the standard cabinet is untouched',
+  );
+  const lb = level('legendary', cabinet).budget;
+  assert.deepEqual([lb.runs, lb.gold, lb.bronze, lb.medal, lb.bestShort], [2, 1, 1, 'gold', 'Won']);
+  assert.equal(cabinet.budgetRuns, 3);
+  assert.equal(cabinet.won, 3, 'the count is of standard cups');
+  assert.deepEqual(
+    records.recordRun(budget(won('legendary', 8)), 'b4', { now: Date.UTC(2026, 10, 12) }),
+    ['perfect', 'ultimate'],
+  );
+  assert.deepEqual(records.runNews('b4'), {
+    level: 'legendary',
+    budget: true,
+    news: ['perfect', 'ultimate'],
+  });
+  assert.deepEqual(records.recordRun(budget(won('legendary', 8)), 'b5'), []);
+  cabinet = records.readRecords();
+  assert.deepEqual(
+    [cabinet.ultimate.done, cabinet.ultimate.count, cabinet.ultimate.first],
+    [true, 2, '2026-11-12T00:00:00.000Z'],
+  );
+  const stored = JSON.parse(store.get(records.RECORDS_KEY));
+  assert.equal(stored.format, 3);
+  assert.deepEqual(Object.keys(stored.levels), DIFFICULTIES);
 
   // Broken or foreign data reads as an empty cabinet; odd numbers are repaired.
   store.set(records.RECORDS_KEY, '{nope');
@@ -177,28 +255,75 @@ test('trophy cabinet: one cup per difficulty, every run counted once', () => {
   store.set(
     records.RECORDS_KEY,
     JSON.stringify({
-      format: 2,
-      levels: { pro: { runs: 'x', titles: 2, perfect: 9, best: 99 }, amateur: { best: 42 } },
+      format: 3,
+      levels: { pro: { runs: 'x', gold: 2, perfect: 9, best: 99 }, worldclass: { best: 42 } },
+      budget: 7,
+      ultimate: { count: 5 },
       seen: 'no',
       last: { id: 4 },
     }),
   );
   const fixed = records.readRecords();
   assert.deepEqual(
-    fixed.levels.map(l => [l.runs, l.titles, l.perfect, l.best]),
+    fixed.levels.map(l => [l.runs, l.gold, l.perfect, l.best]),
     [
-      [0, 0, 0, 7],
-      [0, 0, 0, 0],
-      [2, 2, 2, 8],
-      [0, 0, 0, 0],
+      [2, 2, 2, 7],
+      [0, 0, 0, 6],
       [0, 0, 0, 0],
     ],
   );
+  assert.equal(fixed.ultimate.done, false, 'no ultimate without a perfect Budget Legendary run');
   assert.equal(fixed.last, null);
-  assert.deepEqual(records.recordRun(out('QF', 3, 1), 'z'), []);
+  assert.deepEqual(records.recordRun(out('qf', 3, 1), 'z'), []);
+});
 
-  // A format-1 cabinet (seven rounds, no Round of 32) keeps its rounds: best 3 (R16) and up
-  // move by one, group stages stay, titles stay titles; the next write stores format 2.
+test('trophy cabinet: older formats migrate (titles become golds, removed levels go)', () => {
+  // Format 2: `best` was the furthest round (3 R32 … 6 SF, 7 final, 8 = won), five levels.
+  store.set(
+    records.RECORDS_KEY,
+    JSON.stringify({
+      format: 2,
+      levels: {
+        amateur: { runs: 9, titles: 4, perfect: 2, best: 8 },
+        semipro: { runs: 3, titles: 1, perfect: 0, best: 8 },
+        pro: { runs: 6, titles: 2, perfect: 1, best: 8 },
+        worldclass: { runs: 4, titles: 0, perfect: 0, best: 7 },
+        legendary: { runs: 5, titles: 0, perfect: 0, best: 6 },
+      },
+      seen: ['old'],
+      last: { id: 'old', level: 'amateur', news: ['title'] },
+    }),
+  );
+  let cabinet = records.readRecords();
+  assert.deepEqual(
+    cabinet.levels.map(l => [l.id, l.runs, l.gold, l.silver, l.bronze, l.perfect, l.bestLabel]),
+    [
+      ['pro', 6, 2, 0, 0, 1, 'Champions'],
+      ['worldclass', 4, 0, 1, 0, 0, 'Runners-up'],
+      ['legendary', 5, 0, 0, 0, 0, 'Fourth place'],
+    ],
+  );
+  assert.deepEqual([cabinet.runs, cabinet.titles, cabinet.won], [15, 2, 1], 'removed levels drop');
+  assert.equal(
+    cabinet.levels.every(l => l.budget.runs === 0),
+    true,
+  );
+  assert.equal(cabinet.ultimate.done, false);
+  assert.deepEqual(cabinet.last, { id: 'old', level: null, budget: false, news: ['title'] });
+  for (const [round, label] of [
+    [0, 'Group stage'],
+    [2, 'Group stage'],
+    [3, 'Round of 32'],
+    [4, 'Round of 16'],
+    [5, 'Quarter-finals'],
+  ]) {
+    store.set(
+      records.RECORDS_KEY,
+      JSON.stringify({ format: 2, levels: { pro: { runs: 1, best: round } } }),
+    );
+    assert.equal(records.readRecords().levels[0].bestLabel, label, `round ${round}`);
+  }
+  // Format 1 (seven rounds, no Round of 32): its knockout rounds sit one lower.
   store.set(
     records.RECORDS_KEY,
     JSON.stringify({
@@ -206,26 +331,30 @@ test('trophy cabinet: one cup per difficulty, every run counted once', () => {
       levels: {
         amateur: { runs: 2, titles: 1, perfect: 1, best: 7 },
         pro: { runs: 3, best: 3 },
+        worldclass: { runs: 2, titles: 1, perfect: 1, best: 7 },
         legendary: { runs: 1, best: 2 },
       },
       seen: ['old'],
     }),
   );
-  const migrated = records.readRecords().levels;
+  cabinet = records.readRecords();
   assert.deepEqual(
-    migrated.map(l => [l.best, l.bestShort]),
+    cabinet.levels.map(l => [l.bestLabel, l.gold, l.perfect]),
     [
-      [8, 'Won'],
-      [0, ''],
-      [4, 'R16'],
-      [0, ''],
-      [2, 'Group'],
+      ['Round of 16', 0, 0],
+      ['Champions', 1, 1],
+      ['Group stage', 0, 0],
     ],
   );
-  assert.equal(records.recordRun(out('R32', 3, 1), 'old'), null, 'seen ids carry over');
-  assert.deepEqual(records.recordRun(out('R32', 3, 1), 'new'), []);
-  assert.equal(JSON.parse(store.get(records.RECORDS_KEY)).format, 2);
-  assert.equal(records.readRecords().levels.find(l => l.id === 'pro').bestLabel, 'Round of 16');
+  const run = { complete: true, status: 'eliminated', difficulty: 'pro', place: 'r32' };
+  assert.equal(records.recordRun(run, 'old'), null, 'seen ids carry over');
+  assert.deepEqual(records.recordRun(run, 'new'), []);
+  // The next write stores format 3, without the removed levels.
+  const stored = JSON.parse(store.get(records.RECORDS_KEY));
+  assert.equal(stored.format, 3);
+  assert.deepEqual(Object.keys(stored.levels), ['pro', 'worldclass', 'legendary']);
+  assert.equal(records.readRecords().levels[0].bestLabel, 'Round of 16');
+  assert.equal(records.readRecords().levels[1].gold, 1);
 });
 
 test('a corrupt or foreign saved run is ignored', () => {
@@ -235,27 +364,99 @@ test('a corrupt or foreign saved run is ignored', () => {
   assert.equal(runStore.readRunState(), null);
 });
 
-test('a run saved in the seven-match format reads as no run; a finished one stays on Home', () => {
+test('a run saved in an older format reads as no run; a finished one stays on Home', () => {
   const { run, meta } = runStore.createRunFromDraft(catalog, {
     session: draft,
     context: { kind: 'run', type: 'nations', difficulty: 'pro', seed: 42 },
   });
   runStore.saveRun(run, meta);
-  // What an older version stored: cup format 1 and a Home summary without `rounds`.
-  const state = JSON.parse(store.get(runStore.RUN_STATE_KEY));
-  state.run.format = 1;
-  store.set(runStore.RUN_STATE_KEY, JSON.stringify(state));
-  const { rounds, ...summary } = JSON.parse(store.get(saved.RUN_KEY));
-  assert.equal(rounds, 8);
+  const fresh = JSON.parse(store.get(runStore.RUN_STATE_KEY));
+  const { format, ...summary } = JSON.parse(store.get(saved.RUN_KEY));
+  assert.equal(format, saved.RUN_SUMMARY_FORMAT);
+  assert.equal(summary.rounds, 8);
+  // What older versions stored: cup format 2 (no play-off) or 1 (seven rounds), and a Home
+  // summary without `format`.
+  for (const old of [2, 1]) {
+    store.set(
+      runStore.RUN_STATE_KEY,
+      JSON.stringify({ ...fresh, run: { ...fresh.run, format: old } }),
+    );
+    assert.equal(runStore.readRunState(), null);
+    assert.equal(runStore.loadRun(catalog), null);
+  }
   store.set(saved.RUN_KEY, JSON.stringify({ ...summary, stage: 'QF' }));
-  assert.equal(runStore.readRunState(), null);
-  assert.equal(runStore.loadRun(catalog), null);
   assert.equal(saved.readSavedRun(), null, 'an old run in progress cannot be continued');
+  // A run on a removed difficulty is discarded the same way.
+  store.set(
+    runStore.RUN_STATE_KEY,
+    JSON.stringify({ ...fresh, run: { ...fresh.run, difficulty: 'amateur' } }),
+  );
+  assert.equal(runStore.loadRun(catalog), null);
+  // A finished old run still shows as the last run, by its stage; its grade is gone.
   store.set(
     saved.RUN_KEY,
-    JSON.stringify({ ...summary, stage: 'F', status: 'champion', complete: true, grade: 'S+' }),
+    JSON.stringify({
+      ...summary,
+      stage: 'F',
+      status: 'champion',
+      complete: true,
+      grade: 'S+',
+      verdict: 'Perfect Eight',
+      stageLabel: 'Champions',
+    }),
   );
-  assert.equal(saved.readSavedRun().grade, 'S+', 'a finished old run still shows as the last run');
+  const last = saved.readSavedRun();
+  assert.deepEqual(
+    [last.complete, last.placeLabel, last.medal, 'grade' in last],
+    [true, 'Champions', 'gold', false],
+  );
+});
+
+test('the third-place play-off: the Home summary, the labels and the Budget flag', () => {
+  const { run, meta } = runStore.createRunFromDraft(catalog, {
+    session: draft,
+    context: { kind: 'run', type: 'nations', difficulty: 'legendary', seed: 7, budget: true },
+  });
+  assert.equal(meta.budget, true);
+  assert.equal(
+    runStore.createRunFromDraft(catalog, { session: draft, context: { kind: 'run' } }).meta.budget,
+    false,
+    'a missing flag is no Budget run',
+  );
+  const win = { goalsFor: 1, goalsAgainst: 0 };
+  for (let r = 0; r < 6; r++) run.recordResult(win);
+  run.recordResult({ goalsFor: 0, goalsAgainst: 2 });
+  runStore.saveRun(run, meta);
+  const snap = run.snapshot();
+  assert.equal(runStore.stageIdOf(snap), '3P');
+  assert.deepEqual(
+    [runStore.roundLabel(snap.rounds[7]), runStore.roundShort(snap.rounds[7])],
+    ['Third-place play-off', '3rd'],
+  );
+  assert.deepEqual(
+    [runStore.roundLabel(7), runStore.roundShort(7), runStore.roundName(0)],
+    ['Final', 'Final', 'Matchday 1'],
+  );
+  let home = saved.readSavedRun();
+  assert.deepEqual(
+    [home.stage, home.stageLabel, home.complete, home.budget],
+    ['F', 'Third-place play-off', false, true],
+  );
+  const back = runStore.loadRun(catalog);
+  assert.equal(back.run.nextMatch().id, 'third');
+  back.run.recordResult(win);
+  runStore.saveRun(back.run, back.meta);
+  home = saved.readSavedRun();
+  assert.deepEqual(
+    [home.complete, home.status, home.placeLabel, home.medal],
+    [true, 'eliminated', 'Third place', 'bronze'],
+  );
+  // The bronze went into the Budget cabinet of Legendary, not the standard one.
+  const legendary = records.readRecords().levels.find(l => l.id === 'legendary');
+  assert.deepEqual(
+    [legendary.runs, legendary.budget.bronze, legendary.budget.bestLabel],
+    [0, 1, 'Third place'],
+  );
 });
 
 test('draft types map to core modes and back', () => {
@@ -338,7 +539,11 @@ test('challenge links carry the draft and the friend result, on this page', () =
       difficulty: 'worldclass',
       hideRatings: true,
     },
-    { record: { w: 5, d: 1, l: 1 }, grade: 'B+', base: 'https://x.github.io/fd/index.html#/run' },
+    {
+      record: { w: 5, d: 1, l: 1 },
+      place: 'third',
+      base: 'https://x.github.io/fd/index.html#/run',
+    },
   );
   assert.match(
     link,
@@ -349,13 +554,26 @@ test('challenge links carry the draft and the friend result, on this page', () =
   assert.equal(challenge.seed, 123456);
   assert.equal(challenge.mode, 'clubAndCountry');
   assert.equal(challenge.hideRatings, true);
-  assert.deepEqual(score, { w: 5, d: 1, l: 1, grade: 'B+' });
+  assert.match(link, /&r=5-1-1\.th$/);
+  assert.deepEqual(score, { w: 5, d: 1, l: 1, place: 'third', placeLabel: 'Third place' });
   assert.deepEqual(runStore.readChallengeQuery({ c: 'garbage', r: '9-9' }), {
     challenge: null,
     score: null,
   });
-  assert.equal(runStore.gradeFromToken(runStore.gradeToken('S+')), 'S+');
-  assert.equal(runStore.gradeFromToken('zz'), null);
+  for (const place of PLACES)
+    assert.equal(runStore.placeFromToken(runStore.placeToken(place)), place);
+  assert.equal(runStore.placeFromToken('zz'), null);
+  // A link from before the places carried a letter grade: the record still reads, no place.
+  for (const grade of ['sp', 's', 'ap', 'a', 'bp', 'b', 'cp', 'c', 'dp', 'd', 'f'])
+    assert.deepEqual(runStore.readChallengeQuery({ c: query.c, r: `5-1-1.${grade}` }).score, {
+      w: 5,
+      d: 1,
+      l: 1,
+      place: null,
+      placeLabel: null,
+    });
+  // … and one on a removed difficulty opens as Pro.
+  assert.equal(runStore.readChallengeQuery({ c: 'c1.c.n.433.a.0.1a' }).challenge.difficulty, 'pro');
   assert.ok(decodeChallenge(query.c));
 });
 
@@ -376,7 +594,7 @@ test('the daily record locks an attempt, keeps the streak and trims old replays'
     id: '2026-11-06',
     record: { w: 3, d: 0, l: 1, gf: 5, ga: 3 },
     points: 640,
-    grade: 'D',
+    placeLabel: 'Round of 32',
     run: run.serialize(),
   });
   state = runStore.beginDailyAttempt(state, {

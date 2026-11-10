@@ -13,7 +13,8 @@ import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
 import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
-import { HeroArt } from './hero-art.js';
+import { HeroPitch } from './hero-art.js';
+import { Cabinet } from './cabinet.js';
 import { int } from '../../lib/format.js';
 
 export const DRAFT_TYPE_OPTIONS = [
@@ -82,32 +83,28 @@ function RunPath({ stage = null, record = null, perfect = true }) {
 
 function Hero() {
   return html`<section class="home-hero card card--hero" aria-labelledby="home-hero-title">
-    <div class="home-hero__art"><${HeroArt} /></div>
-    <div class="home-hero__content">
-      <div class="home-hero__intro">
-        <p class="eyebrow">Spin · Pick · Lift the cup</p>
-        <h1 class="home-hero__title" id="home-hero-title">
-          <span>World</span> <span>Cup</span> <em>Run</em>
-        </h1>
-        <p class="home-hero__lead">
-          Draft an XI one spin at a time, then take it through the group and five knockout rounds.
-        </p>
-      </div>
-      <${RunPath} />
-      <div class="home-hero__launch">
-        <p class="home-hero__hint">Spin a nation, pick from its best 23 call-ups.</p>
-        <${Button}
-          variant="primary"
-          size="xl"
-          block
-          iconEnd="arrow-right"
-          href=${href('/play/:mode', { mode: 'run' })}
-          class="home-hero__cta"
-          data-testid="start-run"
-          >Start World Cup Run<//
-        >
-      </div>
+    <div class="home-hero__beam home-hero__beam--l" aria-hidden="true"></div>
+    <div class="home-hero__beam home-hero__beam--r" aria-hidden="true"></div>
+    <div class="home-hero__head">
+      <h1 class="home-hero__title" id="home-hero-title">
+        <span>Draft an XI.</span> <em>Win it all.</em>
+      </h1>
+      <div class="home-hero__art"><${HeroPitch} /></div>
     </div>
+    <p class="home-hero__lead">
+      Spin nations, pick real players from their call-ups, then take your XI through a World Cup.
+    </p>
+    <${RunPath} />
+    <${Button}
+      variant="primary"
+      size="xl"
+      block
+      iconEnd="arrow-right"
+      href=${href('/play/:mode', { mode: 'run' })}
+      class="home-hero__cta"
+      data-testid="start-run"
+      >Start World Cup<//
+    >
   </section>`;
 }
 
@@ -125,7 +122,7 @@ function ContinueCard({ run }) {
       <div class="continue__titles">
         <p class="eyebrow">${done ? 'Last run' : 'Run in progress'}</p>
         <h2 class="continue__title" id="continue-title">
-          ${done ? run.verdict || (run.status === 'champion' ? 'Champions' : 'Run over') : stage?.label || 'World Cup Run'}
+          ${done ? run.placeLabel || (run.status === 'champion' ? 'Champions' : 'Run over') : run.stageLabel || stage?.label || 'World Cup Run'}
         </h2>
       </div>
       <span
@@ -236,7 +233,7 @@ function DailyCard({ daily }) {
     <p class="home-daily__text">
       ${
         daily.todayResult
-          ? `Today: ${int(daily.todayResult.points)} pts${daily.todayResult.grade ? ` · grade ${daily.todayResult.grade}` : ''}. New spins at 00:00 UTC.`
+          ? `Today: ${int(daily.todayResult.points)} pts${daily.todayResult.placeLabel ? ` · ${daily.todayResult.placeLabel}` : ''}. New spins at 00:00 UTC.`
           : 'Same spins for everyone today. Nations draft, one attempt, auto-simmed.'
       }
     </p>
@@ -252,72 +249,6 @@ function DailyCard({ daily }) {
       >
     </div>
   <//>`;
-}
-
-/**
- * The trophy cabinet (lib/records.js): one cup per difficulty, lit once a World Cup Run has
- * been won on it, starred after a perfect eight. Each slot starts a run on that difficulty.
- */
-function Cabinet({ records }) {
-  const plural = (n, one, many = `${one}s`) => `${int(n)} ${n === 1 ? one : many}`;
-  return html`<section class="home-records card card--pad-md" aria-labelledby="records-title">
-    <div class="home-records__head">
-      <div>
-        <p class="eyebrow">World Cup Runs</p>
-        <h2 class="section-title" id="records-title">Trophy cabinet</h2>
-      </div>
-      <p
-        class="home-records__count num"
-        aria-label=${`${records.won} of ${records.levels.length} trophies won`}
-      >
-        <b>${records.won}</b>/${records.levels.length}
-      </p>
-    </div>
-    <ul class="home-records__shelf" role="list">
-      ${records.levels.map(level => {
-        const won = level.titles > 0,
-          perfect = level.perfect > 0;
-        const status = won
-          ? perfect
-            ? 'Perfect'
-            : level.titles > 1
-              ? `Won ×${int(level.titles)}`
-              : 'Won'
-          : level.bestShort || 'Not played';
-        const said = won
-          ? `won ${plural(level.titles, 'time')}${perfect ? ', with a perfect run' : ''}`
-          : level.runs
-            ? `best run: ${level.bestLabel}`
-            : 'not played yet';
-        return html`<li key=${level.id}>
-          <a
-            class=${cx('home-records__slot', won && 'is-won', perfect && 'is-perfect')}
-            href=${href('/play/:mode', { mode: 'run' }, { difficulty: level.id })}
-            aria-label=${`${level.label}: ${said}. Start a ${level.label} run`}
-            data-level=${level.id}
-          >
-            <span class="home-records__cup" aria-hidden="true">
-              <${Icon} name="trophy" size=${26} />
-              ${perfect && html`<span class="home-records__star"><${Icon} name="star" size=${11} /></span>`}
-            </span>
-            <span class="home-records__text">
-              <span class="home-records__level">${level.label}</span>
-              <span class="home-records__best">${status}</span>
-            </span>
-          </a>
-        </li>`;
-      })}
-    </ul>
-    <p class="home-records__foot">
-      ${[
-        plural(records.runs, 'run'),
-        plural(records.titles, 'title'),
-        records.perfect > 0 && plural(records.perfect, 'perfect run'),
-      ]
-        .filter(Boolean)
-        .map(text => html`<span key=${text}>${text}</span>`)}
-    </p>
-  </section>`;
 }
 
 function ModeTiles() {
@@ -383,7 +314,7 @@ export default function Home() {
         </div>
         <${ModeTiles} />
       </div>
-      ${records.runs > 0 && html`<div class="home__records"><${Cabinet} records=${records} /></div>`}
+      <div class="home__records"><${Cabinet} records=${records} /></div>
     </div>
     <footer class="container home__footer">
       <p>Unofficial fan project. Player data: rovnez / Kaggle, CC BY 4.0.</p>

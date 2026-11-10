@@ -267,7 +267,7 @@ export class PassingMethods {
           (tac.tempo - 3) * 0.009 +
           (counter ? 0.09 * identity : 0) -
           (tac.style === 'possession' ? 0.013 * identity : 0) +
-          tac.lean * 0.02;
+          tac.shift.ambition;
         const judgment =
           1 +
           clamp((p.vision() + p.skill('composure') - 140) * 0.006, 0, 0.35) +
@@ -276,7 +276,7 @@ export class PassingMethods {
           (held ? 7 : 4.8 + Math.max(0, 55 - fromX) * 0.035) *
           (1.25 - p.tendency('risk') * 0.55) *
           judgment *
-          (1 - tac.lean * 0.12);
+          (1 + tac.shift.turnoverCost);
         let score =
           completion *
             (2 +

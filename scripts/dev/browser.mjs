@@ -85,8 +85,12 @@ async function runJob({ flow, vp }) {
         if (m.type() === 'error') problems.push(`console.error: ${m.text()}`);
       });
       page.on('requestfailed', r => {
-        if (r.url().startsWith(server.url))
-          problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`);
+        // net::ERR_ABORTED is the browser cancelling a request it no longer needs: a flow
+        // navigated or reloaded while fonts, preloads or idle route warm-ups were in flight.
+        // Real load failures are other errors, HTTP 4xx/5xx (below) or page errors (above).
+        const error = r.failure()?.errorText || '';
+        if (r.url().startsWith(server.url) && error !== 'net::ERR_ABORTED')
+          problems.push(`requestfailed: ${r.url()} ${error}`);
       });
       page.on('response', r => {
         if (r.url().startsWith(server.url) && r.status() >= 400)

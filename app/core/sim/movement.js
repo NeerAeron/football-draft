@@ -137,13 +137,11 @@ export class MovementMethods {
   tacticalLoad(p) {
     const t = this.teams[p.team].tactics,
       attacking = this.lastTeam === p.team && this.ball.owner !== null;
-    const mentality = this.mentality(p.team),
-      lean = mentality === 'push' ? 1 : mentality === 'hold' ? -1 : 0;
     return (
       (attacking
         ? 1 + (t.tempo - 3) * 0.07
         : 1 + (t.press - 3) * 0.11 + (t.style === 'press' ? 0.08 : 0)) *
-      (1 + lean * 0.05)
+      (1 + this.mentalityShift(p.team).load)
     );
   }
   challengeModel(p, q) {

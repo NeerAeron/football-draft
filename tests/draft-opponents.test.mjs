@@ -22,18 +22,20 @@ const catalog = loadRuntimeCatalog();
 test('the ladder targets the mode baseline plus the level gap', () => {
   assert.deepEqual(
     LEVELS.map(l => l.id),
-    ['amateur', 'semipro', 'pro', 'worldclass', 'legendary'],
+    ['pro', 'worldclass', 'legendary'],
   );
   const gaps = DEFAULT_CONFIG.draft.ladder;
-  assert.deepEqual(gaps, { amateur: -7, semipro: -3.5, pro: 0, worldclass: 4, legendary: 7 });
+  assert.deepEqual(gaps, { pro: 0, worldclass: 4, legendary: 7 });
+  // Re-rolls: Pro 2, World Class 1, Legendary 1 (the baseline column each level starts from).
+  assert.deepEqual(DEFAULT_CONFIG.draft.rerolls, { pro: 2, worldclass: 1, legendary: 1 });
   for (const mode of Object.keys(MODE_BASELINES)) {
     const base = MODE_BASELINES[mode].effective;
-    assert.equal(ladderTarget(mode, 'pro'), Math.round(base[1] * 100) / 100);
-    assert.equal(ladderTarget(mode, 'amateur'), Math.round((base[2] - 7) * 100) / 100);
-    assert.equal(ladderTarget(mode, 'legendary'), Math.round((base[0] + 7) * 100) / 100);
+    assert.equal(ladderTarget(mode, 'pro'), Math.round(base[2] * 100) / 100);
+    assert.equal(ladderTarget(mode, 'worldclass'), Math.round((base[1] + 4) * 100) / 100);
+    assert.equal(ladderTarget(mode, 'legendary'), Math.round((base[1] + 7) * 100) / 100);
     assert.equal(
       ladderTarget(mode, 'pro', { offset: 1.5 }),
-      Math.round((base[1] + 1.5) * 100) / 100,
+      Math.round((base[2] + 1.5) * 100) / 100,
     );
   }
   assert.throws(() => ladderTarget('nope', 'pro'));
@@ -67,14 +69,16 @@ test('opponents land within the target gap for every mode and level', () => {
   );
 });
 
-test('real XIs are fully linked and bosses top the ladder', () => {
+test('real XIs are all mates and bosses top the ladder', () => {
   const list = opponentCandidates(catalog),
     world = list.find(c => c.key === 'boss:world-xi'),
     stars = list.find(c => c.key === 'boss:all-stars');
-  // Fully linked (chem 2), plus the captain's boost when the XI has one.
-  const captain = DEFAULT_CONFIG.draft.links.captain;
-  assert.ok(list.filter(c => c.kind !== 'boss').every(c => c.chem === 2 || c.chem === 2 + captain));
-  assert.ok(list.some(c => c.chem === 2 + captain) && list.some(c => c.chem === 2));
+  // National XIs are all nation mates (+2, +4 for club mates inside them), club XIs all club
+  // mates (+2, +4 for compatriots), plus the captain's boost when the XI has one.
+  const { nation, club, captain } = DEFAULT_CONFIG.draft.links;
+  const real = list.filter(c => c.kind !== 'boss');
+  assert.ok(real.every(c => c.chem >= 2 && c.chem <= nation + club + captain));
+  assert.ok(real.some(c => c.chem === 2) && real.some(c => c.chem > 3));
   assert.ok(list.every(c => c.rating <= world.rating));
   assert.ok(stars.rating < world.rating && stars.rating > 85);
   const a = buildOpponent(catalog, world),
@@ -126,7 +130,15 @@ test('avoid skips opponents already faced; the preview lists examples per level'
     seen.push(ref.key);
   }
   const preview = ladderPreview(catalog, 'nations');
-  assert.equal(preview.length, 5);
+  assert.equal(preview.length, 3);
+  // The World Cup Run and the Daily draw real teams only.
+  const real = modeCandidates(catalog, 'nations', { bosses: false });
+  assert.ok(real.length > 40 && real.every(c => c.kind === 'nation'));
+  for (let seed = 1; seed <= 20; seed++)
+    assert.equal(
+      chooseOpponent(catalog, { mode: 'nations', level: 'legendary', seed, bosses: false }).kind,
+      'nation',
+    );
   assert.ok(preview.every(l => l.examples.length >= 3));
   for (let i = 1; i < preview.length; i++) assert.ok(preview[i].target > preview[i - 1].target);
 });

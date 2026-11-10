@@ -27,9 +27,9 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
  * re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {
-  nations: { ovr: 82.89, sd: 1.07, chem: 1.52, effective: [83.92, 84.41, 84.59] },
-  leagues: { ovr: 81.47, sd: 1.72, chem: 1.33, effective: [82.1, 82.8, 83.39] },
-  clubs: { ovr: 77.71, sd: 1.71, chem: 0.87, effective: [78.03, 78.58, 78.98] },
+  nations: { ovr: 83.13, sd: 1.03, chem: 1.67, effective: [84.36, 84.79, 84.94] },
+  leagues: { ovr: 81.65, sd: 1.72, chem: 1.97, effective: [82.87, 83.61, 84.25] },
+  clubs: { ovr: 77.98, sd: 1.7, chem: 1.27, effective: [78.68, 79.25, 79.68] },
   clubAndCountry: { ovr: 82.3, sd: 1.46, chem: 0.41, effective: [82.17, 82.71, 83.24] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
@@ -43,7 +43,7 @@ export const BOSSES = {
   'world-xi': { name: 'World XI', color: '#d2ae53', secondary: '#0b1426' },
   'all-stars': { name: 'All-Stars', color: '#f4f1e9', secondary: '#d2ae53' },
 };
-const BOSS_FIT = 0.95;
+const BOSS_FIT = 0.99;
 const round2 = x => Math.round(x * 100) / 100;
 
 /** Effective target rating for a mode, level and round offset (rules: a session's rules). */
@@ -186,11 +186,16 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
   return list;
 }
 
-/** Candidates for a draft mode (nations / clubs / both, plus bosses). */
-export function modeCandidates(catalog, mode, options) {
+/**
+ * Candidates for a draft mode (nations / clubs / both, plus the bosses unless `bosses` is
+ * false: the World Cup Run and the Daily meet real teams only).
+ */
+export function modeCandidates(catalog, mode, { bosses = true, ...options } = {}) {
   const kinds = KINDS_BY_MODE[mode];
   if (!kinds) throw Error('Unknown draft mode: ' + mode);
-  return opponentCandidates(catalog, options).filter(c => kinds.includes(c.kind));
+  return opponentCandidates(catalog, options).filter(
+    c => kinds.includes(c.kind) && (bosses || c.kind !== 'boss'),
+  );
 }
 
 /**
@@ -211,14 +216,25 @@ export function candidatesNear(candidates, target, { minimum = 3, avoid = [] } =
 
 /**
  * Choose an opponent (reference, no XI yet): uniform among candidatesNear(target).
- * @param options { mode, level, seed, offset?, avoid?: keys, rules?, rerolls?, random? }
+ * @param options { mode, level, seed, offset?, avoid?: keys, rules?, rerolls?, random?,
+ *   bosses? (false: real teams only) }
  */
 export function chooseOpponent(
   catalog,
-  { mode, level, seed, offset = 0, avoid = [], rules = CONFIG.draft, rerolls, random } = {},
+  {
+    mode,
+    level,
+    seed,
+    offset = 0,
+    avoid = [],
+    rules = CONFIG.draft,
+    rerolls,
+    random,
+    bosses = true,
+  } = {},
 ) {
   const target = ladderTarget(mode, level, { offset, rules, rerolls }),
-    near = candidatesNear(modeCandidates(catalog, mode, { rules }), target, { avoid });
+    near = candidatesNear(modeCandidates(catalog, mode, { rules, bosses }), target, { avoid });
   if (!near.length) throw Error('No opponent is available');
   const draw = random ?? lcg(seedValue(seed ?? 0));
   return { ...near[Math.floor(draw() * near.length)], target };

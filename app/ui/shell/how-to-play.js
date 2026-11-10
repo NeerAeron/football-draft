@@ -21,7 +21,7 @@ export const HOW_TO_STEPS = [
   {
     icon: 'pitch',
     title: 'Pick & place',
-    text: 'Choose a player and the pitch lights up with the fit before you lock it in.',
+    text: 'Choose a player and the pitch lights up with the fit before you lock it in. Mates boost each other: a nation mate +2, a club mate +2, both +4 — and a Captain gives everyone +1.',
     demo: true,
   },
   {
@@ -32,7 +32,7 @@ export const HOW_TO_STEPS = [
   {
     icon: 'trophy',
     title: 'Go 8–0',
-    text: 'Win all eight for a perfect run. Earn a grade, share your XI, challenge a friend.',
+    text: 'Win all eight for a perfect run. Take gold, silver or bronze, share your XI, challenge a friend.',
   },
 ];
 

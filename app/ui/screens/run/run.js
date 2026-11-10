@@ -1,7 +1,8 @@
 // World Cup Run hub (#/run): arrival after the draft (the group draw), the path G1…F, the
 // next fixture with odds and stakes, the live group table and matchday results, the knockout
-// path, Play (→ pre-match → match → back here), "Sim rest of run" with a results ticker, and
-// the end screen. Rules: core/competition/cup.js; persistence: lib/run-store.js.
+// path, the four ways to play the next match — watch the highlights or the full match (→
+// pre-match with that view → match → back here), simulate this match, simulate the whole cup
+// (results ticker) — and the end screen. Rules: core/competition/cup.js; persistence: lib/run-store.js.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { href, navigate } from '../../lib/router.js';
@@ -39,7 +40,7 @@ import {
   logEntry,
   withLog,
   roundLabel,
-  roundShort,
+  roundName,
   userTeamName,
 } from '../../lib/run-store.js';
 import { readSavedRun } from '../../lib/saved.js';
@@ -57,6 +58,7 @@ import {
   OutcomeChip,
   opponentTeam,
   teamOf,
+  wonResult,
 } from './run-parts.js';
 import { RunEnd } from './run-end.js';
 import { xiViews, nationList, modeLabel, levelLabel } from './team-view.js';
@@ -129,9 +131,10 @@ function RunHeader({ snapshot, meta, nations }) {
               : [
                   html`<b class="num" key="o">${fmt1(snapshot.user.rating)}</b>`,
                   ' OVR',
-                  meta.links ? ' · Links ' : '',
-                  meta.links ? html`<b class="num" key="l">${meta.links.score}</b>` : '',
-                  meta.links ? `/${meta.links.maxScore}` : '',
+                  meta.links?.total != null ? ' · Boosts ' : '',
+                  meta.links?.total != null
+                    ? html`<b class="num" key="l">+${meta.links.total}</b>`
+                    : '',
                   ` · ${formationLabel(meta.formation || '433')}`,
                 ]
           }
@@ -182,7 +185,7 @@ function DrawBanner({ snapshot, hideRatings }) {
       )}
     </ul>
     <p class="run-flash__note text-3">
-      ${`Top two go through to the Round of 32. ${THIRD_PLACE_RULE} Then five knockouts to the trophy.`}
+      ${`Top two go through to the Round of 32. ${THIRD_PLACE_RULE} Then five knockout matches: win them all for the trophy, or play for third place after a lost semi-final.`}
     </p>
   </section>`;
 }
@@ -201,17 +204,25 @@ function ResultBanner({ snapshot, before, round, entry }) {
     }, 1400);
     return () => clearTimeout(t);
   }, []);
-  const won = res.outcome === 'W' || res.shootout?.winner === 'user';
+  const won = wonResult(res);
   const team = opponentTeam(r.opponent);
   const groupDone = round === 2;
   const userPos = snapshot.group.table.find(t => t.user)?.position;
   const headline =
     round >= 3
-      ? won
-        ? r.id === 'final'
-          ? 'Champions!'
-          : `Through to the ${roundLabel(round + 1)}`
-        : 'Knocked out'
+      ? r.id === 'third'
+        ? won
+          ? 'Third place!'
+          : 'Fourth place'
+        : won
+          ? r.id === 'final'
+            ? 'Champions!'
+            : `Through to the ${roundLabel(snapshot.rounds[round + 1]).toLowerCase()}`
+          : r.id === 'sf'
+            ? 'Beaten. Third place is still to play for'
+            : r.id === 'final'
+              ? 'Runners-up'
+              : 'Knocked out'
       : groupDone
         ? snapshot.status !== 'eliminated'
           ? userPos <= 2
@@ -231,7 +242,7 @@ function ResultBanner({ snapshot, before, round, entry }) {
     data-testid="result-banner"
   >
     <div class="ft">
-      <p class="eyebrow">${`Full time · ${roundLabel(round)}`}</p>
+      <p class="eyebrow">${`Full time · ${roundLabel(r)}`}</p>
       <h2 class="run-flash__title" id="ft-title">${headline}</h2>
       <div class="ft__score">
         <span class="ft__team"
@@ -277,13 +288,74 @@ function ResultBanner({ snapshot, before, round, entry }) {
   </section>`;
 }
 
-function FixtureCard({ snapshot, run, meta, onPlay, onSim, busy, inProgress }) {
+/**
+ * The four ways to play the next match. `view`: the pre-match opens with it selected ('key' =
+ * highlights, 'full'); `sim`: 'match' (this fixture only) or 'cup' (every remaining match).
+ */
+export const PLAY_OPTIONS = [
+  { id: 'key', view: 'key', icon: 'play', title: 'Watch highlights', hint: '1 min', primary: true },
+  { id: 'full', view: 'full', icon: 'tv', title: 'Watch full match', hint: '3 min' },
+  { id: 'sim-match', sim: 'match', icon: 'zap', title: 'Simulate this match', hint: 'Result now' },
+  {
+    id: 'sim-cup',
+    sim: 'cup',
+    icon: 'fast-forward',
+    title: 'Simulate the whole cup',
+    hint: 'To the end',
+  },
+];
+const OPTION_TESTID = {
+  key: 'play-fixture',
+  full: 'play-full',
+  'sim-match': 'sim-match',
+  'sim-cup': 'sim-rest',
+};
+
+function PlayOptions({ onPlay, onSim, onResume, busy, inProgress }) {
+  return html`<div class="play-options" role="group" aria-label="How to play this match">
+    ${
+      inProgress &&
+      html`<${Button}
+        variant="primary"
+        size="lg"
+        block
+        iconEnd="arrow-right"
+        onClick=${onResume}
+        data-testid="resume-fixture"
+        class="play-options__resume"
+        >Resume match<//
+      >`
+    }
+    ${PLAY_OPTIONS.map(
+      o =>
+        html`<button
+          key=${o.id}
+          type="button"
+          class=${cx('play-option', o.primary && !inProgress && 'is-primary')}
+          disabled=${busy}
+          onClick=${() => (o.view ? onPlay(o.view) : onSim(o.sim))}
+          data-testid=${OPTION_TESTID[o.id]}
+          data-option=${o.id}
+        >
+          <span class="play-option__icon" aria-hidden="true"
+            ><${Icon} name=${o.icon} size=${20}
+          /></span>
+          <span class="play-option__text">
+            <span class="play-option__title">${o.title}</span>
+            <span class="play-option__hint">${o.hint}</span>
+          </span>
+        </button>`,
+    )}
+  </div>`;
+}
+
+function FixtureCard({ snapshot, meta, onPlay, onSim, onResume, busy, inProgress }) {
   const round = snapshot.round;
   const r = snapshot.rounds[round];
   const team = opponentTeam(r.opponent);
   const odds = useMemo(
     () => fixtureOdds(snapshot.user.effective, r.opponent.effective),
-    [round, snapshot.user.effective],
+    [round, r.opponent.key, snapshot.user.effective],
   );
   const stakes = groupStakes(snapshot);
   const diff = snapshot.user.rating - r.opponent.rating;
@@ -291,12 +363,15 @@ function FixtureCard({ snapshot, run, meta, onPlay, onSim, busy, inProgress }) {
     class="fixture card card--raised card--pad-md"
     aria-labelledby="fixture-title"
     data-testid="next-fixture"
+    data-round=${r.id}
   >
     <div class="fixture__top">
-      <p class="eyebrow">${round < 3 ? 'Next up · Group A' : 'Next up · Knockout'}</p>
+      <p class="eyebrow">
+        ${round < 3 ? 'Next up · Group A' : r.id === 'third' ? 'Next up · For third place' : 'Next up · Knockout'}
+      </p>
       ${r.opponent.pot && html`<${Chip} size="sm" variant="outline">Pot ${r.opponent.pot}<//>`}
     </div>
-    <h2 class="fixture__title" id="fixture-title">${roundLabel(round).replace('Group · ', '')}</h2>
+    <h2 class="fixture__title" id="fixture-title">${roundName(r)}</h2>
     <div class="fixture__vs">
       <div class="fixture__side">
         <${TeamMark} team=${{ user: true }} size=${64} />
@@ -323,34 +398,18 @@ function FixtureCard({ snapshot, run, meta, onPlay, onSim, busy, inProgress }) {
       </p>`
     }
     ${!meta.hideRatings && html`<${OddsBar} odds=${odds} />`}
-    <${StakesRow} stakes=${stakes} knockout=${r.knockout} final=${r.id === 'final'} />
-    <div class="fixture__actions run-actions">
-      <${Button}
-        variant="primary"
-        size="lg"
-        iconEnd="arrow-right"
-        onClick=${onPlay}
-        disabled=${busy}
-        data-testid="play-fixture"
-        class="fixture__play"
-        >${inProgress ? 'Resume match' : `Play ${roundShort(round) === 'Final' ? 'the final' : roundShort(round)}`}<//
-      >
-      <${Button}
-        variant="ghost"
-        icon="fast-forward"
-        onClick=${onSim}
-        disabled=${busy}
-        data-testid="sim-rest"
-        >Sim rest of run<//
-      >
-    </div>
-    <p class="fixture__hint text-3 text-xs">
-      ${run.matches.length === 0 ? 'Play each match yourself, or let the engine simulate the rest.' : ''}
-    </p>
+    <${StakesRow} stakes=${stakes} knockout=${r.knockout} round=${r.id} />
+    <${PlayOptions}
+      onPlay=${onPlay}
+      onSim=${onSim}
+      onResume=${onResume}
+      busy=${busy}
+      inProgress=${inProgress}
+    />
   </section>`;
 }
 
-function SimPanel({ snapshot, sim, onSkip, onStop }) {
+function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
   const done = sim.items.filter(i => i.status === 'done').length;
   return html`<section
     class="sim card card--hero card--pad-md"
@@ -359,9 +418,11 @@ function SimPanel({ snapshot, sim, onSkip, onStop }) {
   >
     <div class="sim__head">
       <div>
-        <p class="eyebrow">${sim.finished ? 'All played' : 'Simulating'}</p>
+        <p class="eyebrow">
+          ${sim.finished ? (single ? 'Full time' : 'All played') : 'Simulating'}
+        </p>
         <h2 class="run-flash__title" id="sim-title">
-          ${sim.finished ? 'The run is decided' : 'Rest of the run'}
+          ${single ? 'This match' : sim.finished ? 'The cup is decided' : 'The whole cup'}
         </h2>
       </div>
       <span class="sim__count num" aria-hidden="true">${done}/${sim.items.length}</span>
@@ -382,9 +443,12 @@ function SimPanel({ snapshot, sim, onSkip, onStop }) {
             data-testid="sim-skip"
             >${sim.skip ? 'Skipping…' : 'Skip to result'}<//
           >
-          <${Button} variant="ghost" onClick=${onStop} disabled=${sim.stop}
-            >${sim.stop ? 'Stopping after this match' : 'Stop after this match'}<//
-          >`
+          ${
+            !single &&
+            html`<${Button} variant="ghost" onClick=${onStop} disabled=${sim.stop}
+              >${sim.stop ? 'Stopping after this match' : 'Stop after this match'}<//
+            >`
+          }`
       }
     </div>
   </section>`;
@@ -405,7 +469,7 @@ function TeamPanel({ views, nations, meta, formation, snapshot }) {
     ${
       !meta.hideRatings &&
       html`<p class="run-xi__foot text-3 text-sm">
-        ${`Team OVR ${fmt1(snapshot.user.rating)} · effective ${fmt1(snapshot.user.effective)} with Links`}
+        ${`Team OVR ${fmt1(snapshot.user.rating)} · ${fmt1(snapshot.user.effective)} with boosts`}
       </p>`
     }
   </section>`;
@@ -497,15 +561,12 @@ export default function RunScreen() {
   );
   const nations = useMemo(() => nationList(views), [views]);
 
-  const play = () => {
+  // Watch the next match: the pre-match opens with the chosen view ('key' = highlights, 'full').
+  const play = view => {
     const { run, meta } = ctx.current;
     const m = run.nextMatch();
     if (!m) return;
     const id = fixtureId(meta, m.round);
-    if (state.inProgress) {
-      navigate('/match');
-      return;
-    }
     patchRunState({ pending: { id, round: m.round, seed: m.seed } });
     ctx.current.pending = { id, round: m.round, seed: m.seed };
     openPrematch({
@@ -522,26 +583,36 @@ export default function RunScreen() {
       ],
       competition: { mode: 'ai', difficulty: run.difficulty, knockout: m.knockout },
       hideRatings: !!meta.hideRatings,
+      ...(view ? { view } : {}),
       meta: {
         context: 'run',
-        title: `${roundLabel(m.round).replace('Group · ', '')} · ${m.away.name}`,
+        title: `${roundName(m)} · ${m.away.name}`,
         returnTo: '/run',
         fixture: id,
       },
     });
   };
 
-  const simRest = async () => {
+  // Simulate with the engine: 'match' = the next fixture only (then its result banner),
+  // 'cup' = every remaining match.
+  const simulate = async what => {
     const c = ctx.current;
+    const single = what === 'match';
+    const before = c.run.snapshot();
+    let flash = null;
     patchRunState({ pending: null });
-    setState(s => ({ ...s, phase: 'sim', flash: null }));
+    c.pending = null;
+    setState(s => ({ ...s, phase: 'sim', single, flash: null, inProgress: false }));
     try {
       await ticker.start(c.run, {
+        limit: single ? 1 : Infinity,
         configFor: m => fixtureConfig(m, c.run.difficulty),
         idFor: m => fixtureId(c.meta, m.round),
         onDone: (m, result, snapshot) => {
-          c.log = withLog(c.log, result ? logEntry(m.round, result) : null);
+          const entry = result ? logEntry(m.round, result) : null;
+          c.log = withLog(c.log, entry);
           saveRun(c.run, c.meta, { pending: null, log: c.log });
+          if (single) flash = { kind: 'result', round: m.round, before, entry };
           setState(s => ({ ...s, snapshot }));
         },
       });
@@ -554,7 +625,7 @@ export default function RunScreen() {
       });
     }
     ticker.clear();
-    refresh({ flash: null });
+    refresh({ flash });
   };
 
   const abandon = () => {
@@ -590,7 +661,7 @@ export default function RunScreen() {
         size="lg"
         level=${1}
         title="No run in progress"
-        message="Draft an XI one spin at a time, then take it through the group and five knockout rounds."
+        message="Draft an XI one spin at a time, then take it through the group and five knockout matches."
         action=${html`<${Button}
           variant="primary"
           size="lg"
@@ -652,6 +723,7 @@ export default function RunScreen() {
             ? html`<${SimPanel}
                 snapshot=${snapshot}
                 sim=${sim}
+                single=${state.single}
                 onSkip=${ticker.skip}
                 onStop=${ticker.stop}
               />`
@@ -668,23 +740,23 @@ export default function RunScreen() {
                 }
                 <${FixtureCard}
                   snapshot=${snapshot}
-                  run=${run}
                   meta=${meta}
                   onPlay=${play}
-                  onSim=${simRest}
+                  onSim=${simulate}
+                  onResume=${() => navigate('/match')}
                   busy=${false}
                   inProgress=${state.inProgress}
                 />
               `
         }
-        ${inGroup || state.phase === 'sim' ? groupSection : null}
+        ${inGroup || (state.phase === 'sim' && !state.single) ? groupSection : null}
       </div>
       <aside class="run-side stack stack-lg">
         <section class="card card--pad-md run-ko" aria-labelledby="ko-title">
           <h2 class="section-title" id="ko-title">Knockouts</h2>
           <${KnockoutPath} snapshot=${snapshot} />
         </section>
-        ${!inGroup && state.phase !== 'sim' ? groupSection : null}
+        ${!inGroup && !(state.phase === 'sim' && !state.single) ? groupSection : null}
         <${TeamPanel}
           views=${views}
           nations=${nations}

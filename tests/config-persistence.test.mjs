@@ -31,12 +31,12 @@ test('saving stores only the differences from the defaults', () => {
   const storage = memory(),
     config = structuredClone(DEFAULT_CONFIG);
   config.gameplay.shotFrequency = 1.2;
-  config.draft.rerolls.pro = 2;
+  config.draft.rerolls.pro = 3;
   config.draft.ladder.pro = DEFAULT_CONFIG.draft.ladder.pro; // a default value is not stored
   const saved = saveConfig(config, { storage });
   assert.deepEqual(storage.stored(), {
     gameplay: { shotFrequency: 1.2 },
-    draft: { rerolls: { pro: 2 } },
+    draft: { rerolls: { pro: 3 } },
     _settingsVersion: 9,
   });
   assert.deepEqual(loadConfig({ storage }), saved);
@@ -50,7 +50,8 @@ test('an invalid saved value is dropped with a warning; the rest is kept', () =>
       _settingsVersion: 9,
       gameplay: { shotFrequency: 'fast', shotPower: 1.1 },
       playerTiers: { Star: { minimum: 300 } },
-      draft: { rerolls: { pro: 1.5, amateur: 3, worldclass: -1 } },
+      // amateur: a difficulty that no longer exists is ignored without a warning.
+      draft: { rerolls: { pro: 1.5, legendary: 3, worldclass: -1, amateur: 3 } },
       removedSetting: { anything: 1 },
     }),
     { messages, warn } = collect(),
@@ -58,8 +59,9 @@ test('an invalid saved value is dropped with a warning; the rest is kept', () =>
   assert.equal(config.gameplay.shotFrequency, DEFAULT_CONFIG.gameplay.shotFrequency);
   assert.equal(config.gameplay.shotPower, 1.1);
   assert.equal(config.playerTiers.Star.minimum, DEFAULT_CONFIG.playerTiers.Star.minimum);
-  assert.equal(config.draft.rerolls.pro, 1);
-  assert.equal(config.draft.rerolls.amateur, 3);
+  assert.equal(config.draft.rerolls.pro, 2);
+  assert.equal(config.draft.rerolls.legendary, 3);
+  assert.equal('amateur' in config.draft.rerolls, false);
   assert.equal(config.draft.rerolls.worldclass, 1);
   assert.equal(messages.length, 4, messages.join('\n'));
   assert.ok(messages.some(m => m.includes('gameplay.shotFrequency')));
@@ -72,7 +74,7 @@ test('a broken cross-field rule resets only its group', () => {
   const storage = memory({
       _settingsVersion: 9,
       teamTiers: { S: 70 }, // below A: thresholds no longer descend
-      draft: { links: { club: { level1: 9 } } }, // above level 2
+      draft: { links: { nation: 4 } }, // + club mates + the Captain: above the engine cap
       gameplay: { shotPower: 1.1 },
       playerTiers: { Superstar: { minimum: 86 } },
     }),
@@ -154,7 +156,7 @@ test('settings of removed features load silently and are dropped on the next sav
       leagueOverrides: { 19: 1.5 },
       clubOverrides: { 9: 2, 10: 'x' },
       eliteClubBoost: 0.5,
-      rerolls: { pro: 2 }, // still a setting
+      rerolls: { pro: 3 }, // still a setting
     },
     ai: {
       tiers: { veryeasy: 'D', hard: 'A' },
@@ -172,14 +174,14 @@ test('settings of removed features load silently and are dropped on the next sav
       { messages, warn } = collect(),
       config = loadConfig({ storage, warn });
     assert.deepEqual(messages, [], `v${version}: ${messages.join('\n')}`);
-    assert.equal(config.draft.rerolls.pro, 2);
+    assert.equal(config.draft.rerolls.pro, 3);
     assert.equal(config.ai.coachInterval, 8);
     assert.deepEqual(Object.keys(config), Object.keys(DEFAULT_CONFIG));
     assert.deepEqual(Object.keys(config.draft), Object.keys(DEFAULT_CONFIG.draft));
     assert.deepEqual(Object.keys(config.ai), Object.keys(DEFAULT_CONFIG.ai));
     saveConfig(config, { storage });
     assert.deepEqual(storage.stored(), {
-      draft: { rerolls: { pro: 2 } },
+      draft: { rerolls: { pro: 3 } },
       ai: { coachInterval: 8 },
       _settingsVersion: 9,
     });
@@ -194,10 +196,10 @@ test('config fields and runtime replacement', () => {
   assert.equal(configField('draft.clubOverrides.9'), null);
   assert.equal(configField('nope.nothing'), null);
   const config = structuredClone(DEFAULT_CONFIG);
-  config.draft.rerolls.pro = 3;
+  config.draft.rerolls.pro = 4;
   try {
     setRuntimeConfig(config);
-    assert.equal(CONFIG.draft.rerolls.pro, 3);
+    assert.equal(CONFIG.draft.rerolls.pro, 4);
   } finally {
     setRuntimeConfig(DEFAULT_CONFIG);
   }

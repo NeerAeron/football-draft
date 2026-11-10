@@ -172,13 +172,11 @@
   --tier-hidden-frame: linear-gradient(145deg, #3c4c70 0%, #24304b 50%, #3c4c70 100%);
   --tier-hidden-fill: linear-gradient(160deg, #19223a 0%, #121a2e 100%);
 
-  /* Grade palette (S+..F) */
-  --grade-s: var(--tier-superstar-frame);
-  --grade-a: linear-gradient(160deg, #fff1c4, #f5c84c 45%, #dba52a);
-  --grade-b: linear-gradient(160deg, #ecff9e, #cdf545 45%, #8bb012);
-  --grade-c: linear-gradient(160deg, #d6f1ff, #5cc8ff 50%, #2a8fc7);
-  --grade-d: linear-gradient(160deg, #ffe0b8, #ffb547 50%, #c77510);
-  --grade-f: linear-gradient(160deg, #ffd0ca, #ff6f61 50%, #b8322a);
+  /* Medals (the top three of a World Cup Run) and the Budget-mode trophies */
+  --medal-gold: var(--gold-400);
+  --medal-silver: #cfd8e6;
+  --medal-bronze: #dc9456;
+  --budget: var(--green-400);
 
   /* Team colours: components set --team / --team-2 / --team-ink inline (see lib/color.js) */
   --team: var(--ink-400);

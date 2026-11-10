@@ -1,6 +1,6 @@
 // Daily Challenge (#/daily): today's rules, group and streak → the scheduled Nations draft
 // (DRAFT-UI, returns here) → the whole World Cup simulated with the engine, live ticker + Skip
-// → result card (points, grade, % of the perfect XI, streak, share). One attempt per UTC day;
+// → result card (points, where it finished, % of the perfect XI, streak, share). One attempt per UTC day;
 // afterwards the day's result, a countdown and replays of your matches.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
@@ -17,7 +17,7 @@ import { shareText } from '../../../core/competition/share.js';
 import { formationLabel } from '../../../core/players/formations.js';
 import { Button } from '../../components/button.js';
 import { Icon } from '../../components/icon.js';
-import { GradeBadge } from '../../components/grade-badge.js';
+import { Prize } from '../../components/cup.js';
 import { StatTile } from '../../components/meter.js';
 import { PitchView } from '../../components/pitch-view.js';
 import { EmptyState } from '../../components/empty-state.js';
@@ -40,6 +40,7 @@ import {
   logEntry,
   withLog,
   roundLabel,
+  roundName,
   roundShort,
 } from '../../lib/run-store.js';
 import { useSimTicker } from '../run/sim-ticker.js';
@@ -282,7 +283,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       difficulty: 'pro',
       hideRatings: hide,
     },
-    { record: entry.record, grade: entry.grade },
+    { record: entry.record, place: entry.place },
   );
   const text = useMemo(
     () =>
@@ -307,6 +308,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
         formation: entry.formation,
         title: `Daily #${day.number}`,
         hideRatings: hide,
+        detail: `Daily Challenge · ${dateLabel(day.id)}`,
         stats: [
           { label: 'Points', value: int(entry.points) },
           { label: 'Of perfect XI', value: `${fmt1(entry.perfect)}%` },
@@ -319,6 +321,8 @@ function Result({ catalog, day, entry, state, today, fresh }) {
   useEffect(() => {
     if (fresh && snapshot?.status === 'champion') setFire(1);
   }, []);
+  // The medal of the finish (entries from before the places: a title is still a gold).
+  const medal = entry.medal ?? (entry.status === 'champion' ? 'gold' : null);
   const watch = round => {
     const m = matchFor(run, round);
     requestMatch({
@@ -328,7 +332,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       config: dailyConfig(m),
       meta: {
         context: 'daily',
-        title: `Daily #${day.number} · ${roundLabel(round).replace('Group · ', '')}`,
+        title: `Daily #${day.number} · ${roundName(snapshot?.rounds[round] ?? round)}`,
         returnTo: '#/daily',
         userSides: [0],
       },
@@ -347,12 +351,15 @@ function Result({ catalog, day, entry, state, today, fresh }) {
           <span class="daily-card__pts"><${CountUp} value=${entry.points} /></span>
           <span class="daily-card__label">points</span>
         </div>
-        <${GradeBadge}
-          grade=${entry.grade}
-          size="lg"
-          verdict=${entry.verdict}
-          detail=${`${entry.record.w}–${entry.record.d}–${entry.record.l} · ${entry.stageLabel}`}
-        />
+        <div class="daily-card__finish" data-place=${entry.place || ''}>
+          <${Prize} medal=${medal} size=${72} glow=${medal === 'gold'} />
+          <div class="daily-card__finish-text">
+            <span class="daily-card__place">${entry.placeLabel || entry.stageLabel}</span>
+            <span class="daily-card__record num"
+              >${`${entry.record.w}–${entry.record.d}–${entry.record.l}`}</span
+            >
+          </div>
+        </div>
       </div>
       ${snapshot && html`<${PathStrip} snapshot=${snapshot} />`}
       <div class="daily-card__stats">
@@ -363,7 +370,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
       ${
         entry.parts &&
         html`<p class="daily-card__parts text-3 text-sm">
-          ${`${int(entry.parts.matches)} results + ${int(entry.parts.stage)} stage bonus + ${int(entry.parts.ovr)} team OVR + ${int(entry.parts.perfection)} perfect XI = ${int(entry.points)} pts`}
+          ${`${int(entry.parts.matches)} results + ${int(entry.parts.stage)} place bonus + ${int(entry.parts.ovr)} team OVR + ${int(entry.parts.perfection)} perfect XI = ${int(entry.points)} pts`}
         </p>`
       }
       <div class="daily-card__foot">
@@ -395,7 +402,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
                 .map(
                   ({ r, i }) =>
                     html`<li key=${r.id} class="daily-match">
-                      <span class="daily-match__stage">${roundShort(i)}</span>
+                      <span class="daily-match__stage">${roundShort(r)}</span>
                       <${TeamMark} team=${opponentTeam(r.opponent)} size=${24} />
                       <span class="daily-match__name truncate">${r.opponent.name}</span>
                       <span class="daily-match__score num">${scoreText(r.result)}</span>
@@ -405,7 +412,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
                         variant="ghost"
                         icon="play"
                         onClick=${() => watch(i)}
-                        aria-label=${`Watch ${roundLabel(i)} against ${r.opponent.name}`}
+                        aria-label=${`Watch ${roundLabel(r)} against ${r.opponent.name}`}
                         ><span class="daily-match__watch">Watch</span><//
                       >
                     </li>`,
@@ -440,8 +447,8 @@ function rebuildRun(catalog, day, entry) {
   return null;
 }
 /**
- * Today's attempt being simulated. One saved before the Round of 32 (seven rounds, cup format
- * 1) does not restore: it starts again with the same XI against today's eight opponents.
+ * Today's attempt being simulated. One saved in an older cup format (before the third-place
+ * play-off) does not restore: it starts again with the same XI against today's opponents.
  */
 function resumeAttempt(catalog, day, saved) {
   try {
@@ -481,8 +488,9 @@ export default function DailyScreen() {
       stage: snapshot.stage,
       stageLabel: snapshot.stageLabel,
       status: snapshot.status,
-      grade: snapshot.grade?.grade || 'F',
-      verdict: snapshot.grade?.verdict || '',
+      place: snapshot.place,
+      placeLabel: snapshot.placeLabel,
+      medal: snapshot.medal,
       points: score.total,
       parts: {
         matches: score.matches,

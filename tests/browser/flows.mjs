@@ -18,6 +18,44 @@ const ONBOARDED = { 'football-draft-ui': { onboarded: true } };
 
 // ---------- RUN-UI helpers (#/run, #/daily, #/exhibition, #/challenge) ----------
 
+/**
+ * Save a World Cup Run with given results (in the page): a seeded Nations draft, then
+ * `results`: [goalsFor, goalsAgainst, shootout winner?] per match. A knockout draw without a
+ * named winner is won on penalties.
+ */
+const savedRun = (page, { difficulty = 'pro', results = [], budget = false, seed = 42 }) =>
+  page.evaluate(
+    async ({ difficulty, results, budget, seed }) => {
+      const { loadCatalog } = await import('./services/catalog.js');
+      const { createDraftSession } = await import('./core/draft/session.js');
+      const runStore = await import('./ui/lib/run-store.js');
+      const catalog = await loadCatalog();
+      const session = createDraftSession(catalog, { mode: 'nations', seed, difficulty });
+      while (!session.complete) {
+        session.spin();
+        const move = session.suggestPick();
+        session.pick(move.profileId, move.slot);
+      }
+      const { run, meta } = runStore.createRunFromDraft(catalog, {
+        session,
+        context: { kind: 'run', type: 'nations', difficulty, seed, budget },
+      });
+      for (const [goalsFor, goalsAgainst, pens] of results) {
+        const knockout = run.nextMatch().knockout;
+        run.recordResult({
+          goalsFor,
+          goalsAgainst,
+          shootout:
+            knockout && goalsFor === goalsAgainst
+              ? { winner: pens || 'user', score: pens === 'opponent' ? [3, 4] : [4, 3] }
+              : null,
+        });
+      }
+      runStore.saveRun(run, meta, { pending: null, log: [] });
+    },
+    { difficulty, results, budget, seed },
+  );
+
 /** Auto-sims use the fast rating model (screens/run/auto-sim.js) so the flows stay quick. */
 const FAST_SIM = { 'football-draft-dev': { fastSim: true } };
 
@@ -117,7 +155,7 @@ async function draftPick(page, { tryAuto = false } = {}) {
   // there for a moment, so a missed click is fine.
   const spin = page.locator('[data-testid="spin"]');
   if (await spin.isVisible().catch(() => false))
-    await spin.click({ timeout: 1500 }).catch(() => {});
+    await spin.click({ timeout: 6000 }).catch(() => {});
   const row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
   await row.waitFor({ state: 'visible', timeout: 10000 });
   await row.click();
@@ -413,6 +451,7 @@ export const flows = [
           record: { w: 4, d: 1, l: 0 },
           team: 'Brazil',
           rounds: 8,
+          format: 3,
         },
         'football-draft-daily': { streak: 4, best: 9, lastPlayed: '2000-01-01' },
       });
@@ -528,17 +567,34 @@ export const flows = [
       });
       await step('quick setup prefilled from a challenge link', async () => {
         await page.goto(
-          `${base}#/play/quick?type=leagues&difficulty=amateur&formation=4231&seed=123`,
+          `${base}#/play/quick?type=leagues&difficulty=legendary&formation=4231&seed=123`,
         );
         await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
         for (const [name, value] of [
           ['setup-type', 'leagues'],
-          ['setup-difficulty', 'amateur'],
+          ['setup-difficulty', 'legendary'],
           ['setup-formation', '4231'],
         ])
           if (!(await page.isChecked(`input[name="${name}"][value="${value}"]`)))
             throw new Error(`${name} is not ${value}`);
       });
+      await step(
+        'three difficulties, each with a re-roll; an old link on a removed one is Pro',
+        async () => {
+          const levels = await page.$$eval('input[name="setup-difficulty"]', l =>
+            l.map(i => i.value),
+          );
+          if (levels.join() !== 'pro,worldclass,legendary') throw new Error(`levels: ${levels}`);
+          const pips = await page.$$eval('.ladder__row', rows =>
+            rows.map(r => r.querySelectorAll('.pips__pip.is-on').length),
+          );
+          if (pips.join() !== '2,1,1') throw new Error(`re-rolls: ${pips}`);
+          await page.goto(`${base}#/play/quick?type=nations&difficulty=amateur&seed=5`);
+          await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
+          if (!(await page.isChecked('input[name="setup-difficulty"][value="pro"]')))
+            throw new Error('a removed difficulty does not fall back to Pro');
+        },
+      );
       await shot('quick-challenge');
       await step('quick match offers nations, leagues and clubs', async () => {
         const types = await page.$$eval('input[name="setup-type"]', l => l.map(i => i.value));
@@ -604,11 +660,110 @@ export const flows = [
     },
   },
   {
+    name: 'draft-budget',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, ONBOARDED);
+      await step('the World Cup setup offers Budget mode', async () => {
+        await page.goto(`${base}#/play/run`);
+        await visible(page, '[data-screen="setup"][data-mode="run"]');
+        const toggle = page.getByRole('switch', { name: 'Budget mode' });
+        if (await toggle.isChecked()) throw new Error('Budget mode is on by default');
+        await toggle.check();
+        const text = await page.textContent('[data-screen="setup"]');
+        if (!/1 player rated 88\+, 2 at 84–87 and 3 at 80–83/.test(text))
+          throw new Error('the Budget switch does not say its caps');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await page.getByRole('switch', { name: 'Budget mode' }).scrollIntoViewIfNeeded();
+      await shot('setup');
+      await step('Quick Match has no Budget mode', async () => {
+        await page.goto(`${base}#/play/quick`);
+        await visible(page, '[data-screen="setup"][data-mode="quick"]');
+        if (await page.getByRole('switch', { name: 'Budget mode' }).count())
+          throw new Error('Budget switch on the quick setup');
+      });
+      await step('start a seeded budget run draft', () =>
+        startFromSetup(page, base, '#/play/run?type=nations&seed=8&formation=433&budget=1'),
+      );
+      await step('the budget slots are shown, all open', async () => {
+        await visible(page, '[data-testid="spin-result"]');
+        await visible(page, '.draft-budget');
+        const on = await page.locator('.draft-budget__pips i.is-on').count();
+        if (on !== 0) throw new Error(`${on} budget slots used before the first pick`);
+        const tags = await page.locator('[data-testid="pool"] .prow__cost').count();
+        if (!tags) throw new Error('pool rows do not show their band');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await shot('first-spin');
+      await step('selecting a player says which slot he uses', async () => {
+        await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
+        await visible(page, '[data-testid="budget-effect"]:visible');
+        await visible(page, '[data-testid="mates-effect"]:visible');
+      });
+      await shot('selected');
+      await step('pick 1', async () => {
+        await page.click('[data-testid="confirm-pick"]:visible');
+        await picksMade(page, 1);
+      });
+      let closed = false;
+      for (let pick = 2; pick <= 11; pick++) {
+        await step(`pick ${pick}`, async () => {
+          const spin = page.locator('[data-testid="spin"]');
+          if (await spin.isVisible().catch(() => false))
+            await spin.click({ timeout: 6000 }).catch(() => {});
+          await visible(page, '[data-testid="pool"] button.prow:not([disabled])');
+          // Closed rows sit under the players he can still pick: show the whole pool.
+          const more = page.locator('[data-testid="pool"] .pool__more button');
+          if (!closed && (await more.count())) await more.click();
+          const full = page.locator('[data-testid="pool"] .prow.is-disabled:has-text("full")');
+          if (!closed && (await full.count())) {
+            closed = true;
+            await full.first().scrollIntoViewIfNeeded();
+            await shot('band-full');
+            await page.evaluate(() => scrollTo(0, 0));
+          }
+          await draftPick(page);
+          await picksMade(page, pick);
+        });
+        if (pick === 6) await shot('mid-draft', viewport === 'mobile' ? { fullPage: true } : {});
+      }
+      await step('a full band closed its players', async () => {
+        if (!closed) throw new Error('no pool row was closed by the budget');
+      });
+      await step('completion sheet shows the budget and the boosts', async () => {
+        await visible(page, 'dialog.complete-sheet[open] .xi-summary__budget');
+        await visible(page, 'dialog.complete-sheet[open] [data-testid="final-boosts"]');
+        const used = await page.$$eval(
+          'dialog.complete-sheet[open] .draft-budget__band[data-band]',
+          l =>
+            l.map(b => [
+              b.querySelectorAll('.draft-budget__pips i.is-on').length,
+              b.querySelectorAll('.draft-budget__pips i').length,
+            ]),
+        );
+        if (used.map(u => u[1]).join() !== '1,2,3') throw new Error(`budget slots: ${used}`);
+        if (used.some(([on, slots]) => on > slots)) throw new Error(`over budget: ${used}`);
+      });
+      await shot('complete');
+      await step('the run remembers it was a Budget run', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await page.waitForFunction(() => location.hash === '#/run');
+        await page.waitForFunction(
+          () => JSON.parse(localStorage.getItem('football-draft-run-state') || 'null')?.meta,
+        );
+        const meta = await page.evaluate(
+          () => JSON.parse(localStorage.getItem('football-draft-run-state')).meta,
+        );
+        if (meta.budget !== true) throw new Error(`run meta.budget = ${meta.budget}`);
+      });
+    },
+  },
+  {
     name: 'draft-clubs',
     async run({ page, shot, step, base }) {
       await seed(page, ONBOARDED);
       await step('start a seeded clubs quick draft', () =>
-        startFromSetup(page, base, '#/play/quick?type=clubs&seed=11&difficulty=amateur'),
+        startFromSetup(page, base, '#/play/quick?type=clubs&seed=11&difficulty=pro'),
       );
       await step('league + club land', () => visible(page, '[data-testid="spin-result"]'));
       await page.evaluate(() => document.fonts.ready);
@@ -638,7 +793,7 @@ export const flows = [
         });
       await step('filter + search the pool', async () => {
         // Auto-spin starts the reel by itself; click only if the button is still there.
-        await page.click('[data-testid="spin"]', { timeout: 1500 }).catch(() => {});
+        await page.click('[data-testid="spin"]', { timeout: 6000 }).catch(() => {});
         await visible(page, '[data-testid="pool"]');
         await page.click('[data-testid="pool"] .toggle-chip:has-text("DEF")');
         await page.fill('[data-testid="pool"] input[type="search"]', 'a');
@@ -693,7 +848,7 @@ export const flows = [
     async run({ page, shot, step, base }) {
       await seed(page, ONBOARDED);
       await step('quick draft, auto-completed', async () => {
-        await startFromSetup(page, base, '#/play/quick?type=nations&seed=3&difficulty=semipro');
+        await startFromSetup(page, base, '#/play/quick?type=nations&seed=3&difficulty=worldclass');
         await page.goto(`${base}#/draft?auto=1`);
         await visible(page, 'dialog.complete-sheet[open]');
       });
@@ -813,12 +968,44 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('arrival', { fullPage: viewport === 'mobile' });
-      await step('matchday 1 is played in the draft formation', async () => {
-        await page.click('[data-testid="play-fixture"]');
-        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
-        if (!(await page.isDisabled('[data-testid="formation-select"]')))
-          throw new Error('the formation can change before the first match');
+      await step('four ways to play the next match', async () => {
+        const options = await page.$$eval('.play-option', l =>
+          l.map(b => b.querySelector('.play-option__title').textContent.trim()),
+        );
+        const expected = [
+          'Watch highlights',
+          'Watch full match',
+          'Simulate this match',
+          'Simulate the whole cup',
+        ];
+        if (options.join('|') !== expected.join('|')) throw new Error(`options: ${options}`);
+        const hints = await page.$$eval('.play-option__hint', l => l.map(h => h.textContent));
+        if (!/1 min/.test(hints[0]) || !/3 min/.test(hints[1])) throw new Error(`hints: ${hints}`);
+        await page.locator('.play-options').scrollIntoViewIfNeeded();
       });
+      await shot('play-options');
+      const prematchView = () =>
+        page.evaluate(async () => {
+          const { prematchStore } = await import('./ui/lib/prematch-store.js');
+          return prematchStore.get()?.view;
+        });
+      await step('"Watch full match" opens the pre-match on the full view', async () => {
+        await page.click('[data-testid="play-full"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await prematchView()) !== 'full') throw new Error(`view is ${await prematchView()}`);
+        await page.goBack();
+        await visible(page, '[data-testid="next-fixture"]');
+      });
+      await step(
+        'matchday 1 is played in the draft formation (highlights preselected)',
+        async () => {
+          await page.click('[data-testid="play-fixture"]');
+          await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+          if (!(await page.isDisabled('[data-testid="formation-select"]')))
+            throw new Error('the formation can change before the first match');
+          if ((await prematchView()) !== 'key') throw new Error(`view is ${await prematchView()}`);
+        },
+      );
       await shot('first-match-locked');
       await step('play matchday 1', () => finishMatch(page));
       await step('result banner + record', async () => {
@@ -833,9 +1020,26 @@ export const flows = [
         await page.click('[data-testid="continue-run"]');
         await visible(page, '[data-testid="next-fixture"]');
       });
-      await step('sim rest of run', async () => {
+      await step('"Simulate this match" plays one fixture and shows its result', async () => {
+        const before = await page.getAttribute('[data-testid="next-fixture"]', 'data-round');
+        await page.click('[data-testid="sim-match"]');
+        await visible(page, '[data-testid="result-banner"]', 60000);
+        const eyebrow = await page.textContent('[data-testid="result-banner"] .eyebrow');
+        if (!/Matchday 2/.test(eyebrow)) throw new Error(`banner reads ${eyebrow}`);
+        const next = await page.getAttribute('[data-testid="next-fixture"]', 'data-round');
+        if (before !== 'group2' || next !== 'group3')
+          throw new Error(`fixtures: ${before} → ${next}`);
+        const played = await page.$$eval('.run-path-strip .is-played', l => l.length);
+        if (played !== 2) throw new Error(`${played} matches played, expected 2`);
+      });
+      await shot('after-sim-match');
+      await step('"Simulate the whole cup" plays to the end', async () => {
         await page.click('[data-testid="sim-rest"]');
         await visible(page, '[data-testid="run-end"]', 120000);
+        const place = await page.getAttribute('[data-testid="run-end"]', 'data-place');
+        const title = await page.textContent('.run-end__title');
+        if (!place || /\b[SABCDF][+-]?\b grade/i.test(title)) throw new Error(`end: ${place}`);
+        if (await page.locator('.grade').count()) throw new Error('a letter grade is shown');
       });
       await shot('end');
       if (viewport === 'desktop') await shot('end-full', { fullPage: true });
@@ -855,13 +1059,225 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
         await page.waitForLoadState('networkidle');
         await page.goto(base);
-        await visible(page, '.home-records');
-        const foot = await page.textContent('.home-records__foot');
+        await visible(page, '[data-testid="cabinet"]');
+        const foot = await page.textContent('.cabinet__foot');
         if (!/^1 run/.test(foot.trim())) throw new Error(`cabinet reads "${foot}"`);
-        const status = await page.textContent('.home-records__slot[data-level="pro"]');
+        const status = await page.textContent('.cabinet__slot[data-level="pro"]');
         if (/Not played/.test(status)) throw new Error('the Pro slot ignores the run');
       });
       await shot('home-cabinet', { fullPage: true });
+    },
+  },
+  {
+    // Where a run can finish (seeded results): champion, runners-up, third place after the
+    // play-off, a quarter-final exit, and the ultimate achievement.
+    name: 'run-end',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      const W = [2, 0],
+        L = [0, 1];
+      const open = async (name, options) => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await savedRun(page, options);
+        await page.goto(`${base}#/run`);
+        await visible(
+          page,
+          options.results.length < 8 && name !== 'qf'
+            ? '[data-testid="next-fixture"]'
+            : '[data-testid="run-end"]',
+        );
+        await page.evaluate(() => document.fonts.ready);
+      };
+      const place = () => page.getAttribute('[data-testid="run-end"]', 'data-place');
+      await step('a lost semi-final leads to the third-place play-off', async () => {
+        await open('playoff', { difficulty: 'pro', results: [W, W, W, W, W, W, L] });
+        const round = await page.getAttribute('[data-testid="next-fixture"]', 'data-round');
+        const title = await page.textContent('#fixture-title');
+        if (round !== 'third' || !/Third-place play-off/.test(title))
+          throw new Error(`next fixture: ${round} "${title}"`);
+        if ((await page.locator('.play-option').count()) !== 4) throw new Error('four options');
+      });
+      await shot('playoff-hub', { fullPage: viewport === 'mobile' });
+      await step('third place: bronze', async () => {
+        await page.click('[data-testid="sim-match"]');
+        await visible(page, '[data-testid="run-end"]', 60000);
+        if (!['third', 'fourth'].includes(await place())) throw new Error(await place());
+        await open('third', { difficulty: 'pro', results: [W, W, W, W, W, W, L, W] });
+        if ((await place()) !== 'third') throw new Error(`place ${await place()}`);
+        const title = await page.textContent('.run-end__title');
+        if (!/Third place/.test(title)) throw new Error(`title reads ${title}`);
+        await visible(page, '.run-end__cup .medal--bronze');
+        const text = await page.textContent('[data-testid="share-text"]');
+        if (!/7-0-1 · Third place/.test(text) || !/🥉/u.test(text))
+          throw new Error(`share text: ${text}`);
+      });
+      await shot('third');
+      await step('runners-up: silver', async () => {
+        await open('second', { difficulty: 'worldclass', results: [W, W, [1, 1], W, W, W, W, L] });
+        if ((await place()) !== 'final') throw new Error(`place ${await place()}`);
+        const title = await page.textContent('.run-end__title');
+        if (!/Runners-up/.test(title)) throw new Error(`title reads ${title}`);
+        await visible(page, '.run-end__cup .medal--silver');
+      });
+      await shot('runner-up');
+      await step('quarter-final exit: the round, no medal', async () => {
+        await open('qf', { difficulty: 'pro', results: [W, L, W, W, W, [1, 1, 'opponent']] });
+        if ((await place()) !== 'qf') throw new Error(`place ${await place()}`);
+        const title = await page.textContent('.run-end__title');
+        if (!/Out in the Quarter-finals/.test(title)) throw new Error(`title reads ${title}`);
+        if (await page.locator('.run-end__cup').count()) throw new Error('a medal for a QF exit');
+      });
+      await shot('qf-exit');
+      await step('champions: the gold cup', async () => {
+        await open('champion', { difficulty: 'pro', results: [W, [0, 0], W, W, W, W, W, W] });
+        if ((await place()) !== 'champion') throw new Error(`place ${await place()}`);
+        await visible(page, '.run-end__cup .cup--gold');
+        const text = await page.textContent('[data-testid="share-text"]');
+        if (!/7-1-0 · Champions/.test(text) || !/🏆/u.test(text))
+          throw new Error(`share text: ${text}`);
+      });
+      await shot('champion');
+      if (viewport === 'mobile') await shot('champion-full', { fullPage: true });
+      await step('Legendary + Budget + 8–0: the ultimate achievement', async () => {
+        await open('ultimate', {
+          difficulty: 'legendary',
+          budget: true,
+          results: [W, W, W, W, W, W, W, W],
+        });
+        await visible(page, '.run-end.is-ultimate .cup--holo');
+        await visible(page, '.toast--achievement:has-text("Immortals")', 15000);
+        const text = await page.textContent('[data-testid="share-text"]');
+        if (!/👑 Immortals: Legendary · Budget · 8-0-0/u.test(text))
+          throw new Error(`share text: ${text}`);
+      });
+      await shot('ultimate');
+      await step('the cabinet has them all, the ultimate slot is unlocked', async () => {
+        await page.waitForLoadState('networkidle');
+        await page.goto(base);
+        await visible(page, '[data-testid="ultimate"][data-done="1"]');
+        const best = level =>
+          page.textContent(`.cabinet__slot[data-level="${level}"] .cabinet__best`);
+        if (!/Champions/.test(await best('pro'))) throw new Error(`pro: ${await best('pro')}`);
+        if (!/Runners-up/.test(await best('worldclass'))) throw new Error(await best('worldclass'));
+        // The Legendary title was a Budget one: the standard slot is still to be won.
+        if (!/Not played/.test(await best('legendary'))) throw new Error(await best('legendary'));
+        const budget = await page.textContent(
+          '.cabinet__slot[data-level="legendary"] .cabinet__budget',
+        );
+        if (!/Budget Won/.test(budget)) throw new Error(`budget: ${budget}`);
+      });
+    },
+  },
+  {
+    // The trophy cabinet on Home: empty, partly filled, and with the ultimate slot unlocked.
+    name: 'home-cabinet',
+    async run({ page, shot, step, base }) {
+      await seed(page, ONBOARDED);
+      const show = async records => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(data => {
+          if (data) localStorage.setItem('football-draft-records', JSON.stringify(data));
+          else localStorage.removeItem('football-draft-records');
+        }, records);
+        await page.reload();
+        await visible(page, '[data-testid="cabinet"]');
+        await page.evaluate(() => document.fonts.ready);
+        await page.locator('[data-testid="cabinet"]').scrollIntoViewIfNeeded();
+      };
+      const tally = (runs, gold, silver, bronze, perfect, best) => ({
+        runs,
+        gold,
+        silver,
+        bronze,
+        perfect,
+        best,
+      });
+      await step('empty: Legendary in the middle, the ultimate slot locked', async () => {
+        await show(null);
+        const order = await page.$$eval('.cabinet__slot', l => l.map(a => a.dataset.level));
+        if (order.join() !== 'pro,legendary,worldclass') throw new Error(`order: ${order}`);
+        const sizes = await page.$$eval('.cabinet__slot', l =>
+          l.map(a =>
+            Math.round(a.getBoundingClientRect().width * a.getBoundingClientRect().height),
+          ),
+        );
+        if (!(sizes[1] > sizes[0] && sizes[1] > sizes[2])) throw new Error(`sizes: ${sizes}`);
+        const locked = await page.textContent('[data-testid="ultimate"][data-done="0"]');
+        if (!/Immortals/.test(locked) || !/Legendary in Budget mode with eight wins/.test(locked))
+          throw new Error(`locked slot reads ${locked}`);
+        const target = await page.getAttribute('.cabinet__slot[data-level="legendary"]', 'href');
+        if (target !== '#/play/run?difficulty=legendary') throw new Error(`slot → ${target}`);
+      });
+      await shot('empty');
+      await step('partly filled: gold, silver and a round; Budget trophies alongside', async () => {
+        await show({
+          format: 3,
+          levels: {
+            pro: tally(9, 2, 1, 2, 1, 7),
+            worldclass: tally(6, 0, 1, 1, 0, 6),
+            legendary: tally(11, 0, 0, 0, 0, 3),
+          },
+          budget: {
+            pro: tally(2, 1, 0, 0, 0, 7),
+            worldclass: tally(1, 0, 0, 1, 0, 5),
+            legendary: tally(0, 0, 0, 0, 0, 0),
+          },
+          ultimate: { count: 0, first: null },
+          seen: [],
+          last: null,
+        });
+        const text = level => page.textContent(`.cabinet__slot[data-level="${level}"]`);
+        if (!/Champions ×2/.test(await text('pro'))) throw new Error(await text('pro'));
+        if (!/Runners-up/.test(await text('worldclass'))) throw new Error(await text('worldclass'));
+        if (!/Quarter-finals/.test(await text('legendary')))
+          throw new Error(await text('legendary'));
+        if (!/Budget 3rd/.test(await text('worldclass'))) throw new Error('budget bronze');
+        await visible(page, '[data-testid="ultimate"][data-done="0"]');
+      });
+      await shot('partly');
+      await step('an old cabinet migrates: titles become golds, removed levels go', async () => {
+        await show({
+          format: 2,
+          levels: {
+            amateur: { runs: 4, titles: 3, perfect: 1, best: 8 },
+            pro: { runs: 5, titles: 1, perfect: 1, best: 8 },
+            legendary: { runs: 2, titles: 0, perfect: 0, best: 7 },
+          },
+          seen: [],
+        });
+        const count = await page.getAttribute('.cabinet__count', 'aria-label');
+        if (!/^1 of 3/.test(count)) throw new Error(`count: ${count}`);
+        const legendary = await page.textContent('.cabinet__slot[data-level="legendary"]');
+        if (!/Runners-up/.test(legendary)) throw new Error(`legendary: ${legendary}`);
+        if (!/^7 runs/.test((await page.textContent('.cabinet__foot')).trim()))
+          throw new Error('the removed level is still counted');
+      });
+      await step('everything won: the ultimate slot unlocked', async () => {
+        await show({
+          format: 3,
+          levels: {
+            pro: tally(14, 4, 2, 2, 2, 7),
+            worldclass: tally(9, 2, 1, 1, 0, 7),
+            legendary: tally(21, 1, 2, 3, 0, 7),
+          },
+          budget: {
+            pro: tally(3, 2, 0, 0, 1, 7),
+            worldclass: tally(2, 0, 1, 0, 0, 6),
+            legendary: tally(8, 2, 1, 1, 1, 7),
+          },
+          ultimate: { count: 1, first: '2026-11-12T19:30:00.000Z' },
+          seen: [],
+          last: null,
+        });
+        await visible(page, '[data-testid="ultimate"][data-done="1"] .cup--holo');
+        const count = await page.getAttribute('.cabinet__count', 'aria-label');
+        if (!/^3 of 3/.test(count)) throw new Error(`count: ${count}`);
+      });
+      await shot('complete');
     },
   },
   {
@@ -949,8 +1365,15 @@ export const flows = [
         await visible(page, '[data-screen="challenge"] [data-testid="accept-challenge"]');
       });
       await step('shared link with a result', async () => {
-        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=5-1-1.bp`);
+        // An old link: a letter grade after the record (ignored) on a removed difficulty (Pro).
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.a.0.16&r=5-1-1.bp`);
         await visible(page, '[data-screen="challenge"] .friend-score');
+        const old = await page.textContent('[data-screen="challenge"]');
+        if (!/5–1–1/.test(old) || !/Pro/.test(old)) throw new Error('old link does not read');
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] .friend-score .medal');
+        const label = await page.textContent('.friend-score__label');
+        if (!/Third place/.test(label)) throw new Error(`friend result reads ${label}`);
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('landing');

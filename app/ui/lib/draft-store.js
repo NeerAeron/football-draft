@@ -114,6 +114,8 @@ export function normalizeContext(context = {}) {
     options: {
       hideRatings: !!(context.options?.hideRatings ?? context.hideRatings),
       uniqueNations: !!(context.options?.uniqueNations ?? context.uniqueNations),
+      // Budget mode (rating-band caps, core/draft/budget.js): World Cup Runs only.
+      ...(kind === 'run' && context.options?.budget ? { budget: true } : {}),
     },
     seed,
     schedule: context.schedule || null,
@@ -139,6 +141,7 @@ export function sessionOptions(ctx) {
     ...(ctx.rerolls != null ? { rerolls: ctx.rerolls } : {}),
     hideRatings: ctx.options.hideRatings,
     uniqueNations: ctx.options.uniqueNations,
+    budget: !!ctx.options.budget,
     ...(ctx.schedule ? { schedule: ctx.schedule } : {}),
     useDefaultRules: ctx.useDefaultRules,
     teams: Array.from({ length: sides }, (_, i) => {

@@ -35,6 +35,23 @@ import { RestartMethods } from './restarts.js';
 import { InsightMethods, MENTALITIES } from './insights.js';
 
 const MENTALITY_LEAN = { push: 1, balanced: 0, hold: -1 };
+// Balanced changes nothing: the same fields as tuning.mentality.push / .hold, all zero.
+const BALANCED = Object.freeze({
+  line: 0,
+  attacking: 0,
+  restDefence: 0,
+  runners: 0,
+  shotUrge: 0,
+  ambition: 0,
+  turnoverCost: 0,
+  join: 0,
+  lateRuns: 0,
+  pressing: 0,
+  restartTime: 0,
+  load: 0,
+  chances: 0,
+  exposure: 0,
+});
 // formation(): the last formation name seen per side and its FORMATIONS rows.
 const FORMATION_NAME = [null, null],
   FORMATION_ROWS = [null, null];
@@ -392,17 +409,43 @@ export class Match {
   }
   settings(team) {
     const t = this.teams[team].tactics,
-      lean = MENTALITY_LEAN[this.mentality(team)] ?? 0;
+      lean = this.lean(team),
+      shift = this.mentalityShift(team);
     // Mentality leans the whole side: push = higher line, more bodies forward;
     // hold = deeper block, fewer runners, patient possession.
     return {
       ...t,
       lean,
+      shift,
       pressing: (t.press - 1) * 25,
       widthValue: (t.width - 1) * 25,
-      line: (t.style === 'bus' ? 12 : t.style === 'press' ? 72 : 50) + lean * (lean > 0 ? 8 : 10),
-      attacking: (t.style === 'bus' ? 25 : t.style === 'counter' ? 65 : 50) + lean * 20,
+      line: (t.style === 'bus' ? 12 : t.style === 'press' ? 72 : 50) + shift.line,
+      attacking: (t.style === 'bus' ? 25 : t.style === 'counter' ? 65 : 50) + shift.attacking,
     };
+  }
+  // +1 push, 0 balanced, -1 hold (the mentality in effect).
+  lean(team) {
+    return MENTALITY_LEAN[this.mentality(team)] ?? 0;
+  }
+  // Room for a shot by `team` (0 = balanced against balanced): what its own mentality adds to
+  // its chances plus what the defending side's mentality leaves open, and the rewards for a
+  // well-timed choice (pushing while behind, holding a lead), read from the score right now.
+  shootingRoom(team) {
+    const own = this.mentalityShift(team),
+      other = this.mentalityShift(1 - team),
+      lead = this.score[team] - this.score[1 - team],
+      rules = this.tuning.mentality;
+    return (
+      own.chances +
+      other.exposure +
+      (lead < 0 && own === rules.push ? rules.chase : 0) -
+      (lead < 0 && other === rules.hold ? rules.protect : 0)
+    );
+  }
+  // What the mentality in effect changes (tuning.mentality.push / .hold; zeros when balanced).
+  mentalityShift(team) {
+    const lean = this.lean(team);
+    return lean > 0 ? this.tuning.mentality.push : lean < 0 ? this.tuning.mentality.hold : BALANCED;
   }
   setTags(id, tags) {
     const p = this.players[id];

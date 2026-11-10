@@ -1,4 +1,4 @@
-// Completion: your XI, team OVR and Links, then the next step by context — run/daily: on to
+// Completion: your XI, team OVR and Boosts, then the next step by context — run/daily: on to
 // the World Cup (RUN-UI); quick: the opponent reveal, then the pre-match; versus: both XIs,
 // then the pre-match. Hidden ratings can be revealed here.
 import { useMemo, useState } from 'preact/hooks';
@@ -22,6 +22,7 @@ import {
 } from '../../components/index.js';
 import { quickOpponent, difficultyLabel } from '../../lib/draft-store.js';
 import { linkLines } from './draft-model.js';
+import { BudgetStrip } from './team-panel.js';
 import { fmt1 } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
@@ -70,13 +71,14 @@ function XiSummary({ team, players, hideRatings, small }) {
         ><b class="num" data-testid="final-ovr">${hideRatings ? '?' : fmt(team.rating)}</b></span
       >
       <span
-        ><small>Links</small
-        ><b class="num">${team.links.score}<i>/${team.links.maxScore}</i></b></span
+        ><small>Boosts</small
+        ><b class="num is-boost" data-testid="final-boosts">+${team.links.total}</b></span
       >
       <span
-        ><small>Linked</small><b class="num">${team.links.linked}<i>/11</i></b></span
+        ><small>Mates</small><b class="num">${team.links.linked}<i>/11</i></b></span
       >
     </div>
+    <${BudgetStrip} budget=${team.budget} class="xi-summary__budget" />
     <${PitchView}
       formation=${team.formation}
       players=${players}

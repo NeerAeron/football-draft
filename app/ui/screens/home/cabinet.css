@@ -1,0 +1,346 @@
+/* Trophy cabinet on Home (screens/home/cabinet.js): a podium of three difficulties with
+   Legendary in the middle, the Budget trophies alongside, and the ultimate achievement. */
+.cabinet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.cabinet__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.cabinet__count {
+  color: var(--text-3);
+  font-size: 20px;
+  font-weight: var(--weight-heavy);
+  line-height: 1;
+}
+.cabinet__count b {
+  color: var(--gold-400);
+  font-size: 30px;
+}
+.cabinet__lead {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+/* ---------- Shelf ---------- */
+.cabinet__shelf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+.cabinet__item {
+  display: flex;
+  min-width: 0;
+}
+.cabinet__slot {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 168px;
+  padding: var(--space-3) var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-inset);
+  color: var(--text-3);
+  text-align: center;
+  text-decoration: none;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    background-color var(--dur-base) var(--ease-out);
+}
+.cabinet__slot:hover {
+  background: var(--surface-3);
+  transform: translateY(-2px);
+}
+/* Legendary: the goal. Taller, lit and framed in gold even before it is won. */
+.cabinet__slot.is-main {
+  min-height: 216px;
+  padding-top: var(--space-5);
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgb(245 200 76 / 0.2), transparent 70%), var(--surface-2);
+  box-shadow:
+    inset 0 0 0 1px rgb(245 200 76 / 0.45),
+    0 10px 28px -14px var(--gold-glow);
+}
+.cabinet__slot.is-main.is-gold {
+  box-shadow: var(--glow-gold);
+}
+.cabinet__tag {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tier-star-frame);
+  color: var(--on-gold);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cabinet__prize {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 60px;
+  margin-bottom: var(--space-1);
+}
+.cabinet__slot.is-main .cabinet__prize {
+  min-height: 90px;
+}
+.cabinet__star {
+  position: absolute;
+  top: -2px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  color: var(--gold-300);
+  box-shadow: 0 0 0 1px var(--gold-500);
+}
+.cabinet__star .icon {
+  fill: currentColor;
+}
+.cabinet__level {
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.cabinet__slot.is-main .cabinet__level {
+  font-size: 19px;
+}
+.cabinet__best {
+  font-size: var(--text-xs);
+  line-height: 1.2;
+}
+.cabinet__slot.is-gold .cabinet__best {
+  color: var(--gold-300);
+}
+.cabinet__slot.is-silver .cabinet__best {
+  color: var(--medal-silver);
+}
+.cabinet__slot.is-bronze .cabinet__best {
+  color: var(--medal-bronze);
+}
+.cabinet__medals {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: var(--weight-heavy);
+  line-height: 1;
+}
+.cabinet__medals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-2);
+}
+.cabinet__medals span::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--medal-gold);
+}
+.cabinet__medals .is-silver::before {
+  background: var(--medal-silver);
+}
+.cabinet__medals .is-bronze::before {
+  background: var(--medal-bronze);
+}
+/* The Budget-mode trophy of the level: its own, green kind. */
+.cabinet__budget {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin-top: auto;
+  padding: 3px 7px 3px 4px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgb(61 220 132 / 0.28);
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.cabinet__budget.is-played {
+  background: rgb(61 220 132 / 0.1);
+  color: var(--green-300);
+}
+.cabinet__budget.is-won {
+  box-shadow: inset 0 0 0 1px rgb(61 220 132 / 0.6);
+}
+
+/* Narrow side slots: the green trophy says "Budget"; the word shows where there is room. */
+@media (max-width: 719px) {
+  .cabinet__item:not(.is-main) .cabinet__budget.is-played .cabinet__budget-word {
+    display: none;
+  }
+}
+
+/* ---------- The ultimate achievement ---------- */
+.cabinet__ultimate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.cabinet__ultimate.is-locked {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--surface-2) 0 12px,
+    rgb(255 255 255 / 0.025) 12px 24px
+  );
+}
+.cabinet__ultimate.is-done {
+  background:
+    radial-gradient(70% 120% at 0% 50%, rgb(143 123 240 / 0.28), transparent 70%),
+    radial-gradient(60% 120% at 100% 50%, rgb(125 235 214 / 0.16), transparent 70%),
+    var(--surface-2);
+  box-shadow:
+    inset 0 0 0 1px rgb(180 148 255 / 0.6),
+    0 10px 30px -14px rgb(143 123 240 / 0.7);
+}
+.cabinet__ultimate-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  color: var(--text-3);
+}
+.cabinet__ultimate.is-locked .cabinet__ultimate-mark {
+  width: 52px;
+  height: 52px;
+  border: 1px dashed rgb(255 255 255 / 0.22);
+}
+.cabinet__ultimate-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cabinet__ultimate-name {
+  font-family: var(--font-display);
+  font-size: var(--display-xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.cabinet__ultimate.is-done .cabinet__ultimate-name {
+  background: linear-gradient(100deg, #f6ffb8, #7debd6 35%, #b494ff 70%, #ff9ed2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.cabinet__ultimate-how {
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+.cabinet__ultimate.is-done .cabinet__ultimate-how {
+  color: var(--text-2);
+}
+.cabinet__foot {
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.cabinet__foot span + span::before {
+  content: ' · ';
+  white-space: pre;
+}
+
+@media (min-width: 720px) {
+  .cabinet__shelf {
+    gap: var(--space-4);
+  }
+  .cabinet__slot {
+    min-height: 184px;
+    padding-inline: var(--space-3);
+  }
+  .cabinet__slot.is-main {
+    min-height: 236px;
+  }
+  .cabinet__level {
+    font-size: 16px;
+  }
+  .cabinet__slot.is-main .cabinet__level {
+    font-size: 22px;
+  }
+  .cabinet__best,
+  .cabinet__budget {
+    font-size: var(--text-sm);
+  }
+}
+@media (min-width: 960px) {
+  .cabinet {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    grid-template-areas:
+      'head ultimate'
+      'lead ultimate'
+      'shelf ultimate'
+      'foot foot';
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+  .cabinet__head {
+    grid-area: head;
+  }
+  .cabinet__lead {
+    grid-area: lead;
+  }
+  .cabinet__shelf {
+    grid-area: shelf;
+  }
+  .cabinet__ultimate {
+    grid-area: ultimate;
+    align-self: stretch;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--space-5);
+    text-align: center;
+  }
+  .cabinet__ultimate-text {
+    align-items: center;
+  }
+  .cabinet__foot {
+    grid-area: foot;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cabinet__slot {
+    transition: none;
+  }
+}

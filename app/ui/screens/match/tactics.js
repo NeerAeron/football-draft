@@ -7,7 +7,6 @@ import { useState } from 'preact/hooks';
 import { html } from '../../lib/html.js';
 import { Segmented, Sheet, Button } from '../../components/index.js';
 import { FORMATIONS, formationLabel } from '../../../core/players/formations.js';
-import { STYLES, TACTICS } from '../../../core/players/traits.js';
 import { MENTALITIES } from '../../lib/prematch-store.js';
 
 const MENTALITY_ICONS = {
@@ -57,8 +56,6 @@ export function MentalityControl({
   />`;
 }
 
-const LEVELS = [1, 2, 3, 4, 5].map(v => ({ value: String(v), label: String(v) }));
-
 function TeamTactics({ team, name, tactics, effective, access, onSet }) {
   const locked = !access?.tactics;
   return html`<div class="tactics" data-testid=${`tactics-${team}`}>
@@ -99,35 +96,6 @@ function TeamTactics({ team, name, tactics, effective, access, onSet }) {
         >`
       }
     </label>
-    <label class="tactics__field field">
-      <span class="tactics__label field__label">Style</span>
-      <select
-        class="tactics__select"
-        value=${tactics.style}
-        disabled=${locked}
-        onChange=${e => onSet(team, 'style', e.currentTarget.value)}
-      >
-        ${Object.entries(STYLES).map(([k, s]) => html`<option value=${k}>${s.label}</option>`)}
-      </select>
-      <span class="tactics__hint field__hint">${STYLES[tactics.style]?.description}</span>
-    </label>
-    ${['tempo', 'width', 'press'].map(
-      key =>
-        html`<div class="tactics__field field" key=${key}>
-          <span class="tactics__label field__label"
-            >${TACTICS[key].label}
-            <span class="tactics__level">${TACTICS[key].levels[tactics[key] - 1]}</span></span
-          >
-          <${Segmented}
-            label=${`${name} ${TACTICS[key].label}`}
-            options=${LEVELS.map(o => ({ ...o, disabled: locked }))}
-            value=${String(tactics[key])}
-            onChange=${v => onSet(team, key, Number(v))}
-            size="sm"
-            block
-          />
-        </div>`,
-    )}
   </div>`;
 }
 

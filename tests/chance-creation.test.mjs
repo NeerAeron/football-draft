@@ -135,6 +135,8 @@ test('keeper rating matters: keeperRange widens the shot-stopping spread', () =>
   const m = new Match(3, 300),
     g = m.players[11];
   g.tags = [];
+  // The pivot is a keeper whose effective rating is 80 (qualityImpact stretches ratings).
+  m.tuning.gameplay.qualityImpact = 1;
   const quality = (gk, range) => {
     m.tuning.gameplay.keeperRange = range;
     g.attrs.goalkeeping = gk;
