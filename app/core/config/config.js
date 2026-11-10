@@ -145,7 +145,7 @@ export const DEFAULT_CONFIG = {
     },
   },
   gameplay: {
-    qualityImpact: 1,
+    qualityImpact: 1.25,
     controlQuality: 0.55,
     passingQuality: 0.65,
     defensiveQuality: 0.55,
