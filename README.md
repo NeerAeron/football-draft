@@ -19,7 +19,9 @@ Everything you do is saved in your own browser.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics. Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
    minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
-   are the same match: one seed, one result, however you watch it.
+   are the same match: one seed, one result, however you watch it. The action camera follows the
+   ball (the camera button or `C` switches to the whole pitch), and on **Auto** mentality your
+   team reads the game itself: it pushes when behind and holds a late lead.
 
 ### Modes
 
