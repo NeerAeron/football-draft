@@ -131,6 +131,17 @@ list linked pairs (indexes into the XI) for drawing lines — `kind` is the stro
 Measured typical drafted XI: chem ≈ 0.6 (Nations), 0.4 (Leagues), 0.35 (Clubs); a link-chasing
 drafter gains ≈ +0.15 chem for −0.1 OVR, i.e. Links are a tiebreaker, not a strategy trap.
 
+### Captain (team-boost tag)
+
+Some players carry the **Captain** tag (catalog `captain: true`, 317 of 15,378). The source has
+no captaincy, so the compiler derives it from real fields: international reputation 3+ and age
+28+ (`scripts/compile-players.mjs`). An XI with a captain adds `CONFIG.draft.links.captain`
+(1 attribute point) to every player's `chem`, on top of Links; the highest-rated captain wears
+the armband and two captains do not stack. `teamLinks()` returns `captain` (slot) and
+`captainBoost`; the UI marks Captain-tagged players with a "C" (rows, cards) and the armband
+on the pitch (`captainSlot()` in `ui/lib/player-view.js`, same rule). Opponent XIs get it the
+same way. The engine adds `chem` to every skill (capped at 4).
+
 ## Match setup
 
 ```js

@@ -16,6 +16,7 @@
 //   stats?: [{ key: 'PAC', label: 'Pace', value: 89 }, …],  // six summary stats, FC order
 //   badges?: [{ id: 'finisher', label: 'Clinical Finish' }],
 //   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
+//   captain?: true,              // Captain tag (an armband mark; boosts his XI)
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
 import { BADGES } from '../../core/players/traits.js';
@@ -73,6 +74,19 @@ export function keyStatsFirst(stats = [], position) {
 }
 
 /**
+ * The slot of the XI's captain: of the Captain-tagged players the highest source rating, the
+ * first slot on a tie — the same rule as core/draft/links.js, which gives the team its boost.
+ */
+export function captainSlot(players) {
+  let best = -1;
+  players.forEach((p, i) => {
+    if (p?.captain && (best < 0 || (p.sourceOverall ?? 0) > (players[best].sourceOverall ?? 0)))
+      best = i;
+  });
+  return best < 0 ? null : best;
+}
+
+/**
  * Build a PlayerView from a catalog player record.
  *   context.team    catalog team { name, primary, secondary }
  *   context.league  catalog league { name, logo, tier }
@@ -96,6 +110,8 @@ export function playerView(p, { team, league, nation } = {}) {
     league: league ? { name: league.name, logo: league.logo, tier: league.tier } : undefined,
     stats: summaryStats(p.attrs, position),
     attrs: p.attrs, // every attribute (the draft's "All attributes" panel)
+    captain: !!p.captain, // Captain tag: a boost for his whole XI (draft/links.js)
+    sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };
 }

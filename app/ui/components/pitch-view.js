@@ -29,8 +29,9 @@ import { useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../lib/html.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { resolveTier } from '../lib/tiers.js';
-import { surname } from '../lib/player-view.js';
+import { surname, captainSlot } from '../lib/player-view.js';
 import { Flag } from './flag.js';
+import { CaptainMark } from './captain-mark.js';
 import { Crest } from './crest.js';
 import { FitTag, fitText } from './fit-tag.js';
 
@@ -104,7 +105,7 @@ function PitchMarkings() {
   </svg>`;
 }
 
-function SlotToken({ player, hideRatings }) {
+function SlotToken({ player, hideRatings, captain }) {
   if (!player) return html`<span class="pitch-slot__token pitch-slot__token--empty"></span>`;
   const t = resolveTier(player.tier, player.ovr);
   const face = player.nation
@@ -120,6 +121,7 @@ function SlotToken({ player, hideRatings }) {
   >
     <span class="pitch-slot__face">${face}</span>
     ${!hideRatings && html`<span class="pitch-slot__ovr num">${player.ovr}</span>`}
+    ${captain && html`<${CaptainMark} class="pitch-slot__captain" />`}
   </span>`;
 }
 
@@ -147,6 +149,7 @@ export function PitchView({
   const [aw, ah] = String(aspect).split('/').map(Number);
   const squat = aw > 0 && ah > 0 && aw / ah > 0.82;
   const slots = useMemo(() => layoutSlots(source, squat ? [86, 11] : TOP_BOTTOM), [source, squat]);
+  const captainAt = captainSlot(players);
   const refs = useRef([]);
   const interactive = typeof onSelect === 'function';
   const usable = i => highlights[i]?.state !== 'blocked';
@@ -244,7 +247,11 @@ export function PitchView({
             /></span>`
           }
           <span class="pitch-slot__ring">
-            <${SlotToken} player=${player} hideRatings=${hideRatings} />
+            <${SlotToken}
+              player=${player}
+              hideRatings=${hideRatings}
+              captain=${slot.index === captainAt}
+            />
             ${!player && html`<span class="pitch-slot__role">${slot.role}</span>`}
           </span>
           ${

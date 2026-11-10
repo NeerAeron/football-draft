@@ -325,5 +325,9 @@ export function pickPreview(session, side, profileId, slot) {
   const mates = links.pairs
     .filter(p => p.a === slot || p.b === slot)
     .map(p => ({ name: next[p.a === slot ? p.b : p.a].name, kind: p.kind }));
-  return { rating: Math.round((sum / n) * 10) / 10, links: links.score, mates };
+  // Captain: the boost his XI gets when this pick makes him (or keeps someone else) captain.
+  const before = teamLinks(lineup, session.rules.links);
+  const captain =
+    links.captain === slot && before.captain === null ? { boost: links.captainBoost } : null;
+  return { rating: Math.round((sum / n) * 10) / 10, links: links.score, mates, captain };
 }

@@ -1236,3 +1236,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.pick-effects__captain {
+  align-items: center;
+}

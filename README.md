@@ -16,7 +16,9 @@ Everything you do is saved in your own browser.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
-4. **Links.** Players sharing a club, nation or league link up and get a small boost.
+4. **Links and the Captain.** Players sharing a club, nation or league link up and get a small
+   boost. A **Captain** (marked **C**: experienced players with a big international reputation)
+   lifts every player in his XI.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
    Cup Run the first match is played in the formation you drafted in). Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three

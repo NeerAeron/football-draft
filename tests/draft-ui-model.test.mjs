@@ -240,3 +240,13 @@ test('difficulty levels explain opponents and re-rolls', () => {
   assert.equal(levels[4].rerolls, 0);
   assert.ok(levels[0].rerolls >= levels[2].rerolls);
 });
+
+test('the armband on the pitch goes to the same captain the links boost picks', async () => {
+  const { captainSlot } = await import('../app/ui/lib/player-view.js');
+  const { teamLinks } = await import('../app/core/draft/links.js');
+  const p = (rating, captain) => ({ sourceOverall: rating, captain, source: {} });
+  const xi = [p(80, false), null, p(84, true), p(86, true), p(86, true)];
+  assert.equal(captainSlot(xi), 3);
+  assert.equal(teamLinks(xi).captain, 3);
+  assert.equal(captainSlot([p(90, false)]), null);
+});

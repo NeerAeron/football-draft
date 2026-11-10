@@ -83,6 +83,8 @@ export const DEFAULT_CONFIG = {
         level3: 8,
       },
       maxChem: 2,
+      // A Captain in the XI: attribute points added to every player (draft/links.js).
+      captain: 1,
     },
   },
   playerTiers: {
@@ -785,6 +787,7 @@ const DRAFT_FIELDS = {
   'draft.ladder.': [null, -15, 15, 0.5],
   'draft.links.': [null, 1, 11, 1],
   'draft.links.maxChem': ['Maximum link boost (attribute points)', 0, 4, 0.25],
+  'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
 };
 const LEVEL_LABELS = {
   amateur: 'Amateur',

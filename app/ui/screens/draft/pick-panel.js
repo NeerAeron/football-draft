@@ -4,10 +4,20 @@
 // the left lights up instead).
 import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
-import { PlayerCard, FitTag, Flag, Button, IconButton, Sheet } from '../../components/index.js';
+import {
+  PlayerCard,
+  FitTag,
+  Flag,
+  Button,
+  IconButton,
+  Sheet,
+  CaptainMark,
+} from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
 import { AttributeDetails } from './attributes.js';
 import { fmt1, signed1 } from '../../lib/format.js';
+
+const fmtBoost = n => (Number.isInteger(n) ? String(n) : fmt1(n));
 
 function Effects({ team, preview, hideRatings }) {
   if (!preview) return null;
@@ -26,6 +36,14 @@ function Effects({ team, preview, hideRatings }) {
             >${signed1(delta)}</span
           >`
         }
+      </li>`
+    }
+    ${
+      preview.captain &&
+      html`<li class="pick-effects__item pick-effects__captain" data-testid="captain-effect">
+        <${CaptainMark} />
+        <span class="pick-effects__label">Captain</span>
+        <span class="delta is-up">+${fmtBoost(preview.captain.boost)} every player</span>
       </li>`
     }
     <li class="pick-effects__item">

@@ -19,6 +19,7 @@
 import { html, cx } from '../lib/html.js';
 import { resolveTier } from '../lib/tiers.js';
 import { keyStatsFirst } from '../lib/player-view.js';
+import { CaptainMark } from './captain-mark.js';
 import { Flag } from './flag.js';
 import { FitTag, fitText } from './fit-tag.js';
 
@@ -52,7 +53,9 @@ export function PlayerRow({
     ${rank != null && html`<span class="prow__rank num">${rank}</span>`}
     <${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative />
     <span class="prow__who">
-      <span class="prow__name">${p.name}</span>
+      <span class="prow__name"
+        >${p.name}${p.captain && html` <${CaptainMark} class="prow__captain" />`}</span
+      >
       ${sub && html`<span class="prow__meta">${sub}</span>`}
     </span>
     <span class="prow__pos">${p.position}</span>

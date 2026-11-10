@@ -120,7 +120,7 @@ club-less national-team players have `source.club === null` and appear only in n
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
   `DIFFICULTIES`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
-  `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem),
+  `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem, the Captain boost),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group + four

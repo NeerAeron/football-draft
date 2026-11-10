@@ -347,3 +347,10 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
 .pitch-slot__face .flag__initials {
   font-size: calc(var(--token) * 0.34);
 }
+/* The captain's armband sits on the token's shoulder. */
+.pitch-slot__captain {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  z-index: 1;
+}
