@@ -150,6 +150,11 @@ club-less national-team players have `source.club === null` and appear only in n
   only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
   `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
   (`registerOffline`: service worker + one-time warm-up of the installed app).
+  The match stage (`ui/screens/match/renderer/`): the pitch is a DOM layer (`pitch.js`) under a
+  transparent token canvas (`draw.js`), framed by `camera.js` (action camera: follows the ball,
+  eases out for long balls, shots and set pieces; the ball never leaves the frame) — details in
+  `docs/ui-match.md`. `draw()` runs every frame: no objects, arrays, closures or `measureText`
+  there.
   Run auto-sims (`ui/screens/run/auto-sim.js`) play every remaining match with the engine in a
   module Worker (`auto-sim-worker.js`), falling back to main-thread slices; the Daily's perfect
   XI is computed in `ui/screens/daily/perfect-xi-worker.js` the same way. A new module worker
@@ -168,6 +173,7 @@ club-less national-team players have `source.club === null` and appear only in n
 | `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`) |
 | `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits / last view |
 | `football-draft-match` | `match-store.js` | current match request + result |
+| `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |
 | `football-draft-daily` | `run-store.js` | daily streak, results, attempt in progress |
 | `football-draft-records` | `ui/lib/records.js` | trophy cabinet: finished runs, titles and best round per difficulty |

@@ -35,6 +35,7 @@ const KEY_LABELS = {
   'football-draft-prematch': 'Pre-match choices',
   'football-draft-match-view': 'Pre-match choices',
   'football-draft-match': 'Current match',
+  'football-draft-match-camera': 'Match camera',
   'football-draft-run': 'Saved run',
   'football-draft-run-state': 'Saved run',
   'football-draft-daily': 'Daily streak and results',
