@@ -71,8 +71,9 @@ export class ShootingMethods {
       : ((this.profile.spread *
           this.tuning.gameplay.shotScatter *
           (0.7 + (1 - skill) * 7.5) *
-          (box ? 0.65 + d / 30 : 1.45 + d / 23) *
-          (1 + pressure * 0.5) *
+          (box ? 0.65 + d / 30 : 1.1 + d / 26) *
+          // A marked striker still gets his shot away; pressure costs some accuracy.
+          (1 + pressure * 0.25) *
           balance) /
           foot.quality) *
         (header ? 1.5 : 1) *

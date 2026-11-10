@@ -203,6 +203,16 @@ function profileIdParts(players) {
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function decodeCatalog(file) {
+  const steps = decodeCatalogSteps(file);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/**
+ * The same decode in steps (500 players per step) so a browser can spread it over frames:
+ * call next() until done; the last result's value is the catalog.
+ */
+export function* decodeCatalogSteps(file) {
   if (file?.format !== CATALOG_FORMAT || file.version !== CATALOG_VERSION)
     throw Error('Unsupported catalog format');
   const c = file.players,
@@ -252,6 +262,7 @@ export function decodeCatalog(file) {
       },
       inference: { badges: evidence },
     };
+    if (i % 500 === 499) yield;
   }
   // Club lineups refer to the club's players in catalog order.
   const members = teams.map(() => []);

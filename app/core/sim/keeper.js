@@ -62,9 +62,9 @@ export class KeeperMethods {
         ? 0
         : clamp((time - 0.15) / 0.3, 0, 1) * (b.shotType === 'Header' ? 0.4 : 1);
     const quality = this.keeperQuality(g),
-      sure = quality - 0.03 * (1 - set) + Math.max(0, 0.985 - quality) * 0.85 * set;
+      sure = quality - 0.03 * (1 - set) + Math.max(0, 0.975 - quality) * 0.8 * set;
     const prob = clamp(
-      sure * (1 - (0.6 * stretch * stretch + 0.22 * power * stretch) * (1.6 - 1.35 * set)) +
+      sure * (1 - (0.6 * stretch * stretch + 0.22 * power * stretch) * (1.6 - 0.9 * set)) +
         // The format's save adjustment weighs most on reflex saves: a short match needs its
         // box chances to count, not soft goals from distance.
         this.profile.saveBoost * (1 - 0.6 * set) +

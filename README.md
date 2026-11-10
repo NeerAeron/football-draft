@@ -17,8 +17,9 @@ Everything you do is saved in your own browser.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
 4. **Links.** Players sharing a club, nation or league link up and get a small boost.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics. Watch
-   **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (with
-   live mentality and tactics), or go straight to an **Instant** result.
+   **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
+   minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
+   are the same match: one seed, one result, however you watch it.
 
 ### Modes
 
@@ -84,7 +85,7 @@ Node 22 or newer. Run everything from the repository root.
 | `npm test` | every `node:test` suite in `tests/` |
 | `node scripts/dev/test.mjs draft session` | only test files whose path contains a word |
 | `node scripts/dev/test.mjs --grep "offside"` | only tests whose name matches |
-| `npm run test:browser` | Playwright smoke run of every UI flow; fails on console or page errors |
+| `npm run test:browser` | Playwright smoke run of every UI flow, three at a time; fails on console or page errors |
 | `npm run shots -- --only draft --desktop` | screenshots of the flows into `.shots/` |
 | `npm run sim:fingerprint` | deterministic results and hashes of 12 full matches, plus timings |
 | `npm run format` / `npm run lint` | Prettier write / ESLint (zero warnings allowed) |

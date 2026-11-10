@@ -174,7 +174,7 @@ export const DEFAULT_CONFIG = {
     markingDistance: 1,
     pressDistance: 1,
     restartSetup: 1,
-    markingLapses: 1,
+    markingLapses: 0,
     deliveryDeflections: 1,
     runsInBehind: 1,
     crossWillingness: 1.5,

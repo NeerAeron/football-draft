@@ -41,6 +41,11 @@ export const DETECTORS = {
   'crowd-carrier': 'seconds with a team-mate within 1.5 m of the carrier outside the boxes',
   statue: 'outfield player standing still 8 s+ in open play with the ball within 35 m',
   'free-in-box': 'seconds an attacker has the ball in the box with no defender within 5 m',
+  'open-in-box':
+    'shot from the danger zone (14 m, central) by a player nobody is within 3.5 m of, against a set defence (6+ back)',
+  'open-on-break': 'the same on a break (fewer than 6 defenders back) — for scale, not a blunder',
+  'unmarked-receiver':
+    'pass received in the danger zone with nobody within 3.5 m, against a set defence',
   'no-shot': 'carrier 1.5 s+ within 11 m of goal, in front of it, unpressed, without shooting',
   'hopeless-shot': 'shot from 28 m+ with xG under 0.03',
   'soft-goal': 'goal from a shot with xG under 0.04',
@@ -124,6 +129,24 @@ function analyse(m, spec) {
         add('keeper-giveaway', { ...info, by: interceptor.name });
       else if (plain && pass.pressure > 4) add('giveaway', { ...info, by: interceptor.name });
     } else if (outcome === 'out' && plain && !pass.restart) add('pass-out', info);
+    // Received in the danger zone with nobody near him, against a set defence.
+    if (outcome === 'complete' && by != null && by !== pass.kicker) {
+      const r = m.players[by],
+        rx = relX(r.x, r.team);
+      if (rx > W - 14 && Math.abs(r.y - 34) <= 11 && hyp(W - rx, r.y - 34) <= 14) {
+        const defenders = opponents(r).filter(q => q.role !== 'GK'),
+          nearest = Math.min(...defenders.map(q => hyp(q.x - r.x, q.y - r.y))),
+          back = defenders.filter(q => relX(q.x, q.team) < 30).length;
+        if (nearest > 3.5 && back >= 6)
+          add('unmarked-receiver', {
+            player: r.name,
+            from: pass.t0,
+            nearest: +nearest.toFixed(1),
+            back,
+            delivery: pass.delivery,
+          });
+      }
+    }
     if (outcome === 'complete' && pass.length < 12) {
       exchange.push({ a: pass.kicker, b: by, t: m.elapsed });
       exchange = exchange.filter(e => m.elapsed - e.t < 12).slice(-6);
@@ -332,6 +355,27 @@ function analyse(m, spec) {
     const fresh = m.events.length - seenEvents;
     for (let i = fresh - 1; i >= 0; i--) {
       const e = m.events[i];
+      if (
+        e.type === 'shot' &&
+        !e.penalty &&
+        !e.setPiece &&
+        e.distance <= 14 &&
+        Math.abs(m.players[e.playerId].y - 34) <= 11
+      ) {
+        const shooter = m.players[e.playerId],
+          defenders = opponents(shooter).filter(q => q.role !== 'GK'),
+          nearest = Math.min(...defenders.map(q => hyp(q.x - shooter.x, q.y - shooter.y))),
+          // Defenders who are back: within 30 m of their own goal line.
+          back = defenders.filter(q => relX(q.x, q.team) < 30).length;
+        if (nearest > 3.5)
+          add(back >= 6 ? 'open-in-box' : 'open-on-break', {
+            player: shooter.name,
+            nearest: +nearest.toFixed(1),
+            back,
+            xg: +e.xg.toFixed(2),
+            situation: e.situation,
+          });
+      }
       if (e.type === 'shot' && !e.penalty && e.distance >= 28 && e.xg < 0.03)
         add('hopeless-shot', {
           player: name(e.playerId),
