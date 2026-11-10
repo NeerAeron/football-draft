@@ -14,6 +14,7 @@ import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/co
 import { seedNumber } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 import { RUN_KEY, DAILY_KEY, STAGES } from './saved.js';
+import { recordRun } from './records.js';
 import { teamCode } from './match-store.js';
 import { sideColors, nationTrigram } from './kits.js';
 
@@ -168,7 +169,10 @@ export function saveRun(run, meta, extra = {}) {
     log: extra.log !== undefined ? extra.log : Array.isArray(previous?.log) ? previous.log : [],
   };
   writeJSON(RUN_STATE_KEY, state);
-  writeJSON(RUN_KEY, runSummary(run.snapshot(), meta));
+  const summary = runSummary(run.snapshot(), meta);
+  writeJSON(RUN_KEY, summary);
+  // A finished run goes into the trophy cabinet (once: lib/records.js remembers run ids).
+  if (summary.complete) recordRun(summary, meta?.id);
   return state;
 }
 /** Update only the pending fixture / log of the saved run. */

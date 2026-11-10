@@ -12,6 +12,7 @@
 //      { format: 1, context: { kind, type, difficulty, … }, session: { type: 'draft-session',
 //        state: { picks: [[…11 ids or null], …] } }, savedAt }
 //   The full run state lives in 'football-draft-run-state' (lib/run-store.js).
+//   Lifetime records of finished runs live in 'football-draft-records' (lib/records.js).
 import { readJSON } from './storage.js';
 
 export const RUN_KEY = 'football-draft-run';

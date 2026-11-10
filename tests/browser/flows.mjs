@@ -778,6 +778,15 @@ export const flows = [
         await page.reload();
         await visible(page, '[data-testid="run-end"]');
       });
+      await step('the run is in the trophy cabinet on Home', async () => {
+        await page.goto(base);
+        await visible(page, '.home-records');
+        const foot = await page.textContent('.home-records__foot');
+        if (!/^1 run/.test(foot.trim())) throw new Error(`cabinet reads "${foot}"`);
+        const status = await page.textContent('.home-records__slot[data-level="pro"]');
+        if (/Not played/.test(status)) throw new Error('the Pro slot ignores the run');
+      });
+      await shot('home-cabinet', { fullPage: true });
     },
   },
   {

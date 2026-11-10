@@ -3,7 +3,7 @@
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
-import { createDraftSession } from '../app/core/draft/session.js';
+import { createDraftSession, DIFFICULTIES, DIFFICULTY_LABELS } from '../app/core/draft/session.js';
 import { decodeChallenge } from '../app/core/competition/share.js';
 
 // A Map-backed localStorage for the browser-side helpers.
@@ -20,6 +20,7 @@ globalThis.localStorage = {
 
 const runStore = await import('../app/ui/lib/run-store.js');
 const saved = await import('../app/ui/lib/saved.js');
+const records = await import('../app/ui/lib/records.js');
 const share = await import('../app/ui/lib/share-image.js');
 const { runSide } = await import('../app/ui/screens/run/auto-sim.js');
 
@@ -92,9 +93,106 @@ test('a run from a draft persists, restores and feeds the Home summary', () => {
   assert.equal(done.stage, runStore.stageIdOf(back.run.snapshot()));
   assert.equal(runStore.readRunState().pending, null);
 
+  // The finished run is in the trophy cabinet, once, however often it is saved again.
+  runStore.saveRun(back.run, back.meta, { pending: null });
+  const cabinet = records.readRecords();
+  assert.equal(cabinet.runs, 1);
+  assert.equal(cabinet.titles, done.status === 'champion' ? 1 : 0);
+  assert.equal(cabinet.levels.find(l => l.id === 'pro').runs, 1);
+  assert.equal(records.runNews(back.meta.id).level, 'pro');
+
   runStore.clearRun();
   assert.equal(runStore.loadRun(catalog), null);
   assert.equal(saved.readSavedRun(), null);
+  assert.equal(records.readRecords().runs, 1, 'clearing the run keeps the records');
+});
+
+test('trophy cabinet: one cup per difficulty, every run counted once', () => {
+  assert.deepEqual(
+    records.LEVELS.map(l => l.id),
+    DIFFICULTIES,
+  );
+  for (const level of records.LEVELS) assert.equal(level.label, DIFFICULTY_LABELS[level.id]);
+
+  const empty = records.readRecords();
+  assert.equal(empty.runs, 0);
+  assert.equal(empty.won, 0);
+  assert.equal(empty.levels.length, 5);
+  assert.equal(empty.levels[0].bestShort, '');
+
+  const out = (stage, w, l) => ({
+    complete: true,
+    status: 'eliminated',
+    difficulty: 'pro',
+    stage,
+    record: { w, d: 0, l },
+  });
+  const won = (difficulty, w = 6) => ({
+    complete: true,
+    status: 'champion',
+    difficulty,
+    stage: 'F',
+    record: { w, d: 7 - w, l: 0 },
+  });
+  // Unfinished, unknown or id-less runs are not counted.
+  assert.equal(records.recordRun({ ...out('QF', 3, 1), complete: false }, 'a'), null);
+  assert.equal(records.recordRun({ ...out('QF', 3, 1), difficulty: 'godlike' }, 'a'), null);
+  assert.equal(records.recordRun(out('QF', 3, 1), undefined), null);
+  assert.equal(records.readRecords().runs, 0);
+
+  assert.deepEqual(records.recordRun(out('G3', 1, 2), 'a'), [], 'a first run is no "best"');
+  assert.equal(records.recordRun(out('G3', 1, 2), 'a'), null, 'counted once');
+  assert.deepEqual(records.recordRun(out('SF', 4, 1), 'b'), ['best']);
+  assert.deepEqual(records.recordRun(out('QF', 3, 1), 'c'), []);
+  let pro = records.readRecords().levels.find(l => l.id === 'pro');
+  assert.deepEqual(
+    [pro.runs, pro.titles, pro.best, pro.bestShort, pro.bestLabel],
+    [3, 0, 5, 'SF', 'Semi-final'],
+  );
+  assert.deepEqual(records.runNews('b'), { level: null, news: [] }, 'only the last run has news');
+
+  assert.deepEqual(records.recordRun(won('pro'), 'd'), ['title']);
+  assert.deepEqual(records.recordRun(won('pro', 7), 'e'), ['perfect']);
+  assert.deepEqual(records.recordRun(won('pro', 7), 'f'), []);
+  assert.deepEqual(records.recordRun(out('F', 6, 1), 'g'), [], 'a final is no best after a title');
+  pro = records.readRecords().levels.find(l => l.id === 'pro');
+  assert.deepEqual([pro.runs, pro.titles, pro.perfect, pro.bestShort], [7, 3, 2, 'Won']);
+
+  for (const [i, level] of ['amateur', 'semipro', 'worldclass'].entries())
+    assert.deepEqual(records.recordRun(won(level), `h${i}`), ['title']);
+  assert.deepEqual(records.recordRun(won('legendary', 7), 'last'), ['title', 'perfect', 'cabinet']);
+  const full = records.readRecords();
+  assert.deepEqual([full.runs, full.titles, full.perfect, full.won], [11, 7, 3, 5]);
+  assert.deepEqual(records.runNews('last'), {
+    level: 'legendary',
+    news: ['title', 'perfect', 'cabinet'],
+  });
+
+  // Broken or foreign data reads as an empty cabinet; odd numbers are repaired.
+  store.set(records.RECORDS_KEY, '{nope');
+  assert.equal(records.readRecords().runs, 0);
+  store.set(
+    records.RECORDS_KEY,
+    JSON.stringify({
+      format: 1,
+      levels: { pro: { runs: 'x', titles: 2, perfect: 9, best: 99 }, amateur: { best: 42 } },
+      seen: 'no',
+      last: { id: 4 },
+    }),
+  );
+  const fixed = records.readRecords();
+  assert.deepEqual(
+    fixed.levels.map(l => [l.runs, l.titles, l.perfect, l.best]),
+    [
+      [0, 0, 0, 6],
+      [0, 0, 0, 0],
+      [2, 2, 2, 7],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ],
+  );
+  assert.equal(fixed.last, null);
+  assert.deepEqual(records.recordRun(out('QF', 3, 1), 'z'), []);
 });
 
 test('a corrupt or foreign saved run is ignored', () => {

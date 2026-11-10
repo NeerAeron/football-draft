@@ -144,8 +144,8 @@ club-less national-team players have `source.club === null` and appear only in n
 - **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`), `router.js`
   (hash router), `prefs.js`, `audio.js`, `motion.js`, `draft-store.js` (draft hand-off),
   `prematch-store.js` (pre-match edits → kick-off), `match-store.js` (match requests/results),
-  `run-store.js` (run/daily persistence, links), `saved.js` (tolerant readers for Home, incl.
-  `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
+  `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: `recordRun`,
+  `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
   `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
   only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
   `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
@@ -170,6 +170,7 @@ club-less national-team players have `source.club === null` and appear only in n
 | `football-draft-match` | `match-store.js` | current match request + result |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |
 | `football-draft-daily` | `run-store.js` | daily streak, results, attempt in progress |
+| `football-draft-records` | `ui/lib/records.js` | trophy cabinet: finished runs, titles and best round per difficulty |
 | `football-draft-exhibition` | exhibition screen | last two teams |
 | `football-draft-dev` | tests only | `{ fastSim: true }`: auto-sims use the fast model |
 

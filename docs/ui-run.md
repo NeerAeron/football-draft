@@ -37,6 +37,11 @@ links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/r
    their tie starts.
 5. **End.** Champion (trophy + confetti + achievements) or elimination; grade + verdict, record,
    Player of the Tournament, Held you back, XI, share text + image, Challenge a friend, Play again.
+   `saveRun()` puts every finished run into the **trophy cabinet** once (`lib/records.js`
+   `recordRun(summary, meta.id)`): Home shows one cup per difficulty (won, perfect, or the
+   furthest round so far), each a link to a run on that difficulty, and the end screen
+   announces what was new (`runNews(meta.id)`: first title on a difficulty, first perfect
+   seven, a personal best, the cabinet completed).
 
 Auto-sims (`autoSimulate`) run the engine in a module Worker (`auto-sim-worker.js`, which runs
 the same `simulateHere()` loop and streams the ticker updates); without Worker support or if the
@@ -62,10 +67,11 @@ perfect, streak, share, replays of each match via `requestMatch(…, view 'key')
 | `football-draft-run-state` | `{ format: 1, run: CupRun.serialize(), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation, seed, hideRatings, uniqueNations, defaultRules, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
 | `football-draft-run` | Home summary: `{ mode: 'run', type, stage: 'G1'…'F', record: { w, d, l }, team, status, complete, grade, verdict, stageLabel, difficulty, updatedAt }` |
 | `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, grade, verdict, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
+| `football-draft-records` | `{ format: 1, levels: { [difficulty]: { runs, titles, perfect, best } }, seen: [run ids, last 24], last: { id, level, news: ['title' \| 'perfect' \| 'best' \| 'cabinet'] } }` — `best` is the furthest round (0–6, 7 = champion); World Cup Runs only (the Daily keeps its own streak) |
 | `football-draft-exhibition` | `{ home: key, away: key }` (`nation:…`, `club:…`, `boss:…`, `random:<seed>`) |
 | `football-draft-dev` | `{ fastSim: true }` — dev/test only: auto-sims use the fast rating model |
 
-Readers are tolerant (`lib/saved.js` for Home, `readRunState()` / `readDaily()`): unknown or
+Readers are tolerant (`lib/saved.js` and `lib/records.js` for Home, `readRunState()` / `readDaily()`): unknown or
 broken data reads as "nothing saved".
 
 ## Share text and challenge links
