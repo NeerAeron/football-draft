@@ -38,6 +38,19 @@ function damp(current, target, velocity, time, dt) {
   return target + (change + temp) * exp;
 }
 
+/** One axis of keepInFrame: centre `c`, ball at `p`, `extent` metres visible. */
+function guard(c, p, extent, lean, max) {
+  const soft = extent / 2 - Math.max(5, extent * 0.17),
+    hard = extent / 2 - Math.max(2.5, extent * 0.06),
+    d = p - c;
+  if (d > soft) c += (d - soft) * lean;
+  else if (d < -soft) c += (d + soft) * lean;
+  const e = p - c;
+  if (e > hard) c += Math.min(e - hard, max);
+  else if (e < -hard) c -= Math.min(-e - hard, max);
+  return c;
+}
+
 export class ActionCamera {
   constructor() {
     this.full = { ...WORLD };
@@ -195,21 +208,17 @@ export class ActionCamera {
     return this.place();
   }
 
-  /** The ball never leaves the picture: push the view when it nears an edge. */
+  /**
+   * The ball never leaves the picture. Past a soft margin the view leans after it (easing in,
+   * so a fast pass does not jerk the camera); a hard margin near the edge is absolute.
+   */
   keepInFrame(b, dt) {
     const ex = this.ex0 / this.zoom,
       ey = this.ey0 / this.zoom,
-      mx = Math.max(4, ex * 0.13),
-      my = Math.max(4, ey * 0.13),
+      lean = Math.min(1, dt * 9),
       max = MAX_PUSH * dt;
-    const lowX = b.x - ex / 2 + mx,
-      highX = b.x + ex / 2 - mx;
-    if (this.cx > highX) this.cx -= Math.min(this.cx - highX, max);
-    else if (this.cx < lowX) this.cx += Math.min(lowX - this.cx, max);
-    const lowY = b.y - ey / 2 + my,
-      highY = b.y + ey / 2 - my;
-    if (this.cy > highY) this.cy -= Math.min(this.cy - highY, max);
-    else if (this.cy < lowY) this.cy += Math.min(lowY - this.cy, max);
+    this.cx = guard(this.cx, b.x, ex, lean, max);
+    this.cy = guard(this.cy, b.y, ey, lean, max);
   }
 
   /** Clamp to the pitch surround and write the rectangle. */

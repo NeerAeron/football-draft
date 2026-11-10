@@ -17,7 +17,7 @@ import { markMatchLive, saveMatchResult, FULL_DURATION } from '../../lib/match-s
 import { commentary } from './commentary.js';
 import { summarizeMatch } from './report.js';
 import { forceShootout } from './demo.js';
-import { readJSON, writeJSON } from '../../lib/storage.js';
+import { readCameraPrefs, saveCameraPref, CAMERA_MODES } from './camera-prefs.js';
 import {
   draw,
   makeKits,
@@ -43,6 +43,7 @@ const FLAIR_LIFE = 1.5;
 // as a cut — a short fade and a camera snap — never as tokens sliding across the pitch.
 const JUMP_PLAYERS = 4;
 const JUMP_SPEED = 13; // m/s no player reaches: anything faster is a reposition
+const JUMP_BALL_SPEED = 50; // … and no ball
 const FF_BUDGET_MS = 9;
 const SPEEDS = [1, 2, 4];
 
@@ -56,18 +57,6 @@ export function periodLabel(m) {
   if (m.mode === 'shootout' || m.penaltyEnd != null) return 'PENS';
   if (m.mode === 'halftime') return 'HT';
   return ['1H', '2H', 'ET1', 'ET2'][m.half - 1] || '';
-}
-
-/** Camera choice per view ('football-draft-match-camera'): the action camera or the full pitch. */
-export const CAMERA_KEY = 'football-draft-match-camera';
-const CAMERA_DEFAULTS = { key: 'action', full: 'wide' };
-const CAMERA_MODES = ['action', 'wide'];
-export function readCameraPrefs() {
-  const saved = readJSON(CAMERA_KEY, null);
-  const out = { ...CAMERA_DEFAULTS };
-  for (const view of Object.keys(out))
-    if (CAMERA_MODES.includes(saved?.[view])) out[view] = saved[view];
-  return out;
 }
 
 const viewDuration = (view, request) => (view === 'full' ? request.duration || FULL_DURATION : 300);
@@ -132,7 +121,14 @@ export class MatchController {
       still: false,
     };
     this.scorerId = null;
-    this.jump = { x: new Float32Array(22), y: new Float32Array(22), match: null, elapsed: 0 };
+    this.jump = {
+      x: new Float32Array(22),
+      y: new Float32Array(22),
+      bx: 0,
+      by: 0,
+      match: null,
+      elapsed: 0,
+    };
     this.baseT = {};
     this.layered = false;
     this.frameDt = undefined;
@@ -759,11 +755,7 @@ export class MatchController {
   /** 'action' (follow the ball) or 'wide' (the whole pitch) for the current view; persisted. */
   setCamera(mode) {
     if (!CAMERA_MODES.includes(mode)) return;
-    const view = this.request.view;
-    if (view in this.cameraPrefs) {
-      this.cameraPrefs[view] = mode;
-      writeJSON(CAMERA_KEY, this.cameraPrefs);
-    }
+    this.cameraPrefs = saveCameraPref(this.request.view, mode);
     this.hud.set({ camera: mode });
     this.kick();
     this.requestDraw();
@@ -795,17 +787,23 @@ export class MatchController {
     this.jump.match = null;
   }
 
-  /** Several players moved further than anyone can run: the engine set up a restart. */
+  /**
+   * The engine set up a restart: several players moved further than anyone can run, or the
+   * ball was placed somewhere the zoomed camera is not looking.
+   */
   jumped(m) {
     const j = this.jump,
       players = m.players,
+      b = m.ball,
       same = j.match === m,
       span = m.elapsed - j.elapsed,
-      reach = same && span >= 0 && span < 1 ? JUMP_SPEED * span + 1.5 : -1;
+      tracked = same && span >= 0 && span < 1,
+      reach = JUMP_SPEED * span + 1.5,
+      flight = JUMP_BALL_SPEED * span + 3;
     let count = 0;
     for (let i = 0; i < players.length && i < 22; i++) {
       const p = players[i];
-      if (reach >= 0 && !p.sentOff) {
+      if (tracked && !p.sentOff) {
         const dx = p.x - j.x[i],
           dy = p.y - j.y[i];
         if (dx * dx + dy * dy > reach * reach) count++;
@@ -813,9 +811,19 @@ export class MatchController {
       j.x[i] = p.x;
       j.y[i] = p.y;
     }
+    const bx = b.x - j.bx,
+      by = b.y - j.by,
+      r = this.camera.rect,
+      placed =
+        tracked &&
+        bx * bx + by * by > flight * flight &&
+        this.camera.zoomed &&
+        (b.x < r.x0 + 2 || b.x > r.x1 - 2 || b.y < r.y0 + 2 || b.y > r.y1 - 2);
+    j.bx = b.x;
+    j.by = b.y;
     j.match = m;
     j.elapsed = m.elapsed;
-    return count >= JUMP_PLAYERS;
+    return count >= JUMP_PLAYERS || placed;
   }
 
   /** Process everything up to now without ticker/overlays (cuts, half-time, instant). */
