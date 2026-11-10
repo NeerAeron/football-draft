@@ -26,18 +26,14 @@ import {
   slotFits,
   canSwap,
   MENTALITIES,
-  STYLE_OPTIONS,
-  TACTIC_SLIDERS,
 } from '../../lib/prematch-store.js';
 import {
   Button,
   Card,
-  ChipGroup,
   EmptyState,
   Flag,
   Crest,
   PitchView,
-  Range,
   Segmented,
   Skeleton,
   Icon,
@@ -154,9 +150,8 @@ function Matchup({ data, strengths, children }) {
 
 function Tactics({ side, index }) {
   const t = side.tactics;
-  const style = STYLE_OPTIONS.find(s => s.value === t.style);
   return html`<section class="pm-panel tactics" aria-labelledby=${`tactics-${index}`}>
-    <h2 class="pm-panel__title" id=${`tactics-${index}`}>Tactics</h2>
+    <h2 class="pm-panel__title" id=${`tactics-${index}`}>Mentality</h2>
     <${Segmented}
       label="Mentality"
       options=${MENTALITIES}
@@ -165,31 +160,9 @@ function Tactics({ side, index }) {
       block
       class="tactics__mentality"
     />
-    <div class="tactics__style">
-      <span class="tactics__label">Style</span>
-      <${ChipGroup}
-        label="Playing style"
-        options=${STYLE_OPTIONS}
-        value=${t.style}
-        onChange=${v => v && setSideTactic(index, 'style', v)}
-        size="sm"
-      />
-      ${style && html`<p class="tactics__hint">${style.description}</p>`}
-    </div>
-    <div class="tactics__sliders">
-      ${TACTIC_SLIDERS.map(
-        s =>
-          html`<${Range}
-            key=${s.key}
-            label=${s.label}
-            min=${1}
-            max=${5}
-            value=${t[s.key]}
-            valueText=${s.levels[t[s.key] - 1]}
-            onInput=${v => setSideTactic(index, s.key, v)}
-          />`,
-      )}
-    </div>
+    <p class="tactics__hint">
+      Push: more chances at both ends. Hold: fewer at both ends. Auto reads the score for you.
+    </p>
   </section>`;
 }
 
