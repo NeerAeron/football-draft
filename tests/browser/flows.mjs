@@ -567,11 +567,11 @@ export const flows = [
         await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
         await visible(page, '[data-testid="confirm-pick"]');
       });
-      await step('expand all his attributes', async () => {
+      await step('expand his six stats', async () => {
         const panel = page.locator('[data-testid="player-attributes"]:visible').first();
         await panel.locator('summary').click();
         const bars = await panel.locator('.statbar').count();
-        if (bars < 12) throw new Error(`only ${bars} attributes shown`);
+        if (bars !== 6) throw new Error(`${bars} stats shown, expected the card's six`);
       });
       await shot('attributes');
       await step('close the attributes', () =>
