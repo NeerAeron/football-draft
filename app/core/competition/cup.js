@@ -1,14 +1,27 @@
 // World Cup Run: a group of four (you + three AI teams), three group matches, top two advance
 // (and a third place with enough points: BEST_THIRD, the 2026 format's eight best thirds of
-// twelve groups), then Round of 32, Round of 16, quarter-final, semi-final and final against
-// escalating opponents. The UI
-// plays the user's matches with the engine and reports each result; AI-vs-AI group results
+// twelve groups), then Round of 32, Round of 16, quarter-final, semi-final and the final — or,
+// for the semi-final's loser, the third-place play-off. Eight matches for every run that reaches
+// the semi-finals. A run ends on a place: champions, runners-up, third, fourth, or the round it
+// went out in.
+// Opponents: Pro and World Class draw real nations (or clubs) from the draft ladder with round
+// offsets (CUP_TUNING); Legendary in a Nations draft plays the real field: a whole 48-nation
+// tournament is drawn and simulated from the run's seed (worldCupDraw) and the user meets
+// whoever comes through his part of the bracket.
+// The UI plays the user's matches with the engine and reports each result; AI-vs-AI results
 // come from the seeded rating model (competition/model.js). Pure; serialise/restore for
 // localStorage. API guide: docs/competition-api.md.
 import { CONFIG } from '../config/config.js';
 import { lcg, lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import { catalogIndex, catalogStamp, roleRating, roleFit, naturalRating } from '../draft/pools.js';
+import {
+  catalogIndex,
+  catalogStamp,
+  draftRules,
+  roleRating,
+  roleFit,
+  naturalRating,
+} from '../draft/pools.js';
 import { buildSide, seedValue, mixSeed, DIFFICULTIES } from '../draft/session.js';
 import {
   chooseOpponent,
@@ -29,30 +42,67 @@ export const CUP_ROUNDS = [
   { id: 'sf', label: 'Semi-final', stage: 'sf', knockout: true },
   { id: 'final', label: 'Final', stage: 'final', knockout: true },
 ];
-/** How far the run got: eliminated in a stage, or champion. */
+/** The eighth match of a run that lost its semi-final (in place of the final). */
+export const THIRD_ROUND = {
+  id: 'third',
+  label: 'Third-place play-off',
+  stage: 'third',
+  knockout: true,
+};
+const LAST = CUP_ROUNDS.length - 1,
+  SEMI = LAST - 1,
+  // Index of the play-off opponent (the other semi-final's loser) in a run's `opponents`.
+  THIRD = CUP_ROUNDS.length;
+/** The stage a run is in while it is being played (snapshot.stage of an unfinished run). */
 export const STAGE_LABELS = {
   group: 'Group stage',
   r32: 'Round of 32',
   r16: 'Round of 16',
   qf: 'Quarter-finals',
   sf: 'Semi-finals',
+  third: 'Third-place play-off',
   final: 'Final',
   champion: 'Champions',
 };
-const STAGE_ORDER = ['group', 'r32', 'r16', 'qf', 'sf', 'final', 'champion'];
 /**
- * Opponent strength per round and difficulty: offsets (effective rating) to the level's ladder
- * target, in round order MD1, MD2, MD3, R32, R16, QF, SF, final. The group is drawn from "lower
- * pots" (weaker than the level); the knockouts escalate so the final is a top side for that
- * difficulty. Tuned with tools/calibration/cup-calibration.mjs (docs/competition-api.md).
+ * Where a finished run ended, worst to best (snapshot.place; also snapshot.stage once the run
+ * is over): out in the group / Round of 32 / Round of 16 / quarter-finals, fourth (lost the
+ * third-place play-off), third (won it), 'final' = runners-up, champion.
+ */
+export const PLACES = ['group', 'r32', 'r16', 'qf', 'fourth', 'third', 'final', 'champion'];
+export const PLACE_LABELS = {
+  group: 'Group stage',
+  r32: 'Round of 32',
+  r16: 'Round of 16',
+  qf: 'Quarter-finals',
+  fourth: 'Fourth place',
+  third: 'Third place',
+  final: 'Runners-up',
+  champion: 'Champions',
+};
+/** Medals of the top three places. */
+export const MEDALS = { champion: 'gold', final: 'silver', third: 'bronze' };
+/**
+ * Opponent strength per round for the ladder difficulties: offsets (effective rating) to the
+ * level's ladder target, in round order MD1, MD2, MD3, R32, R16, QF, SF, final, third-place
+ * play-off. The group is drawn from "lower pots" (weaker than the level); the knockouts escalate
+ * so the final is a top side for that difficulty; the play-off opponent is a beaten
+ * semi-finalist. Real teams only (no World XI / All-Stars). Legendary's row is used outside a
+ * Nations draft only: in Nations it plays the real field (worldCupDraw). Tuned with
+ * tools/calibration/cup-calibration.mjs (docs/competition-api.md).
  */
 export const CUP_TUNING = {
-  amateur: [-10.5, -9.5, -9, -9, -8.5, -8, -5, 0.5],
-  semipro: [-11, -9.5, -8, -8, -7.5, -5, -2.5, -0.5],
-  pro: [-12.5, -11, -9.5, -9.5, -9, -6, -3, 2],
-  worldclass: [-12.5, -11, -9.5, -9.5, -9, -5.5, -2.5, 0],
-  legendary: [-13, -11.5, -10, -10, -9.5, -6.5, -3.5, -1],
+  pro: [-12.5, -11, -9.5, -9.5, -9, -6, -3, 2, -3],
+  worldclass: [-13.5, -12, -10.5, -10.5, -10, -6.5, -3.5, -0.5, -3.5],
+  legendary: [-13, -11.5, -10, -10, -9.5, -6.5, -3.5, -1, -3.5],
 };
+/**
+ * The difficulty that plays the real World Cup field in a Nations draft, and the effective
+ * ratings a run meets there on average (group pots 4, 3, 2, then R32, R16, QF, SF, final,
+ * play-off; cup-calibration.mjs runs --only legendary) — projectRun's targets for it.
+ */
+export const FIELD_LEVEL = 'legendary';
+export const FIELD_TYPICAL = [77.2, 79.1, 81.3, 80.3, 83.5, 84.6, 85.6, 86.5, 84.9];
 /**
  * Rating points the fast model adds to the user in his knockout matches (projectRun,
  * simulateNext). In the engine a drafted XI goes through 77.6% of its cup knockout ties where
@@ -62,7 +112,7 @@ export const CUP_TUNING = {
  * 79.7% wins), so they get no edge.
  */
 export const KNOCKOUT_EDGE = 1.5;
-/** The eight round offsets (group ×3, R32, R16, QF, SF, final) of a difficulty. */
+/** The nine round offsets (group ×3, R32, R16, QF, SF, final, play-off) of a difficulty. */
 export function cupOffsets(difficulty = 'pro', tuning = CUP_TUNING) {
   return [...(tuning[difficulty] ?? tuning.pro)];
 }
@@ -81,8 +131,9 @@ export const thirdQualifies = row =>
   (row.points === BEST_THIRD.points - 1 && row.gd >= BEST_THIRD.goalDifference);
 /** Whether a row of the final group table goes through: top two, or a qualifying third. */
 const advances = (row, index) => index < 2 || (index === 2 && thirdQualifies(row));
-// Format 2: eight rounds (Round of 32). A format-1 run (seven rounds) does not restore.
-export const CUP_FORMAT = 2;
+// Format 3: the third-place play-off (nine opponents) and three difficulties. Older runs
+// (format 2: no play-off; format 1: seven rounds) do not restore.
+export const CUP_FORMAT = 3;
 const USER = 'user';
 const round2 = x => Math.round(x * 100) / 100;
 // Group fixtures by matchday: team indexes into [user, A, B, C] (A weakest).
@@ -175,33 +226,6 @@ export function standings(keys, fixtures, lots = keys) {
   });
 }
 
-// ---- grades ---------------------------------------------------------------------------------
-export const GRADES = ['S+', 'S', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F'];
-/**
- * Grade and named verdict of a finished run.
- * champion: 8 wins S+ "Perfect Eight", unbeaten S "Invincibles", else A+ "World Champions";
- * lost final A "Final Heartbreak"; semi-final B+ (6 wins) / B; quarter-final C+ (5 wins) / C;
- * Round of 16 D+; Round of 32 D; group exit F. Penalty exits get their own verdicts.
- */
-export function cupGrade({ stage, record, lostOnPenalties = false }) {
-  const w = record.w;
-  const g = (grade, verdict) => ({ grade, verdict, stage, stageLabel: STAGE_LABELS[stage] });
-  if (stage === 'champion')
-    return w === CUP_ROUNDS.length
-      ? g('S+', 'Perfect Eight')
-      : record.l === 0
-        ? g('S', 'Invincibles')
-        : g('A+', 'World Champions');
-  if (stage === 'final')
-    return g('A', lostOnPenalties ? 'Heartbreak on Penalties' : 'Final Heartbreak');
-  if (stage === 'sf') return w >= 6 ? g('B+', 'Semi-final Heartbreak') : g('B', 'Semi-finalists');
-  if (stage === 'qf')
-    return w >= 5 ? g('C+', 'Quarter-final Heartbreak') : g('C', 'Quarter-finalists');
-  if (stage === 'r16') return g('D+', lostOnPenalties ? 'Out on Penalties' : 'Round of 16 Exit');
-  if (stage === 'r32') return g('D', lostOnPenalties ? 'Out on Penalties' : 'Round of 32 Exit');
-  return g('F', record.w + record.d === 0 ? 'Early Flight Home' : 'Group Stage Exit');
-}
-
 // ---- run --------------------------------------------------------------------------------------
 const sideRef = s => ({
   key: s.key,
@@ -218,7 +242,10 @@ const sideRef = s => ({
   effective: s.effective,
   nominal: s.nominal ?? s.effective,
   target: s.target ?? null,
+  pot: s.pot ?? null,
 });
+/** A recorded match the user got through: won, or won on penalties. */
+const wonMatch = m => m.outcome === 'W' || m.shootout?.winner === 'user';
 
 export class CupRun {
   #catalog;
@@ -249,9 +276,20 @@ export class CupRun {
       kind: 'draft',
     });
   }
-  /** Engine-ready side of the opponent in a round (0–7). */
+  /** The semi-final was lost: the eighth match is the third-place play-off. */
+  #playoff() {
+    const semi = this.matches[SEMI];
+    return !!semi && !wonMatch(semi);
+  }
+  #info(round) {
+    return round === LAST && this.#playoff() ? THIRD_ROUND : CUP_ROUNDS[round];
+  }
+  #opponent(round) {
+    return this.opponents[round === LAST && this.#playoff() ? THIRD : round];
+  }
+  /** Engine-ready side of the opponent in a round (0–7; the play-off's once the semi is lost). */
   opponentSide(round) {
-    const o = this.opponents[round];
+    const o = this.#opponent(round);
     return {
       ...buildSide({ ...o, players: this.#players(o.players), links: this.rules.links }),
       key: o.key,
@@ -266,7 +304,7 @@ export class CupRun {
   nextMatch() {
     if (this.complete) return null;
     const round = this.matches.length,
-      info = CUP_ROUNDS[round];
+      info = this.#info(round);
     return {
       round,
       ...info,
@@ -276,10 +314,12 @@ export class CupRun {
       away: this.opponentSide(round),
     };
   }
-  // Group opponents carry a pot label by strength: strongest pot 2 … weakest pot 4.
+  // Group opponents carry a pot label: their real pot in the field (Legendary), otherwise by
+  // strength, strongest pot 2 … weakest pot 4.
   #opponentSummary(round) {
-    const { players, ...o } = this.opponents[round];
+    const { players, ...o } = this.#opponent(round);
     if (round > 2) return { ...o, pot: null };
+    if (o.pot) return o;
     const stronger = this.opponents.slice(0, 3).filter(x => x.effective > o.effective).length;
     return { ...o, pot: 2 + stronger };
   }
@@ -298,7 +338,7 @@ export class CupRun {
     for (const v of [goalsFor, goalsAgainst])
       if (!Number.isInteger(v) || v < 0) throw Error('Goals must be whole numbers');
     const round = this.matches.length,
-      info = CUP_ROUNDS[round],
+      info = this.#info(round),
       draw = goalsFor === goalsAgainst;
     if (info.knockout && draw && !['user', 'opponent'].includes(shootout?.winner))
       throw Error('A knockout draw needs a shootout winner');
@@ -309,7 +349,7 @@ export class CupRun {
     this.matches.push({
       round,
       id: info.id,
-      opponent: this.opponents[round].key,
+      opponent: this.#opponent(round).key,
       goals: [goalsFor, goalsAgainst],
       outcome,
       shootout: pens,
@@ -336,8 +376,10 @@ export class CupRun {
           position = table.findIndex(r => r.key === USER);
         if (!advances(table[position], position)) this.status = 'eliminated';
       }
-    } else if (!won) this.status = 'eliminated';
-    else if (info.id === 'final') this.status = 'champion';
+    } else if (info.id === 'final') this.status = won ? 'champion' : 'eliminated';
+    // The play-off ends the run either way (third or fourth); a lost semi-final leads to it.
+    else if (info.id === 'third') this.status = 'eliminated';
+    else if (!won && info.id !== 'sf') this.status = 'eliminated';
     return this.snapshot();
   }
   /** Play the next match with the fast rating model (auto-sim / tests). */
@@ -367,25 +409,24 @@ export class CupRun {
     }
     return r;
   }
-  /** Stage reached: where the run ended ('group' … 'final') or 'champion'; current if playing. */
-  stage() {
+  /**
+   * Where a finished run ended (PLACES): 'champion', 'final' (runners-up), 'third' / 'fourth'
+   * (the play-off won / lost), or the round it went out in; null while it is being played.
+   */
+  place() {
+    if (!this.complete) return null;
     if (this.status === 'champion') return 'champion';
     const last = this.matches.at(-1);
-    if (this.status === 'eliminated') return CUP_ROUNDS[last.round].stage;
-    return CUP_ROUNDS[this.matches.length].stage;
+    if (last.id === 'third') return wonMatch(last) ? 'third' : 'fourth';
+    return CUP_ROUNDS[last.round].stage;
+  }
+  /** The stage being played ('group' … 'sf', 'third', 'final'); the place once it is over. */
+  stage() {
+    return this.place() ?? this.#info(this.matches.length).stage;
   }
   table() {
     const [, a, b, c] = this.group.teams;
     return standings([USER, a, b, c], this.group.fixtures, this.group.lots);
-  }
-  grade() {
-    if (!this.complete) return null;
-    const last = this.matches.at(-1);
-    return cupGrade({
-      stage: this.stage(),
-      record: this.record(),
-      lostOnPenalties: last.shootout?.winner === 'opponent',
-    });
   }
   // ---- player awards --------------------------------------------------------------------
   #playerStats() {
@@ -472,7 +513,8 @@ export class CupRun {
   // ---- views ------------------------------------------------------------------------------
   snapshot() {
     const record = this.record(),
-      table = this.table();
+      table = this.table(),
+      place = this.place();
     return {
       type: 'cup-snapshot',
       mode: this.mode,
@@ -482,10 +524,17 @@ export class CupRun {
       complete: this.complete,
       round: this.round,
       stage: this.stage(),
-      stageLabel: STAGE_LABELS[this.stage()],
+      stageLabel: place ? PLACE_LABELS[place] : STAGE_LABELS[this.stage()],
+      // The finish: null while playing. medal: 'gold' | 'silver' | 'bronze' | null.
+      place,
+      placeLabel: place ? PLACE_LABELS[place] : null,
+      medal: (place && MEDALS[place]) ?? null,
+      perfect: place === 'champion' && record.w === CUP_ROUNDS.length,
       user: { name: this.user.name, rating: this.user.rating, effective: this.user.effective },
-      rounds: CUP_ROUNDS.map((info, round) => {
-        const m = this.matches[round];
+      // The eighth round is the final, or the play-off once the semi-final is lost.
+      rounds: CUP_ROUNDS.map((_, round) => {
+        const m = this.matches[round],
+          info = this.#info(round);
         return {
           ...info,
           opponent: this.#opponentSummary(round),
@@ -521,7 +570,6 @@ export class CupRun {
       },
       results: this.matches.map(m => m.outcome),
       record,
-      grade: this.grade(),
     };
   }
   serialize() {
@@ -536,14 +584,109 @@ export class CupRun {
   }
 }
 
+// ---- the real field (Legendary) ------------------------------------------------------------
+function shuffle(list, random) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+const GROUP_PAIRS = [
+  [0, 1],
+  [2, 3],
+  [0, 2],
+  [3, 1],
+  [0, 3],
+  [1, 2],
+];
+/**
+ * Draw and play a whole World Cup around the user, in the real format: the 48-nation field in
+ * its four pots (catalogIndex field), twelve groups with one team per pot, the user in a pot-1
+ * seat (the weakest pot-1 nation stays at home). The eleven other groups and every tie without
+ * the user are played by the fast model; the top two of each group and the best thirds go to
+ * the Round of 32, where the twelve group winners (the user's seat among them) and the four
+ * best runners-up are seeded against the rest in a bracket drawn at random. The user meets whoever
+ * comes through his part of the bracket; the play-off opponent is the loser of the other
+ * semi-final. The user's group mates never reach his bracket (their group is being played by
+ * the user, so its outcome is not known here): the 31 other places go to the 22 top-two
+ * finishers of the other groups and the nine best of their eleven thirds.
+ * Deterministic for `random`. Returns { group: 3 keys (pots 2, 3, 4), knockouts: 5 keys (R32 …
+ * final), third: key, keys: all nine in opponent order } or null when the catalog's field is
+ * not 4 × 12 nations.
+ */
+export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
+  const nations = opponentCandidates(catalog, { rules }).filter(c => c.kind === 'nation'),
+    rating = new Map(nations.map(c => [c.id, c.effective])),
+    field = catalogIndex(catalog, draftRules(rules)).field,
+    pots = [1, 2, 3, 4].map(pot => field.filter(n => n.pot === pot && rating.has(n.id)));
+  if (pots.some(pot => pot.length !== 12)) return null;
+  const seats = pots.map(pot => pot.map(n => n.id));
+  // The field is sorted by strength: the last nation of pot 1 is its weakest.
+  seats[0][11] = USER;
+  for (const pot of seats) shuffle(pot, random);
+  const rank = (a, b) =>
+    overall(a, b) || rating.get(b.key) - rating.get(a.key) || (a.key < b.key ? -1 : 1);
+  const winners = [],
+    seconds = [],
+    thirds = [];
+  let mates = null;
+  for (let g = 0; g < 12; g++) {
+    const ids = seats.map(pot => pot[g]);
+    if (ids.includes(USER)) {
+      mates = ids.filter(id => id !== USER);
+      continue;
+    }
+    const fixtures = GROUP_PAIRS.map(([h, a]) => ({
+        home: ids[h],
+        away: ids[a],
+        score: simulateResult(rating.get(ids[h]), rating.get(ids[a]), random).goals,
+      })),
+      table = standings(ids, fixtures);
+    winners.push(table[0]);
+    seconds.push(table[1]);
+    thirds.push(table[2]);
+  }
+  for (const list of [winners, seconds, thirds]) list.sort(rank);
+  // The Round of 32 draw: sixteen seeded teams (the group winners, the user's seat among them,
+  // and the four best runners-up) against the rest, in a bracket drawn at random.
+  const seeded = [USER, ...[...winners, ...seconds.slice(0, 4)].map(r => r.key)],
+    rest = [...seconds.slice(4), ...thirds.slice(0, 9)].map(r => r.key);
+  shuffle(seeded, random);
+  shuffle(rest, random);
+  let alive = seeded.flatMap((key, i) => [key, rest[i]]),
+    third = null;
+  const knockouts = [];
+  while (alive.length > 1) {
+    const next = [];
+    for (let i = 0; i < alive.length; i += 2) {
+      const a = alive[i],
+        b = alive[i + 1];
+      if (a === USER || b === USER) {
+        knockouts.push(a === USER ? b : a);
+        next.push(USER);
+        continue;
+      }
+      const r = simulateResult(rating.get(a), rating.get(b), random, { knockout: true }),
+        first = r.goals[0] > r.goals[1] || r.shootout?.winner === 0;
+      next.push(first ? a : b);
+      if (alive.length === 4) third = first ? b : a;
+    }
+    alive = next;
+  }
+  const key = id => 'nation:' + id,
+    draw = { group: mates.map(key), knockouts: knockouts.map(key), third: key(third) };
+  return { ...draw, keys: [...draw.group, ...draw.knockouts, draw.third] };
+}
+
 /**
  * Start a World Cup Run after the draft.
  * @param catalog decoded catalog
  * @param options {
  *   mode, difficulty, seed,
  *   user: { name, color, secondary, formation, players: 11 catalog players or ids (slot order) },
- *   opponents?: 8 candidate keys (daily: fixed), rules?: CONFIG.draft-like, rerolls?: number,
- *   daily?: daily id for the snapshot }
+ *   opponents?: 9 candidate keys (daily: fixed; group ×3, R32 … final, play-off),
+ *   rules?: CONFIG.draft-like, rerolls?: number, daily?: daily id for the snapshot }
  */
 export function createCupRun(catalog, options) {
   const { mode, difficulty = 'pro', seed, user, rules = CONFIG.draft, rerolls } = options;
@@ -557,35 +700,62 @@ export function createCupRun(catalog, options) {
   const side = buildSide({ ...user, players, ...links, kind: 'draft' });
   const rngSeed = seedValue(seed),
     random = lcg(mixSeed(rngSeed ^ 0x632be5ab));
-  // Opponents: fixed keys (daily) or the ladder with round offsets, never repeating.
+  // Opponents: fixed keys (daily), the real field (Legendary, Nations), or the ladder with
+  // round offsets; never repeating, real teams only.
+  const field =
+    !options.opponents && mode === 'nations' && difficulty === FIELD_LEVEL
+      ? worldCupDraw(catalog, { random, rules })
+      : null;
   const offsets = cupOffsets(difficulty),
     opponents = [],
-    avoid = [];
-  const byKey = new Map(opponentCandidates(catalog, { rules }).map(c => [c.key, c]));
-  while (opponents.length < CUP_ROUNDS.length) {
+    avoid = [...(field?.keys ?? [])];
+  const candidates = opponentCandidates(catalog, { rules }),
+    byKey = new Map(candidates.map(c => [c.key, c])),
+    pots = new Map(index.field.map(n => ['nation:' + n.id, n.pot]));
+  const build = ref => buildOpponent(catalog, ref, { excludePlayers: ids, rules });
+  while (opponents.length <= CUP_ROUNDS.length) {
     const round = opponents.length,
       fixed = options.opponents?.[round];
     const ref = fixed
       ? byKey.get(fixed)
-      : chooseOpponent(catalog, {
-          mode,
-          level: difficulty,
-          offset: offsets[round],
-          avoid,
-          rules,
-          rerolls,
-          random,
-        });
+      : field
+        ? byKey.get(field.keys[round])
+        : chooseOpponent(catalog, {
+            mode,
+            level: difficulty,
+            offset: offsets[round],
+            avoid,
+            rules,
+            rerolls,
+            random,
+            bosses: false,
+          });
     if (!ref) throw Error('Unknown opponent: ' + fixed);
-    avoid.push(ref.key);
-    const built = buildOpponent(catalog, ref, { excludePlayers: ids, rules });
+    if (!field) avoid.push(ref.key);
+    let built = build(ref);
     if (!built && fixed) throw Error('Opponent cannot field an XI: ' + fixed);
+    // A field nation left without an XI by the user's picks: the nearest nation steps in.
+    if (!built && field) {
+      const others = candidates
+        .filter(c => c.kind === 'nation' && !avoid.includes(c.key))
+        .sort(
+          (x, y) => Math.abs(x.effective - ref.effective) - Math.abs(y.effective - ref.effective),
+        );
+      for (const other of others) {
+        avoid.push(other.key);
+        if ((built = build(other))) break;
+      }
+      if (!built) throw Error('No opponent can field an XI');
+    }
     // A club weakened below an XI by the user's picks is skipped; the ladder draws again.
     if (built)
       opponents.push(
         sideRef({
           ...built,
-          target: ladderTarget(mode, difficulty, { offset: offsets[round], rules, rerolls }),
+          target: field
+            ? null
+            : ladderTarget(mode, difficulty, { offset: offsets[round], rules, rerolls }),
+          pot: field && round < 3 ? (pots.get(ref.key) ?? null) : null,
         }),
       );
   }
@@ -617,6 +787,7 @@ export function createCupRun(catalog, options) {
       rating: side.rating,
       effective: side.effective,
     },
+    // Group ×3, R32, R16, QF, SF, final, and the play-off opponent (index 8).
     opponents: [...ordered, ...opponents.slice(3)],
     group: {
       teams,
@@ -637,13 +808,20 @@ export function createCupRun(catalog, options) {
 export function restoreCupRun(catalog, data) {
   if (data?.type !== 'cup-run' || data.format !== CUP_FORMAT) throw Error('Not a saved run');
   const { type, format, catalog: stamp, ...state } = data;
+  if (!DIFFICULTIES.includes(state.difficulty) || state.opponents?.length !== CUP_ROUNDS.length + 1)
+    throw Error('Not a saved run');
   return new CupRun(catalog, state);
 }
 
+// The round a place reached ("Projected: Semi-finals" for a third or fourth place).
+const REACHED = { fourth: 'sf', third: 'sf' };
 /**
- * Projected stage for a team rating (effective) in a mode and level: a seeded Monte-Carlo of
- * runs against the ladder's round targets with the fast model. For live draft meters.
- * @returns {{ stage, label, probabilities: {group, r32, r16, qf, sf, final, champion} }}
+ * Projected finish for a team rating (effective) in a mode and level: a seeded Monte-Carlo of
+ * runs against the ladder's round targets (Legendary in Nations: FIELD_TYPICAL) with the fast
+ * model. For live draft meters.
+ * @returns {{ stage ('group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'champion': the round the
+ *   median run reaches), place (its PLACES id), label,
+ *   probabilities: {group, r32, r16, qf, fourth, third, final, champion} }}
  */
 export function projectRun({
   rating,
@@ -654,12 +832,19 @@ export function projectRun({
   runs = 300,
   seed = 1,
 }) {
-  const offsets = cupOffsets(difficulty),
-    targets = offsets.map(o => ladderTarget(mode, difficulty, { offset: o, rules, rerolls })),
+  const level = DIFFICULTIES.includes(difficulty) ? difficulty : 'pro',
+    targets =
+      mode === 'nations' && level === FIELD_LEVEL
+        ? FIELD_TYPICAL
+        : cupOffsets(level).map(o => ladderTarget(mode, level, { offset: o, rules, rerolls })),
     random = lcg(mixSeed(seed >>> 0)),
-    reached = Object.fromEntries(STAGE_ORDER.map(s => [s, 0]));
+    reached = Object.fromEntries(PLACES.map(s => [s, 0]));
   const keys = [USER, 'a', 'b', 'c'],
     rating_ = { [USER]: rating, a: targets[0], b: targets[1], c: targets[2] };
+  const beats = target => {
+    const res = simulateResult(rating + KNOCKOUT_EDGE, target, random, { knockout: true });
+    return res.goals[0] > res.goals[1] || res.shootout?.winner === 0;
+  };
   for (let k = 0; k < runs; k++) {
     const fixtures = FIXTURES.flatMap((f, md) =>
       [
@@ -672,30 +857,29 @@ export function projectRun({
         score: simulateResult(rating_[keys[h]], rating_[keys[a]], random).goals,
       })),
     );
-    let stage = 'group';
+    let place = 'group';
     const table = standings(keys, fixtures),
       position = table.findIndex(r => r.key === USER);
     if (advances(table[position], position)) {
-      stage = 'r32';
-      for (let r = 3; r < CUP_ROUNDS.length; r++) {
-        const res = simulateResult(rating + KNOCKOUT_EDGE, targets[r], random, { knockout: true });
-        const won = res.goals[0] > res.goals[1] || res.shootout?.winner === 0;
-        if (!won) break;
-        stage = r === CUP_ROUNDS.length - 1 ? 'champion' : CUP_ROUNDS[r + 1].stage;
-      }
+      let r = 3;
+      while (r < SEMI && beats(targets[r])) r++;
+      if (r < SEMI) place = CUP_ROUNDS[r].stage;
+      else if (beats(targets[SEMI])) place = beats(targets[LAST]) ? 'champion' : 'final';
+      else place = beats(targets[THIRD]) ? 'third' : 'fourth';
     }
-    reached[stage]++;
+    reached[place]++;
   }
-  const probabilities = Object.fromEntries(STAGE_ORDER.map(s => [s, round2(reached[s] / runs)]));
-  // Median outcome: the furthest stage reached in at least half of the runs.
+  const probabilities = Object.fromEntries(PLACES.map(s => [s, round2(reached[s] / runs)]));
+  // Median outcome: the best place reached in at least half of the runs.
   let cumulative = 0,
-    stage = 'group';
-  for (const s of [...STAGE_ORDER].reverse()) {
+    place = 'group';
+  for (const s of [...PLACES].reverse()) {
     cumulative += reached[s];
     if (cumulative >= runs / 2) {
-      stage = s;
+      place = s;
       break;
     }
   }
-  return { stage, label: 'Projected: ' + STAGE_LABELS[stage], probabilities };
+  const stage = REACHED[place] ?? place;
+  return { stage, place, label: 'Projected: ' + STAGE_LABELS[stage], probabilities };
 }

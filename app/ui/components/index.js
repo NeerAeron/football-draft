@@ -19,7 +19,7 @@ export { Modal, Sheet } from './modal.js';
 export { Tabs } from './tabs.js';
 export { Toaster, toast, achievement, dismissToast } from './toast.js';
 export { ScoreBug } from './score-bug.js';
-export { GradeBadge, GRADES, gradeFamily } from './grade-badge.js';
+export { Cup, Medal, Prize } from './cup.js';
 export { Confetti } from './confetti.js';
 export { EmptyState } from './empty-state.js';
 export { Skeleton } from './skeleton.js';

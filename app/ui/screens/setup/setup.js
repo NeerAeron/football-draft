@@ -39,6 +39,7 @@ import {
   MAIN_FORMATIONS,
   ALL_FORMATIONS,
   VERSUS_REROLLS,
+  versusRerolls,
   difficultyLevels,
   setupDefaults,
   savedChoices,
@@ -97,7 +98,7 @@ function Pips({ count, max = 2, label }) {
 
 function DifficultyPicker({ mode, type, value, onChange, levels }) {
   const rerollText = n => (n === 0 ? 'No re-rolls' : n === 1 ? '1 re-roll' : `${n} re-rolls`);
-  const selected = levels.find(l => l.id === value) || levels[2];
+  const selected = levels.find(l => l.id === value) || levels[0];
   const typical = useMemo(() => {
     if (mode !== 'run') return null;
     const base = MODE_BASELINES[draftMode(type)];
@@ -134,7 +135,7 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
     <div class="ladder__detail" aria-live="polite">
       <p>
         <b>${selected.label}:</b>
-        ${' '}${rerollText(selected.rerolls)} per draft.
+        ${' '}${rerollText(selected.rerolls)} per draft. ${selected.text}
       </p>
       ${
         typical &&
@@ -246,7 +247,7 @@ function Summary({ mode, state, levels }) {
   const rows = [
     ['Draft', modeLabel(state.type)],
     mode === 'versus'
-      ? ['Re-rolls', `${level.rerolls} each`]
+      ? ['Re-rolls', `${versusRerolls(state.difficulty)} each`]
       : [
           'Difficulty',
           `${difficultyLabel(state.difficulty)} · ${level.rerolls} re-roll${level.rerolls === 1 ? '' : 's'}`,

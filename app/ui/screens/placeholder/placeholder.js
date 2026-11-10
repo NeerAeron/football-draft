@@ -11,7 +11,7 @@ const COPY = {
   '/play/:mode': ['sliders-horizontal', 'Match setup', 'Pick difficulty and options, then spin.'],
   '/draft': ['reel', 'Draft', 'Spin, pick and place your XI with live fit and links.'],
   '/match': ['ball', 'Match', 'Key moments, live xG, mentality calls and the post-match report.'],
-  '/run': ['trophy', 'World Cup Run', 'Group, knockouts, grade and share card.'],
+  '/run': ['trophy', 'World Cup Run', 'Group, knockouts, medals and share card.'],
   '/daily': ['calendar-days', 'Daily Challenge', "Today's seeded spins, auto-simmed, streaks."],
   '/exhibition': ['tv', 'Exhibition', 'Any two real teams, straight to kick-off.'],
 };

@@ -50,9 +50,30 @@ export function awardView(catalog, row) {
 
 export const modeLabel = mode => DRAFT_MODES[mode]?.label || 'Nations';
 export const levelLabel = level => DIFFICULTY_LABELS[level] || 'Pro';
+/** A place in a couple of characters (share card plaque, compact rows). */
+export const PLACE_SHORT = {
+  group: 'Group',
+  r32: 'R32',
+  r16: 'R16',
+  qf: 'QF',
+  fourth: '4th',
+  third: '3rd',
+  final: '2nd',
+  champion: '1st',
+};
 
 /** Data for renderShareImage (lib/share-image.js). */
-export function shareCardFor({ snapshot, views, formation, title, hideRatings, stats, subtitle }) {
+export function shareCardFor({
+  snapshot,
+  views,
+  formation,
+  title,
+  hideRatings,
+  stats,
+  subtitle,
+  detail,
+  budget,
+}) {
   const host = (() => {
     try {
       const u = new URL(pageBase());
@@ -65,20 +86,22 @@ export function shareCardFor({ snapshot, views, formation, title, hideRatings, s
     title,
     subtitle:
       subtitle ||
-      [modeLabel(snapshot.mode), levelLabel(snapshot.difficulty), hideRatings && 'Ratings hidden']
+      [
+        modeLabel(snapshot.mode),
+        levelLabel(snapshot.difficulty),
+        budget && 'Budget',
+        hideRatings && 'Ratings hidden',
+      ]
         .filter(Boolean)
         .join(' · '),
     record: snapshot.record,
     results: snapshot.results,
     champion: snapshot.status === 'champion',
-    grade: snapshot.grade?.grade || 'F',
-    verdict: snapshot.grade?.verdict || '',
-    stageLabel:
-      snapshot.status === 'champion'
-        ? 'World champions'
-        : snapshot.status === 'eliminated'
-          ? `Out in the ${snapshot.stageLabel}`
-          : snapshot.stageLabel,
+    // Where it finished: the headline, the plaque (cup, medal or the round) and a line under it.
+    placeLabel: snapshot.placeLabel || snapshot.stageLabel,
+    placeShort: PLACE_SHORT[snapshot.place] || '',
+    medal: snapshot.medal ?? null,
+    stageLabel: detail || '',
     formation,
     players: views.map(v => ({
       name: surname(v.view.name),

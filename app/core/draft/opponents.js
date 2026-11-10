@@ -186,11 +186,16 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
   return list;
 }
 
-/** Candidates for a draft mode (nations / clubs / both, plus bosses). */
-export function modeCandidates(catalog, mode, options) {
+/**
+ * Candidates for a draft mode (nations / clubs / both, plus the bosses unless `bosses` is
+ * false: the World Cup Run and the Daily meet real teams only).
+ */
+export function modeCandidates(catalog, mode, { bosses = true, ...options } = {}) {
   const kinds = KINDS_BY_MODE[mode];
   if (!kinds) throw Error('Unknown draft mode: ' + mode);
-  return opponentCandidates(catalog, options).filter(c => kinds.includes(c.kind));
+  return opponentCandidates(catalog, options).filter(
+    c => kinds.includes(c.kind) && (bosses || c.kind !== 'boss'),
+  );
 }
 
 /**
@@ -211,14 +216,25 @@ export function candidatesNear(candidates, target, { minimum = 3, avoid = [] } =
 
 /**
  * Choose an opponent (reference, no XI yet): uniform among candidatesNear(target).
- * @param options { mode, level, seed, offset?, avoid?: keys, rules?, rerolls?, random? }
+ * @param options { mode, level, seed, offset?, avoid?: keys, rules?, rerolls?, random?,
+ *   bosses? (false: real teams only) }
  */
 export function chooseOpponent(
   catalog,
-  { mode, level, seed, offset = 0, avoid = [], rules = CONFIG.draft, rerolls, random } = {},
+  {
+    mode,
+    level,
+    seed,
+    offset = 0,
+    avoid = [],
+    rules = CONFIG.draft,
+    rerolls,
+    random,
+    bosses = true,
+  } = {},
 ) {
   const target = ladderTarget(mode, level, { offset, rules, rerolls }),
-    near = candidatesNear(modeCandidates(catalog, mode, { rules }), target, { avoid });
+    near = candidatesNear(modeCandidates(catalog, mode, { rules, bosses }), target, { avoid });
   if (!near.length) throw Error('No opponent is available');
   const draw = random ?? lcg(seedValue(seed ?? 0));
   return { ...near[Math.floor(draw() * near.length)], target };

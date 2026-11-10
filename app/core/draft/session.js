@@ -26,14 +26,17 @@ export const DRAFT_MODES = {
   clubs: { label: 'Clubs', categories: ['club'] },
   clubAndCountry: { label: 'Club & Country', categories: ['nation', 'league'] },
 };
-export const DIFFICULTIES = ['amateur', 'semipro', 'pro', 'worldclass', 'legendary'];
+export const DIFFICULTIES = ['pro', 'worldclass', 'legendary'];
 export const DIFFICULTY_LABELS = {
-  amateur: 'Amateur',
-  semipro: 'Semi-pro',
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',
 };
+/**
+ * A difficulty id from a save or a link: the removed levels ('amateur', 'semipro') and anything
+ * unknown read as 'pro'.
+ */
+export const difficultyOf = id => (DIFFICULTIES.includes(id) ? id : 'pro');
 /** Familiarity at or above this counts as a natural position (auto placement prefers it). */
 export const NATURAL_FIT = 0.95;
 export const SESSION_FORMAT = 1;
@@ -79,7 +82,9 @@ function normalizeOptions(o = {}) {
     (_, i) => o.formations?.[i] ?? o.formations?.[0] ?? o.formation ?? '433',
   );
   for (const f of formations) if (!FORMATIONS[f]) throw Error('Unknown formation: ' + f);
-  const difficulty = o.difficulty ?? 'pro';
+  // Saves and links from before the three difficulties: the removed levels play as Pro.
+  const difficulty =
+    o.difficulty === 'amateur' || o.difficulty === 'semipro' ? 'pro' : (o.difficulty ?? 'pro');
   if (!DIFFICULTIES.includes(difficulty)) throw Error('Unknown difficulty: ' + difficulty);
   if (o.schedule && sides !== 1) throw Error('A scheduled (daily) draft has one side');
   const teams = Array.from({ length: sides }, (_, i) => ({

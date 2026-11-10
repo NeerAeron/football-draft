@@ -8,6 +8,7 @@ import { Icon } from '../../components/icon.js';
 import { Chip } from '../../components/chip.js';
 import { userTeamName, roundShort, roundLabel, THIRD_PLACE_RULE } from '../../lib/run-store.js';
 import { sideColors } from '../../lib/kits.js';
+import { Prize } from '../../components/cup.js';
 import { Trophy } from './trophy.js';
 
 // ---- teams ---------------------------------------------------------------------------------
@@ -79,6 +80,9 @@ const OUTCOME_LABEL = { W: 'Won', D: 'Drew', L: 'Lost' };
 export const scoreText = r =>
   r ? `${r.goalsFor}–${r.goalsAgainst}${r.shootout ? ' (p)' : ''}` : '';
 /** W/D/L chip (a knockout draw won on penalties reads as a win "on pens"). */
+/** Did the user get through this result: a win, or a knockout draw won on penalties. */
+export const wonResult = result =>
+  !!result && (result.outcome === 'W' || result.shootout?.winner === 'user');
 export function OutcomeChip({ result, size = 'md' }) {
   if (!result) return null;
   const pens = result.shootout;
@@ -99,18 +103,22 @@ export function PathStrip({ snapshot, class: className }) {
   return html`<ol class=${cx('run-path-strip', className)} role="list" aria-label="Your path">
     ${snapshot.rounds.map((r, i) => {
       const result = r.result;
+      // The match that ended the title hopes: a lost knockout tie, or the last group match of
+      // a group exit. (A lost semi-final still leads to the third-place play-off.)
       const out =
-        snapshot.status === 'eliminated' && i === lastPlayed
+        result && r.knockout && !wonResult(result)
           ? 'is-out'
-          : snapshot.status === 'eliminated' && i > lastPlayed
-            ? 'is-void'
-            : null;
+          : snapshot.status === 'eliminated' && i === lastPlayed && !r.knockout
+            ? 'is-out'
+            : snapshot.status === 'eliminated' && i > lastPlayed
+              ? 'is-void'
+              : null;
       const state = result ? 'is-played' : i === current ? 'is-current' : 'is-todo';
       const revealed = result || i <= Math.max(current, 2);
       return html`<li
         key=${r.id}
-        class=${cx('path-node', state, out, i === 3 && 'is-ko-start', r.id === 'final' && 'is-final')}
-        aria-label=${`${roundLabel(i)}${
+        class=${cx('path-node', state, out, i === 3 && 'is-ko-start', (r.id === 'final' || r.id === 'third') && 'is-final')}
+        aria-label=${`${roundLabel(r)}${
           result
             ? `: ${OUTCOME_LABEL[result.outcome]} ${scoreText(result)} vs ${r.opponent.name}`
             : i === current
@@ -118,7 +126,7 @@ export function PathStrip({ snapshot, class: className }) {
               : ''
         }`}
       >
-        <span class="path-node__label">${roundShort(i)}</span>
+        <span class="path-node__label">${roundShort(r)}</span>
         <span class="path-node__disc">
           ${
             result
@@ -127,8 +135,8 @@ export function PathStrip({ snapshot, class: className }) {
                 >`
               : revealed && r.opponent
                 ? html`<${TeamMark} team=${opponentTeam(r.opponent)} size=${30} />`
-                : r.id === 'final'
-                  ? html`<${Icon} name="trophy" size=${16} />`
+                : r.id === 'final' || r.id === 'third'
+                  ? html`<${Icon} name=${r.id === 'final' ? 'trophy' : 'award'} size=${16} />`
                   : html`<span class="path-node__q" aria-hidden="true">?</span>`
           }
         </span>
@@ -160,7 +168,12 @@ export function OddsBar({ odds }) {
 
 const STAKE_TEXT = { through: 'Through', out: 'Out', depends: 'Depends' };
 const STAKE_TONE = { through: 'green', out: 'coral', depends: 'amber' };
-export function StakesRow({ stakes, knockout, final }) {
+const KNOCKOUT_STAKES = {
+  final: 'One match from glory. A draw goes to penalties.',
+  sf: 'Win and you are in the final. Lose and you play for third place.',
+  third: 'Third place is at stake: the winner takes bronze. A draw goes to penalties.',
+};
+export function StakesRow({ stakes, knockout, round }) {
   if (stakes)
     return html`<ul class="stakes" role="list" aria-label="What this match means">
       ${['W', 'D', 'L'].map(
@@ -183,9 +196,7 @@ export function StakesRow({ stakes, knockout, final }) {
       <${Icon} name="swords" size=${16} />
       <span
         >${
-          final
-            ? 'One match from glory. A draw goes to penalties.'
-            : 'Knockout: lose and you are out. A draw goes to penalties.'
+          KNOCKOUT_STAKES[round] || 'Knockout: lose and you are out. A draw goes to penalties.'
         }</span
       >
     </p>`;
@@ -339,6 +350,8 @@ export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
 export function KnockoutPath({ snapshot }) {
   const current = snapshot.complete ? -1 : snapshot.round;
   const champion = snapshot.status === 'champion';
+  // The last node is what the run won: the cup, a medal, or the trophy still to play for.
+  const medal = snapshot.medal && snapshot.medal !== 'gold' ? snapshot.medal : null;
   return html`<ol class="ko-path" role="list" aria-label="Knockout rounds">
     ${snapshot.rounds.slice(3).map((r, k) => {
       const i = k + 3,
@@ -354,7 +367,7 @@ export function KnockoutPath({ snapshot }) {
             ? 'is-void'
             : 'is-todo';
       return html`<li key=${r.id} class=${cx('ko-node', state)}>
-        <span class="ko-node__stage">${roundLabel(i)}</span>
+        <span class="ko-node__stage">${roundLabel(r)}</span>
         ${
           revealed
             ? html`<span class="ko-node__tie">
@@ -377,16 +390,23 @@ export function KnockoutPath({ snapshot }) {
         }
       </li>`;
     })}
-    <li class=${cx('ko-node', 'ko-node--cup', champion && 'is-won')}>
-      <${Trophy} size=${44} glow=${champion} />
-      <span class="ko-node__stage">${champion ? 'Champions' : 'The trophy'}</span>
+    <li class=${cx('ko-node', 'ko-node--cup', (champion || medal) && 'is-won')}>
+      ${
+        medal
+          ? html`<${Prize} medal=${medal} size=${44} />`
+          : html`<${Trophy} size=${44} glow=${champion} />`
+      }
+      <span class="ko-node__stage"
+        >${champion ? 'Champions' : medal ? snapshot.placeLabel : 'The trophy'}</span
+      >
     </li>
   </ol>`;
 }
 
 // ---- results ticker (Sim rest of run / Daily) ----------------------------------------------------
 /**
- * items: [{ round, opponent (snapshot opponent), status: 'queued' | 'live' | 'done',
+ * items: [{ round, short?: 'SF' (the round's short label once known: the eighth match is the
+ *           final or the play-off), opponent (snapshot opponent), status: 'queued' | 'live' | 'done',
  *           live?: { minute, score, shootout }, result?: snapshot round result,
  *           elsewhere?: { home, away, score } (the other group match), scorers?: string }]
  */
@@ -404,7 +424,7 @@ export function ResultsTicker({ items, snapshot }) {
         key=${it.round}
         class=${cx('ticker__item', `is-${it.status}`, res && `is-${res.outcome.toLowerCase()}`)}
       >
-        <span class="ticker__stage">${roundShort(it.round)}</span>
+        <span class="ticker__stage">${it.short ?? roundShort(it.round)}</span>
         <span class="ticker__match">
           <span class="ticker__vs">
             ${

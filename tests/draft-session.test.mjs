@@ -233,16 +233,17 @@ test('dead-end guard: a spin never lands on a pool that cannot fill an open slot
 
 test('re-rolls: count by difficulty, per side, never repeat a seen option', () => {
   for (const [difficulty, n] of Object.entries({
+    pro: 2,
+    worldclass: 1,
+    legendary: 1,
+    // A save or a link from before the three difficulties plays as Pro.
     amateur: 2,
     semipro: 2,
-    pro: 1,
-    worldclass: 1,
-    legendary: 0,
   })) {
     const s = createDraftSession(catalog, { seed: 8, difficulty });
     assert.equal(s.snapshot().rerolls[0], n);
   }
-  const s = createDraftSession(catalog, { seed: 8, difficulty: 'amateur' });
+  const s = createDraftSession(catalog, { seed: 8, difficulty: 'pro' });
   assert.throws(() => s.reroll(), /Spin first/);
   const seen = [s.spin().option.id];
   assert.equal(s.snapshot().canReroll, true);
@@ -412,7 +413,7 @@ test('snapshot carries the UI data: spin, pool fit, teams, links and flags', () 
 
 test('serialize/restore round-trips mid-spin and continues identically', () => {
   for (const mode of ['nations', 'clubs', 'clubAndCountry']) {
-    const a = createDraftSession(catalog, { mode, seed: 123, sides: 2, difficulty: 'amateur' });
+    const a = createDraftSession(catalog, { mode, seed: 123, sides: 2, difficulty: 'worldclass' });
     for (let k = 0; k < 5; k++) {
       a.spin();
       a.pick(a.suggestPick().profileId);

@@ -50,16 +50,12 @@ export const DEFAULT_CONFIG = {
     },
     // Re-rolls per drafter by difficulty.
     rerolls: {
-      amateur: 2,
-      semipro: 2,
-      pro: 1,
+      pro: 2,
       worldclass: 1,
-      legendary: 0,
+      legendary: 1,
     },
     // Opponent strength vs the mode's typical drafted XI (effective rating, links included).
     ladder: {
-      amateur: -7,
-      semipro: -3.5,
       pro: 0,
       worldclass: 4,
       legendary: 7,
@@ -790,8 +786,6 @@ const DRAFT_FIELDS = {
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
 };
 const LEVEL_LABELS = {
-  amateur: 'Amateur',
-  semipro: 'Semi-pro',
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',

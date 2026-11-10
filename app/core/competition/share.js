@@ -4,43 +4,49 @@ import { FORMATIONS } from '../players/formations.js';
 import { DRAFT_MODES, DIFFICULTIES, DIFFICULTY_LABELS, seedNumber } from '../draft/session.js';
 
 export const RESULT_EMOJI = { W: '🟩', D: '🟨', L: '🟥' };
-const TROPHY = '🏆';
+const MEDAL_EMOJI = { gold: '🏆', silver: '🥈', bronze: '🥉' };
+/**
+ * The ultimate achievement: a perfect World Cup (eight wins out of eight) on Legendary in
+ * Budget mode. The trophy cabinet, the run-end toast and the share text use this name.
+ */
+export const ULTIMATE = { name: 'Immortals', emoji: '👑', difficulty: 'legendary' };
+/** Is a finished run (CupRun.snapshot()) the ultimate achievement? `budget`: its Budget mode. */
+export const isUltimate = (snapshot, budget) =>
+  !!budget && !!snapshot?.perfect && snapshot.difficulty === ULTIMATE.difficulty;
 
-/** "🟩🟩🟨 🟩🟥": group results, a space, knockout results; 🏆 for champions. */
+/** "🟩🟩🟨 🟩🟥": group results, a space, knockout results; 🏆 🥈 🥉 for the top three. */
 export function resultEmoji(snapshot) {
   const row = snapshot.results.map(r => RESULT_EMOJI[r]);
   const text = row.slice(0, 3).join('') + (row.length > 3 ? ' ' + row.slice(3).join('') : '');
-  return snapshot.status === 'champion' ? text + ' ' + TROPHY : text;
+  const medal =
+    MEDAL_EMOJI[snapshot.medal] ?? (snapshot.status === 'champion' ? MEDAL_EMOJI.gold : null);
+  return medal ? text + ' ' + medal : text;
 }
-const flagsLine = ({ mode, difficulty, hideRatings, uniqueNations }) =>
+const flagsLine = ({ mode, difficulty, hideRatings, uniqueNations, budget }) =>
   [
     DRAFT_MODES[mode]?.label,
     DIFFICULTY_LABELS[difficulty],
+    budget && '💰 Budget',
     hideRatings && '🙈 Ratings hidden',
     uniqueNations && '🧩 One per nation',
   ]
     .filter(Boolean)
     .join(' · ');
 const thousands = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-// The stage reached, unless the verdict already names it ("C Quarter-finalists" says it all;
-// "A Heartbreak on Penalties" still needs "Final").
-const stem = label => label.toLowerCase().replace(/s$/, '');
-const stageUnlessNamed = (stageLabel, grade) =>
-  grade?.verdict && stageLabel && grade.verdict.toLowerCase().includes(stem(stageLabel))
-    ? null
-    : stageLabel;
 
 /**
  * Share text for a finished (or in-progress) run. `snapshot` is CupRun.snapshot().
  * extras: { title, daily: { number, id }, rating (team OVR), perfectPct, points, hideRatings,
- *           uniqueNations, url }
+ *           uniqueNations, budget, url }
  *
  *   ⚽ World Cup Draft · Daily #7
- *   🟩🟩🟨 🟩🟩🟥
- *   5-1-1 · B+ Semi-final Heartbreak          (the stage only when the verdict does not name it)
+ *   🟩🟩🟨 🟩🟩🟩🟥🟩 🥉
+ *   6-1-1 · Third place                       (where the run finished, or the stage it is in)
  *   XI 82.9 · 98.6% of perfect · 1,104 pts
  *   Nations · Pro · 🙈 Ratings hidden
  *   https://example.com/#c=…
+ *
+ * A perfect Legendary run in Budget mode adds "👑 Immortals: Legendary · Budget · 8-0".
  */
 export function shareText(snapshot, extras = {}) {
   const {
@@ -51,14 +57,9 @@ export function shareText(snapshot, extras = {}) {
     points = null,
     url = null,
   } = extras;
-  const r = snapshot.record,
-    grade = snapshot.grade;
+  const r = snapshot.record;
   const head = '⚽ ' + title + (daily ? ` · Daily #${daily.number}` : ' · World Cup Run');
-  const summary = [
-    `${r.w}-${r.d}-${r.l}`,
-    stageUnlessNamed(snapshot.stageLabel, grade),
-    grade && `${grade.grade} ${grade.verdict}`,
-  ]
+  const summary = [`${r.w}-${r.d}-${r.l}`, snapshot.placeLabel ?? snapshot.stageLabel]
     .filter(Boolean)
     .join(' · ');
   const numbers = [
@@ -72,6 +73,8 @@ export function shareText(snapshot, extras = {}) {
     head,
     resultEmoji(snapshot),
     summary,
+    isUltimate(snapshot, extras.budget) &&
+      `${ULTIMATE.emoji} ${ULTIMATE.name}: Legendary · Budget · ${r.w}-${r.d}-${r.l}`,
     numbers,
     flagsLine({ mode: snapshot.mode, difficulty: snapshot.difficulty, ...extras }),
     url,
@@ -82,14 +85,16 @@ export function shareText(snapshot, extras = {}) {
 
 // ---- challenge links ----------------------------------------------------------------------
 // Token: c1.<kind>.<mode>.<formation>.<difficulty>.<flags>.<seed base36>[.<catalog stamp>]
-//   kind q quick match · c cup run · v versus · d daily; mode n/l/c/x; difficulty a/s/p/w/l;
+//   kind q quick match · c cup run · v versus · d daily; mode n/l/c/x; difficulty p/w/l (old
+//   links may carry a or s, the removed Amateur and Semi-pro: they decode as Pro);
 //   flags any of h (hide ratings), u (one per nation), 2 (two sides), or 0.
 //   For a daily the seed field is the challenge number (dailyIdFromNumber gives the day).
 // Only [a-z0-9.-]: safe in a URL hash or query without escaping.
 export const CHALLENGE_VERSION = 'c1';
 const KINDS = { q: 'quick', c: 'cup', v: 'versus', d: 'daily' };
 const MODES = { n: 'nations', l: 'leagues', c: 'clubs', x: 'clubAndCountry' };
-const LEVEL_CODES = { a: 'amateur', s: 'semipro', p: 'pro', w: 'worldclass', l: 'legendary' };
+const LEVEL_CODES = { p: 'pro', w: 'worldclass', l: 'legendary' };
+const OLD_LEVEL_CODES = { a: 'pro', s: 'pro' };
 const invert = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]));
 
 /**
@@ -133,7 +138,8 @@ export function decodeChallenge(token) {
   const parts = token.trim().split('.');
   if (parts.length < 7 || parts.length > 8 || parts[0] !== CHALLENGE_VERSION) return null;
   const [, k, m, formation, d, flags, seed36, catalog = null] = parts;
-  if (!KINDS[k] || !MODES[m] || !LEVEL_CODES[d] || !FORMATIONS[formation]) return null;
+  const difficulty = LEVEL_CODES[d] ?? OLD_LEVEL_CODES[d];
+  if (!KINDS[k] || !MODES[m] || !difficulty || !FORMATIONS[formation]) return null;
   if (!/^(0|[hu2]{1,3})$/.test(flags) || !/^[0-9a-z]{1,7}$/.test(seed36)) return null;
   const seed = parseInt(seed36, 36);
   if (!Number.isSafeInteger(seed) || seed > 0xffffffff) return null;
@@ -144,7 +150,7 @@ export function decodeChallenge(token) {
     kind,
     mode: MODES[m],
     formation,
-    difficulty: LEVEL_CODES[d],
+    difficulty,
     hideRatings: flags.includes('h'),
     uniqueNations: flags.includes('u'),
     sides: flags.includes('2') ? 2 : 1,

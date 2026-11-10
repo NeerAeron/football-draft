@@ -1,4 +1,4 @@
-// Auto-simulation for "Sim rest of run" and the Daily Challenge: plays a match config with the
+// Auto-simulation for "Simulate this match", "Simulate the whole cup" and the Daily Challenge: plays a match config with the
 // real engine (same seed + config ⇒ the same result as the match screen's Instant view) and
 // summarises it in the match screen's result shape (docs/ui-match.md, the fields the RUN
 // screens use). Framework-free.
@@ -235,6 +235,7 @@ export function runSide(result) {
  *   onStart(m)                before a match;  onLive(m, fraction, live)  while it runs
  *   onDone(m, result | null)  after it is recorded (persist here; may be async)
  *   flags                     { stop, abort } read between matches / engine slices
+ *   limit                     play at most this many matches ("Simulate this match": 1)
  * Resolves to the number of matches played.
  */
 export async function simulateRemaining(
@@ -246,11 +247,12 @@ export async function simulateRemaining(
     onLive = () => {},
     onDone = () => {},
     flags = {},
+    limit = Infinity,
   },
 ) {
   const fast = fastSimEnabled();
   let played = 0;
-  while (!run.complete && !flags.stop) {
+  while (!run.complete && !flags.stop && played < limit) {
     const m = run.nextMatch();
     if (!m) break;
     await onStart(m);

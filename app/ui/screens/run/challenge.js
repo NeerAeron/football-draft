@@ -1,4 +1,4 @@
-// Challenge link landing (#/challenge?c=<token>&r=<w-d-l.grade>): "You've been challenged"
+// Challenge link landing (#/challenge?c=<token>&r=<w-d-l.place>): "You've been challenged"
 // with the friend's result and the rules, then the same draft (same seed, options and default
 // rules ⇒ same spins and opponents). Daily links point at that day's Daily Challenge.
 import { useEffect, useState } from 'preact/hooks';
@@ -10,7 +10,7 @@ import { formationLabel } from '../../../core/players/formations.js';
 import { Button } from '../../components/button.js';
 import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
-import { GradeBadge } from '../../components/grade-badge.js';
+import { Prize } from '../../components/cup.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { startDraft } from '../../lib/draft-store.js';
 import { readChallengeQuery, typeOf, todayDailyId } from '../../lib/run-store.js';
@@ -91,7 +91,7 @@ export default function ChallengeScreen({ query }) {
           challenge: {
             token: query.c,
             by: score
-              ? `${score.w}-${score.d}-${score.l}${score.grade ? ' · ' + score.grade : ''}`
+              ? `${score.w}-${score.d}-${score.l}${score.placeLabel ? ' · ' + score.placeLabel : ''}`
               : null,
           },
         },
@@ -152,11 +152,12 @@ export default function ChallengeScreen({ query }) {
   </div>`;
 }
 
+const MEDAL_OF = { champion: 'gold', final: 'silver', third: 'bronze' };
 function FriendScore({ score }) {
   return html`<div class="friend-score">
-    ${score.grade && html`<${GradeBadge} grade=${score.grade} size="md" />`}
+    ${MEDAL_OF[score.place] && html`<${Prize} medal=${MEDAL_OF[score.place]} size=${52} />`}
     <div class="friend-score__text">
-      <span class="friend-score__label">Their result</span>
+      <span class="friend-score__label">${score.placeLabel || 'Their result'}</span>
       <span class="friend-score__wdl num">${`${score.w}–${score.d}–${score.l}`}</span>
     </div>
   </div>`;

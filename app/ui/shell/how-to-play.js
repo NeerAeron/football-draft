@@ -32,7 +32,7 @@ export const HOW_TO_STEPS = [
   {
     icon: 'trophy',
     title: 'Go 8–0',
-    text: 'Win all eight for a perfect run. Earn a grade, share your XI, challenge a friend.',
+    text: 'Win all eight for a perfect run. Take gold, silver or bronze, share your XI, challenge a friend.',
   },
 ];
 

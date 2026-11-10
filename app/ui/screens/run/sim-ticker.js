@@ -1,5 +1,5 @@
-// useSimTicker(): drives a results ticker while the rest of a CupRun is simulated (World Cup
-// Run "Sim rest of run", Daily Challenge). Live clock + score per match as the engine runs,
+// useSimTicker(): drives a results ticker while a CupRun is simulated (World Cup Run "Simulate
+// this match" — limit: 1 — and "Simulate the whole cup", Daily Challenge). Live clock + score per match as the engine runs,
 // the other group match's result after each matchday, Skip (no pauses, no live repaint) and
 // Stop (after the current match).
 //
@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
-import { roundLabel } from '../../lib/run-store.js';
+import { roundShort } from '../../lib/run-store.js';
 import { simulateRemaining, fastSimEnabled } from './auto-sim.js';
 import { scoreText } from './run-parts.js';
 
@@ -35,14 +35,21 @@ export function useSimTicker() {
     [],
   );
 
-  async function start(run, { configFor, idFor, onDone, pace = 900 }) {
+  async function start(run, { configFor, idFor, onDone, pace = 900, limit = Infinity }) {
     flags.current = { skip: isReducedMotion(), stop: false, abort: false };
     const pause = ms => sleep(flags.current.skip ? 0 : ms);
     let current = {
       items: run
         .snapshot()
-        .rounds.map((r, round) => ({ round, opponent: r.opponent, status: 'queued', r }))
+        .rounds.map((r, round) => ({
+          round,
+          short: roundShort(r),
+          opponent: r.opponent,
+          status: 'queued',
+          r,
+        }))
         .filter(x => !x.r.result)
+        .slice(0, limit)
         .map(({ r, ...x }) => x),
       progress: 0,
       finished: false,
@@ -63,8 +70,15 @@ export function useSimTicker() {
       configFor,
       idFor,
       flags: flags.current,
+      limit,
       onStart: async m => {
-        setItem(m.round, { status: 'live', live: { minute: "0'", score: [0, 0] } });
+        // The eighth match is only known now: the final, or the third-place play-off.
+        setItem(m.round, {
+          status: 'live',
+          short: roundShort(m),
+          opponent: m.opponent,
+          live: { minute: "0'", score: [0, 0] },
+        });
         if (fast) await pause(450);
       },
       onLive: (m, f, live) => {
@@ -89,7 +103,7 @@ export function useSimTicker() {
         });
         push({
           progress: done / total,
-          announce: `${roundLabel(m.round)}: ${
+          announce: `${m.label}: ${
             res.outcome === 'W' ? 'won' : res.outcome === 'D' ? 'drew' : 'lost'
           } ${scoreText(res)} against ${m.away.name}.`,
         });
@@ -103,7 +117,7 @@ export function useSimTicker() {
       progress: 1,
       items: current.items.filter(it => it.status !== 'queued'),
     });
-    await pause(1100);
+    await pause(limit === 1 ? 500 : 1100);
     return !flags.current.abort;
   }
 

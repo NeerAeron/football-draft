@@ -1,21 +1,16 @@
 // Share card image: a 1080 × 1350 (4:5, the feed format) PNG of a finished World Cup Run or
-// Daily Challenge — the XI's flags on a pitch, record, grade + verdict, result squares and the
+// Daily Challenge — the XI's flags on a pitch, record, where it finished (with the cup or the
+// medal of the top three), result squares and the
 // mode — drawn on a canvas with our fonts. Pure layout math is exported for tests; drawing and
 // sharing need a browser.
 //
 //   const blob = await renderShareImage(card);         // card: see shareCard() below
 //   await shareImage(blob, { title, text, filename });  // Web Share with a file, else download
 import { FORMATIONS } from '../../core/players/formations.js';
+import { CUP_PATHS, METALS } from './cup-paths.js';
 
-/** Cup outline paths in a 100 × 110 box (the run screen's Trophy SVG draws the same shape). */
-export const CUP_PATHS = {
-  handleLeft: 'M27 13c-12 0-17 6-15.5 14.5C13 37 21 45 32 48',
-  handleRight: 'M73 13c12 0 17 6 15.5 14.5C87 37 79 45 68 48',
-  bowl: 'M23 6h54v20c0 20-11 33-27 37-16-4-27-17-27-37z',
-  stem: 'M45 63h10l-1.5 15h-7z',
-  base: 'M33 84h34l4 15H29z',
-  star: 'm50 18 3.1 6.4 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1z',
-};
+// The cup's outline lives in lib/cup-paths.js (the Cup component draws the same shape).
+export { CUP_PATHS };
 
 export const SHARE_W = 1080;
 export const SHARE_H = 1350;
@@ -73,7 +68,8 @@ export function fitText(text, maxWidth, measure) {
 /**
  * Card data for renderShareImage, built by the screens:
  * { title: 'World Cup Run' | 'Daily #7', subtitle: 'Nations · Pro', record: { w, d, l },
- *   results: ['W','D',…], champion, grade, verdict, stageLabel, formation,
+ *   results: ['W','D',…], champion, placeLabel: 'Third place', placeShort: '3rd',
+ *   medal: 'gold' | 'silver' | 'bronze' | null, stageLabel (the line under it), formation,
  *   players: [{ name, code, nation, rating? }] (slot order), hideRatings,
  *   stats: [{ label, value }] (≤ 3), footer: 'football-draft.example' }
  */
@@ -95,14 +91,6 @@ const C = {
   line: 'rgba(236,255,240,0.38)',
 };
 const OUTCOME_FILL = { W: C.green, D: C.amber, L: C.coral };
-const GRADE_FILL = {
-  s: ['#ff8fd0', '#b494ff', '#6fd6ff', '#7dffc0'],
-  a: ['#fff1c4', '#f5c84c', '#dba52a'],
-  b: ['#ecff9e', '#cdf545', '#8bb012'],
-  c: ['#d6f1ff', '#5cc8ff', '#2a8fc7'],
-  d: ['#ffe0b8', '#ffb547', '#c77510'],
-  f: ['#ffd0ca', '#ff6f61', '#b8322a'],
-};
 const DISPLAY = '"Barlow Condensed", "Arial Narrow", sans-serif';
 const UI = 'Inter, system-ui, sans-serif';
 
@@ -250,49 +238,60 @@ async function drawToken(ctx, p, { x, y, r, hideRatings }) {
   ctx.fillText(name, x, ny);
 }
 
-function drawCup(ctx, x, y, scale) {
+function drawCup(ctx, x, y, scale, metal = 'gold') {
   if (typeof Path2D !== 'function') return;
+  const { face, edge } = METALS[metal] || METALS.gold;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
-  const gold = gradient(ctx, 0, 0, 100, 110, ['#fff4cf', '#f5c84c', '#a8770f', '#f7d774']);
-  ctx.strokeStyle = '#dba52a';
+  ctx.strokeStyle = edge[1];
   ctx.lineWidth = 5;
   ctx.lineCap = 'round';
   ctx.stroke(new Path2D(CUP_PATHS.handleLeft));
   ctx.stroke(new Path2D(CUP_PATHS.handleRight));
-  ctx.fillStyle = gold;
+  ctx.fillStyle = gradient(ctx, 0, 0, 100, 110, face);
   for (const d of [CUP_PATHS.bowl, CUP_PATHS.stem, CUP_PATHS.base]) ctx.fill(new Path2D(d));
   ctx.fillRect(26, 99, 48, 9);
   ctx.restore();
 }
 
-function drawGrade(ctx, grade, x, y, size) {
-  const family = String(grade || 'F')[0].toLowerCase();
-  const fill = GRADE_FILL[family] || GRADE_FILL.f;
+// The prize plaque of a finish in a size × size box: the gold cup, a silver or bronze medal
+// with its rank, or (no medal) a plain plaque with the round ('QF', 'R16', …).
+function drawPrize(ctx, card, x, y, size) {
+  const medal = METALS[card.medal] ? card.medal : null;
   roundRect(ctx, x, y, size, size, size * 0.24);
-  ctx.fillStyle = gradient(ctx, x, y, x + size, y + size, fill);
+  ctx.fillStyle = medal
+    ? gradient(ctx, x, y, x + size, y + size, METALS[medal].face)
+    : 'rgba(148,170,220,0.22)';
   ctx.fill();
   roundRect(ctx, x + 6, y + 6, size - 12, size - 12, size * 0.2);
   ctx.fillStyle = 'rgba(7,11,22,0.88)';
   ctx.fill();
-  ctx.fillStyle = gradient(ctx, x, y, x + size, y + size, fill);
+  if (medal === 'gold') {
+    drawCup(ctx, x + size * 0.19, y + size * 0.16, (size * 0.62) / 100, 'gold');
+    return;
+  }
+  const cx = x + size / 2,
+    cy = y + size / 2;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const letter = String(grade)[0],
-    mod = String(grade).slice(1);
-  ctx.font = `800 ${Math.round(size * 0.62)}px ${DISPLAY}`;
-  const lw = ctx.measureText(letter).width;
-  ctx.font = `800 ${Math.round(size * 0.36)}px ${DISPLAY}`;
-  const mw = mod ? ctx.measureText(mod).width : 0;
-  const start = x + size / 2 - (lw + mw) / 2;
-  ctx.textAlign = 'left';
-  ctx.font = `800 ${Math.round(size * 0.62)}px ${DISPLAY}`;
-  ctx.fillText(letter, start, y + size * 0.54);
-  if (mod) {
-    ctx.font = `800 ${Math.round(size * 0.36)}px ${DISPLAY}`;
-    ctx.fillText(mod, start + lw + 2, y + size * 0.36);
+  if (medal) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = gradient(ctx, x, y, x + size, y + size, METALS[medal].face);
+    ctx.fill();
+    ctx.lineWidth = size * 0.035;
+    ctx.strokeStyle = METALS[medal].edge[0];
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(7,11,22,0.82)';
+    ctx.font = `800 ${Math.round(size * 0.4)}px ${DISPLAY}`;
+    ctx.fillText(medal === 'silver' ? '2' : '3', cx, cy + size * 0.02);
+    return;
   }
+  ctx.fillStyle = C.text2;
+  const text = String(card.placeShort || '').toUpperCase();
+  ctx.font = `800 ${Math.round(size * (text.length > 3 ? 0.3 : 0.4))}px ${DISPLAY}`;
+  ctx.fillText(text, cx, cy + size * 0.02);
 }
 
 /** Draw the card on a canvas and return a PNG Blob. */
@@ -317,17 +316,25 @@ export async function renderShareImage(card, { canvas } = {}) {
   ctx.fillText(String(card.title || 'World Cup Run').toUpperCase(), SHARE_W - M, 104);
   ctx.letterSpacing = '0px';
 
-  // grade + verdict + record
+  // the finish (cup, medal or round) + its name + record
   const gy = 150,
     gs = 190;
-  drawGrade(ctx, card.grade || 'F', M, gy, gs);
+  drawPrize(ctx, card, M, gy, gs);
+  ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
-  ctx.fillStyle = card.champion ? C.gold : C.text1;
+  ctx.fillStyle =
+    card.medal === 'gold' || card.champion
+      ? C.gold
+      : card.medal === 'silver'
+        ? METALS.silver.face[1]
+        : card.medal === 'bronze'
+          ? METALS.bronze.face[1]
+          : C.text1;
   ctx.font = `800 84px ${DISPLAY}`;
   const textX = M + gs + 40,
     textW = SHARE_W - M - textX;
   ctx.fillText(
-    fitText(String(card.verdict || '').toUpperCase(), textW, s => ctx.measureText(s).width),
+    fitText(String(card.placeLabel || '').toUpperCase(), textW, s => ctx.measureText(s).width),
     textX,
     gy + 78,
   );
