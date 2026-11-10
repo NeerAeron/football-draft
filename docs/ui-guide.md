@@ -212,9 +212,9 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `Flag` | `code`, `name`, `shape` circle·rect, `size`, `src`, `decorative` (falls back to initials) |
 | `Crest` / `LeagueLogo` | `name`, `colors`, `shape` disc·shield, `size` / `src`, `name`, `tier` |
 | `PlayerCard` | `player`, `size` s·m·l, `tier`, `selected`, `disabled`, `hideRatings`, `onClick`, `children` (footer) |
-| `PlayerRow` | `player`, `fit`, `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
+| `PlayerRow` | `player`, `fit`, `cost { label, tone }` (Budget band tag), `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
 | `FitTag` | `fit { state: best·ok·penalty·swap·blocked·neutral, label, from, to }` |
-| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `names` |
+| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `boosts` (array · `false`; default: mates + Captain from the players), `names` |
 | `Meter` / `StatBar` / `StatTile` | `label value max tone(auto) size valueText delta compare hint` |
 | `Reel` | `items`, `landIndex` (decided first!), `spinKey`, `onLand`, `onTick`, `skip`, `duration`, `size` |
 | `Modal` / `Sheet` | `open`, `onClose`, `title` (required), `eyebrow`, `description`, `footer`, `size`, `dismissible` |
@@ -232,8 +232,8 @@ in `styles/app.css` and in `components/index.js`, a gallery section, and a row h
 
 **PitchView fit flow (draft):** when a player is selected, compute per-slot fit in `core/` and pass
 `highlights`: `best` (auto-place target), `ok` (natural), `penalty { from, to }` (OVR after
-familiarity, shown "79 → 75"), `swap` (occupied), `blocked` (not selectable). Links come from the
-chemistry rules (`strength` 3 club, 2 nation, 1 league is the gallery's convention).
+familiarity, shown "79 → 75"), `swap` (occupied), `blocked` (not selectable). Mates lines and boost chips come from the
+chemistry rules (`strength` 3 nation mates · gold, 2 club mates · volt, 1 a faint dashed line; the green `+2` / `+4` chips are worked out from the players' `source`/`captain` unless `boosts` is passed).
 
 ## 9. Tokens (`styles/tokens.css`)
 

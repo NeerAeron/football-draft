@@ -17,9 +17,11 @@
 //   badges?: [{ id: 'finisher', label: 'Clinical Finish' }],
 //   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
 //   captain?: true,              // Captain tag (an armband mark; boosts his XI)
+//   source?: { nationality, clubId, … },  // what makes mates (core/draft/links.js)
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
 import { BADGES } from '../../core/players/traits.js';
+import { teamLinks } from '../../core/draft/links.js';
 
 const GROUP = Object.fromEntries(RATING_GROUPS.map(g => [g.id, g]));
 const OUTFIELD = [
@@ -87,6 +89,15 @@ export function captainSlot(players) {
 }
 
 /**
+ * The boost of every player of an XI (views or catalog players, null = open slot): mates
+ * (nation mate +2, club mate +2, both +4) plus the Captain's +1 — core/draft/links.js. 0 when a view
+ * carries no `source`.
+ */
+export function mateBoosts(players, rules) {
+  return teamLinks(players, rules).players.map(e => (e ? e.chem : 0));
+}
+
+/**
  * Build a PlayerView from a catalog player record.
  *   context.team    catalog team { name, primary, secondary }
  *   context.league  catalog league { name, logo, tier }
@@ -111,6 +122,7 @@ export function playerView(p, { team, league, nation } = {}) {
     stats: summaryStats(p.attrs, position),
     attrs: p.attrs, // every attribute (the draft's "All attributes" panel)
     captain: !!p.captain, // Captain tag: a boost for his whole XI (draft/links.js)
+    source: p.source, // nation / club: who his mates are (draft/links.js)
     sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };

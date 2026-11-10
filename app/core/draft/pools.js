@@ -208,6 +208,7 @@ export function draftRules(source = CONFIG.draft) {
     rerolls: source.rerolls,
     ladder: source.ladder,
     links: source.links,
+    budget: source.budget,
     minimumLeaguePlayers: source.minimumLeaguePlayers,
   });
 }

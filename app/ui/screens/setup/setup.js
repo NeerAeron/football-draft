@@ -44,6 +44,7 @@ import {
   savedChoices,
   setupContext,
   spinsNations,
+  budgetCopy,
 } from './setup-model.js';
 
 const idle = fn => (globalThis.requestIdleCallback || (f => setTimeout(f, 60)))(fn);
@@ -254,6 +255,7 @@ function Summary({ mode, state, levels }) {
     ['Formation', formationLabel(state.formation)],
     state.hideRatings && ['Ratings', 'Hidden (Ball Knower)'],
     spinsNations(state.type) && state.uniqueNations && ['Nations', 'One player each'],
+    mode === 'run' && state.budget && ['Budget', 'On: stars are capped'],
   ].filter(Boolean);
   return html`<dl class="summary">
     ${rows.map(
@@ -446,6 +448,17 @@ function Setup({ mode, query }) {
           }
         />
         <${ChoiceGroup} legend="Options" class="setup-options">
+          ${
+            mode === 'run' &&
+            state.seed == null &&
+            html`<${Switch}
+              label="Budget mode"
+              description=${budgetCopy()}
+              checked=${state.budget}
+              onChange=${v => update({ budget: v })}
+              id="setup-budget"
+            />`
+          }
           <${Switch}
             label="Hide ratings"
             description="Ball Knower: no numbers during the draft. Trust your football knowledge."

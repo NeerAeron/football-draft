@@ -134,6 +134,7 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
     seed: typeof seed === 'number' || typeof seed === 'string' ? seed : seedNumber(seed),
     hideRatings: !!(context.options?.hideRatings ?? options.hideRatings),
     uniqueNations: !!(context.options?.uniqueNations ?? options.uniqueNations),
+    budget: !!(context.options?.budget ?? options.budget),
     defaultRules,
     challenge: challenge ? sanitizeChallenge(challenge) : null,
     links: user.links ? { score: user.links.score, maxScore: user.links.maxScore } : null,

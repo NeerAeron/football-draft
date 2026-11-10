@@ -251,13 +251,13 @@ test('links chemistry is bounded, exported and added to every skill', () => {
   m.importConfig(config);
   assert.deepEqual(
     [9, 1, 2, 3].map(i => m.players[i].chem),
-    [1.5, 4, 0, 0],
+    [1.5, 5, 0, 0],
   );
   for (const key of ['pace', 'shooting', 'composure'])
     assert.ok(Math.abs(m.players[9].skill(key) - plain.players[9].skill(key) - 1.5) < 1e-9);
   assert.ok(m.players[4].skill('pace') <= 99);
   assert.equal(m.exportConfig().players[9].chem, 1.5);
-  assert.equal(m.playerProfile(m.players[1]).chem, 4);
+  assert.equal(m.playerProfile(m.players[1]).chem, 5);
 });
 
 test('highlights rank chances by xG and drama, and still keep every goal', () => {

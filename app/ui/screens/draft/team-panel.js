@@ -1,5 +1,5 @@
-// Team side of the draft board: the live meters (team OVR, Links, projection), the pitch with
-// placed players and link lines, the DEF/MID/ATT line meters and, in Versus, both XIs.
+// Team side of the draft board: the live meters (team OVR, Boosts, projection), the Budget
+// slots, the pitch with placed players, their boost chips and mates lines, the DEF/MID/ATT line meters and, in Versus, both XIs.
 import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
 import { PitchView, Meter, Icon, Flag, LeagueLogo, Crest } from '../../components/index.js';
@@ -7,6 +7,7 @@ import { linkLines } from './draft-model.js';
 import { fmt1, signed1 } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
+const boostNumber = n => (Number.isInteger(n) ? String(n) : fmt1(n));
 
 /** Pick progress: one pip per slot, filled as players arrive. */
 export function Progress({ filled, total = 11, label }) {
@@ -32,7 +33,8 @@ function Stat({ label, value, sub, tone, testid }) {
 }
 
 /**
- * The meters strip: team OVR (with a preview delta), Links (n / 33) and the projection.
+ * The meters strip: team OVR (with a preview delta), Boosts (the sum of the green chips on the
+ * pitch: mates + Captain) and the projection.
  * hideRatings hides OVR and the projection (they would reveal the ratings).
  */
 export function TeamSummary({
@@ -48,7 +50,7 @@ export function TeamSummary({
     preview && team.rating != null && preview.rating != null
       ? Math.round((preview.rating - team.rating) * 10) / 10
       : null;
-  const linkDelta = preview ? preview.links - team.links.score : null;
+  const boostDelta = preview ? preview.gain : null;
   return html`<section
     class=${cx('tsummary', compact && 'is-compact', !showOvr && 'is-two')}
     aria-label="Team meters"
@@ -69,11 +71,11 @@ export function TeamSummary({
       />`
     }
     <${Stat}
-      label="Links"
-      testid="team-links"
-      value=${html`${team.links.score}<small>/${team.links.maxScore}</small>`}
-      tone="gold"
-      sub=${linkDelta ? html`<span class="delta is-up">+${linkDelta}</span>` : null}
+      label="Boosts"
+      testid="team-boosts"
+      value=${`+${boostNumber(team.links.total)}`}
+      tone="green"
+      sub=${boostDelta > 0 ? html`<span class="delta is-up">+${boostNumber(boostDelta)}</span>` : null}
     />
     ${
       projection
@@ -87,6 +89,42 @@ export function TeamSummary({
     }
     ${children}
   </section>`;
+}
+
+/**
+ * Budget mode: the rating bands as slots filling up ("88+ ●", "84–87 ●○", "80–83 ●●○").
+ * budget: team.budget ([{ id, label, slots, used, left }]); use: the band id the selected
+ * player would take (its next pip pulses).
+ */
+export function BudgetStrip({ budget, use = null, class: className }) {
+  if (!budget) return null;
+  const free = `Under ${budget[budget.length - 1].minimum}`;
+  return html`<div class=${cx('draft-budget', className)} role="group" aria-label="Budget">
+    <span class="draft-budget__title">Budget</span>
+    ${budget.map(
+      b =>
+        html`<span
+          key=${b.id}
+          class=${cx('draft-budget__band', `is-${b.id}`, b.left === 0 && 'is-full')}
+          role="img"
+          aria-label=${`${b.label}: ${b.used} of ${b.slots} used`}
+          data-band=${b.id}
+        >
+          <b class="num">${b.label}</b>
+          <span class="draft-budget__pips">
+            ${Array.from(
+              { length: b.slots },
+              (_, i) =>
+                html`<i
+                  key=${i}
+                  class=${cx(i < b.used && 'is-on', use === b.id && i === b.used && 'is-next')}
+                ></i>`,
+            )}
+          </span>
+        </span>`,
+    )}
+    <span class="draft-budget__band is-free"><b class="num">${free}</b> free</span>
+  </div>`;
 }
 
 /** DEF / MID / ATT line meters (hidden with ratings). */

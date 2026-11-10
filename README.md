@@ -16,9 +16,11 @@ Everything you do is saved in your own browser.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
-4. **Links and the Captain.** Players sharing a club, nation or league link up and get a small
-   boost. A **Captain** (marked **C**: experienced players with a big international reputation)
-   lifts every player in his XI.
+4. **Mates and the Captain.** A player with a nation team-mate in your XI gets **+2**, with a
+   club mate **+2**, with both **+4** (shown as a green chip on the pitch). A **Captain** (marked **C**: experienced players with a big international
+   reputation) gives every player in his XI +1 on top.
+   **Budget mode** (a switch on the World Cup setup) is the hard way: only 1 player rated 88+,
+   2 rated 84–87 and 3 rated 80–83 — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
    Cup Run the first match is played in the formation you drafted in). Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
@@ -111,7 +113,7 @@ app/                  the deployed site, served as-is
   core/               pure logic, no DOM or storage; runs in Node
     sim/              match engine, rules, cards, periods, replay, shootouts, AI coach
     players/          ratings, badges, formations, club lineups, catalog codec
-    draft/            draft session, pools, Links, opponent ladder
+    draft/            draft session, pools, mates boosts, Budget mode, opponent ladder
     competition/      World Cup Run, fast rating model, Daily Challenge, share links
     config/           tuning defaults, saved overrides, normalisation
     util/             seeded RNG, math and text helpers

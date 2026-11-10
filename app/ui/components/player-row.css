@@ -154,3 +154,30 @@
   vertical-align: 1px;
   margin-left: 2px;
 }
+
+/* Cost tag (Budget mode): the rating band the player uses up, before the club line. */
+.prow__cost {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--surface-3, rgb(255 255 255 / 0.08));
+  color: var(--text-2);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+.prow__cost--band1 {
+  background: var(--gold-400);
+  color: #1a1203;
+}
+.prow__cost--band2 {
+  background: var(--volt-400);
+  color: #10180a;
+}
+.prow__cost--band3 {
+  background: var(--sky-400);
+  color: #06131f;
+}
