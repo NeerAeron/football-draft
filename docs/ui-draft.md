@@ -14,12 +14,12 @@ Home → Start (setup) → the reel is already spinning: two taps from Home to t
 
 ## Setup query parameters (challenge links land here)
 
-`#/play/quick?type=leagues&difficulty=amateur&formation=4231&seed=123&hide=1&unique=1`
+`#/play/quick?type=leagues&difficulty=worldclass&formation=4231&seed=123&hide=1&unique=1`
 
 | Param | Values | Notes |
 | --- | --- | --- |
 | `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`). `club-country` is no longer offered and reads as `nations` |
-| `difficulty` | `amateur` · `semipro` · `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` |
+| `difficulty` | `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` (so does a removed `amateur` / `semipro`) |
 | `formation` | any `FORMATIONS` key (`433`, `4231-wide`, …) | default: last choice, else `433` |
 | `seed` | digits (uint32) or any string (FNV-1a, like the core) | **implies standard rules** (`useDefaultRules`), shows the Challenge banner |
 | `hide` / `unique` | `1` / `0` | Ball Knower / one player per nation (nation spins only) |
@@ -101,7 +101,7 @@ openPrematch({
 * `kickOff({ go = true })` → `buildMatchConfig({ sides, competition: engineCompetition(data) })`
   and `requestMatch({ id, seed, view, config, meta: { ...meta, sides, userSides } })`.
   `engineCompetition`: mode `ai` (or `pvp` when both sides are human), AI coach level from the
-  draft difficulty (`COACH_LEVEL`: amateur `veryeasy` … legendary `impossible`). In `ai` mode the
+  draft difficulty (`COACH_LEVEL`: pro `medium`, worldclass `hard`, legendary `impossible`). In `ai` mode the
   engine's coach runs **side 1**, so put the AI side second.
 * Pure helpers for screens/tests: `slotFits`, `lineupStrength` (OVR, effective, Links),
   `canSwap`, `swapSlots`, `reslot`.

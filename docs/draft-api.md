@@ -26,8 +26,9 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 | `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubAndCountry` | alternately a nation (picks 1, 3, 5…) and a league (2, 4, 6…) | as above | as above |
 
-Every pick is one spin. Re-rolls per drafter by `difficulty`: Amateur 2 · Semi-pro 2 · Pro 1 ·
-World Class 1 · Legendary 0 (or `rerolls: n`). A re-roll spins again without the options seen
+Every pick is one spin. Re-rolls per drafter by `difficulty` (`DIFFICULTIES`: `pro`, `worldclass`,
+`legendary`): Pro 2 · World Class 1 · Legendary 1 (or `rerolls: n`). A removed id (`amateur`,
+`semipro`) in a saved draft or a link plays as Pro (`difficultyOf`). A re-roll spins again without the options seen
 this round. No reveal pacing, no budget. **Dead-end guard**: an option whose pool cannot fill
 any open slot class (the GK slot vs outfield slots) gets weight 0 — so a keeper is always
 available when only the GK slot is left. All numbers live in `CONFIG.draft` (`nations`,
@@ -173,12 +174,13 @@ solo drafts per mode × re-roll count, positional policy; chem includes the Capt
 | Clubs | 77.71 ± 1.71 | 0.87 | 78.03 / 78.58 / 78.98 |
 | Club & Country (no longer offered) | 82.30 ± 1.46 | 0.41 | 82.17 / 82.71 / 83.24 |
 
-Gap (`CONFIG.draft.ladder`): Amateur −7 · Semi-pro −3.5 · Pro 0 · World Class +4 ·
+Gap (`CONFIG.draft.ladder`): Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: national best XIs
 (Nations), club XIs (Leagues, Clubs), both (Club & Country), plus bosses **World XI** (88.5)
-and **All-Stars** (87.3, the best XI without the World XI). Real XIs carry +2 chem, so a
+and **All-Stars** (87.3, the best XI without the World XI; `bosses: false` in `chooseOpponent`
+/ `modeCandidates` leaves them out, as the World Cup Run and the Daily do). Real XIs carry +2 chem, so a
 national XI of 81.5 OVR is a fair Pro opponent for an 82.9 draft. Nations examples:
-Amateur ≈ Ireland/Kosovo/Paraguay, Semi-pro ≈ Poland/Austria/Japan, Pro ≈ Belgium/Uruguay/
+Pro ≈ Belgium/Uruguay/
 Croatia/Switzerland, World Class ≈ Brazil/Spain/France/England, Legendary ≈ World XI.
 
 ```js
