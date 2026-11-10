@@ -244,16 +244,34 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
             size="lg"
             block
             icon="rotate-ccw"
-            href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations' })}
+            href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations', go: 1 })}
             data-testid="play-again"
             >Play again<//
           >
-          <${Button} variant="ghost" block icon="house" href=${href('/')}>Home<//>
+          <div class="run-end__more">
+            <${Button}
+              variant="ghost"
+              icon="sliders-horizontal"
+              href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations' })}
+              >Change setup<//
+            >
+            <${Button} variant="ghost" icon="house" href=${href('/')}>Home<//>
+          </div>
         </div>
         <p class="run-end__fine text-3 text-xs">
           ${`Share link plays the same spins: ${pageBase().replace(/^https?:\/\//, '')}`}
         </p>
       </aside>
+    </div>
+    <div class="action-bar run-end__bar">
+      <${Button}
+        variant="primary"
+        size="lg"
+        block
+        icon="rotate-ccw"
+        href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations', go: 1 })}
+        >Play again<//
+      >
     </div>
   </div>`;
 }

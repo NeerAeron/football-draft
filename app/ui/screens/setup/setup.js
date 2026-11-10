@@ -2,7 +2,7 @@
 // opponents and re-rolls), formation, options; Versus names + kits. Everything is preselected
 // (query → last choices → prefs), so one tap starts the draft — and startDraft() makes the
 // first spin, so Home → Start → the reel is already spinning.
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { navigate } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
@@ -385,6 +385,15 @@ function Setup({ mode, query }) {
       setBusy(false);
     }
   };
+
+  // "Play again" arrives with ?go=1: start at once with the last choices (one tap from a
+  // finished run to the first spin of the next). Not for Versus, which asks for names.
+  const went = useRef(false);
+  useEffect(() => {
+    if (query.go !== '1' || went.current || mode === 'versus') return;
+    went.current = true;
+    start();
+  }, []);
 
   const cta = html`<${Button}
     variant="primary"
