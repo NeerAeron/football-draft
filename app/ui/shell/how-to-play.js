@@ -27,12 +27,12 @@ export const HOW_TO_STEPS = [
   {
     icon: 'whistle',
     title: 'Play the run',
-    text: 'Three group games, then four knockouts. Watch key moments or sim straight to the result.',
+    text: 'Three group games, then five knockouts from the Round of 32. Watch key moments or sim straight to the result.',
   },
   {
     icon: 'trophy',
-    title: 'Go 7–0',
-    text: 'Win all seven for a perfect run. Earn a grade, share your XI, challenge a friend.',
+    title: 'Go 8–0',
+    text: 'Win all eight for a perfect run. Earn a grade, share your XI, challenge a friend.',
   },
 ];
 

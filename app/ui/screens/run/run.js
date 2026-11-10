@@ -35,6 +35,7 @@ import {
   fixtureId,
   fixtureOdds,
   groupStakes,
+  THIRD_PLACE_RULE,
   logEntry,
   withLog,
   roundLabel,
@@ -181,7 +182,7 @@ function DrawBanner({ snapshot, hideRatings }) {
       )}
     </ul>
     <p class="run-flash__note text-3">
-      Top two go through to the Round of 16. Then four knockouts to the trophy.
+      ${`Top two go through to the Round of 32. ${THIRD_PLACE_RULE} Then five knockouts to the trophy.`}
     </p>
   </section>`;
 }
@@ -207,13 +208,15 @@ function ResultBanner({ snapshot, before, round, entry }) {
   const headline =
     round >= 3
       ? won
-        ? round === 6
+        ? r.id === 'final'
           ? 'Champions!'
           : `Through to the ${roundLabel(round + 1)}`
         : 'Knocked out'
       : groupDone
-        ? userPos <= 2
-          ? `Through as group ${userPos === 1 ? 'winners' : 'runners-up'}`
+        ? snapshot.status !== 'eliminated'
+          ? userPos <= 2
+            ? `Through as group ${userPos === 1 ? 'winners' : 'runners-up'}`
+            : 'Through as one of the best thirds'
           : 'Out of the group'
         : res.outcome === 'W'
           ? 'Three points'
@@ -587,7 +590,7 @@ export default function RunScreen() {
         size="lg"
         level=${1}
         title="No run in progress"
-        message="Draft an XI one spin at a time, then take it through the group and four knockout rounds."
+        message="Draft an XI one spin at a time, then take it through the group and five knockout rounds."
         action=${html`<${Button}
           variant="primary"
           size="lg"
@@ -632,9 +635,10 @@ export default function RunScreen() {
   >
     <div class="spread">
       <h2 class="section-title" id="group-title">Group A</h2>
-      <span class="text-3 text-sm">Top two advance</span>
+      <span class="text-3 text-sm">Top two + best thirds</span>
     </div>
     <${GroupTable} snapshot=${snapshot} moves=${moves} />
+    <p class="run-group__rule text-3 text-xs">${THIRD_PLACE_RULE}</p>
     <${MatchdayList} snapshot=${snapshot} live=${sim ? null : null} />
   </section>`;
 

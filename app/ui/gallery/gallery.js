@@ -115,7 +115,7 @@ function Tokens() {
     <//>
     <${Demo} label="Type" wide>
       <div class="g-type">
-        <p class="display display-2xl">7–0</p>
+        <p class="display display-2xl">8–0</p>
         <p class="display display-xl">World Cup Run</p>
         <h1>Display LG · h1</h1>
         <h2>Display MD · h2</h2>
@@ -717,7 +717,7 @@ function Results() {
     <//>
     <${Demo} label="Grade + verdict" wide>
       <div class="g-grades">
-        <${GradeBadge} grade="S+" size="lg" verdict="Perfect run" detail="7–0 · 1,048 pts" />
+        <${GradeBadge} grade="S+" size="lg" verdict="Perfect run" detail="8–0 · 1,148 pts" />
         <${GradeBadge}
           grade="B+"
           size="lg"

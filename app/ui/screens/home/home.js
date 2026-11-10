@@ -54,7 +54,7 @@ function RunPath({ stage = null, record = null, perfect = true }) {
     <ol
       class="run-path__track"
       role="list"
-      aria-label="Three group matches, then four knockout rounds"
+      aria-label="Three group matches, then five knockout rounds"
     >
       ${STAGES.map((s, i) => {
         const state = i < reached ? 'done' : i === reached ? 'current' : 'todo';
@@ -74,7 +74,7 @@ function RunPath({ stage = null, record = null, perfect = true }) {
     </ol>
     <div class="run-path__legend" aria-hidden="true">
       <span class="run-path__group">Group</span><span>Knockouts</span>
-      ${perfect && html`<span class="run-path__perfect"><b class="num">7–0</b> perfect run</span>`}
+      ${perfect && html`<span class="run-path__perfect"><b class="num">8–0</b> perfect run</span>`}
       ${record && html`<span class="num run-path__record">${record.w}–${record.d}–${record.l}</span>`}
     </div>
   </div>`;
@@ -90,7 +90,7 @@ function Hero() {
           <span>World</span> <span>Cup</span> <em>Run</em>
         </h1>
         <p class="home-hero__lead">
-          Draft an XI one spin at a time, then take it through the group and four knockout rounds.
+          Draft an XI one spin at a time, then take it through the group and five knockout rounds.
         </p>
       </div>
       <${RunPath} />
@@ -256,7 +256,7 @@ function DailyCard({ daily }) {
 
 /**
  * The trophy cabinet (lib/records.js): one cup per difficulty, lit once a World Cup Run has
- * been won on it, starred after a perfect seven. Each slot starts a run on that difficulty.
+ * been won on it, starred after a perfect eight. Each slot starts a run on that difficulty.
  */
 function Cabinet({ records }) {
   const plural = (n, one, many = `${one}s`) => `${int(n)} ${n === 1 ? one : many}`;

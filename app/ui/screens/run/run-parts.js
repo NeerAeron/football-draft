@@ -6,7 +6,7 @@ import { Flag } from '../../components/flag.js';
 import { Crest } from '../../components/crest.js';
 import { Icon } from '../../components/icon.js';
 import { Chip } from '../../components/chip.js';
-import { userTeamName, roundShort, roundLabel } from '../../lib/run-store.js';
+import { userTeamName, roundShort, roundLabel, THIRD_PLACE_RULE } from '../../lib/run-store.js';
 import { sideColors } from '../../lib/kits.js';
 import { Trophy } from './trophy.js';
 
@@ -176,6 +176,7 @@ export function StakesRow({ stakes, knockout, final }) {
           ${`Depends on ${stakes.other.home} v ${stakes.other.away} and goal difference.`}
         </li>`
       }
+      ${stakes.third && html`<li class="stakes__note">${THIRD_PLACE_RULE}</li>`}
     </ul>`;
   if (knockout)
     return html`<p class="stakes stakes--ko">
@@ -200,7 +201,8 @@ const TIEBREAK = {
 };
 /**
  * Group table. moves: { [key]: +n | −n } position change to show (after a result).
- * qualified: number of rows marked as advancing (2).
+ * Rows marked as advancing: the top two and a third that goes through on the best-thirds rule
+ * (row.qualifies, as the table stands).
  */
 export function GroupTable({ snapshot, moves = {}, compact = false, label = 'Group A' }) {
   const started = snapshot.group.table.some(r => r.played);
@@ -216,6 +218,7 @@ export function GroupTable({ snapshot, moves = {}, compact = false, label = 'Gro
           },
       );
   const done = rows.every(r => r.played === 3);
+  const advancing = (r, i) => (started ? (r.qualifies ?? i < 2) : i < 2);
   return html`<table class=${cx('group-table', compact && 'is-compact')}>
     <caption class="visually-hidden">
       ${label} standings
@@ -241,8 +244,8 @@ export function GroupTable({ snapshot, moves = {}, compact = false, label = 'Gro
           key=${r.key}
           class=${cx(
             'gt-row',
-            i < 2 && 'is-qualifying',
-            done && i < 2 && 'is-through',
+            advancing(r, i) && 'is-qualifying',
+            done && advancing(r, i) && 'is-through',
             r.user && 'is-user',
             move > 0 && 'is-up',
             move < 0 && 'is-down',

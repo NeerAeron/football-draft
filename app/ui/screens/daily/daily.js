@@ -137,7 +137,7 @@ function Intro({ catalog, day, state, today, onStart, starting }) {
             >${`Formation ${formationLabel(day.formation)} · Pro opponents`}</span
           >
         </li>
-        <li><${Icon} name="zap" size=${18} /><span>All seven matches auto-simulated</span></li>
+        <li><${Icon} name="zap" size=${18} /><span>All eight matches auto-simulated</span></li>
       </ul>
       <div class="daily-group">
         <span class="daily-group__label">Your group</span>
@@ -439,6 +439,23 @@ function rebuildRun(catalog, day, entry) {
   }
   return null;
 }
+/**
+ * Today's attempt being simulated. One saved before the Round of 32 (seven rounds, cup format
+ * 1) does not restore: it starts again with the same XI against today's eight opponents.
+ */
+function resumeAttempt(catalog, day, saved) {
+  try {
+    return restoreCupRun(catalog, saved);
+  } catch (error) {
+    const u = saved?.user;
+    if (!u || !Array.isArray(u.players)) throw error;
+    const { name, color, secondary, formation, players } = u;
+    return createCupRun(catalog, {
+      ...day.cup,
+      user: { name, color, secondary, formation, players },
+    });
+  }
+}
 function matchFor(run, round) {
   const home = run.userSide(),
     away = run.opponentSide(round);
@@ -547,7 +564,10 @@ export default function DailyScreen() {
         }
         if (draft?.session?.complete && draft.context?.kind === 'daily') clearDraft();
         if (state.current?.id === today) {
-          const run = restoreCupRun(catalog, state.current.run);
+          const run = resumeAttempt(catalog, day, state.current.run);
+          // A restarted attempt (see resumeAttempt) drops the log of the old format's matches.
+          if (!run.matches.length && state.current.log?.length)
+            ctx.state = { ...ctx.state, current: { ...ctx.state.current, log: [] } };
           if (run.complete) finish(ctx, run);
           else simulate(ctx, run);
           return;

@@ -459,7 +459,7 @@ test('share image layout: tokens inside the pitch, keeper at the bottom, no over
       for (const b of tokens)
         if (a !== b) assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= 80, `${formation} overlap`);
   }
-  const squares = share.resultSquares(7, { x: 0, y: 0, size: 60, gap: 10, groupGap: 30 });
+  const squares = share.resultSquares(8, { x: 0, y: 0, size: 60, gap: 10, groupGap: 30 });
   assert.equal(squares[1].x - squares[0].x, 70);
   assert.equal(squares[3].x - squares[2].x, 90);
   assert.ok(squares.at(-1).x + 60 <= share.SHARE_W - 72 * 2);

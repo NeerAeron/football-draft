@@ -11,7 +11,7 @@ export const SETUP_MODES = {
   run: {
     title: 'World Cup Run',
     eyebrow: 'Draft · Group · Knockouts',
-    lead: 'Draft your XI, then win a group of four and four knockout rounds. Perfect run: 7–0.',
+    lead: 'Draft your XI, then win a group of four and five knockout rounds. Perfect run: 8–0.',
     cta: 'Start draft',
   },
   quick: {

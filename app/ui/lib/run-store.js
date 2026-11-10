@@ -266,6 +266,11 @@ export function fixtureOdds(userEffective, opponentEffective) {
   return { win, draw, loss: Math.max(0, 100 - win - draw) };
 }
 
+/** The best-thirds rule in words, from BEST_THIRD (hub draw banner, stakes, group table). */
+export const THIRD_PLACE_RULE = `Third place goes through with ${BEST_THIRD.points} points, or ${
+  BEST_THIRD.points - 1
+} and a goal difference of ${String(BEST_THIRD.goalDifference).replace('-', '−')} or better.`;
+
 const OUTCOMES = [
   ['W', [1, 0]],
   ['D', [0, 0]],

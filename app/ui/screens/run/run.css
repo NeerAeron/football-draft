@@ -131,7 +131,7 @@
 .run-path-strip {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: var(--space-1);
   padding: var(--space-3) var(--space-2);
   border: 1px solid var(--line-1);
@@ -567,6 +567,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+.run-group__rule {
+  margin: 0;
 }
 .group-table {
   width: 100%;
