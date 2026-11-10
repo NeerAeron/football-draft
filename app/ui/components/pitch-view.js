@@ -199,14 +199,16 @@ export function PitchView({
           const b = slots[l.to];
           if (!a || !b) return null;
           const on = active != null && (l.from === active || l.to === active);
-          return html`<line
+          // A link is a soft glow, a solid core and a travelling pulse along it.
+          const ends = { x1: a.left, y1: a.top, x2: b.left, y2: b.top };
+          return html`<g
             key=${`${l.from}-${l.to}`}
             class=${cx('pitch__link', `pitch__link--${l.strength || 1}`, on && 'is-on')}
-            x1=${a.left}
-            y1=${a.top}
-            x2=${b.left}
-            y2=${b.top}
-          />`;
+          >
+            <line class="pitch__link-glow" ...${ends} />
+            <line class="pitch__link-core" ...${ends} />
+            <line class="pitch__link-flow" pathLength="100" ...${ends} />
+          </g>`;
         })}
       </svg>`
     }
