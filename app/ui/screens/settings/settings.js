@@ -171,9 +171,16 @@ function MotionPanel() {
 }
 
 function GameplayPanel() {
-  const hide = useStore(prefs, p => p.hideRatings);
+  const hide = useStore(prefs, p => p.hideRatings),
+    autoSpin = useStore(prefs, p => p.autoSpin);
   return html`<${Panel} id="gameplay" title="Gameplay">
     <div class="settings__rows">
+      <${Switch}
+        label="Spin automatically"
+        description="After each pick the next reel starts by itself. Turn off to tap for every spin."
+        checked=${autoSpin}
+        onChange=${v => setPref('autoSpin', v)}
+      />
       <${Switch}
         label="Hide ratings by default"
         description="Ball Knower mode: no OVRs or stats while you draft. Your share card says so."

@@ -114,8 +114,11 @@ async function startFromSetup(page, base, url) {
  * go back with Auto, then confirm (sheet on phones, dock on desktop).
  */
 async function draftPick(page, { tryAuto = false } = {}) {
+  // After the first pick the next reel starts by itself (auto-spin); the button is only
+  // there for a moment, so a missed click is fine.
   const spin = page.locator('[data-testid="spin"]');
-  if (await spin.isVisible().catch(() => false)) await spin.click();
+  if (await spin.isVisible().catch(() => false))
+    await spin.click({ timeout: 1500 }).catch(() => {});
   const row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
   await row.waitFor({ state: 'visible', timeout: 10000 });
   await row.click();
@@ -567,7 +570,8 @@ export const flows = [
           await picksMade(page, pick);
         });
       await step('filter + search the pool', async () => {
-        await page.click('[data-testid="spin"]');
+        // Auto-spin starts the reel by itself; click only if the button is still there.
+        await page.click('[data-testid="spin"]', { timeout: 1500 }).catch(() => {});
         await visible(page, '[data-testid="pool"]');
         await page.click('[data-testid="pool"] .toggle-chip:has-text("DEF")');
         await page.fill('[data-testid="pool"] input[type="search"]', 'a');
