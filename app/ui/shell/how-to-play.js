@@ -67,7 +67,7 @@ export function HowToPlaySheet() {
   return html`<${Sheet}
     open=${open}
     onClose=${closeHowTo}
-    eyebrow="Football Draft"
+    eyebrow="World Cup Draft"
     title="How it works"
     footer=${html`<${Button} variant="primary" size="lg" block onClick=${closeHowTo}>Got it<//>`}
   >

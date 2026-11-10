@@ -244,7 +244,6 @@ function Chips() {
             { value: 'nations', label: 'Nations' },
             { value: 'leagues', label: 'Leagues' },
             { value: 'clubs', label: 'Clubs' },
-            { value: 'club-country', label: 'Club & Country' },
           ]}
         />
         <div class="cluster">
@@ -790,7 +789,7 @@ function Gallery() {
   return html`<div class="gallery">
     <header class="gallery__top">
       <div class="container gallery__bar">
-        <a class="gallery__brand" href="./">Football Draft</a>
+        <a class="gallery__brand" href="./">World Cup Draft</a>
         <span class="gallery__name">Component gallery</span>
       </div>
     </header>

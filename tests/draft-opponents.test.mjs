@@ -51,7 +51,9 @@ test('opponents land within the target gap for every mode and level', () => {
       for (let seed = 1; seed <= 12; seed++) {
         const ref = chooseOpponent(catalog, { mode, level, seed });
         // Within ±1.5 effective wherever three candidates exist there (all but the very top).
-        const tolerance = target > 89 ? 3 : 1.5;
+        // National XIs are sparse around the Pro target (the captain's +1 opened a gap between
+        // Belgium 85.1 and Switzerland 83.1): ±2 there.
+        const tolerance = target > 89 ? 3 : mode === 'nations' && level === 'pro' ? 2 : 1.5;
         assert.ok(Math.abs(ref.effective - target) <= tolerance, `${mode} ${level} ${ref.name}`);
         names.add(ref.name);
       }
@@ -69,7 +71,10 @@ test('real XIs are fully linked and bosses top the ladder', () => {
   const list = opponentCandidates(catalog),
     world = list.find(c => c.key === 'boss:world-xi'),
     stars = list.find(c => c.key === 'boss:all-stars');
-  assert.ok(list.filter(c => c.kind !== 'boss').every(c => c.chem === 2));
+  // Fully linked (chem 2), plus the captain's boost when the XI has one.
+  const captain = DEFAULT_CONFIG.draft.links.captain;
+  assert.ok(list.filter(c => c.kind !== 'boss').every(c => c.chem === 2 || c.chem === 2 + captain));
+  assert.ok(list.some(c => c.chem === 2 + captain) && list.some(c => c.chem === 2));
   assert.ok(list.every(c => c.rating <= world.rating));
   assert.ok(stars.rating < world.rating && stars.rating > 85);
   const a = buildOpponent(catalog, world),

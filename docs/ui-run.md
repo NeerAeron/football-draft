@@ -26,7 +26,10 @@ links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/r
 2. **Play.** `openPrematch({ id: 'run:<runId>:<round>', seed: run.matchSeed(round), sides,
    competition: { mode: 'ai', difficulty: 'medium', knockout }, meta: { context: 'run',
    title, returnTo: '/run', fixture: id } })`. The pending fixture `{ id, round, seed }` is saved
-   first.
+   first. In the first match (round 0) the user side carries `formationLocked: true`: the
+   formation chosen before the draft cannot change before kick-off or during the match
+   (`changeFormation` refuses it; the request's `meta.formationLocked` lists the side); from
+   the second match on it can.
 3. **Return.** `readMatchResult(id)` (fallback: the stored result with the same seed and
    `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` → save.
    The hub shows a "Full time" banner, the other group match ticking in, table moves.

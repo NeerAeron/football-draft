@@ -255,7 +255,7 @@ test('analysis chips explain a heavy defeat from the loser’s side', () => {
     chips.every(c => ['positive', 'negative', 'neutral'].includes(c.tone) && c.label && c.detail),
   );
   assert.ok(chips.some(c => c.id === 'late-loss'));
-  assert.match(shareLine(r), /Football Draft$/);
+  assert.match(shareLine(r), /World Cup Draft$/);
 });
 
 test('a forced shootout finishes deterministically and is summarised', () => {

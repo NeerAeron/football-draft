@@ -64,3 +64,29 @@ test('real club and national XIs are fully linked', () => {
     assert.equal(links.chem, rules.maxChem);
   }
 });
+
+test('a Captain gives every player of his XI a boost; one captain counts', () => {
+  const rules = DEFAULT_CONFIG.draft.links;
+  const loner = (id, extra = {}) => ({
+    sourceOverall: 70,
+    source: { clubId: `c${id}`, nationality: `N${id}`, leagueId: `l${id}` },
+    ...extra,
+  });
+  const plain = teamLinks([loner(1), loner(2), null], rules);
+  assert.equal(plain.captain, null);
+  assert.equal(plain.captainBoost, 0);
+  assert.deepEqual(chemValues([loner(1), loner(2)], rules), [0, 0]);
+
+  const xi = [
+    loner(1),
+    loner(2, { captain: true, sourceOverall: 80 }),
+    loner(3, { captain: true }),
+  ];
+  const links = teamLinks(xi, rules);
+  assert.equal(links.captain, 1, 'the higher-rated captain wears the armband');
+  assert.equal(links.captainBoost, rules.captain);
+  assert.deepEqual(chemValues(xi, rules), [rules.captain, rules.captain, rules.captain]);
+  assert.equal(links.chem, rules.captain, 'two captains do not stack');
+  assert.equal(links.score, 0, 'Links score is unchanged');
+  assert.equal(teamLinks(xi, { ...rules, captain: 0 }).captainBoost, 0);
+});

@@ -9,7 +9,6 @@ import { prefs, setPref } from '../../lib/prefs.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { loadWarmCatalog } from '../../lib/catalog-warm.js';
-import { ladderPreview } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { MODE_BASELINES } from '../../../core/draft/opponents.js';
 import { formationLabel } from '../../../core/players/formations.js';
@@ -45,7 +44,6 @@ import {
   savedChoices,
   setupContext,
   spinsNations,
-  typicalOvr,
 } from './setup-model.js';
 
 const idle = fn => (globalThis.requestIdleCallback || (f => setTimeout(f, 60)))(fn);
@@ -82,9 +80,6 @@ function TypePicker({ value, onChange }) {
               ${value === t.value && html`<${Icon} name="circle-check" size=${18} class="choice__tick" />`}
             </span>
             <span class="type-card__text">${t.text}</span>
-            <span class="type-card__meta"
-              >Typical XI <b class="num">${typicalOvr(t.value)}</b></span
-            >
           </label>`,
       )}
     </div>
@@ -100,10 +95,9 @@ function Pips({ count, max = 2, label }) {
   </span>`;
 }
 
-function DifficultyPicker({ mode, type, value, onChange, levels, preview, catalogReady }) {
+function DifficultyPicker({ mode, type, value, onChange, levels }) {
   const rerollText = n => (n === 0 ? 'No re-rolls' : n === 1 ? '1 re-roll' : `${n} re-rolls`);
   const selected = levels.find(l => l.id === value) || levels[2];
-  const examples = preview?.find(p => p.id === value)?.examples || [];
   const typical = useMemo(() => {
     if (mode !== 'run') return null;
     const base = MODE_BASELINES[draftMode(type)];
@@ -115,7 +109,7 @@ function DifficultyPicker({ mode, type, value, onChange, levels, preview, catalo
   }, [mode, type, value, selected.rerolls]);
   return html`<${ChoiceGroup}
     legend="Difficulty"
-    hint="Sets how strong your opponents are and how many re-rolls you get."
+    hint="Difficulty sets how strong your opponents are and how many re-rolls you get. The match engine is the same at every level."
   >
     <div class="ladder">
       ${levels.map(
@@ -133,46 +127,30 @@ function DifficultyPicker({ mode, type, value, onChange, levels, preview, catalo
               onChange=${() => onChange(l.id)}
             />
             <span class="ladder__name">${l.label}</span>
-            <span class="ladder__text">${l.text}</span>
             <${Pips} count=${l.rerolls} label=${rerollText(l.rerolls)} />
-            <span class="ladder__target" title="Opponent strength (team rating + links)">
-              <span class="visually-hidden">Opponents rated about</span>
-              <b class="num">${l.target}</b>
-            </span>
           </label>`,
       )}
     </div>
     <div class="ladder__detail" aria-live="polite">
       <p>
         <b>${selected.label}:</b>
-        ${' '}${rerollText(selected.rerolls)} per draft · opponents rated about${' '}
-        <b class="num">${selected.target}</b>${' '}(team rating + links).
+        ${' '}${rerollText(selected.rerolls)} per draft.
       </p>
-      ${
-        examples.length > 0
-          ? html`<p class="ladder__examples">
-              ${'Teams like '}${examples
-                .slice(0, 4)
-                .map(e => e.name)
-                .join(', ')}.
-            </p>`
-          : !catalogReady && html`<p class="ladder__examples is-muted">Loading opponents…</p>`
-      }
       ${
         typical &&
         html`<p class="ladder__typical">
           <${Icon} name="trophy" size=${14} />
-          <span>${'A typical draft reaches the '}<b>${typical}</b>${'.'}</span>
+          <span>${'A good manager reaches the '}<b>${typical}</b>${'.'}</span>
         </p>`
       }
     </div>
   <//>`;
 }
 
-function FormationPicker({ value, onChange }) {
+function FormationPicker({ value, onChange, hint }) {
   const [all, setAll] = useState(!MAIN_FORMATIONS.includes(value));
   const list = all ? ALL_FORMATIONS : MAIN_FORMATIONS;
-  return html`<${ChoiceGroup} legend="Formation" hint="You can still change it before kick-off.">
+  return html`<${ChoiceGroup} legend="Formation" hint=${hint}>
     <div class="formation-grid">
       ${list.map(
         f =>
@@ -324,8 +302,6 @@ function Setup({ mode, query }) {
   );
   const [busy, setBusy] = useState(false);
   const wide = useMedia();
-  const [catalog, setCatalog] = useState(null);
-  const [preview, setPreview] = useState(null);
   const saved = useMemo(() => {
     const s = readSavedDraft();
     const kind = s?.context?.kind;
@@ -338,31 +314,10 @@ function Setup({ mode, query }) {
   );
 
   useEffect(() => {
-    let live = true;
-    loadWarmCatalog()
-      .then(c => live && setCatalog(c))
-      .catch(() => {});
+    // Warm the player database (and its rating caches) while the player chooses.
+    loadWarmCatalog().catch(() => {});
     idle(() => preloadRoutes(['/draft']));
-    return () => {
-      live = false;
-    };
   }, []);
-  useEffect(() => {
-    if (!catalog || mode === 'versus') return;
-    let live = true;
-    idle(() => {
-      if (!live) return;
-      try {
-        setPreview(ladderPreview(catalog, draftMode(state.type)));
-      } catch {
-        setPreview([]);
-      }
-    });
-    return () => {
-      live = false;
-    };
-  }, [catalog, state.type, mode]);
-
   const setType = type => {
     update({ type });
     setPref('draftType', type);
@@ -458,7 +413,7 @@ function Setup({ mode, query }) {
           <//>`
         }
         ${mode === 'versus' && html`<${VersusPlayers} state=${state} update=${update} />`}
-        <${TypePicker} value=${state.type} onChange=${setType} />
+        ${mode !== 'run' && html`<${TypePicker} value=${state.type} onChange=${setType} />`}
         ${
           mode === 'versus'
             ? html`<${ChoiceGroup}
@@ -479,11 +434,17 @@ function Setup({ mode, query }) {
                 value=${state.difficulty}
                 onChange=${v => update({ difficulty: v })}
                 levels=${levels}
-                preview=${preview}
-                catalogReady=${!!catalog}
               />`
         }
-        <${FormationPicker} value=${state.formation} onChange=${v => update({ formation: v })} />
+        <${FormationPicker}
+          value=${state.formation}
+          onChange=${v => update({ formation: v })}
+          hint=${
+            mode === 'run'
+              ? 'You play it in your first match. From the second match on you can change it.'
+              : 'You can still change it before kick-off.'
+          }
+        />
         <${ChoiceGroup} legend="Options" class="setup-options">
           <${Switch}
             label="Hide ratings"

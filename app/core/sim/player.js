@@ -14,10 +14,11 @@ const KEEPER_TECHNIQUE = new Set([
   'composure',
   'vision',
 ]);
-// Links (chemistry) bonus, 0..2 rating points added to every skill. The draft
-// computes it from club / nation / league links; matches default to 0.
+// Links (chemistry) bonus, 0..4 rating points added to every skill. The draft
+// computes it from club / nation / league links (up to 2) plus the captain's boost; matches
+// default to 0.
 export const normalizeChem = value =>
-  Number.isFinite(value) ? Math.max(0, Math.min(2, value)) : 0;
+  Number.isFinite(value) ? Math.max(0, Math.min(4, value)) : 0;
 // Per-step cache of skill values and familiarity. It is only active while a
 // Match step runs (stamp != 0): inside one step attributes, badges, tuning and
 // roles are fixed, while code outside a step (tests, UI, setup) mutating

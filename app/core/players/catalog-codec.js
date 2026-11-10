@@ -23,7 +23,7 @@
 //     foot (string of 'L'/'R'), weakFoot[], sourceOverall[], club[] (team index, -1 = none),
 //     nation[] (nation index), attrs[K*N] (integers, attribute-major: attrs[k * count + i]),
 //     tendencies[T*N] (attribute-major, integers = value * 1000), tags[] (badge code strings,
-//     normalised for the stamped configuration),
+//     normalised for the stamped configuration), captains[] (indices of Captain players),
 //     evidence[] (badge code strings), evidenceConfidence[] (flat, confidence * 1000)
 //   }
 export const CATALOG_FORMAT = 'football-draft-catalog';
@@ -106,6 +106,7 @@ export function encodeCatalog(catalog) {
     attrs: [],
     tendencies: [],
     tags: [],
+    captains: [],
     evidence: [],
     evidenceConfidence: [],
   };
@@ -147,6 +148,7 @@ export function encodeCatalog(catalog) {
       tendencies[k].push(scaled(p.tendencies[key], `${key} tendency`)),
     );
     out.tags.push(p.tags.map(t => code(badge(t), 'badge')).join(''));
+    if (p.captain) out.captains.push(out.name.length - 1);
     const explicit = p.inference?.badges || [];
     out.evidence.push(explicit.map(e => code(badge(e.tag), 'badge')).join(''));
     for (const e of explicit) out.evidenceConfidence.push(scaled(e.confidence, 'confidence'));
@@ -232,6 +234,8 @@ export function* decodeCatalogSteps(file) {
   });
   const players = new Array(n);
   let evidenceIndex = 0;
+  // Captains: indices of the players with the Captain tag (missing in older files).
+  const captains = new Set(c.captains || []);
   for (let i = 0; i < n; i++) {
     const attrs = {},
       tendencies = {};
@@ -253,6 +257,7 @@ export function* decodeCatalogSteps(file) {
       weakFoot: c.weakFoot[i],
       tendencies,
       tags: decodeCodes(c.tags[i], badges),
+      captain: captains.has(i),
       sourceOverall: c.sourceOverall[i],
       source: {
         club: club ? club.name : null,

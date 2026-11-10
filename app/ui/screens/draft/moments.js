@@ -5,25 +5,35 @@ import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
 import { PlayerCard, Modal, Button, Confetti } from '../../components/index.js';
 
-/** Star/Superstar pick: the card flies in with a foil sweep, then fades (1.6 s). */
+// How long the signing holds the screen (ms): long enough to read the card. A tap ends it.
+export const MOMENT_MS = { Star: 2400, Superstar: 3200 };
+
+/** Star/Superstar pick: the card flies in with a foil sweep, holds, then fades. Tap to skip. */
 export function PickMoment({ moment, view }) {
   const [shown, setShown] = useState(null);
   useEffect(() => {
     if (!moment) return;
     setShown(moment);
-    const t = setTimeout(() => setShown(null), moment.tier === 'Superstar' ? 1700 : 1150);
+    const t = setTimeout(() => setShown(null), MOMENT_MS[moment.tier] ?? MOMENT_MS.Star);
     return () => clearTimeout(t);
   }, [moment?.token]);
   const superstar = shown?.tier === 'Superstar';
   return html`${
       shown &&
       view &&
-      html`<div class=${cx('pick-moment', superstar && 'is-superstar')} aria-hidden="true">
+      html`<div
+        class=${cx('pick-moment', superstar && 'is-superstar')}
+        style=${`--moment-ms: ${MOMENT_MS[shown.tier] ?? MOMENT_MS.Star}ms`}
+        onClick=${() => setShown(null)}
+        data-testid="pick-moment"
+        aria-hidden="true"
+      >
         <div class="pick-moment__card">
           <${PlayerCard} player=${view} size=${superstar ? 'l' : 'm'} showBadges=${false} />
           <span class="pick-moment__sheen"></span>
         </div>
         <p class="pick-moment__label">${superstar ? 'Superstar signed' : 'Star signed'}</p>
+        <p class="pick-moment__hint">Tap to continue</p>
       </div>`
     } <${Confetti} fire=${superstar ? shown.token : 0} origin=${{ x: 0.5, y: 0.4 }} />`;
 }

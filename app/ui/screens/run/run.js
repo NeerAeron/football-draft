@@ -509,7 +509,12 @@ export default function RunScreen() {
       id,
       seed: m.seed,
       sides: [
-        matchSideFor(m.home, { kind: 'user', editable: true }),
+        // The formation chosen before the draft is played in the first match; it can change
+        // from the second one on.
+        {
+          ...matchSideFor(m.home, { kind: 'user', editable: true }),
+          formationLocked: m.round === 0,
+        },
         matchSideFor(m.away, { kind: 'ai', editable: false }),
       ],
       competition: { mode: 'ai', difficulty: run.difficulty, knockout: m.knockout },

@@ -47,6 +47,7 @@ export function toRuntimeCatalog(compiled, nationCodes) {
     weakFoot: p.weakFoot,
     tendencies: { ...p.tendencies },
     tags: [...p.tags],
+    captain: !!p.captain,
     sourceOverall: p.sourceOverall,
     source: {
       club: p.source.club,

@@ -1,6 +1,5 @@
 // User flows for scripts/dev/browser.mjs (smoke test + screenshots).
-// Keep selectors in sync with app/ui (shell: index.html, gallery.html) and app/tuning/
-// (config.html) when the UI changes. One flow (or group of flows) per screen owner.
+// Keep selectors in sync with app/ui (shell: index.html, gallery.html) when the UI changes. One flow (or group of flows) per screen owner.
 // Each run() receives { page, shot, step, base, viewport }.
 
 const visible = (page, selector, timeout = 15000) =>
@@ -380,10 +379,13 @@ export const flows = [
           .catch(() => {});
         await page.waitForFunction(() => !document.querySelector('dialog.modal[open]'));
       });
-      await step('draft type switch', async () => {
-        await page.click('.home-hero__seg label:has-text("Clubs")');
+      await step('the World Cup is a Nations draft; no footer links', async () => {
+        if (await page.locator('.home-hero__seg').count()) throw new Error('draft type switch');
         const target = await page.getAttribute('[data-testid="start-run"]', 'href');
-        if (target !== '#/play/run?type=clubs') throw new Error(`CTA points to ${target}`);
+        if (target !== '#/play/run') throw new Error(`CTA points to ${target}`);
+        if (await page.locator('.home__footer a').count()) throw new Error('footer links');
+        const brand = await page.textContent('.brand__word');
+        if (!/World Cup\s*Draft/i.test(brand)) throw new Error(`brand reads ${brand}`);
       });
       await step('dismiss first-run tips', async () => {
         await page.click('button[aria-label="Hide how it works"]');
@@ -504,16 +506,19 @@ export const flows = [
       await seed(page, ONBOARDED);
       await page.goto(`${base}#/play/run`);
       await step('run setup', () => visible(page, '[data-screen="setup"][data-mode="run"]'));
-      await step('opponents loaded', () => visible(page, '.ladder__examples:not(.is-muted)'));
+      await step('World Cup is a Nations draft: no draft-type choice', async () => {
+        if (await page.locator('.type-card').count()) throw new Error('type cards on run setup');
+        const text = await page.textContent('[data-screen="setup"]');
+        if (/typical XI|Teams like|rated about/i.test(text))
+          throw new Error('setup still shows ratings or example teams');
+      });
       await page.evaluate(() => document.fonts.ready);
       await shot('run');
       if (viewport === 'mobile') await shot('run-full', { fullPage: true });
-      await step('choose clubs + world class + 4-4-2', async () => {
-        await page.click('.type-card:has-text("Clubs")');
+      await step('choose world class + 4-4-2', async () => {
         await page.click('.ladder__row:has-text("World Class")');
         await page.click('.formation-card:has-text("4–4–2")');
         for (const [name, value] of [
-          ['setup-type', 'clubs'],
           ['setup-difficulty', 'worldclass'],
           ['setup-formation', '442'],
         ])
@@ -534,6 +539,10 @@ export const flows = [
             throw new Error(`${name} is not ${value}`);
       });
       await shot('quick-challenge');
+      await step('quick match offers nations, leagues and clubs', async () => {
+        const types = await page.$$eval('input[name="setup-type"]', l => l.map(i => i.value));
+        if (types.join() !== 'nations,leagues,clubs') throw new Error(`types: ${types}`);
+      });
       await step('versus setup', async () => {
         await page.goto(`${base}#/play/versus`);
         await visible(page, '[data-screen="setup"][data-mode="versus"]');
@@ -558,6 +567,16 @@ export const flows = [
         await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
         await visible(page, '[data-testid="confirm-pick"]');
       });
+      await step('expand all his attributes', async () => {
+        const panel = page.locator('[data-testid="player-attributes"]:visible').first();
+        await panel.locator('summary').click();
+        const bars = await panel.locator('.statbar').count();
+        if (bars < 12) throw new Error(`only ${bars} attributes shown`);
+      });
+      await shot('attributes');
+      await step('close the attributes', () =>
+        page.locator('[data-testid="player-attributes"]:visible summary').first().click(),
+      );
       await shot('selected');
       await step('pick 1 (other slot, then Auto)', async () => {
         await page.click(
@@ -793,10 +812,14 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('arrival', { fullPage: viewport === 'mobile' });
-      await step('play matchday 1', async () => {
+      await step('matchday 1 is played in the draft formation', async () => {
         await page.click('[data-testid="play-fixture"]');
-        await finishMatch(page);
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+        if (!(await page.isDisabled('[data-testid="formation-select"]')))
+          throw new Error('the formation can change before the first match');
       });
+      await shot('first-match-locked');
+      await step('play matchday 1', () => finishMatch(page));
       await step('result banner + record', async () => {
         await visible(page, '[data-testid="result-banner"]', 60000);
         const record = await page.textContent('.run-head__wdl');
@@ -944,89 +967,6 @@ export const flows = [
     },
   },
   ...matchFlows,
-  // ---------- Advanced tuning page (app/config.html → app/tuning/) ----------
-  {
-    name: 'config',
-    async run({ page, shot, step, base }) {
-      const status = text =>
-        page.waitForFunction(
-          t => document.querySelector('#config-status')?.textContent.includes(t),
-          text,
-        );
-      const section = async (label, ready) => {
-        await page.click(`#config-navigation button:has-text("${label}")`);
-        await visible(page, ready);
-      };
-      await page.goto(`${base}config.html`);
-      await step('draft rules + catalog summary', async () => {
-        await visible(page, '#config-fields fieldset');
-        await visible(page, '#config-summary .summary-chips');
-      });
-      await shot('draft');
-      await step('league odds', () => section('League odds', '[data-league]'));
-      await shot('leagues');
-      await step('club odds', async () => {
-        await section('Club odds', '[data-club]');
-        const before = await page.locator('[data-club]').first().getAttribute('data-club');
-        await page.selectOption('#odds-league', { index: 1 });
-        await page.waitForFunction(
-          id => document.querySelector('[data-club]')?.dataset.club !== id,
-          before,
-        );
-      });
-      await shot('clubs');
-      await step('edit and save a setting', async () => {
-        await section('Gameplay', '[data-setting="gameplay.shotFrequency"]');
-        await page.fill('[data-setting="gameplay.shotFrequency"]', '1.2');
-        await status('Unsaved changes');
-        await page.click('#config-save');
-        await status('Saved');
-        const saved = await page.evaluate(() => localStorage.getItem('football-draft-settings-v1'));
-        if (!/"shotFrequency":1\.2/.test(saved || '')) throw new Error(`not saved: ${saved}`);
-      });
-      await step('search', async () => {
-        await page.fill('#config-search', 'stamina');
-        await page.waitForFunction(() =>
-          [...document.querySelectorAll('#config-navigation small')].some(
-            s => s.textContent === '0',
-          ),
-        );
-        await page.fill('#config-search', '');
-      });
-      await step('export', async () => {
-        const [download] = await Promise.all([
-          page.waitForEvent('download'),
-          page.click('#config-export'),
-        ]);
-        if (download.suggestedFilename() !== 'football-draft-config.json')
-          throw new Error(`export file ${download.suggestedFilename()}`);
-      });
-      await step('import', async () => {
-        await page.setInputFiles('#config-import', {
-          name: 'settings.json',
-          mimeType: 'application/json',
-          // Includes a key of a removed setting: it is ignored, not an error.
-          buffer: Buffer.from(
-            JSON.stringify({ gameplay: { shotFrequency: 1.3 }, draft: { budget: { star: 4 } } }),
-          ),
-        });
-        await status('Imported');
-        const value = await page.inputValue('[data-setting="gameplay.shotFrequency"]');
-        if (value !== '1.3') throw new Error(`imported value ${value}`);
-      });
-      await step('reset section and all', async () => {
-        await page.click('#config-reset-section');
-        await status('Section reset');
-        await page.click('#config-reset-all');
-        await status('Defaults restored');
-        await page.click('#config-save');
-        await status('Saved');
-        const saved = await page.evaluate(() => localStorage.getItem('football-draft-settings-v1'));
-        if (/shotFrequency/.test(saved || '')) throw new Error(`defaults not saved: ${saved}`);
-      });
-      await shot('gameplay');
-    },
-  },
   {
     // Offline play (app/sw.js + ui/lib/offline.js): one online visit, then without a network
     // the game still loads, drafts and plays a match. ?sw=1 enables the worker on loopback.

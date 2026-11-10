@@ -4,6 +4,10 @@ import './lib/motion.js'; // applies html[data-motion] before first paint of the
 import { mountApp } from './shell/app.js';
 import { routes } from './routes.js';
 import { registerOffline } from './lib/offline.js';
+import { removeKey } from './lib/storage.js';
+
+// Tuning overrides from the old Advanced tuning page: the game no longer reads them.
+removeKey('football-draft-settings-v1');
 
 const root = document.getElementById('app');
 root.replaceChildren(); // drop the static boot splash

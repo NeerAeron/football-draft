@@ -57,7 +57,7 @@ when instant results still alternated 180 s / 300 s; ±9 points at this size): c
 `cup-calibration.mjs runs --runs 1000 --engine 30 --workers 2` after engine changes.
 
 `projectRun` plays the same rounds against the exact targets (the real candidates sit within a
-point of them); the setup screen's "a typical draft reaches …" line is its median stage
+point of them); the setup screen's "a good manager reaches …" line is its median stage
 (300 runs).
 
 ```js
@@ -172,7 +172,7 @@ import { shareText, challengeUrl, parseChallengeUrl, challengeDraftOptions } fro
 
 shareText(run.snapshot(), { daily: day, rating, perfectPct, points, hideRatings, uniqueNations,
                             url: challengeUrl(location.href, { kind: 'daily', daily: day.number }) });
-// ⚽ Football Draft · Daily #7
+// ⚽ World Cup Draft · Daily #7
 // 🟩🟨🟩 🟨🟥
 // 2-2-1 · Quarter-finals · C Quarter-finalists
 // XI 82.9 · 98.4% of perfect · 1,104 pts

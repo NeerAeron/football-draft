@@ -1,4 +1,4 @@
-// Settings: sound, motion, gameplay defaults, advanced links, local data, credits.
+// Settings: sound, motion, gameplay defaults, local data, credits.
 import { useEffect, useState } from 'preact/hooks';
 import { html } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
@@ -19,7 +19,6 @@ const SECTIONS = [
   ['sound', 'Sound'],
   ['display', 'Motion'],
   ['gameplay', 'Gameplay'],
-  ['advanced', 'Advanced'],
   ['data', 'Your data'],
   ['credits', 'Credits & licences'],
 ];
@@ -28,7 +27,6 @@ const SECTIONS = [
 // and are listed once.
 const KEY_LABELS = {
   'football-draft-sound': 'Sound settings',
-  'football-draft-settings-v1': 'Advanced tuning overrides',
   'football-draft-ui': 'Interface preferences',
   'football-draft-setup': 'Last game setup',
   'football-draft-draft': 'Draft in progress',
@@ -173,16 +171,9 @@ function MotionPanel() {
 }
 
 function GameplayPanel() {
-  const hide = useStore(prefs, p => p.hideRatings),
-    autoSpin = useStore(prefs, p => p.autoSpin);
+  const hide = useStore(prefs, p => p.hideRatings);
   return html`<${Panel} id="gameplay" title="Gameplay">
     <div class="settings__rows">
-      <${Switch}
-        label="Spin automatically"
-        description="After each pick the next reel starts by itself. Turn off to tap for every spin."
-        checked=${autoSpin}
-        onChange=${v => setPref('autoSpin', v)}
-      />
       <${Switch}
         label="Hide ratings by default"
         description="Ball Knower mode: no OVRs or stats while you draft. Your share card says so."
@@ -195,30 +186,6 @@ function GameplayPanel() {
           >Show tips on Home again<//
         >
       </div>
-    </div>
-  <//>`;
-}
-
-function LinkRow({ href, icon, title, text }) {
-  return html`<a class="settings-link" href=${href}>
-    <span class="settings-link__icon" aria-hidden="true"><${Icon} name=${icon} size=${20} /></span>
-    <span class="settings-link__text">
-      <span class="settings-link__title">${title}</span>
-      <span class="settings-link__desc">${text}</span>
-    </span>
-    <${Icon} name="external-link" size=${16} class="settings-link__go" />
-  </a>`;
-}
-
-function AdvancedPanel() {
-  return html`<${Panel} id="advanced" title="Advanced">
-    <div class="settings__links">
-      <${LinkRow}
-        href="./config.html"
-        icon="sliders-horizontal"
-        title="Advanced tuning"
-        text="Engine, draft and rating parameters for experiments."
-      />
     </div>
   <//>`;
 }
@@ -258,7 +225,7 @@ function DataPanel() {
       onClose=${() => setConfirm(false)}
       size="sm"
       title="Reset local data?"
-      description="This clears your sound and display settings, tuning overrides, saved run, trophy cabinet and daily streak on this device. It cannot be undone."
+      description="This clears your sound and display settings, saved run, trophy cabinet and daily streak on this device. It cannot be undone."
       footer=${html`<${Button} variant="ghost" onClick=${() => setConfirm(false)}>Cancel<//>
         <${Button} variant="danger" icon="trash" onClick=${reset} data-testid="confirm-reset"
           >Reset<//
@@ -280,7 +247,7 @@ function CreditsPanel() {
     </dl>
     <p class="settings__note">
       EA SPORTS FC, club, league and competition names are trademarks of their respective owners.
-      Football Draft is an unofficial fan project.
+      World Cup Draft is an unofficial fan project.
     </p>
   <//>`;
 }
@@ -301,7 +268,6 @@ export default function Settings({ query = {} }) {
         <${SoundPanel} />
         <${MotionPanel} />
         <${GameplayPanel} />
-        <${AdvancedPanel} />
         <${DataPanel} />
         <${CreditsPanel} />
       </div>

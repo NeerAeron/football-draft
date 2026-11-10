@@ -7,9 +7,9 @@
     <meta name="color-scheme" content="dark" />
     <meta
       name="description"
-      content="Spin nations, leagues and clubs, draft an XI from real FC 26 players, then take it through a World Cup run in a live 2D match simulation. Same spins as your friend: can you beat their run?"
+      content="Spin nations, draft an XI from real FC 26 players, then take it through a World Cup in a live 2D match simulation. Same spins as your friend: can you beat their run?"
     />
-    <title>Football Draft — draft an XI, win it all</title>
+    <title>World Cup Draft — draft your XI, win the World Cup</title>
     <link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="./assets/icons/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
@@ -17,13 +17,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Football Draft" />
-    <meta name="application-name" content="Football Draft" />
+    <meta name="apple-mobile-web-app-title" content="World Cup Draft" />
+    <meta name="application-name" content="World Cup Draft" />
     <!-- Link previews (challenge links are #fragments, so every shared link unfurls with this
          card). og:image must be absolute: it points at the GitHub Pages deployment. -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Football Draft" />
-    <meta property="og:title" content="Football Draft — draft an XI, win it all" />
+    <meta property="og:site_name" content="World Cup Draft" />
+    <meta property="og:title" content="World Cup Draft — draft your XI, win the World Cup" />
     <meta
       property="og:description"
       content="Spin, pick and build an XI from real FC 26 players, then take it through a World Cup run. Same spins as your friend: can you beat their run?"
@@ -38,10 +38,10 @@
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="Football Draft: Draft an XI. Win it all. A pitch of national-team flags joined by gold Links lines."
+      content="World Cup Draft: Draft an XI. Win it all. A pitch of national-team flags joined by gold Links lines."
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Football Draft — draft an XI, win it all" />
+    <meta name="twitter:title" content="World Cup Draft — draft your XI, win the World Cup" />
     <meta
       name="twitter:description"
       content="Spin, pick and build an XI from real FC 26 players, then take it through a World Cup run."
@@ -52,7 +52,7 @@
     />
     <meta
       name="twitter:image:alt"
-      content="Football Draft: Draft an XI. Win it all. A pitch of national-team flags joined by gold Links lines."
+      content="World Cup Draft: Draft an XI. Win it all. A pitch of national-team flags joined by gold Links lines."
     />
     <link
       rel="preload"
@@ -92,6 +92,7 @@
     <link rel="preload" as="style" href="./ui/components/fit-tag.css" />
     <link rel="preload" as="style" href="./ui/components/player-card.css" />
     <link rel="preload" as="style" href="./ui/components/player-row.css" />
+    <link rel="preload" as="style" href="./ui/components/captain-mark.css" />
     <link rel="preload" as="style" href="./ui/components/pitch-view.css" />
     <link rel="preload" as="style" href="./ui/components/meter.css" />
     <link rel="preload" as="style" href="./ui/components/reel.css" />
@@ -121,6 +122,7 @@
     <link rel="modulepreload" href="./ui/shell/app.js" />
     <link rel="modulepreload" href="./ui/routes.js" />
     <link rel="modulepreload" href="./ui/lib/offline.js" />
+    <link rel="modulepreload" href="./ui/lib/storage.js" />
     <link rel="modulepreload" href="./ui/vendor/preact/hooks.module.js" />
     <link rel="modulepreload" href="./ui/lib/html.js" />
     <link rel="modulepreload" href="./ui/lib/store.js" />
@@ -132,7 +134,6 @@
     <link rel="modulepreload" href="./ui/components/card.js" />
     <link rel="modulepreload" href="./ui/components/chip.js" />
     <link rel="modulepreload" href="./ui/components/icon.js" />
-    <link rel="modulepreload" href="./ui/components/segmented.js" />
     <link rel="modulepreload" href="./ui/shell/how-to-play.js" />
     <link rel="modulepreload" href="./ui/lib/screen-loader.js" />
     <link rel="modulepreload" href="./ui/screens/home/hero-art.js" />
@@ -142,7 +143,6 @@
     <link rel="modulepreload" href="./ui/components/skeleton.js" />
     <link rel="modulepreload" href="./ui/shell/top-bar.js" />
     <link rel="modulepreload" href="./ui/vendor/htm/htm.module.js" />
-    <link rel="modulepreload" href="./ui/lib/storage.js" />
     <link rel="modulepreload" href="./ui/vendor/lucide/icons.js" />
     <link rel="modulepreload" href="./ui/components/fit-tag.js" />
     <link rel="modulepreload" href="./ui/components/modal.js" />
@@ -158,7 +158,7 @@
     <div id="app">
       <noscript>
         <p style="padding: 24px; color: #f3f6fd; font-family: system-ui, sans-serif">
-          Football Draft needs JavaScript.
+          World Cup Draft needs JavaScript.
         </p>
       </noscript>
     </div>

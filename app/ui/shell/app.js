@@ -11,7 +11,7 @@ import { Skeleton } from '../components/skeleton.js';
 import { TopBar } from './top-bar.js';
 import { HowToPlaySheet } from './how-to-play.js';
 
-const APP_NAME = 'Football Draft';
+const APP_NAME = 'World Cup Draft';
 let firstScreen = true; // no focus move / scroll on the initial page load
 
 function Outlet() {

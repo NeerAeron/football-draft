@@ -311,7 +311,7 @@ export async function renderShareImage(card, { canvas } = {}) {
   ctx.fillStyle = C.volt;
   ctx.font = `700 30px ${DISPLAY}`;
   ctx.letterSpacing = '5px';
-  ctx.fillText('FOOTBALL DRAFT', M, 104);
+  ctx.fillText('WORLD CUP DRAFT', M, 104);
   ctx.textAlign = 'right';
   ctx.fillStyle = card.champion ? C.gold : C.text2;
   ctx.fillText(String(card.title || 'World Cup Run').toUpperCase(), SHARE_W - M, 104);

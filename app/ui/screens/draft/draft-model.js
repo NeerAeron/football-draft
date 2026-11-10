@@ -8,6 +8,7 @@ import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
 import { searchKey } from '../../../core/util/text.js';
+import { keyStatsFirst } from '../../lib/player-view.js';
 
 export const CATEGORY_LABEL = { nation: 'Nation', league: 'League', club: 'Club' };
 export const CATEGORY_ICON = { nation: 'flag', league: 'layout-grid', club: 'shield' };
@@ -109,19 +110,8 @@ const GROUP_ORDER = ['Pot 1', 'Pot 2', 'Pot 3', 'Pot 4', 'S', 'A', 'B', 'C', 'D'
 );
 const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 
-const ROW_STATS = {
-  GK: ['GK', 'PAS', 'PAC'],
-  DEF: ['DEF', 'PHY', 'PAC'],
-  MID: ['PAS', 'DRI', 'SHO'],
-  ATT: ['SHO', 'PAC', 'DRI'],
-};
-
-/** The six summary stats with the ones that matter for the player's line first (pool rows). */
-export function rowStats(stats = [], position) {
-  const keys = ROW_STATS[lineOf(position)] || [];
-  const first = keys.map(k => stats.find(s => s.key === k)).filter(Boolean);
-  return [...first, ...stats.filter(s => !keys.includes(s.key))];
-}
+/** The six summary stats with the position's key stats first (pool rows). */
+export const rowStats = (stats, position) => keyStatsFirst(stats, position);
 
 /** PitchView link lines from Links pairs: club 3 · nation 2 · league 1. */
 export function linkLines(pairs = []) {
@@ -335,5 +325,9 @@ export function pickPreview(session, side, profileId, slot) {
   const mates = links.pairs
     .filter(p => p.a === slot || p.b === slot)
     .map(p => ({ name: next[p.a === slot ? p.b : p.a].name, kind: p.kind }));
-  return { rating: Math.round((sum / n) * 10) / 10, links: links.score, mates };
+  // Captain: the boost his XI gets when this pick makes him (or keeps someone else) captain.
+  const before = teamLinks(lineup, session.rules.links);
+  const captain =
+    links.captain === slot && before.captain === null ? { boost: links.captainBoost } : null;
+  return { rating: Math.round((sum / n) * 10) / 10, links: links.score, mates, captain };
 }

@@ -8,7 +8,8 @@
 //     id: 'run:abc:qf',              // carried to requestMatch → readMatchResult(id)
 //     seed,                          // match seed (uint32)
 //     sides: [{ name, short?, colors: [p, s], flagCode?, kind: 'user'|'ai'|'p2', formation,
-//               tactics?, players: [11 profiles in slot order], editable }, …],
+//               tactics?, players: [11 profiles in slot order], editable,
+//               formationLocked? (the formation cannot change, here or in the match) }, …],
 //     competition: { mode?: 'ai'|'pvp', difficulty: 'pro', knockout: false },
 //     meta: { context: 'run', title: 'Quarter-final', returnTo: '#/run', fixture: 'run:abc:qf' },
 //   });
@@ -110,6 +111,8 @@ function normalizeSide(side, i) {
     tactics: cleanTactics(side.tactics),
     players: side.players.map(p => p),
     editable: side.editable ?? kind !== 'ai',
+    // The formation picked before the draft, kept for this match (World Cup: the first game).
+    formationLocked: !!side.formationLocked,
   };
 }
 
@@ -308,7 +311,7 @@ export function swapPlayers(index, a, b) {
 export function changeFormation(index, formation) {
   if (!FORMATIONS[formation]) return false;
   return editSide(index, side =>
-    side.formation === formation
+    side.formation === formation || side.formationLocked
       ? side
       : { ...side, formation, players: reslot(side.players, formation) },
   );
@@ -380,6 +383,9 @@ export function kickOff({ go = true } = {}) {
           colors: s.colors,
         })),
         userSides: data.sides.map((s, i) => (s.kind === 'ai' ? null : i)).filter(i => i !== null),
+        formationLocked: data.sides
+          .map((s, i) => (s.formationLocked ? i : null))
+          .filter(i => i !== null),
       },
     },
     { go },
