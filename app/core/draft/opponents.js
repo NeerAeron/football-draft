@@ -22,13 +22,14 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
 
 /**
  * Typical drafted XI per mode: solo, positional policy (best slot rating), smart re-roll below
- * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 240 drafts per cell, v3 catalog (15,378
- * players). `effective[r]` = OVR + chem with r re-rolls (0, 1, 2).
+ * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 300 drafts per cell (240 for Club & Country),
+ * v3 catalog (15,378 players). `effective[r]` = OVR + chem (Links + the Captain's boost) with r
+ * re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {
-  nations: { ovr: 82.9, sd: 1.03, chem: 0.64, effective: [83.06, 83.54, 83.68] },
-  leagues: { ovr: 81.45, sd: 1.77, chem: 0.4, effective: [81.14, 81.85, 82.44] },
-  clubs: { ovr: 77.73, sd: 1.69, chem: 0.34, effective: [77.59, 78.06, 78.4] },
+  nations: { ovr: 82.89, sd: 1.07, chem: 1.52, effective: [83.92, 84.41, 84.59] },
+  leagues: { ovr: 81.47, sd: 1.72, chem: 1.33, effective: [82.1, 82.8, 83.39] },
+  clubs: { ovr: 77.71, sd: 1.71, chem: 0.87, effective: [78.03, 78.58, 78.98] },
   clubAndCountry: { ovr: 82.3, sd: 1.46, chem: 0.41, effective: [82.17, 82.71, 83.24] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));

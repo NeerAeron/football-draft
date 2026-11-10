@@ -133,9 +133,11 @@ drafter gains ≈ +0.15 chem for −0.1 OVR, i.e. Links are a tiebreaker, not a 
 
 ### Captain (team-boost tag)
 
-Some players carry the **Captain** tag (catalog `captain: true`, 317 of 15,378). The source has
-no captaincy, so the compiler derives it from real fields: international reputation 3+ and age
-28+ (`scripts/compile-players.mjs`). An XI with a captain adds `CONFIG.draft.links.captain`
+Some players carry the **Captain** tag (catalog `captain: true`, 34 of 15,378: Salah, van Dijk,
+Kane, Kimmich, Messi, …). The source has no captaincy, so the compiler derives it from real
+fields: international reputation 4–5 and age 28+ (`scripts/compile-players.mjs`). Drafting the
+best player at each spin lands a captain often (MODE_BASELINES chem: Nations 0.64 → 1.52), and
+most top national XIs have one. An XI with a captain adds `CONFIG.draft.links.captain`
 (1 attribute point) to every player's `chem`, on top of Links; the highest-rated captain wears
 the armband and two captains do not stack. `teamLinks()` returns `captain` (slot) and
 `captainBoost`; the UI marks Captain-tagged players with a "C" (rows, cards) and the armband
@@ -161,15 +163,15 @@ makes the same side object from any XI (exhibition teams, tests).
 ## Opponents and difficulty
 
 A level is a target **effective rating** (team OVR + mean chem) relative to the mode's typical
-drafted XI (`MODE_BASELINES`, measured with `tools/calibration/draft-baselines.mjs`: 240
-solo drafts per mode × re-roll count, positional policy):
+drafted XI (`MODE_BASELINES`, measured with `tools/calibration/draft-baselines.mjs`: 300
+solo drafts per mode × re-roll count, positional policy; chem includes the Captain's boost):
 
 | Mode | OVR (Pro) | chem | effective with 0 / 1 / 2 re-rolls |
 | --- | --- | --- | --- |
-| Nations | 82.90 ± 1.03 | 0.64 | 83.06 / 83.54 / 83.68 |
-| Leagues | 81.45 ± 1.77 | 0.40 | 81.14 / 81.85 / 82.44 |
-| Clubs | 77.73 ± 1.69 | 0.34 | 77.59 / 78.06 / 78.40 |
-| Club & Country | 82.30 ± 1.46 | 0.41 | 82.17 / 82.71 / 83.24 |
+| Nations | 82.89 ± 1.07 | 1.52 | 83.92 / 84.41 / 84.59 |
+| Leagues | 81.47 ± 1.72 | 1.33 | 82.10 / 82.80 / 83.39 |
+| Clubs | 77.71 ± 1.71 | 0.87 | 78.03 / 78.58 / 78.98 |
+| Club & Country (no longer offered) | 82.30 ± 1.46 | 0.41 | 82.17 / 82.71 / 83.24 |
 
 Gap (`CONFIG.draft.ladder`): Amateur −7 · Semi-pro −3.5 · Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: national best XIs

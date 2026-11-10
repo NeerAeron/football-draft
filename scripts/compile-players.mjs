@@ -234,8 +234,8 @@ export function compilePlayer(row, sourceRow) {
     tendencies,
     tags: selected.map(t => t.tag),
     // Captain: the source has no captaincy, so leadership is read from its real fields — an
-    // experienced player (28+) with international reputation 3 or more (≈2% of players).
-    captain: number(row, 'international_reputation', 1, 5) >= 3 && number(row, 'age') >= 28,
+    // experienced player (28+) with an international reputation of 4 or 5 (34 players).
+    captain: number(row, 'international_reputation', 1, 5) >= 4 && number(row, 'age') >= 28,
     sourceOverall: number(row, 'overall'),
     source: {
       compilerVersion: COMPILER_VERSION,

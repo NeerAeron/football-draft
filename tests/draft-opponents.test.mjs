@@ -51,7 +51,9 @@ test('opponents land within the target gap for every mode and level', () => {
       for (let seed = 1; seed <= 12; seed++) {
         const ref = chooseOpponent(catalog, { mode, level, seed });
         // Within ±1.5 effective wherever three candidates exist there (all but the very top).
-        const tolerance = target > 89 ? 3 : 1.5;
+        // National XIs are sparse around the Pro target (the captain's +1 opened a gap between
+        // Belgium 85.1 and Switzerland 83.1): ±2 there.
+        const tolerance = target > 89 ? 3 : mode === 'nations' && level === 'pro' ? 2 : 1.5;
         assert.ok(Math.abs(ref.effective - target) <= tolerance, `${mode} ${level} ${ref.name}`);
         names.add(ref.name);
       }
