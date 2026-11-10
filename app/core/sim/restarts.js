@@ -1,7 +1,7 @@
 // Set pieces and restarts: positioning and execution.
 // Methods are installed on Match.prototype by match.js.
 import { clamp } from '../util/math.js';
-import { H, dist } from './constants.js';
+import { H, dist, hypot } from './constants.js';
 
 const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
 
@@ -114,8 +114,52 @@ export class RestartMethods {
       }
     }
     if (type === 'Corner') this.setupCorner(team, taker, y);
+    if (type === 'Throw-in') this.setupThrowIn(team, taker, x, y);
     taker.tx = x - this.direction(team) * 0.6;
     taker.ty = clamp(y, 1, 67);
+  }
+  // Throw-in: the two nearest team-mates show for the ball, one down the line and one
+  // infield, so the thrower has a short throw to a player coming to meet it (their markers
+  // went to where they stood, as at any check to the ball).
+  setupThrowIn(team, taker, x, y) {
+    const dir = this.direction(team),
+      infield = y < 34 ? 1 : -1,
+      line = [clamp(x + dir * 9, 2, 103), y + infield * 2.5],
+      inside = [clamp(x - dir * 1.5, 2, 103), y + infield * 9.5];
+    const near = this.activePlayers
+      .filter(p => p.team === team && p.role !== 'GK' && p.id !== taker.id)
+      .sort((a, c) => hypot(a.x - x, a.y - y) - hypot(c.x - x, c.y - y) || a.id - c.id)
+      .slice(0, 2);
+    if (near.length < 2) return;
+    const to = (p, spot) => hypot(p.x - spot[0], p.y - spot[1]),
+      [a, c] = near,
+      swap = to(a, inside) + to(c, line) < to(a, line) + to(c, inside);
+    for (const [p, spot] of [
+      [a, swap ? inside : line],
+      [c, swap ? line : inside],
+    ]) {
+      p.tx = spot[0];
+      p.ty = spot[1];
+      p.action = 'Showing for the throw';
+    }
+  }
+  // A restart is unhurried: nobody presses the taker and the defence is set, so he does not
+  // play the ball an opponent is standing on or one his team-mate is second to — he takes the
+  // best ball that is on (still the forward one when it is). A throw is not a long pass.
+  restartOption(opts, type) {
+    const reach = type === 'Throw-in' ? 30 : Infinity;
+    let safest = null,
+      safety = -Infinity;
+    for (const o of opts) {
+      if (o.d > reach) continue;
+      if (o.risk < 0.5 && o.margin > -0.1 && o.chance > 0.5) return o;
+      const value = o.chance - o.risk * 0.5 + clamp(o.margin, -1, 0.5) * 0.3;
+      if (value > safety) {
+        safety = value;
+        safest = o;
+      }
+    }
+    return safest ?? opts[0];
   }
   // Corner routine: near-post flick-on, far-post header or a ball to the
   // edge. The best headers take the box spots (the best of all attacks the
@@ -139,11 +183,13 @@ export class RestartMethods {
       ['far post', 1.2],
       ['edge', shooter ? 0.25 + clamp((longShot(shooter) - 70) / 40, 0, 0.4) : 0],
     ]);
+    // Spread across the box (a crowd, not a pile): front post, back post, the keeper's
+    // six-yard line, the penalty spot and the edge.
     const spots = {
-      'near post': [99.6, 34 + near * 2.6],
-      'far post': [98.6, 34 - near * 3.4],
-      six: [100.4, 34 - near * 0.4],
-      spot: [94, 34 + near],
+      'near post': [99, 34 + near * 4.2],
+      'far post': [97.6, 34 - near * 5.2],
+      six: [99.8, 34 - near * 0.8],
+      spot: [93.5, 34 + near * 1.6],
       edge: [87.5, 34 - near * 2],
     };
     const order =
@@ -172,14 +218,16 @@ export class RestartMethods {
     defenders.forEach((d, i) => {
       if (i < marked.length) {
         const a = marked[i];
-        d.tx = a.tx + this.direction(team) * 0.8;
-        d.ty = a.ty + (34 - a.ty) * 0.15;
+        d.tx = a.tx + this.direction(team) * 1.4;
+        d.ty = a.ty + (34 - a.ty) * 0.2;
         d.markId = a.id;
       } else {
+        // Zonal defenders mark nobody (the plan() before this set-up assigned open-play marks).
+        d.markId = null;
         const zones = [
-          [103.2, 34 + near * 3],
-          [99.5, 34],
-          [88, 34],
+          [103.6, 34 + near * 3.3],
+          [102.2, 34 - near * 2.6],
+          [89, 34 + near * 6],
           [80, 24],
           [80, 44],
           [72, 34],
@@ -187,6 +235,14 @@ export class RestartMethods {
         place(d, zones[Math.min(i - marked.length, zones.length - 1)]);
       }
     });
+    // A corner is a cut in the action: everyone is in position when it is awarded, not
+    // jumped there at the kick (a viewer sees the set-up, then the delivery).
+    for (const p of this.activePlayers)
+      if (p.id !== taker.id && p.role !== 'GK') {
+        p.x = p.tx;
+        p.y = p.ty;
+        p.vx = p.vy = 0;
+      }
     Object.assign(this.restart, {
       routine,
       target: target?.id ?? null,
@@ -295,7 +351,7 @@ export class RestartMethods {
       this.rand() < 0.32 + taker.tendency('shoot') * 0.4
     )
       this.shoot(taker, { restart: true });
-    else if (opts.length) this.pass(taker, opts[0], r.type);
+    else if (opts.length) this.pass(taker, this.restartOption(opts, r.type), r.type);
     else this.own(taker);
   }
 }

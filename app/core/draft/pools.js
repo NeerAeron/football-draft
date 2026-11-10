@@ -217,14 +217,28 @@ export function draftRules(source = CONFIG.draft) {
  * from players[].source.nationality and flag codes come from NATION_CODES).
  */
 export function catalogIndex(catalog, rules = draftRules()) {
+  const steps = catalogIndexSteps(catalog, rules);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/**
+ * The same index, built in steps (one nation's best XI per step, ~2 ms each) so a UI can
+ * spread the work over frames: call next() until done. The finished index is the one
+ * catalogIndex() returns from then on.
+ */
+export function* catalogIndexSteps(catalog, rules = draftRules()) {
   const stamp = refreshRatings() + rulesStamp(rules);
   const cached = indexes.get(catalog);
   if (cached?.stamp === stamp) return cached.index;
-  const index = buildIndex(catalog, rules);
+  const index = yield* buildIndex(catalog, rules);
+  // Someone needed it synchronously meanwhile: keep theirs, so there is one index object.
+  const raced = indexes.get(catalog);
+  if (raced?.stamp === stamp) return raced.index;
   indexes.set(catalog, { stamp, index });
   return index;
 }
-function buildIndex(catalog, rules) {
+function* buildIndex(catalog, rules) {
   const players = catalog.players;
   const byId = new Map(players.map(p => [p.profileId, p]));
   // Nations
@@ -251,10 +265,14 @@ function buildIndex(catalog, rules) {
     });
   }
   const n = rules.nations;
-  const eligible = [...nations.values()]
-    .filter(x => x.players.length >= n.minimumPlayers && x.goalkeepers >= n.minimumGoalkeepers)
-    .map(x => ({ nation: x, xi: bestEleven(x.players) }))
-    .filter(x => x.xi);
+  const eligible = [];
+  for (const nation of nations.values()) {
+    if (nation.players.length < n.minimumPlayers || nation.goalkeepers < n.minimumGoalkeepers)
+      continue;
+    const xi = bestEleven(nation.players);
+    if (xi) eligible.push({ nation, xi });
+    yield;
+  }
   for (const { nation, xi } of eligible) nation.strength = xi.rating;
   eligible.sort((a, b) => b.xi.rating - a.xi.rating || a.nation.name.localeCompare(b.nation.name));
   const field = eligible.slice(0, n.fieldSize).map(({ nation }, i) => {

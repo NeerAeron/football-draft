@@ -5,8 +5,10 @@ import { clamp } from '../util/math.js';
 export const W = 105,
   H = 68,
   GOAL = 7.32;
-export const LENGTHS = { full: 300, quick: 180, highlights: 60, instant: 0 };
-// Match length never scales movement. Highlights and Instant resolve a 300 s game.
+// The game plays every match — live, highlights and instant results — on this length (real
+// seconds for 90 match minutes), so a seed gives the same match however it is watched. Match
+// length never scales movement. DURATION_PROFILES also holds a 300 s profile for tests/tools.
+export const MATCH_SECONDS = 180;
 export const DURATION_PROFILES = CONFIG.formats;
 
 // Euclidean distance / length with a plain square root (Math.hypot guards

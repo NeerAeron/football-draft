@@ -1,6 +1,7 @@
 // The static pitch layer ("Floodlit night"): stadium surround, mowed stripes, floodlight
 // pools, crisp markings and goal nets. Drawn once per size/orientation/camera into an
 // offscreen canvas and blitted every frame.
+import { WORLD, makeTransform } from './geometry.js';
 
 const W = 105,
   H = 68,
@@ -178,6 +179,27 @@ export function drawPitch(ctx, t, width, height) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
+/**
+ * Paint the full-pitch view of a width × height canvas into `canvas` at `scale`× that
+ * resolution (a pitch layer of its own under the players; see the match screen).
+ */
+export function paintPitch(canvas, width, height, orientation = 'landscape', scale = 1) {
+  const w = Math.max(1, Math.round(width * scale)),
+    h = Math.max(1, Math.round(height * scale));
+  canvas.width = w;
+  canvas.height = h;
+  drawPitch(
+    canvas.getContext('2d', { alpha: false }),
+    makeTransform({ width: w, height: h, orientation, camera: WORLD }),
+    w,
+    h,
+  );
+}
+
+/** Resolution of the zoomed pitch layer relative to the canvas (bounded for memory). */
+export const zoomLayerScale = (width, height) =>
+  Math.max(1, Math.min(ZOOM_LAYER_SCALE, Math.sqrt(ZOOM_LAYER_PIXELS / (width * height))));
+
 const cache = { key: '', canvas: null };
 
 /** The pitch layer for this transform, cached while size/orientation/camera are unchanged. */
@@ -191,4 +213,53 @@ export function pitchLayer(t, width, height) {
   cache.key = key;
   cache.canvas = canvas;
   return canvas;
+}
+
+// A moving camera cannot redraw the pitch every frame: the full-pitch view is rendered once
+// at a higher resolution and each frame shows the part the camera sees. 1.25× is measured:
+// on a phone profile without GPU compositing a 1.6× layer cost one frame in six, 1.25× keeps
+// 60 fps, and the pitch stays crisp enough at the 1.5–1.7× camera zoom.
+const ZOOM_LAYER_SCALE = 1.25,
+  ZOOM_LAYER_PIXELS = 3.2e6;
+const zoom = { width: 0, height: 0, orientation: '', canvas: null, t: {} };
+
+/** Build (or reuse) the high-resolution layer for a canvas size; call ahead to avoid a hitch. */
+export function zoomLayer(width, height, orientation = 'landscape') {
+  if (
+    zoom.canvas &&
+    zoom.width === width &&
+    zoom.height === height &&
+    zoom.orientation === orientation
+  )
+    return zoom;
+  const k = zoomLayerScale(width, height),
+    lw = Math.max(1, Math.round(width * k)),
+    lh = Math.max(1, Math.round(height * k));
+  const canvas = zoom.canvas || document.createElement('canvas');
+  canvas.width = lw;
+  canvas.height = lh;
+  makeTransform({ width: lw, height: lh, orientation, camera: WORLD }, zoom.t);
+  drawPitch(canvas.getContext('2d'), zoom.t, lw, lh);
+  zoom.canvas = canvas;
+  zoom.width = width;
+  zoom.height = height;
+  zoom.orientation = orientation;
+  return zoom;
+}
+
+/** Paint the pitch for a zoomed camera transform `t` (same canvas size and orientation). */
+export function blitPitch(ctx, t, width, height, orientation) {
+  const layer = zoomLayer(width, height, orientation),
+    k = layer.t.s / t.s;
+  ctx.drawImage(
+    layer.canvas,
+    layer.t.e - t.e * k,
+    layer.t.f - t.f * k,
+    width * k,
+    height * k,
+    0,
+    0,
+    width,
+    height,
+  );
 }

@@ -77,9 +77,9 @@ function Lineup({ team, players }) {
 export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
   const request = controller.request;
   const meta = request.meta;
-  const { view, tactics, access } = useStore(
+  const { view, tactics, effective, access } = useStore(
     controller.hud,
-    s => ({ view: s.view, tactics: s.tactics, access: s.access }),
+    s => ({ view: s.view, tactics: s.tactics, effective: s.effective, access: s.access }),
     shallowEqual,
   );
   const preview = controller.preview;
@@ -145,6 +145,7 @@ export function PreMatch({ controller, onExit, onTactics, restarted = false }) {
                 team=${t}
                 name=${teams[t].name}
                 value=${tactics[t].mentality}
+                effective=${effective[t]}
                 onChange=${(team, v) => controller.setTactic(team, 'mentality', v)}
                 disabled=${!access[t]?.mentality}
                 size="md"

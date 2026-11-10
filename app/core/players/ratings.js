@@ -43,54 +43,53 @@ export const RATING_GROUPS = [
   { id: 'physical', label: 'Physical', weights: { stamina: 0.6, strength: 0.4 } },
   { id: 'goalkeeping', label: 'Goalkeeping', weights: { goalkeeping: 1 } },
 ];
+const attribute = (value, fallback) =>
+  Math.round(
+    clamp(
+      Number.isFinite(Number(value)) && value !== null && value !== '' ? Number(value) : fallback,
+      1,
+      99,
+    ),
+  );
+// Old saved configurations and tests can still set passing; new exports use
+// the three detailed abilities. The alias is never a second runtime rating.
+const PASSING_ALIAS = {
+  enumerable: false,
+  get() {
+    return this.shortPassing;
+  },
+  set(v) {
+    this.shortPassing = this.longPassing = this.crossing = clamp(Number(v), 1, 99);
+  },
+};
+// Returns every ATTRS key, in ATTRS order. The object is built from one literal
+// with one shared accessor so that all attribute objects have the same fast
+// hidden class: the simulation reads them in its hottest paths, and
+// Object.fromEntries plus a per-object accessor left them in dictionary mode.
 export function normalizeAttributes(input = {}) {
   const legacy = input.passing ?? input.shortPassing ?? 65;
-  const defaults = {
-    pace: 70,
-    acceleration: input.pace ?? 70,
-    shooting: 60,
-    power: 60,
-    longShots: input.shooting ?? 60,
-    penalties: input.shooting ?? 60,
-    heading: 50,
-    shortPassing: legacy,
-    longPassing: legacy,
-    crossing: legacy,
-    vision: 65,
-    dribbling: 65,
-    control: 65,
-    composure: 65,
-    defending: 55,
-    awareness: ((input.vision ?? 65) + (input.defending ?? 55)) / 2,
-    stamina: 75,
-    strength: 65,
-    goalkeeping: 8,
+  const attrs = {
+    pace: attribute(input.pace, 70),
+    acceleration: attribute(input.acceleration, input.pace ?? 70),
+    shooting: attribute(input.shooting, 60),
+    power: attribute(input.power, 60),
+    longShots: attribute(input.longShots, input.shooting ?? 60),
+    penalties: attribute(input.penalties, input.shooting ?? 60),
+    heading: attribute(input.heading, 50),
+    shortPassing: attribute(input.shortPassing, legacy),
+    longPassing: attribute(input.longPassing, legacy),
+    crossing: attribute(input.crossing, legacy),
+    vision: attribute(input.vision, 65),
+    dribbling: attribute(input.dribbling, 65),
+    control: attribute(input.control, 65),
+    composure: attribute(input.composure, 65),
+    defending: attribute(input.defending, 55),
+    awareness: attribute(input.awareness, ((input.vision ?? 65) + (input.defending ?? 55)) / 2),
+    stamina: attribute(input.stamina, 75),
+    strength: attribute(input.strength, 65),
+    goalkeeping: attribute(input.goalkeeping, 8),
   };
-  const attrs = Object.fromEntries(
-    Object.keys(ATTRS).map(k => [
-      k,
-      Math.round(
-        clamp(
-          Number.isFinite(Number(input[k])) && input[k] !== null && input[k] !== ''
-            ? Number(input[k])
-            : defaults[k],
-          1,
-          99,
-        ),
-      ),
-    ]),
-  );
-  // Old saved configurations and tests can still set passing; new exports use
-  // the three detailed abilities. The alias is never a second runtime rating.
-  Object.defineProperty(attrs, 'passing', {
-    enumerable: false,
-    get() {
-      return this.shortPassing;
-    },
-    set(v) {
-      this.shortPassing = this.longPassing = this.crossing = clamp(Number(v), 1, 99);
-    },
-  });
+  Object.defineProperty(attrs, 'passing', PASSING_ALIAS);
   return attrs;
 }
 export const OVERALL_WEIGHTS = CONFIG.ratings.roleWeights;

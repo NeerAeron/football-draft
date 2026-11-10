@@ -194,7 +194,7 @@ test('a parry is dangerous only when an attacker reaches the rebound first', () 
 
 test('mentality is a validated, exported tactic that defaults to balanced', () => {
   const m = new Match(10);
-  assert.deepEqual(MENTALITIES, ['push', 'balanced', 'hold']);
+  assert.deepEqual(MENTALITIES, ['auto', 'push', 'balanced', 'hold']);
   assert.equal(m.teams[0].tactics.mentality, 'balanced');
   assert.equal(m.setTactic(0, 'mentality', 'push'), true);
   assert.equal(m.setTactic(1, 'mentality', 'all-out'), undefined);
@@ -211,6 +211,29 @@ test('mentality is a validated, exported tactic that defaults to balanced', () =
     copy.teams.map(t => t.tactics.mentality),
     ['balanced', 'balanced'],
   );
+});
+
+test("an 'auto' mentality follows the game state without changing the chosen tactic", () => {
+  const m = new Match(12);
+  assert.equal(m.setTactic(0, 'mentality', 'auto'), true);
+  assert.equal(m.mentality(0), 'balanced');
+  m.score = [0, 1];
+  m.time = 60 * 60;
+  assert.equal(m.mentality(0), 'balanced', 'not yet late');
+  m.time = 72 * 60;
+  assert.equal(m.mentality(0), 'push', 'behind after 70 minutes');
+  assert.equal(m.settings(0).lean, 1);
+  m.score = [2, 1];
+  assert.equal(m.mentality(0), 'balanced', 'ahead, but not yet 75');
+  m.time = 80 * 60;
+  assert.equal(m.mentality(0), 'hold');
+  assert.equal(m.settings(0).lean, -1);
+  assert.equal(m.teams[0].tactics.mentality, 'auto', 'the setting itself is kept');
+  assert.equal(m.exportConfig().teams[0].tactics.mentality, 'auto');
+  // A manual choice is not overridden.
+  m.setTactic(0, 'mentality', 'push');
+  assert.equal(m.mentality(0), 'push');
+  assert.equal(m.mentality(1), 'balanced');
 });
 
 test('links chemistry is bounded, exported and added to every skill', () => {

@@ -3,6 +3,9 @@
 import { clamp, lerp } from '../util/math.js';
 import { H, GOAL, segment, dist, hypot } from './constants.js';
 
+// Scratch result of receivePoint (planning runs for one match at a time; no allocation).
+const RECEIVE_POINT = { x: 0, y: 0 };
+
 export class PlanningMethods {
   plan() {
     this._costCache = (this._costBuffer ??= new Float64Array(484)).fill(NaN);
@@ -152,11 +155,16 @@ export class PlanningMethods {
     // Receiving a backpass takes priority over a keeper's default goal
     // position, including when a nearby attacker makes sweeping unsafe.
     if (!owner && b.kind === 'pass' && b.target === p.id) {
-      const aim = b.missedReceiver
-        ? p.intercept(b, 0.8)
-        : dist(p, b) < 7
-          ? p.intercept(b, 0.18)
-          : b.destination || p.intercept(b, 0.4);
+      // A receiver who cannot be at the pass's destination in time (or has already been
+      // passed) runs to where he can meet the ball, not at a spot it has left behind.
+      const meet = this.receivePoint(p, b);
+      const aim = meet
+        ? meet
+        : b.missedReceiver
+          ? p.intercept(b, 0.8)
+          : dist(p, b) < 7
+            ? p.intercept(b, 0.18)
+            : b.destination || p.intercept(b, 0.4);
       p.aim(aim.x, aim.y, 'receive', 'Moving to receive');
       return;
     }
@@ -186,6 +194,35 @@ export class PlanningMethods {
     }
     if (!has) this.planDefender(p, c, base, sideY);
     else this.planSupport(p, c, base, sideY, role);
+  }
+  // Where a late receiver meets a rolling pass: the first point at or beyond its destination
+  // that he reaches before the ball does (the roll slows it by `b.roll` m/s²). null when he
+  // is on time for the destination, the pass is in the air, or the ball cannot be caught
+  // before it stops or leaves the pitch — the caller keeps its usual aim then.
+  receivePoint(p, b) {
+    const dest = b.destination;
+    if (!dest || b.z > 0.6 || b.vz > 0.5) return null;
+    const speed = hypot(b.vx, b.vy);
+    if (speed < 2) return null;
+    const ux = b.vx / speed,
+      uy = b.vy / speed,
+      roll = b.roll || 3.8,
+      stop = (speed * speed) / (2 * roll),
+      first = Math.max(0, (dest.x - b.x) * ux + (dest.y - b.y) * uy),
+      run = p.topSpeed() * 0.92;
+    for (let s = first; s < stop; s += 1.5) {
+      const x = b.x + ux * s,
+        y = b.y + uy * s;
+      if (x < 0.6 || x > 104.4 || y < 0.6 || y > 67.4) return null;
+      const ballTime = (speed - Math.sqrt(Math.max(0, speed * speed - 2 * roll * s))) / roll;
+      if (hypot(x - p.x, y - p.y) / run <= ballTime + 0.05) {
+        if (s === first && !b.missedReceiver) return null; // on time: the usual aim applies
+        RECEIVE_POINT.x = x;
+        RECEIVE_POINT.y = y;
+        return RECEIVE_POINT;
+      }
+    }
+    return null;
   }
   // Keeper: hold, track shots, penalty dives, sweeping, or guard the goal.
   planKeeper(p, c) {
@@ -351,7 +388,7 @@ export class PlanningMethods {
         0.5,
         1,
       );
-      const cushion = this.canScreenOutlet(t, q, p, coordination) ? 0.25 : 1;
+      const cushion = this.canScreenOutlet(t, q, p, coordination) ? 0.25 : qr < 20 ? 0.6 : 1;
       const lapse = this.markLapse(p, q, qr, coordination);
       if (lapse) {
         // Ball-watching: the marker holds his line and loses the runner.

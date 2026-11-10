@@ -23,12 +23,13 @@ import {
   oddsSummary,
 } from './draft-model.js';
 
+// Long enough to build a beat of suspense, short enough for eleven of them in a row.
 const TIMING = {
-  nation: [{ duration: 1300, cycles: 2 }],
-  league: [{ duration: 1300, cycles: 2 }],
+  nation: [{ duration: 1050, cycles: 2 }],
+  league: [{ duration: 1050, cycles: 2 }],
   club: [
-    { duration: 800, cycles: 1 },
-    { duration: 1150, cycles: 2 },
+    { duration: 700, cycles: 1 },
+    { duration: 950, cycles: 2 },
   ],
 };
 

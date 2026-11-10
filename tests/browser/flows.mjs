@@ -114,8 +114,11 @@ async function startFromSetup(page, base, url) {
  * go back with Auto, then confirm (sheet on phones, dock on desktop).
  */
 async function draftPick(page, { tryAuto = false } = {}) {
+  // After the first pick the next reel starts by itself (auto-spin); the button is only
+  // there for a moment, so a missed click is fine.
   const spin = page.locator('[data-testid="spin"]');
-  if (await spin.isVisible().catch(() => false)) await spin.click();
+  if (await spin.isVisible().catch(() => false))
+    await spin.click({ timeout: 1500 }).catch(() => {});
   const row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
   await row.waitFor({ state: 'visible', timeout: 10000 });
   await row.click();
@@ -224,10 +227,19 @@ const matchFlows = [
   },
   {
     name: 'match-full',
-    async run({ page, shot, step, base }) {
+    async run({ page, shot, step, base, note }) {
       await page.goto(`${base}${MATCH}&view=full`);
       await kickOff(page, step);
       await step('live canvas', () => visible(page, '.match-stage__canvas'));
+      await step('auto mentality marks the one in effect', async () => {
+        const row = '.match-controls__mentality';
+        await visible(page, `${row} .segmented__item.is-selected:has-text("Auto")`);
+        await visible(page, `${row} .mentality__now`);
+      });
+      await step('no camera toggle under reduced motion', async () => {
+        if (await page.locator('[data-testid="camera-toggle"]').count())
+          throw new Error('camera toggle shown although the camera never moves');
+      });
       await page.waitForTimeout(2500);
       await shot('live');
       await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
@@ -241,9 +253,12 @@ const matchFlows = [
       await step('next moment', () => page.click('[data-testid="skip-moment"]'));
       await page.waitForTimeout(2500);
       await shot('after-skip');
-      await step('mentality push', () =>
-        page.click('.match-controls__mentality label:has-text("Push")'),
-      );
+      await step('mentality push overrides auto', async () => {
+        await page.click('.match-controls__mentality label:has-text("Push")');
+        await page.waitForFunction(
+          () => !document.querySelector('.match-controls__mentality .mentality__now'),
+        );
+      });
       await step('open tactics', async () => {
         await page.click('[data-testid="open-tactics"]');
         await visible(page, 'dialog.modal[open] [data-testid="tactics-0"]');
@@ -261,9 +276,44 @@ const matchFlows = [
       });
       const perf = await framePerf(page);
       if (perf)
-        console.log(
-          `        frame ms avg ${perf.avg.toFixed(2)} p95 ${perf.p95.toFixed(2)} (${perf.frames} frames)`,
+        note(
+          `frame ms avg ${perf.avg.toFixed(2)} p95 ${perf.p95.toFixed(2)} (${perf.frames} frames)`,
         );
+    },
+  },
+  {
+    // The camera only moves with motion on: this flow overrides the emulated reduced motion.
+    name: 'match-camera',
+    async run({ page, shot, step, base }) {
+      await page.addInitScript(() => {
+        try {
+          localStorage.setItem('football-draft-ui', JSON.stringify({ motion: 'full' }));
+        } catch {}
+      });
+      await page.goto(`${base}${MATCH}&view=key&auto=1`);
+      await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
+      await step('the action camera zooms the clip', () =>
+        visible(page, '.match-stage__scene.is-zoomed', 15000),
+      );
+      await shot('action');
+      await step('the toggle shows the full pitch and remembers it', async () => {
+        await page.click('[data-testid="camera-toggle"]');
+        await page.waitForFunction(
+          () => !document.querySelector('.match-stage__scene.is-zoomed'),
+          null,
+          { timeout: 20000 },
+        );
+        const saved = await page.evaluate(() =>
+          localStorage.getItem('football-draft-match-camera'),
+        );
+        if (!/"key":"wide"/.test(saved || ''))
+          throw new Error(`camera choice not stored: ${saved}`);
+      });
+      await shot('wide');
+      await step('C switches back', async () => {
+        await page.keyboard.press('c');
+        await visible(page, '.match-stage__scene.is-zoomed', 20000);
+      });
     },
   },
   {
@@ -567,7 +617,8 @@ export const flows = [
           await picksMade(page, pick);
         });
       await step('filter + search the pool', async () => {
-        await page.click('[data-testid="spin"]');
+        // Auto-spin starts the reel by itself; click only if the button is still there.
+        await page.click('[data-testid="spin"]', { timeout: 1500 }).catch(() => {});
         await visible(page, '[data-testid="pool"]');
         await page.click('[data-testid="pool"] .toggle-chip:has-text("DEF")');
         await page.fill('[data-testid="pool"] input[type="search"]', 'a');
@@ -774,6 +825,19 @@ export const flows = [
         await page.reload();
         await visible(page, '[data-testid="run-end"]');
       });
+      await step('the run is in the trophy cabinet on Home', async () => {
+        // Let the reloaded page finish its font requests: leaving mid-download aborts them,
+        // and the runner reports every failed request.
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForLoadState('networkidle');
+        await page.goto(base);
+        await visible(page, '.home-records');
+        const foot = await page.textContent('.home-records__foot');
+        if (!/^1 run/.test(foot.trim())) throw new Error(`cabinet reads "${foot}"`);
+        const status = await page.textContent('.home-records__slot[data-level="pro"]');
+        if (/Not played/.test(status)) throw new Error('the Pro slot ignores the run');
+      });
+      await shot('home-cabinet', { fullPage: true });
     },
   },
   {

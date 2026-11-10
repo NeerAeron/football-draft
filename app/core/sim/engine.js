@@ -16,6 +16,6 @@
 //   constants.js  pitch size, formats, shared pure helpers
 export { Match } from './match.js';
 export { Player } from './player.js';
-export { W, H, GOAL, LENGTHS, DURATION_PROFILES } from './constants.js';
+export { W, H, GOAL, MATCH_SECONDS, DURATION_PROFILES } from './constants.js';
 export { clamp } from '../util/math.js';
 export { ATTRS } from '../players/ratings.js';

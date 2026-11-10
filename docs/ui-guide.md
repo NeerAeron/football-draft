@@ -179,8 +179,9 @@ State is immutable. Existing stores: `prefs` (`motion`, `hideRatings`, `onboarde
 `soundStore` (`on`, `volume`, `available`), `motionStore`, `routeStore`, `toastStore`.
 localStorage keys must start with `football-draft` (Settings → Reset clears exactly those).
 Home reads `football-draft-run` (`{ mode, type, stage: 'G1'…'F', record: { w, d, l }, team }`)
-and `football-draft-daily` (`{ streak, best, lastPlayed: 'YYYY-MM-DD' }`) via `lib/saved.js` —
-RUN-UI owns writing them and may extend the shape (keep the readers tolerant).
+and `football-draft-daily` (`{ streak, best, lastPlayed: 'YYYY-MM-DD' }`) via `lib/saved.js`, and
+the trophy cabinet (`football-draft-records`) via `lib/records.js` — RUN-UI owns writing them
+and may extend the shape (keep the readers tolerant).
 
 ## 7. Players: catalog → PlayerView
 

@@ -4,10 +4,12 @@ import { Match } from '../app/core/sim/engine.js';
 
 // A defender (team 1) marks an attacker near his own goal while the ball is
 // away on the far side: the situation where markers ball-watch.
-function markingScene({ awareness = 60, lapses } = {}) {
+// Lapses are an optional tuning knob (gameplay.markingLapses, off by default): these scenes
+// switch it on unless told otherwise.
+function markingScene({ awareness = 60, lapses = 1 } = {}) {
   const m = new Match(31, 300);
   m.mode = 'play';
-  if (lapses !== undefined) m.tuning.gameplay.markingLapses = lapses;
+  if (lapses !== null) m.tuning.gameplay.markingLapses = lapses;
   const d = m.players[11 + 2],
     a = m.players[9];
   d.attrs.awareness = awareness;
@@ -46,6 +48,26 @@ test('poor readers ball-watch and lose their runner; elite markers rarely do', (
   const near = markingScene({ awareness: 58 });
   Object.assign(near.m.ball, { x: near.a.x + 2, y: near.a.y });
   assert.equal(lapseShare(near), 0);
+});
+
+test('by default nobody ball-watches, and a marker in his own box is touch-tight', () => {
+  // The default tuning: no lapses at all, whatever the marker's reading of the game.
+  assert.equal(lapseShare(markingScene({ awareness: 45, lapses: null })), 0);
+  const { m, d, a } = markingScene({ awareness: 70, lapses: null });
+  const c = { t: 1, tac: m.settings(1), br: m.rel(m.ball.x, 1), marks: new Map([[d.id, a]]) };
+  c.coordination = 0;
+  m.planDefender(d, c, 20, 30);
+  assert.notEqual(d.action, 'Ball-watching');
+  // His spot is goal-side of the attacker and within a stride and a half of him…
+  const gap = m.rel(a.x, 1) - m.rel(d.tx, 1);
+  assert.ok(gap > 0.4 && gap < 1.7, `goal-side gap ${gap}`);
+  assert.ok(Math.abs(d.ty - a.y) < 1.5);
+  // …while the same attacker 40 m from goal is given more room.
+  const far = markingScene({ awareness: 70, lapses: null });
+  Object.assign(far.a, { x: far.m.abs(65, 0), y: 30 });
+  Object.assign(far.d, { x: far.m.abs(68, 0), y: 30.5 });
+  const loose = far.m.markingPoint(1, far.a, far.d);
+  assert.ok(far.m.rel(far.a.x, 1) - far.m.rel(loose.x, 1) > gap + 0.3);
 });
 
 test('a lapsing marker lets the runner go instead of staying goal-side', () => {

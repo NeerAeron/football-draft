@@ -35,9 +35,11 @@ const KEY_LABELS = {
   'football-draft-prematch': 'Pre-match choices',
   'football-draft-match-view': 'Pre-match choices',
   'football-draft-match': 'Current match',
+  'football-draft-match-camera': 'Match camera',
   'football-draft-run': 'Saved run',
   'football-draft-run-state': 'Saved run',
   'football-draft-daily': 'Daily streak and results',
+  'football-draft-records': 'Trophy cabinet',
   'football-draft-exhibition': 'Last exhibition teams',
   'football-draft-dev': 'Developer test options',
 };
@@ -171,9 +173,16 @@ function MotionPanel() {
 }
 
 function GameplayPanel() {
-  const hide = useStore(prefs, p => p.hideRatings);
+  const hide = useStore(prefs, p => p.hideRatings),
+    autoSpin = useStore(prefs, p => p.autoSpin);
   return html`<${Panel} id="gameplay" title="Gameplay">
     <div class="settings__rows">
+      <${Switch}
+        label="Spin automatically"
+        description="After each pick the next reel starts by itself. Turn off to tap for every spin."
+        checked=${autoSpin}
+        onChange=${v => setPref('autoSpin', v)}
+      />
       <${Switch}
         label="Hide ratings by default"
         description="Ball Knower mode: no OVRs or stats while you draft. Your share card says so."
@@ -249,7 +258,7 @@ function DataPanel() {
       onClose=${() => setConfirm(false)}
       size="sm"
       title="Reset local data?"
-      description="This clears your sound and display settings, tuning overrides, saved run and daily streak on this device. It cannot be undone."
+      description="This clears your sound and display settings, tuning overrides, saved run, trophy cabinet and daily streak on this device. It cannot be undone."
       footer=${html`<${Button} variant="ghost" onClick=${() => setConfirm(false)}>Cancel<//>
         <${Button} variant="danger" icon="trash" onClick=${reset} data-testid="confirm-reset"
           >Reset<//

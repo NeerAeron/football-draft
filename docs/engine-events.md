@@ -17,7 +17,7 @@ import { matchClock } from './core/sim/periods.js';
 
 | Call | Notes |
 | --- | --- |
-| `new Match(seed, duration)` | `duration` (real seconds): `180` or `300` (`DURATION_PROFILES`). 90 match minutes are compressed into it; physics is never scaled. |
+| `new Match(seed, duration)` | `duration` (real seconds): `180` — `MATCH_SECONDS`, the one length the game plays (live, highlights, instant, auto-sims) — or `300`, a profile kept for tests and tools (`DURATION_PROFILES`). 90 match minutes are compressed into it; physics is never scaled. |
 | `m.importConfig(config)` / `m.exportConfig()` | `{ tuning, competition, teams, players }`. Import resets the match. Export is a full snapshot (tactics incl. mentality, every player profile incl. `chem`). |
 | `m.step(1 / 60)` | Advance one fixed step. Call at 60 Hz (or faster for instant results). No-op once `finished`. |
 | `m.pauseAtHalf = true` | Stop in `mode === 'halftime'` until `m.resumeHalf()`; otherwise half-time passes automatically. |
@@ -36,14 +36,15 @@ decides a level match by a penalty shootout (see below).
 | `formation` | key of `FORMATIONS` (`'433'`, `'442'`, …) |
 | `style` | `'balanced' | 'possession' | 'counter' | 'press' | 'wings' | 'bus'` |
 | `tempo`, `width`, `press`, `fluidity` | integers 1–5 |
-| `mentality` | `'push' | 'balanced' | 'hold'` (default `'balanced'`; `MENTALITIES` in `insights.js`) |
+| `mentality` | `'auto' | 'push' | 'balanced' | 'hold'` (engine default `'balanced'`; `MENTALITIES` in `insights.js`). `'auto'` follows the game state; `m.mentality(team)` returns the one in effect |
 
 Mentality is a live, replay-safe tactic like the others (part of `exportConfig`, never draws
 RNG). `push`: higher line (+8), more runners and overlaps, +15% shooting urge, riskier passes,
 quicker restarts, +5% energy cost. `hold`: deeper block (−10), fewer runners, safer passing,
 slower restarts (×1.25), −5% energy cost. `gameStateMentality(m, team)` (coach.js) returns the
-game-state choice — after 70' a trailing side pushes, from 75' a leading side holds — and the AI
-coach applies it to team 1; offer it to the human as "auto". Tactics also cost energy: press
+game-state choice — after 70' a trailing side pushes, from 75' a leading side holds. The AI
+coach applies it to team 1; a side whose mentality is `'auto'` gets it too (the UI's default
+for a side that did not choose, so instant sims and highlights also chase a game). Tactics also cost energy: press
 level out of possession (±11% per step from 3, +8% for the press style) and tempo in
 possession (±7% per step). `tacticAccess(mode, team, state)` (coach.js) says whether the human
 may edit a side right now.
@@ -169,7 +170,7 @@ m.shootout = {
 
 | API | Notes |
 | --- | --- |
-| `simulateComplete(config, seed, record, onProgress, cancelled)` | Runs a full 300 s match → `{ result, frames, clips }` (`frames`/`clips` only when `record`). Pure: can run in a Web Worker. |
+| `simulateComplete(config, seed, record, onProgress, cancelled)` | Runs a full match (`MATCH_SECONDS`) → `{ result, frames, clips }` (`frames`/`clips` only when `record`). Pure: can run in a Web Worker. |
 | `simulateHalf(match, onProgress, cancelled)` | Records one half of a live match → `{ result, frames, clips, viewDuration: 30, viewOffset }` |
 | `RECORD_STEP` | frames are stored every 3 steps (20 per second) |
 | `snapshot(m)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout` |

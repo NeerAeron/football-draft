@@ -17,14 +17,17 @@ Everything you do is saved in your own browser.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
 4. **Links.** Players sharing a club, nation or league link up and get a small boost.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics. Watch
-   **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (with
-   live mentality and tactics), or go straight to an **Instant** result.
+   **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
+   minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
+   are the same match: one seed, one result, however you watch it. The action camera follows the
+   ball (the camera button or `C` switches to the whole pitch), and on **Auto** mentality your
+   team reads the game itself: late on it pushes when behind and holds a lead.
 
 ### Modes
 
 | Mode | What it is |
 | --- | --- |
-| **World Cup Run** | Draft, then a group of four (three matches, top two advance), Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all seven for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result. "Sim rest of run" plays the remaining matches for you. |
+| **World Cup Run** | Draft, then a group of four (three matches, top two advance), Round of 16, quarter-final, semi-final and final. Opponents get stronger each round. Win all seven for a perfect run; every run ends with a grade, a Player of the Tournament and a shareable result, and a title goes into the trophy cabinet on Home (one cup per difficulty). "Sim rest of run" plays the remaining matches for you. |
 | **Daily Challenge** | One run a day, the same for everyone: the same eleven Nations spins, re-roll alternates and seven opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
 | **Quick Match** | Draft any way, then one match against an AI team at your difficulty. |
 | **Versus** | Two players on one device: a coin toss, alternating picks, then kick off. |
@@ -84,7 +87,7 @@ Node 22 or newer. Run everything from the repository root.
 | `npm test` | every `node:test` suite in `tests/` |
 | `node scripts/dev/test.mjs draft session` | only test files whose path contains a word |
 | `node scripts/dev/test.mjs --grep "offside"` | only tests whose name matches |
-| `npm run test:browser` | Playwright smoke run of every UI flow; fails on console or page errors |
+| `npm run test:browser` | Playwright smoke run of every UI flow, three at a time; fails on console or page errors |
 | `npm run shots -- --only draft --desktop` | screenshots of the flows into `.shots/` |
 | `npm run sim:fingerprint` | deterministic results and hashes of 12 full matches, plus timings |
 | `npm run format` / `npm run lint` | Prettier write / ESLint (zero warnings allowed) |

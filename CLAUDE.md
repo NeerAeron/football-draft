@@ -17,13 +17,16 @@ modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dep
 | `npm test` | all tests (`node:test`) | ~35 s |
 | `node scripts/dev/test.mjs draft session` | only test files whose path contains a word | — |
 | `node scripts/dev/test.mjs --grep "offside"` | only tests whose name matches | — |
-| `npm run test:browser` | Playwright smoke run of every UI flow, fails on console/page errors | ~3 min |
+| `npm run test:browser` | Playwright smoke run of every UI flow (3 at a time; `--jobs N`), fails on console/page errors | ~1.5 min |
 | `npm run shots -- --only draft --desktop` | screenshots into `.shots/` (view PNGs with the Read tool) | — |
-| `npm run sim:fingerprint` | deterministic results/hashes of 12 full matches + timings | ~35 s |
+| `npm run sim:fingerprint` | deterministic results/hashes of 12 full matches + timings | ~6 s |
 | `npm run format` / `npm run lint` | Prettier write / ESLint (`--max-warnings 0`) | — |
 | `npm run verify` | everything incl. full tests + browser smoke (before pushing) | ~4 min |
 | `npm run data:fetch` / `npm run data:build` | pinned source CSV / rebuild the catalog (see below) | — |
 | `node tools/og/render.mjs` | re-render the link-preview card and app icons | — |
+| `npm run preload` | regenerate the preload block of `app/index.html` after adding/removing an import or stylesheet of the first screen (a test fails until you do) | — |
+| `node tools/calibration/blunders.mjs` | count frustrating plays over 24 club fixtures (`--compare`, `--list <type>`) | ~15 s |
+| `node tools/calibration/watch.mjs --fixture 3 --at 81.4` | contact sheet (PNG) of what the engine did around a moment — view it with the Read tool | ~3 s |
 
 Browser tooling uses the machine's pre-installed Playwright + Chromium (`require('playwright')`).
 Never `npm i playwright` or run `playwright install` locally (CI installs its own copy).
@@ -70,7 +73,9 @@ tests/browser/flows.mjs  Playwright flows used by test:browser and shots — kee
 tools/calibration/       manual calibration runners (write to /tmp; not run by npm test), incl.
                          match-calibration.mjs (engine stats, docs/calibration.md),
                          draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results),
-                         cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md)
+                         cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md),
+                         blunders.mjs (detector of frustrating plays) + watch.mjs (frame viewer),
+                         lib/fixtures.mjs (their deterministic club fixtures)
 tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json
 tools/og/                og-image.html + render.mjs: re-renders og-image.png and the app icons
 docs/                    contracts, guides and calibration notes — index in docs/README.md
@@ -139,12 +144,17 @@ club-less national-team players have `source.club === null` and appear only in n
 - **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`), `router.js`
   (hash router), `prefs.js`, `audio.js`, `motion.js`, `draft-store.js` (draft hand-off),
   `prematch-store.js` (pre-match edits → kick-off), `match-store.js` (match requests/results),
-  `run-store.js` (run/daily persistence, links), `saved.js` (tolerant readers for Home, incl.
-  `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
+  `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: `recordRun`,
+  `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
   `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
   only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
   `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
   (`registerOffline`: service worker + one-time warm-up of the installed app).
+  The match stage (`ui/screens/match/renderer/`): the pitch is a DOM layer (`pitch.js`) under a
+  transparent token canvas (`draw.js`), framed by `camera.js` (action camera: follows the ball,
+  eases out for long balls, shots and set pieces; the ball never leaves the frame) — details in
+  `docs/ui-match.md`. `draw()` runs every frame: no objects, arrays, closures or `measureText`
+  there.
   Run auto-sims (`ui/screens/run/auto-sim.js`) play every remaining match with the engine in a
   module Worker (`auto-sim-worker.js`), falling back to main-thread slices; the Daily's perfect
   XI is computed in `ui/screens/daily/perfect-xi-worker.js` the same way. A new module worker
@@ -163,8 +173,10 @@ club-less national-team players have `source.club === null` and appear only in n
 | `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`) |
 | `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits / last view |
 | `football-draft-match` | `match-store.js` | current match request + result |
+| `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |
 | `football-draft-daily` | `run-store.js` | daily streak, results, attempt in progress |
+| `football-draft-records` | `ui/lib/records.js` | trophy cabinet: finished runs, titles and best round per difficulty |
 | `football-draft-exhibition` | exhibition screen | last two teams |
 | `football-draft-dev` | tests only | `{ fastSim: true }`: auto-sims use the fast model |
 
@@ -181,9 +193,25 @@ tolerant of missing or broken data.
 - **Config snapshot.** A running match reads `match.tuning` (or `player.tuning`), never live
   `CONFIG`. Changing settings must not alter an in-progress match or a replay. Daily Challenges
   and challenge links use `DEFAULT_CONFIG` so every device gets the same draft and results.
+- **One match length.** The game plays every match on `MATCH_SECONDS` (180 s): Full, Key
+  Moments, Instant and run auto-sims, so a seed gives the same match however it is watched. The
+  engine keeps a 300 s profile for tests and tools only; tune and calibrate at 180 s.
+- **Fun over realism, but no dumb moments.** Long shots, dribbles and saves are the show;
+  passes to nobody, passes into an opponent, keepers beaten softly and attackers left free in
+  the box are bugs. After a gameplay change run `tools/calibration/blunders.mjs` (before/after
+  with `--engine`/`--compare`) as well as `match-calibration.mjs --duration 180`, and look at
+  a few moments with `watch.mjs`.
 - **Hot paths.** `Player.skill`, `positionFamiliarity`, `badgeBoost`, `dist`, `Match.plan` and the
   defensive assignment helpers run thousands of times per step. No allocations/closures there;
   caches must stay correct when tests mutate `p.attrs`/`p.tags`/`match.tuning` in place.
+  Keep objects in V8's fast mode: declare every Player field in its constructor and every ball
+  field in `Match.reset()` (adding a field later with `obj[key] = …` turns the object into a
+  dictionary and made real-squad matches 3× slower); a new `ATTRS` key needs a line in
+  `memoStale` (`sim/player.js`) and in `normalizeAttributes`. Attribute, badge and tuning
+  edits made during a step are seen from the next step. Work that takes long on a phone
+  (catalog decode, draft index, opponent list) is built through step-wise generators
+  (`decodeCatalogSteps`, `catalogIndexSteps`, `opponentCandidatesSteps`) driven by
+  `stepped()` in `services/catalog.js`.
 - **Behaviour-neutral refactors** of `app/core/sim/engine.js` (or anything it imports) must keep
   `npm run sim:fingerprint` identical: record before (`… --json > /tmp/before.json`) and compare
   after (`node scripts/dev/sim-fingerprint.mjs --compare /tmp/before.json`). Intentional gameplay

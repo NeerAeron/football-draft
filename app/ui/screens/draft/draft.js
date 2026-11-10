@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { html, cx } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
 import { isReducedMotion } from '../../lib/motion.js';
+import { prefs } from '../../lib/prefs.js';
 import { playCue } from '../../lib/audio.js';
 import { makePlayerView } from '../../lib/player-view.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
@@ -118,6 +119,7 @@ function Board({ state, draft, auto }) {
   const [busy, setBusy] = useState(false);
   const [passAck, setPassAck] = useState(-1);
   const [moment, setMoment] = useState(null);
+  const autoSpin = useStore(prefs, p => p.autoSpin);
   const [announcement, announce] = useAnnouncer();
   const seenPick = useRef(lastPick?.token);
 
@@ -248,6 +250,27 @@ function Board({ state, draft, auto }) {
   useEffect(() => {
     if (auto && !snap.complete) autoComplete();
   }, [auto]);
+  // Auto-spin: after a pick the next reel starts by itself, a beat after the pick lands.
+  // Never the first spin of a draft, and not in Versus, where the device changes hands first.
+  useEffect(() => {
+    if (!autoSpin || auto || snap.complete || snap.sides === 2) return;
+    if (snap.phase !== 'spin' || snap.pickIndex === 0 || animate != null) return;
+    // A star's moment plays over the reel: it has ended by the time the reel lands.
+    const star = hide
+      ? 0
+      : lastPick?.tier === 'Superstar'
+        ? 700
+        : lastPick?.tier === 'Star'
+          ? 500
+          : 0;
+    const t = setTimeout(
+      () => {
+        if (spinDraft()) playCue('tick');
+      },
+      isReducedMotion() ? 200 : star || 250,
+    );
+    return () => clearTimeout(t);
+  }, [autoSpin, snap.phase, snap.pickIndex, snap.complete]);
   useEffect(() => {
     if (!wide || !sel) return;
     const onKey = e => e.key === 'Escape' && setSel(null);

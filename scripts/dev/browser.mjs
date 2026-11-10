@@ -6,8 +6,10 @@
 //   node scripts/dev/browser.mjs --no-shots       # smoke only: fail on errors, no images
 //   node scripts/dev/browser.mjs --out DIR        # screenshot directory (default .shots/)
 //   node scripts/dev/browser.mjs --scale 2        # deviceScaleFactor for human-facing images
+//   node scripts/dev/browser.mjs --jobs 1         # one flow at a time (default: 3 in parallel)
 //
-// Flows live in tests/browser/flows.mjs. Each flow gets { page, shot, step, base }.
+// Flows live in tests/browser/flows.mjs. Each flow gets { page, shot, step, base, viewport,
+// note } (note(text) prints a line with the flow's result).
 // The run fails (exit 1) on uncaught page errors, console errors, failed local
 // requests or a thrown flow step. Reduced motion is emulated so reels settle fast.
 import { mkdirSync, rmSync } from 'node:fs';
@@ -56,11 +58,17 @@ const browser = await chromium.launch();
 const failures = [];
 const written = [];
 const started = performance.now();
+// Each flow runs in its own browser context, so several can run at once. Their output is
+// printed when each finishes; --jobs 1 keeps the order of flows.mjs.
+const jobs = Math.max(1, Number(option('--jobs', 3)) || 1);
+const queue = [];
+for (const flow of flows.filter(f => !only.length || only.some(o => f.name.includes(o))))
+  for (const vp of viewports)
+    if (!flow.viewports || flow.viewports.includes(vp.name)) queue.push({ flow, vp });
 
-try {
-  for (const flow of flows.filter(f => !only.length || only.some(o => f.name.includes(o)))) {
-    for (const vp of viewports) {
-      if (flow.viewports && !flow.viewports.includes(vp.name)) continue;
+async function runJob({ flow, vp }) {
+  {
+    {
       const context = await browser.newContext({
         viewport: vp.viewport,
         deviceScaleFactor: scale,
@@ -70,7 +78,8 @@ try {
       });
       const page = await context.newPage();
       const label = `${flow.name}@${vp.name}`;
-      const problems = [];
+      const problems = [],
+        notes = [];
       page.on('pageerror', e => problems.push(`pageerror: ${e.message}`));
       page.on('console', m => {
         if (m.type() === 'error') problems.push(`console.error: ${m.text()}`);
@@ -99,7 +108,14 @@ try {
       };
       const t0 = performance.now();
       try {
-        await flow.run({ page, shot, step, base: server.url, viewport: vp.name });
+        await flow.run({
+          page,
+          shot,
+          step,
+          base: server.url,
+          viewport: vp.name,
+          note: text => notes.push(`        ${text}`),
+        });
       } catch (e) {
         problems.push(`flow failed: ${e.message}`);
         if (shots) {
@@ -110,11 +126,24 @@ try {
       }
       const ms = Math.round(performance.now() - t0);
       if (problems.length) failures.push({ label, problems });
-      console.log(`${problems.length ? 'FAIL' : 'ok  '}  ${label}  ${ms}ms`);
-      for (const p of problems) console.log(`        ${p}`);
+      console.log(
+        [
+          ...notes,
+          `${problems.length ? 'FAIL' : 'ok  '}  ${label}  ${ms}ms`,
+          ...problems.map(p => `        ${p}`),
+        ].join('\n'),
+      );
       await context.close();
     }
   }
+}
+
+try {
+  await Promise.all(
+    Array.from({ length: Math.min(jobs, queue.length) }, async () => {
+      for (let job = queue.shift(); job; job = queue.shift()) await runJob(job);
+    }),
+  );
 } finally {
   await browser.close();
   await server.close();

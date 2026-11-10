@@ -15,6 +15,7 @@ import { Icon } from '../../components/icon.js';
 import { achievement } from '../../components/toast.js';
 import { shareText } from '../../../core/competition/share.js';
 import { challengeLink, runChallenge, pageBase, userTeamName } from '../../lib/run-store.js';
+import { runNews } from '../../lib/records.js';
 import { PathStrip, FlagMosaic, scoreText } from './run-parts.js';
 import { Trophy } from './trophy.js';
 import { SharePanel } from './share-panel.js';
@@ -52,6 +53,9 @@ export function endLine(snapshot) {
 function celebrate(snapshot, meta, onCelebrated) {
   if (meta.celebrated) return;
   const g = snapshot.grade;
+  // What this run added to the trophy cabinet on Home (lib/records.js).
+  const { news } = runNews(meta.id),
+    level = levelLabel(snapshot.difficulty);
   if (snapshot.status === 'champion')
     achievement({
       title: g?.grade === 'S+' ? 'Perfect Seven' : 'World Champions',
@@ -59,6 +63,24 @@ function celebrate(snapshot, meta, onCelebrated) {
         g?.grade === 'S+'
           ? 'Seven matches, seven wins. The perfect run.'
           : `You lifted the cup with a ${snapshot.record.w}-${snapshot.record.d}-${snapshot.record.l} run.`,
+    });
+  if (news.includes('cabinet'))
+    achievement({
+      title: 'Cabinet complete',
+      description: 'A World Cup on every difficulty. Nothing left to prove.',
+      icon: 'crown',
+    });
+  else if (news.includes('title'))
+    achievement({
+      title: 'New trophy',
+      description: `Your first World Cup on ${level}. It is in your cabinet on Home.`,
+      icon: 'award',
+    });
+  else if (news.includes('best'))
+    achievement({
+      title: 'Personal best',
+      description: `Your furthest run on ${level} so far.`,
+      icon: 'trending-up',
     });
   const giant = snapshot.rounds.find(
     r =>
@@ -244,16 +266,34 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
             size="lg"
             block
             icon="rotate-ccw"
-            href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations' })}
+            href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations', go: 1 })}
             data-testid="play-again"
             >Play again<//
           >
-          <${Button} variant="ghost" block icon="house" href=${href('/')}>Home<//>
+          <div class="run-end__more">
+            <${Button}
+              variant="ghost"
+              icon="sliders-horizontal"
+              href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations' })}
+              >Change setup<//
+            >
+            <${Button} variant="ghost" icon="house" href=${href('/')}>Home<//>
+          </div>
         </div>
         <p class="run-end__fine text-3 text-xs">
           ${`Share link plays the same spins: ${pageBase().replace(/^https?:\/\//, '')}`}
         </p>
       </aside>
+    </div>
+    <div class="action-bar run-end__bar">
+      <${Button}
+        variant="primary"
+        size="lg"
+        block
+        icon="rotate-ccw"
+        href=${href('/play/:mode', { mode: 'run' }, { type: meta.type || 'nations', go: 1 })}
+        >Play again<//
+      >
     </div>
   </div>`;
 }

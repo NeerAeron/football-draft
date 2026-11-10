@@ -40,15 +40,16 @@ export class BallMethods {
       b.lastTouch;
     const incomingGoal =
       b.kind === 'shot' || (this.rel(b.x, flightTeam) > 77 && this.projectedOnTarget());
-    const candidates = this.activePlayers
-      .filter(p => this.canCollect(p))
-      .map(p => ({ p, ...segment(p, prev, b) }))
-      .filter(
-        o =>
-          o.d <
-          (this.canHandle(o.p) && incomingGoal ? this.keeperReach(o.p) : this.collectionReach(o.p)),
-      )
-      .sort((a, c) => a.t - c.t || a.d - c.d);
+    // Players whose reach the ball's path crossed this step, earliest contact first.
+    // Usually none or one: no intermediate arrays, and no sort unless it is needed.
+    const candidates = [];
+    for (const p of this.activePlayers) {
+      if (!this.canCollect(p)) continue;
+      const s = segment(p, prev, b);
+      if (s.d < (this.canHandle(p) && incomingGoal ? this.keeperReach(p) : this.collectionReach(p)))
+        candidates.push({ p, d: s.d, t: s.t });
+    }
+    if (candidates.length > 1) candidates.sort((a, c) => a.t - c.t || a.d - c.d);
     if (b.kind === 'shot' && b.offsideState) {
       const g = this.keeper(1 - b.shotTeam);
       for (const id of b.offsideState.candidates) {
@@ -77,7 +78,9 @@ export class BallMethods {
       if (b.z > 1.6 + p.skill('heading') * 0.007) continue;
       if (b.kind === 'shot') {
         if (p.team === b.shotTeam) continue;
-        if (this.rand() < 0.35 + p.skill('defending') * 0.003) {
+        // A defender down the line of the shot has time to get in the way; the marker at
+        // the shooter's shoulder (the ball has only just left the foot) mostly does not.
+        if (this.rand() < (0.35 + p.skill('defending') * 0.003) * (b.age < 0.1 ? 0.5 : 1)) {
           this.resolveShot('blocked');
           // A block either kills the shot or deflects it on, often behind for a corner.
           if (this.rand() < 0.55 + 0.1 * this.tuning.gameplay.deliveryDeflections) {

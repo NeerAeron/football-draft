@@ -3,6 +3,9 @@
 import { clamp, lerp } from '../util/math.js';
 import { skillError, dist, hypot } from './constants.js';
 
+// Extra reach (m) of the intended receiver of a ground pass, on top of a normal touch.
+const RECEIVER_STRETCH = 0.7;
+
 export class PossessionMethods {
   own(p, handling = false) {
     if (p.sentOff) return false;
@@ -180,7 +183,9 @@ export class PossessionMethods {
     const demand =
       expectedDemand ??
       (teammate && this.ball.kind === 'pass' ? (this.ball.deliveryDemand ?? 0) : 0);
-    const stretch = clamp((contactGap - 0.6) / 0.65, 0, 1) * 0.22;
+    // Reaching for the ball: up to 1.25 m is a normal stretch, beyond it a lunge.
+    const stretch =
+      clamp((contactGap - 0.6) / 0.65, 0, 1) * 0.22 + clamp((contactGap - 1.25) / 0.6, 0, 1) * 0.4;
     const difficulty = clamp(
       Math.max(0, height - 0.3) / 1.3 +
         Math.max(0, speed - 18) / 12 +
@@ -221,13 +226,15 @@ export class PossessionMethods {
       base = b.z > 1.1 ? 1.05 : 0.85;
     const receiving =
       b.kind === 'pass' && b.target === p.id && this.players[b.kicker]?.team === p.team;
-    // A small reach for the intended receiver, not a larger interception
-    // radius for everybody. High balls still require heading and timing.
+    // The intended receiver expects the ball: he takes an adjusting step and stretches for a
+    // pass slightly off his feet (a heavier touch the further he reaches — firstTouchChance),
+    // rather than watching it roll past. Not a larger interception radius for everybody; high
+    // balls still require heading and timing.
     const settled = b.kind === 'loose' && b.z < 0.3 && hypot(b.vx, b.vy) < 5;
     return (
       (base +
         (receiving && b.z < 0.6
-          ? 0.21 + clamp((p.skill('control') - 50) * 0.002, 0, 0.1)
+          ? 0.21 + RECEIVER_STRETCH + clamp((p.skill('control') - 50) * 0.002, 0, 0.1)
           : settled
             ? 0.1
             : 0)) *

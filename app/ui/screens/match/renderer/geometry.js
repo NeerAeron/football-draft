@@ -20,8 +20,12 @@ export const worldAspect = (camera = WORLD, orientation = 'landscape') => {
 /**
  * Affine transform for a canvas of width × height device pixels:
  * screen = (a·x + c·y + e, b·x + d·y + f); `s` = pixels per metre.
+ * Pass `out` to reuse an object (the frame loop allocates nothing).
  */
-export function makeTransform({ width, height, orientation = 'landscape', camera = WORLD }) {
+export function makeTransform(
+  { width, height, orientation = 'landscape', camera = WORLD },
+  out = {},
+) {
   const portrait = orientation === 'portrait',
     ww = camera.x1 - camera.x0,
     wh = camera.y1 - camera.y0,
@@ -30,9 +34,24 @@ export function makeTransform({ width, height, orientation = 'landscape', camera
     s = Math.min(width / sw, height / sh),
     ox = (width - sw * s) / 2,
     oy = (height - sh * s) / 2;
-  return portrait
-    ? { s, portrait, a: 0, b: -s, c: s, d: 0, e: ox - camera.y0 * s, f: oy + camera.x1 * s }
-    : { s, portrait, a: s, b: 0, c: 0, d: s, e: ox - camera.x0 * s, f: oy - camera.y0 * s };
+  out.s = s;
+  out.portrait = portrait;
+  if (portrait) {
+    out.a = 0;
+    out.b = -s;
+    out.c = s;
+    out.d = 0;
+    out.e = ox - camera.y0 * s;
+    out.f = oy + camera.x1 * s;
+  } else {
+    out.a = s;
+    out.b = 0;
+    out.c = 0;
+    out.d = s;
+    out.e = ox - camera.x0 * s;
+    out.f = oy - camera.y0 * s;
+  }
+  return out;
 }
 
 export const sx = (t, x, y) => t.a * x + t.c * y + t.e;
@@ -47,11 +66,30 @@ export function toWorld(t, px, py) {
 }
 
 /** Interpolate two cameras (0 → a, 1 → b). */
-export function mixCamera(a, b, k) {
-  return {
-    x0: a.x0 + (b.x0 - a.x0) * k,
-    x1: a.x1 + (b.x1 - a.x1) * k,
-    y0: a.y0 + (b.y0 - a.y0) * k,
-    y1: a.y1 + (b.y1 - a.y1) * k,
-  };
+export function mixCamera(a, b, k, out = {}) {
+  out.x0 = a.x0 + (b.x0 - a.x0) * k;
+  out.x1 = a.x1 + (b.x1 - a.x1) * k;
+  out.y0 = a.y0 + (b.y0 - a.y0) * k;
+  out.y1 = a.y1 + (b.y1 - a.y1) * k;
+  return out;
+}
+
+/**
+ * The world rectangle a width × height canvas shows at zoom 1: WORLD grown along one axis to
+ * the canvas aspect (what the letterboxed full-pitch view covers, run-off included).
+ */
+export function fullView(width, height, orientation = 'landscape', out = {}) {
+  const portrait = orientation === 'portrait',
+    ww = WORLD.x1 - WORLD.x0,
+    wh = WORLD.y1 - WORLD.y0,
+    s = Math.min(width / (portrait ? wh : ww), height / (portrait ? ww : wh)),
+    ex = (portrait ? height : width) / s,
+    ey = (portrait ? width : height) / s,
+    cx = (WORLD.x0 + WORLD.x1) / 2,
+    cy = (WORLD.y0 + WORLD.y1) / 2;
+  out.x0 = cx - ex / 2;
+  out.x1 = cx + ex / 2;
+  out.y0 = cy - ey / 2;
+  out.y1 = cy + ey / 2;
+  return out;
 }
