@@ -1,14 +1,14 @@
 // Draft board model: pool filtering/sorting, fit tags, slot highlights, link lines, reel items,
 // honest odds and the live projection. Framework-free (Node tests import it).
 import { LINE_OF, roleRating } from '../../../core/draft/pools.js';
-import { teamLinks } from '../../../core/draft/links.js';
+import { teamLinks, linkBoosts } from '../../../core/draft/links.js';
 import { FORMATIONS } from '../../../core/players/formations.js';
 import { NATURAL_FIT } from '../../../core/draft/session.js';
 import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
 import { searchKey } from '../../../core/util/text.js';
-import { keyStatsFirst } from '../../lib/player-view.js';
+import { keyStatsFirst, surname } from '../../lib/player-view.js';
 
 export const CATEGORY_LABEL = { nation: 'Nation', league: 'League', club: 'Club' };
 export const CATEGORY_ICON = { nation: 'flag', league: 'layout-grid', club: 'shield' };
@@ -68,17 +68,34 @@ export function poolCounts(pool = []) {
   return { total: pool.length, available, blocked: pool.length - available };
 }
 
-/** FitTag for a pool row: natural best slot, the drop when out of position, or why not. */
-export function rowFit(entry) {
-  if (!entry.available)
+/**
+ * FitTag for a pool row: natural best slot, the drop when out of position, or why not
+ * ('Taken', 'No slot', Budget mode: '88+ full').
+ */
+export function rowFit(entry, budget = null) {
+  if (!entry.available) {
+    const band = / slot left$/.test(entry.reason) && budget?.find(b => b.id === entry.band);
     return {
       state: 'blocked',
-      label: entry.reason === 'Already drafted' ? 'Taken' : 'No slot',
+      label: entry.reason === 'Already drafted' ? 'Taken' : band ? `${band.label} full` : 'No slot',
     };
+  }
   const best = entry.best;
   if (!best) return null;
   if (best.familiarity >= NATURAL_FIT) return { state: 'ok', label: best.role };
   return { state: 'penalty', label: best.role, from: entry.ovr, to: best.rating };
+}
+
+/**
+ * Budget mode: what a pool row costs — PlayerRow `cost` ({ label: '88+', tone: 'band1', text })
+ * or the free tag; null when the draft has no budget (team.budget is null).
+ */
+export function rowCost(entry, budget = null) {
+  if (!budget) return null;
+  const band = budget.find(b => b.id === entry.band);
+  return band
+    ? { label: band.label, tone: band.id, text: `costs a ${band.label} slot` }
+    : { label: 'Free', tone: 'free', text: 'free pick' };
 }
 
 /** A drop bigger than this (OVR points) is shown as a muted "poor fit" instead of amber. */
@@ -113,9 +130,9 @@ const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 /** The six summary stats with the position's key stats first (pool rows). */
 export const rowStats = (stats, position) => keyStatsFirst(stats, position);
 
-/** PitchView link lines from Links pairs: club 3 · nation 2 · league 1. */
+/** PitchView link lines from mates pairs: nation mates 3 (gold), club mates 2 (volt). */
 export function linkLines(pairs = []) {
-  const strength = { club: 3, nation: 2, league: 1 };
+  const strength = { nation: 3, club: 2 };
   return pairs.map(p => ({ from: p.a, to: p.b, strength: strength[p.kind] || 1 }));
 }
 
@@ -301,9 +318,48 @@ export function draftProjection({ kind, mode, difficulty, teams, side = 0, rules
   };
 }
 
+const KIND_LABEL = { nation: 'Nation', club: 'Club' };
+const boostText = n => `+${Number.isInteger(n) ? n : Math.round(n * 10) / 10}`;
+const nameList = names =>
+  names.length <= 2 ? names.join(' and ') : `${names[0]}, ${names[1]} +${names.length - 2}`;
+
+/**
+ * The mates lines of a pick preview, e.g. ['Nation mate of Mbappé: +2 each',
+ * 'Club mate of Hakimi: +2', 'Both: +4', 'Also lifts Dembélé to +4'] — or
+ * ['No mates in your XI yet'] ({ text, tone } entries).
+ */
+export function mateLines(preview) {
+  if (!preview) return [];
+  const { mates, lifts, boost } = preview;
+  const lines = mates.map(m => ({
+    tone: 'up',
+    text: `${KIND_LABEL[m.kind]} mate of ${nameList(m.names)}: ${boostText(m.boost)}${
+      m.shared ? ' each' : ''
+    }`,
+  }));
+  if (mates.length > 1) lines.push({ tone: 'up', text: `Both: ${boostText(boost)}` });
+  if (!mates.length) lines.push({ tone: 'none', text: 'No mates in your XI yet' });
+  if (lifts.length)
+    lines.push({
+      tone: 'up',
+      text: `Also lifts ${nameList(lifts.map(l => `${l.name} to ${boostText(l.to)}`))}`,
+    });
+  return lines;
+}
+
 /**
  * What drafting `profileId` into `slot` would do: team OVR after the pick (exact mean slot
- * rating), Links score and the XI players he links with ({ name, kind }).
+ * rating) and the boosts —
+ *   boosts / gain  the XI's total boost after the pick and what the pick adds to it;
+ *   boost          his own mates boost (0, 2 or 4);
+ *   mates          [{ kind, names, boost, shared }] one entry per kind that boosts him
+ *                  (nation, club): his mates of that kind (surnames), the boost, and whether
+ *                  those mates get it thanks to him ("+2 each");
+ *   lifts          [{ name, to }] other players whose boost rises, not said by `mates`;
+ *   captain        { boost } when the pick makes him the XI's first captain;
+ *   budget         Budget mode: { label, slots, left } of the band he uses up (left = after
+ *                  the pick), { free: true, label } for a free player; null without a budget;
+ *   links          the mates score after the pick (sum of the mates boosts).
  * `session` is the DraftSession (read-only use: lineup/player/rules).
  */
 export function pickPreview(session, side, profileId, slot) {
@@ -323,12 +379,48 @@ export function pickPreview(session, side, profileId, slot) {
     }
   });
   const links = teamLinks(next, session.rules.links);
-  const mates = links.pairs
-    .filter(p => p.a === slot || p.b === slot)
-    .map(p => ({ name: next[p.a === slot ? p.b : p.a].name, kind: p.kind }));
-  // Captain: the boost his XI gets when this pick makes him (or keeps someone else) captain.
   const before = teamLinks(lineup, session.rules.links);
+  const me = links.players[slot];
+  const boosts = linkBoosts(session.rules.links);
+  const said = new Map(); // slot -> boost explained by a "+2 each" line
+  const mates = me.kinds.map(kind => {
+    const slots = links.pairs
+      .filter(p => (p.a === slot || p.b === slot) && p.kinds.includes(kind))
+      .map(p => (p.a === slot ? p.b : p.a));
+    // "each": none of them had a mate of this kind before, so they all gain it with him.
+    const shared = slots.every(i => before.players[i].mates[kind] === 0);
+    if (shared) for (const i of slots) said.set(i, (said.get(i) || 0) + boosts[kind]);
+    return { kind, names: slots.map(i => surname(next[i].name)), boost: boosts[kind], shared };
+  });
+  const lifts = [];
+  next.forEach((p, i) => {
+    if (!p || i === slot) return;
+    const rise = links.players[i].boost - before.players[i].boost;
+    if (rise > (said.get(i) || 0))
+      lifts.push({ name: surname(p.name), to: links.players[i].boost });
+  });
+  // Captain: the boost his XI gets when this pick makes him (or keeps someone else) captain.
   const captain =
     links.captain === slot && before.captain === null ? { boost: links.captainBoost } : null;
-  return { rating: Math.round((sum / n) * 10) / 10, links: links.score, mates, captain };
+  let budget = null;
+  const bands = session.bands && session.team(side).budget;
+  if (bands) {
+    const band = bands.find(
+      b => b.id === session.snapshot().pool.find(e => e.profileId === candidate.profileId)?.band,
+    );
+    budget = band
+      ? { id: band.id, label: band.label, slots: band.slots, left: Math.max(0, band.left - 1) }
+      : { free: true, label: `Under ${bands[bands.length - 1].minimum}` };
+  }
+  return {
+    rating: Math.round((sum / n) * 10) / 10,
+    links: links.score,
+    boosts: links.total,
+    gain: links.total - before.total,
+    boost: me.boost,
+    mates,
+    lifts,
+    captain,
+    budget,
+  };
 }

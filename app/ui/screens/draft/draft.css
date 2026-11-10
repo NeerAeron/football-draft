@@ -136,6 +136,9 @@
 .tstat--gold .tstat__value {
   color: var(--gold-300);
 }
+.tstat--green .tstat__value {
+  color: var(--green-300);
+}
 .tstat--volt .tstat__value {
   color: var(--volt-300);
 }
@@ -189,7 +192,7 @@
 .draft-pitch .pitch-slot.is-fit-blocked {
   opacity: 0.45;
 }
-/* League links (dashed) stay in the background; nation and club lines carry the story */
+/* Dashed lines (strength 1) stay in the background; nation and club lines carry the story */
 .draft-pitch .pitch__link--1,
 .xi-summary__pitch .pitch__link--1 {
   stroke: rgb(255 255 255 / 0.22);
@@ -816,19 +819,25 @@
   color: var(--text-3);
 }
 .pick-effects__mates {
-  flex-basis: 100%;
-  color: var(--gold-300);
-  font-size: var(--text-xs);
+  display: grid;
+  gap: 1px;
 }
-.pick-effects__mates small {
+.pick-effects__mate.is-up {
+  color: var(--green-300);
+  font-weight: var(--weight-semibold);
+}
+.pick-effects__mate.is-none {
   color: var(--text-3);
+}
+.pick-effects__budget {
+  color: var(--text-2);
 }
 .dock .pick-effects {
   grid-auto-flow: column;
   gap: var(--space-3);
 }
 .dock .pick-effects__mates {
-  flex-basis: auto;
+  max-width: 30ch;
 }
 
 /* ---------- completion ---------- */
@@ -907,6 +916,7 @@
     grid-template-areas:
       'head pitch'
       'stats pitch'
+      'budget pitch'
       'stars pitch'
       '. pitch';
     column-gap: var(--space-5);
@@ -921,6 +931,9 @@
   }
   .xi-summary.is-solo .xi-stars {
     grid-area: stars;
+  }
+  .xi-summary.is-solo .xi-summary__budget {
+    grid-area: budget;
   }
   .xi-summary.is-solo .xi-summary__pitch {
     grid-area: pitch;
@@ -1238,4 +1251,92 @@
 }
 .pick-effects__captain {
   align-items: center;
+}
+
+/* ---------- Budget mode: the rating bands as slots filling up ---------- */
+.draft-budget {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-3);
+  padding: 6px var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  font-size: var(--text-xs);
+  line-height: 1.2;
+}
+.draft-budget__title {
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.draft-budget__band {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-2);
+  white-space: nowrap;
+  --band: var(--text-2);
+}
+.draft-budget__band b {
+  color: var(--band);
+  font-size: var(--text-sm);
+}
+.draft-budget__band.is-band1 {
+  --band: var(--gold-400);
+}
+.draft-budget__band.is-band2 {
+  --band: var(--volt-400);
+}
+.draft-budget__band.is-band3 {
+  --band: var(--sky-400);
+}
+.draft-budget__band.is-free {
+  margin-left: auto;
+  color: var(--text-3);
+}
+.draft-budget__pips {
+  display: inline-flex;
+  gap: 3px;
+}
+.draft-budget__pips i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--band);
+  opacity: 0.55;
+}
+.draft-budget__pips i.is-on {
+  background: var(--band);
+  opacity: 1;
+}
+.draft-budget__pips i.is-next {
+  opacity: 1;
+  background: color-mix(in srgb, var(--band) 45%, transparent);
+  animation: draft-budget-next 0.9s var(--ease-out) infinite alternate;
+}
+.draft-budget__band.is-full b {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  opacity: 0.7;
+}
+@keyframes draft-budget-next {
+  to {
+    transform: scale(1.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .draft-budget__pips i.is-next {
+    animation: none;
+  }
+}
+:root[data-motion='reduce'] .draft-budget__pips i.is-next {
+  animation: none;
+}
+.xi-summary__stats b.is-boost {
+  color: var(--green-300);
 }

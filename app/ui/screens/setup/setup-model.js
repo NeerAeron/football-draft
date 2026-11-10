@@ -3,6 +3,7 @@
 import { DIFFICULTIES, DIFFICULTY_LABELS } from '../../../core/draft/session.js';
 import { ladderTarget } from '../../../core/draft/opponents.js';
 import { FORMATIONS } from '../../../core/players/formations.js';
+import { budgetBands } from '../../../core/draft/budget.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../../core/config/config.js';
 import { draftMode, draftType, parseSeed, KIT_COLORS } from '../../lib/draft-store.js';
 
@@ -81,7 +82,7 @@ export const difficultyLevels = (type, options) =>
 
 /**
  * Setup state from (highest priority first) the query (?type ?difficulty ?formation ?seed
- * ?hide ?unique — challenge links land here), the last choices for this mode, and prefs.
+ * ?hide ?unique ?budget — challenge links land here), the last choices for this mode, and prefs.
  */
 export function setupDefaults(mode, { query = {}, saved = {}, prefs = {} } = {}) {
   // The World Cup is a Nations draft; Quick Match and Versus offer Nations, Leagues and Clubs.
@@ -106,6 +107,11 @@ export function setupDefaults(mode, { query = {}, saved = {}, prefs = {} } = {})
     formation,
     hideRatings: query.hide != null ? truthy(query.hide) : !!prefs.hideRatings,
     uniqueNations: query.unique != null ? truthy(query.unique) : !!saved.uniqueNations,
+    // Budget mode: a harder World Cup (core/draft/budget.js). Runs only; a seeded link plays
+    // it only when it says so (?budget=1).
+    budget:
+      mode === 'run' &&
+      (query.budget != null ? truthy(query.budget) : seed == null && !!saved.budget),
     names: [0, 1].map(i => String(saved.names?.[i] || '').slice(0, 20)),
     kits,
     seed,
@@ -117,9 +123,23 @@ export const savedChoices = state => ({
   difficulty: state.difficulty,
   formation: state.formation,
   uniqueNations: state.uniqueNations,
+  budget: !!state.budget,
   names: state.names,
   kits: state.kits,
 });
+
+/**
+ * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 1 player
+ * rated 88+, 2 at 84–87 and 3 at 80–83. Everyone else must be under 80.'
+ */
+export function budgetCopy(rules = CONFIG.draft.budget) {
+  const bands = budgetBands(rules),
+    caps = bands.map(
+      (b, i) =>
+        `${b.slots} ${i === 0 ? `player${b.slots === 1 ? '' : 's'} rated` : 'at'} ${b.label}`,
+    );
+  return `Harder: your XI may hold only ${caps.slice(0, -1).join(', ')} and ${caps.at(-1)}. Everyone else must be under ${bands.at(-1).minimum}.`;
+}
 
 /** Does the type spin nations (so "one player per nation" applies)? */
 export const spinsNations = type => draftType(type) === 'nations';
@@ -135,6 +155,7 @@ export function setupContext(mode, state) {
     options: {
       hideRatings: !!state.hideRatings,
       uniqueNations: spinsNations(state.type) && !!state.uniqueNations,
+      ...(kind === 'run' && state.budget ? { budget: true } : {}),
     },
     ...(state.seed != null ? { seed: state.seed, useDefaultRules: true } : {}),
     ...(kind === 'versus' ? { names: state.names, kits: state.kits } : {}),

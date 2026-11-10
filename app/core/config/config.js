@@ -64,12 +64,11 @@ export const DEFAULT_CONFIG = {
       worldclass: 4,
       legendary: 7,
     },
-    // Mates (draft/links.js): attribute points for a player with a nation team-mate, a club
-    // mate or a league mate in the XI — the highest one applies, one mate is enough.
+    // Mates (draft/links.js): attribute points for a player with a nation team-mate and for
+    // one with a club mate in the XI — one mate is enough, and the two stack (+4 with both).
     links: {
-      nation: 3,
+      nation: 2,
       club: 2,
-      league: 1,
       // A Captain in the XI: attribute points added to every player on top.
       captain: 1,
     },
@@ -791,7 +790,6 @@ const DRAFT_FIELDS = {
   'draft.ladder.': [null, -15, 15, 0.5],
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
-  'draft.links.league': ['League mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
   'draft.budget.': [null, 0, 99, 1],
 };
@@ -914,9 +912,9 @@ const CROSS_FIELD_RULES = [
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
   },
   {
-    message: 'Mates and Captain boosts cannot total more than 4 (the engine cap).',
+    message: 'Mates and Captain boosts cannot total more than 5 (the engine cap).',
     reset: ['draft.links'],
-    ok: ({ draft: { links: l } }) => Math.max(l.nation, l.club, l.league) + l.captain <= 4,
+    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain <= 5,
   },
   {
     message: 'Budget bands must descend and their slots stay within an XI.',

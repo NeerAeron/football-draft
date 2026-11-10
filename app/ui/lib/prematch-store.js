@@ -215,7 +215,7 @@ export function slotFits(players, formation) {
   });
 }
 
-/** Team OVR (mean slot rating), Links summary and effective rating (OVR + chem). */
+/** Team OVR (mean slot rating), mates summary and effective rating (OVR + chem). */
 export function lineupStrength(players, formation, links = CONFIG.draft.links) {
   const roles = rolesOf(formation);
   const ratings = players
@@ -226,7 +226,12 @@ export function lineupStrength(players, formation, links = CONFIG.draft.links) {
   return {
     rating: Math.round(rating * 10) / 10,
     effective: Math.round((rating + summary.chem) * 100) / 100,
-    links: { score: summary.score, maxScore: summary.maxScore, pairs: summary.pairs },
+    links: {
+      score: summary.score,
+      maxScore: summary.maxScore,
+      total: summary.total,
+      pairs: summary.pairs,
+    },
   };
 }
 

@@ -71,7 +71,7 @@
   opacity: 0.85;
   animation: link-flow 2.4s linear infinite;
 }
-/* League (1): sky, dashed. Nation (2): volt. Club (3): gold, thickest. */
+/* Other (1): sky, dashed. Club mates (2): volt. Nation mates (3): gold, thickest. */
 .pitch__link--1 {
   --link: rgb(150 205 255);
   --link-w: 1.75px;
@@ -346,6 +346,25 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
 }
 .pitch-slot__face .flag__initials {
   font-size: calc(var(--token) * 0.34);
+}
+/* The boost chip (mates + Captain): green, on the token's other shoulder. */
+.pitch-slot__boost {
+  position: absolute;
+  top: calc(var(--token) * -0.12);
+  right: calc(var(--token) * -0.2);
+  z-index: 1;
+  min-width: calc(var(--token) * 0.46);
+  padding: 1px 3px 0;
+  border-radius: 999px;
+  background: var(--green-400);
+  color: #04130a;
+  font-size: calc(var(--token) * 0.25);
+  font-weight: var(--weight-heavy);
+  line-height: 1.15;
+  text-align: center;
+  box-shadow:
+    0 0 0 1.5px rgb(3 12 8 / 0.75),
+    0 1px 4px rgb(0 0 0 / 0.5);
 }
 /* The captain's armband sits on the token's shoulder. */
 .pitch-slot__captain {

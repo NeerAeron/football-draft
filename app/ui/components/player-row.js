@@ -8,6 +8,8 @@
  *                key stats first (default 3;
  *                the row hides them below ~460 px of its own width, container query)
  *   meta         override the second line (default "Club · League")
+ *   cost         { label, tone? } a small tag before the second line: what the player costs
+ *                (Budget mode: '88+' with tone 'band1' | 'band2' | 'band3', or 'Free')
  *   selected     volt edge + aria-pressed;  disabled (dimmed, not clickable)
  *   hideRatings  hide OVR + stats
  *   rank         optional leading number (e.g. pool order)
@@ -28,6 +30,7 @@ export function PlayerRow({
   fit,
   stats = 3,
   meta,
+  cost,
   selected = false,
   disabled = false,
   hideRatings = false,
@@ -56,7 +59,17 @@ export function PlayerRow({
       <span class="prow__name"
         >${p.name}${p.captain && html` <${CaptainMark} class="prow__captain" />`}</span
       >
-      ${sub && html`<span class="prow__meta">${sub}</span>`}
+      ${
+        (sub || cost) &&
+        html`<span class="prow__meta"
+          >${
+            cost &&
+            html`<b class=${cx('prow__cost num', cost.tone && `prow__cost--${cost.tone}`)}
+              >${cost.label}</b
+            >`
+          }${sub}</span
+        >`
+      }
     </span>
     <span class="prow__pos">${p.position}</span>
     <span class=${cx('prow__ovr num', !hideRatings && `tier-text-${t.id}`)}
@@ -84,6 +97,7 @@ export function PlayerRow({
       hideRatings ? null : `${p.ovr} overall`,
       p.nation?.name,
       p.club?.name,
+      cost && (cost.text || cost.label),
       fitText(fit, hideRatings),
     ]
       .filter(Boolean)

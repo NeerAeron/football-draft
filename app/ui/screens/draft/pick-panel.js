@@ -1,5 +1,5 @@
 // Select-then-lock: the chosen player, where he fits (pitch highlights from
-// placementOptions), the effect of the pick (team OVR, Links, who he links with) and the
+// placementOptions), the effect of the pick (team OVR, his mates boost, Budget slot) and the
 // confirm button. Phones: inside a Sheet. Desktop: a dock under the pool (the big pitch on
 // the left lights up instead).
 import { html, cx } from '../../lib/html.js';
@@ -14,6 +14,7 @@ import {
   CaptainMark,
 } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
+import { mateLines } from './draft-model.js';
 import { AttributeDetails } from './attributes.js';
 import { fmt1, signed1 } from '../../lib/format.js';
 
@@ -22,8 +23,8 @@ const fmtBoost = n => (Number.isInteger(n) ? String(n) : fmt1(n));
 function Effects({ team, preview, hideRatings }) {
   if (!preview) return null;
   const delta = team.rating == null ? null : Math.round((preview.rating - team.rating) * 10) / 10;
-  const linkGain = preview.links - team.links.score;
-  const mates = preview.mates.slice(0, 3);
+  const lines = mateLines(preview);
+  const budget = preview.budget;
   return html`<ul class="pick-effects" role="list">
     ${
       !hideRatings &&
@@ -46,19 +47,27 @@ function Effects({ team, preview, hideRatings }) {
         <span class="delta is-up">+${fmtBoost(preview.captain.boost)} every player</span>
       </li>`
     }
-    <li class="pick-effects__item">
-      <span class="pick-effects__label">Links</span>
-      <b class="num">${preview.links}</b>
-      ${linkGain > 0 && html`<span class="delta is-up">+${linkGain}</span>`}
-      ${
-        mates.length > 0 &&
-        html`<span class="pick-effects__mates">
-          ${'with '}${mates.map((m, i) => html`${i ? ', ' : ''}${m.name} <small>(${m.kind})</small>`)}${
-            preview.mates.length > mates.length ? ` +${preview.mates.length - mates.length}` : ''
-          }
-        </span>`
-      }
+    <li class="pick-effects__item pick-effects__mates" data-testid="mates-effect">
+      ${lines.map(
+        (l, i) =>
+          html`<span key=${i} class=${cx('pick-effects__mate', `is-${l.tone}`)}>${l.text}</span>`,
+      )}
     </li>
+    ${
+      budget &&
+      html`<li class="pick-effects__item pick-effects__budget" data-testid="budget-effect">
+        <span class="pick-effects__label">Budget</span>
+        <span
+          >${
+            budget.free
+              ? `free pick (${budget.label.toLowerCase()})`
+              : `uses ${budget.slots === 1 ? 'your' : 'a'} ${budget.label} slot · ${
+                  budget.left === 0 ? 'none left' : `${budget.left} left`
+                }`
+          }</span
+        >
+      </li>`
+    }
   </ul>`;
 }
 

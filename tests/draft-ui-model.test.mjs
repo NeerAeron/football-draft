@@ -10,6 +10,8 @@ import {
   poolCounts,
   poolFilters,
   rowFit,
+  rowCost,
+  mateLines,
   rowStats,
   slotHighlights,
   linkLines,
@@ -26,6 +28,7 @@ import {
   setupContext,
   difficultyLevels,
   spinsNations,
+  budgetCopy,
 } from '../app/ui/screens/setup/setup-model.js';
 
 const catalog = await loadRuntimeCatalog();
@@ -173,7 +176,17 @@ test('projection: typical before picks, run stage, quick and versus win chances'
   assert.match(quick.value, /^\d+%$/);
   const versus = draftProjection({ kind: 'versus', mode: 'nations', teams: [team, team], side: 0 });
   assert.match(versus.value, /^\d+%$/);
-  assert.deepEqual(linkLines([{ a: 1, b: 2, kind: 'club' }]), [{ from: 1, to: 2, strength: 3 }]);
+  // Nation mates: the gold, thickest line; club mates: volt.
+  assert.deepEqual(
+    linkLines([
+      { a: 1, b: 2, kind: 'nation' },
+      { a: 1, b: 3, kind: 'club' },
+    ]),
+    [
+      { from: 1, to: 2, strength: 3 },
+      { from: 1, to: 3, strength: 2 },
+    ],
+  );
 });
 
 test('pickPreview matches the team rating after the pick', () => {
@@ -186,7 +199,120 @@ test('pickPreview matches the team rating after the pick', () => {
   const team = d.snapshot().teams[0];
   assert.equal(preview.rating, team.rating);
   assert.equal(preview.links, team.links.score);
+  assert.equal(preview.boosts, team.links.total);
+  assert.equal(preview.budget, null);
+  assert.deepEqual(mateLines(preview)[0], { tone: 'none', text: 'No mates in your XI yet' });
   assert.equal(pickPreview(d, 0, entry.profileId, auto.slot), null, 'a filled slot has no preview');
+});
+
+test('pickPreview says who the mates are and what everyone gets', () => {
+  // A second player of the same nation: "Nation mate of X: both +3".
+  const d = createDraftSession(catalog, { mode: 'nations', seed: 4 });
+  d.spin();
+  const [first, second] = d.snapshot().pool.filter(e => e.available && e.position !== 'GK');
+  d.pick(first.profileId);
+  d.spin();
+  // Put the compatriot in the XI by hand (the next spin is another nation).
+  const slot = d.picks[0].findIndex(
+    (id, i) => !id && d.placementOptions(second.profileId)[i].role !== 'GK',
+  );
+  const preview = pickPreview(d, 0, second.profileId, slot);
+  const nation = preview.mates.find(m => m.kind === 'nation');
+  assert.deepEqual([nation.boost, nation.shared, nation.names.length], [2, true, 1]);
+  assert.equal(preview.boost, 2 * preview.mates.length);
+  assert.equal(preview.gain, 2 * preview.boost + (preview.captain ? 2 * preview.captain.boost : 0));
+  assert.deepEqual(preview.lifts, []);
+  const lines = mateLines(preview);
+  assert.match(lines[0].text, /^Nation mate of .+: \+2 each$/);
+  // Wording for the other cases.
+  const text = p =>
+    mateLines(p)
+      .map(l => l.text)
+      .join(' | ');
+  assert.equal(
+    text({
+      boost: 4,
+      mates: [
+        { kind: 'nation', names: ['Mbappé'], boost: 2, shared: true },
+        { kind: 'club', names: ['Hakimi', 'Dembélé', 'Vitinha'], boost: 2, shared: false },
+      ],
+      lifts: [{ name: 'Vitinha', to: 4 }],
+    }),
+    'Nation mate of Mbappé: +2 each | Club mate of Hakimi, Dembélé +1: +2 | Both: +4 | Also lifts Vitinha to +4',
+  );
+  assert.equal(
+    text({
+      boost: 2,
+      mates: [{ kind: 'club', names: ['Rice', 'Saka'], boost: 2, shared: false }],
+      lifts: [],
+    }),
+    'Club mate of Rice and Saka: +2',
+  );
+});
+
+test('Budget mode: rows show their band, closed rows say which band is full, the preview what it uses', () => {
+  const d = createDraftSession(catalog, { mode: 'nations', seed: 11, budget: true, rerolls: 0 });
+  let checked = 0;
+  while (!d.complete) {
+    d.spin();
+    const snap = d.snapshot(),
+      budget = snap.teams[0].budget;
+    for (const e of snap.pool) {
+      const cost = rowCost(e, budget);
+      if (e.band)
+        assert.deepEqual(
+          [cost.label, cost.tone],
+          [budget.find(b => b.id === e.band).label, e.band],
+        );
+      else assert.deepEqual([cost.label, cost.tone], ['Free', 'free']);
+      if (/slot left$/.test(e.reason)) {
+        assert.equal(rowFit(e, budget).label, `${cost.label} full`);
+        checked++;
+      }
+    }
+    // The most expensive affordable outfield player (keeper when none).
+    const open = snap.pool.filter(e => e.available),
+      e = open.reduce((a, b) => (b.ovr > a.ovr ? b : a)),
+      auto = d.autoSlot(e.profileId),
+      preview = pickPreview(d, 0, e.profileId, auto.slot),
+      band = budget.find(b => b.id === e.band);
+    if (band)
+      assert.deepEqual(preview.budget, {
+        id: band.id,
+        label: band.label,
+        slots: band.slots,
+        left: band.left - 1,
+      });
+    else assert.deepEqual(preview.budget, { free: true, label: 'Under 80' });
+    d.pick(e.profileId, auto.slot);
+  }
+  assert.ok(checked > 0);
+  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
+});
+
+test('Budget mode travels from the setup to the session and the run, World Cup only', async () => {
+  const { normalizeContext, sessionOptions } = await import('../app/ui/lib/draft-store.js');
+  const run = setupDefaults('run', { saved: { budget: true } });
+  assert.equal(run.budget, true);
+  assert.equal(setupDefaults('run', {}).budget, false);
+  assert.equal(setupDefaults('quick', { saved: { budget: true } }).budget, false);
+  assert.equal(
+    setupDefaults('run', { saved: { budget: true }, query: { seed: '5' } }).budget,
+    false,
+  );
+  const ctx = setupContext('run', run);
+  assert.equal(ctx.options.budget, true);
+  assert.ok(!('budget' in setupContext('run', { ...run, budget: false }).options));
+  assert.ok(!('budget' in setupContext('quick', { ...run, budget: true }).options));
+  const normal = normalizeContext(ctx);
+  assert.equal(normal.options.budget, true);
+  assert.equal(sessionOptions(normal).budget, true);
+  assert.ok(!('budget' in normalizeContext({ ...ctx, kind: 'quick' }).options));
+  assert.equal(sessionOptions(normalizeContext({ kind: 'daily' })).budget, false);
+  assert.match(
+    budgetCopy(),
+    /^Harder: your XI may hold only 1 player rated 88\+, 2 at 84–87 and 3 at 80–83\. Everyone else must be under 80\.$/,
+  );
 });
 
 test('setup defaults: query beats saved choices beats prefs; challenge seeds use default rules', () => {
@@ -241,8 +367,27 @@ test('difficulty levels explain opponents and re-rolls', () => {
   assert.ok(levels[0].rerolls >= levels[2].rerolls);
 });
 
-test('the armband on the pitch goes to the same captain the links boost picks', async () => {
-  const { captainSlot } = await import('../app/ui/lib/player-view.js');
+test('the armband and the boost chips on the pitch follow the core rule', async () => {
+  const { captainSlot, mateBoosts, playerView } = await import('../app/ui/lib/player-view.js');
+  const raw = (nationality, clubId, leagueId, captain = false) => ({
+    profileId: nationality + clubId,
+    name: 'X',
+    primaryPosition: 'CM',
+    captain,
+    source: { nationality, clubId, leagueId },
+  });
+  const views = [
+    raw('A', 1, 1),
+    null,
+    raw('A', 2, 2),
+    raw('B', 2, 2),
+    raw('C', 3, 2),
+    raw('D', 9, 9),
+  ].map(p => p && playerView(p));
+  assert.deepEqual(mateBoosts(views), [2, 0, 4, 2, 0, 0]);
+  views[5] = playerView(raw('D', 9, 9, true));
+  assert.deepEqual(mateBoosts(views), [3, 0, 5, 3, 1, 1]);
+  assert.deepEqual(mateBoosts([{ name: 'no source' }, null]), [0, 0]);
   const { teamLinks } = await import('../app/core/draft/links.js');
   const p = (rating, captain) => ({ sourceOverall: rating, captain, source: {} });
   const xi = [p(80, false), null, p(84, true), p(86, true), p(86, true)];

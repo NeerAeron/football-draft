@@ -1,5 +1,6 @@
 // Draft board (#/draft): one-tap spin → honest reel → pool with visible fit → select →
-// place (pitch highlights) → lock. Live meters (team OVR, lines, Links, projection),
+// place (pitch highlights) → lock. Live meters (team OVR, lines, Boosts, projection), the
+// Budget slots (Budget mode),
 // Versus turns with a pass-the-device interstitial, pick moments and the completion sheet.
 // Phones: one column with a sticky action bar and a pick sheet. Desktop (≥ 960 px): the XI
 // on the left, spin + pool on the right, a dock for the selected player.
@@ -43,6 +44,7 @@ import {
   TeamSummary,
   TeamPitch,
   LineMeters,
+  BudgetStrip,
   VersusStrip,
   Progress,
   History,
@@ -338,6 +340,10 @@ function Board({ state, draft, auto }) {
     compact=${!wide}
     showOvr=${!versus}
   />`;
+  const budget = html`<${BudgetStrip}
+    budget=${shownTeam.budget}
+    use=${placing && preview?.budget && !preview.budget.free ? preview.budget.id : null}
+  />`;
   const pitch = html`<${TeamPitch}
     team=${shownTeam}
     players=${teamPlayers[versus ? shownSide : 0]}
@@ -417,6 +423,7 @@ function Board({ state, draft, auto }) {
       onSelect=${select}
       onDraft=${wide ? quickDraft : undefined}
       heading=${versus ? `${team.name}: pick a player` : 'Pick a player'}
+      budget=${team.budget}
     />`;
 
   let bar = null;
@@ -475,7 +482,7 @@ function Board({ state, draft, auto }) {
       ${
         wide
           ? html`<aside class="draft__team" aria-label="Your XI">
-                ${vstrip} ${summary} ${pitch}
+                ${vstrip} ${summary} ${budget} ${pitch}
                 <${LineMeters} team=${shownTeam} hideRatings=${hide} />
               </aside>
               <div class="draft__play">
@@ -483,7 +490,7 @@ function Board({ state, draft, auto }) {
                 ${snap.phase !== 'pick' && html`<${History} entries=${history} hideRatings=${hide} />`}
                 ${bar && html`<div class="action-bar draft__bar">${bar}</div>`}
               </div>`
-          : html`${vstrip} ${summary} ${stage}
+          : html`${vstrip} ${summary} ${budget} ${stage}
               ${
                 snap.phase === 'pick' && !animating
                   ? html`<button

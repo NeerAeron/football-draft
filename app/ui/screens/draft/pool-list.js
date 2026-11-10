@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { ChipGroup, PlayerRow, Icon, Button, EmptyState } from '../../components/index.js';
-import { poolFilters, filterPool, poolCounts, rowFit } from './draft-model.js';
+import { poolFilters, filterPool, poolCounts, rowFit, rowCost } from './draft-model.js';
 
 const PAGE = 30;
 
@@ -17,6 +17,7 @@ export function PoolPanel({
   onSelect,
   onDraft,
   heading = 'Pick a player',
+  budget = null,
 }) {
   const [filter, setFilter] = useState('best');
   const [query, setQuery] = useState('');
@@ -54,7 +55,7 @@ export function PoolPanel({
       <h2 class="pool__title" id="pool-title">${heading}</h2>
       <span class="pool__count">
         <b class="num">${counts.available}</b>
-        ${` can play${counts.blocked ? ` · ${counts.blocked} without a slot` : ''}`}
+        ${` can play${counts.blocked ? ` · ${counts.blocked} ${budget ? 'closed' : 'without a slot'}` : ''}`}
       </span>
     </header>
     <div class="pool__tools">
@@ -94,7 +95,8 @@ export function PoolPanel({
                 html`<li key=${e.profileId}>
                   <${PlayerRow}
                     player=${toView(e)}
-                    fit=${rowFit(e)}
+                    fit=${rowFit(e, budget)}
+                    cost=${rowCost(e, budget)}
                     hideRatings=${hideRatings}
                     selected=${selectedId === e.profileId}
                     disabled=${!e.available}

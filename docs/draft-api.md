@@ -6,7 +6,8 @@ deterministic for a seed.
 | Module | What it gives you |
 | --- | --- |
 | `session.js` | `createDraftSession`, `restoreDraftSession`, `buildSide`, `matchSetup`, `applyMatchSetup`, `DRAFT_MODES`, `DIFFICULTIES`, `DIFFICULTY_LABELS`, `NATURAL_FIT`, `seedNumber` |
-| `links.js` | `teamLinks(players)`, `chemValues(players)` — Links (chemistry) |
+| `links.js` | `teamLinks(players)`, `chemValues(players)`, `linkBoosts(rules)` — mates (chemistry) |
+| `budget.js` | Budget mode's rating bands: `budgetBands`, `bandIndex`, `bandUse`, `freeLabel` |
 | `opponents.js` | the difficulty ladder: `pickOpponent`, `chooseOpponent`, `buildOpponent`, `opponentCandidates`, `ladderPreview`, `ladderTarget`, `MODE_BASELINES`, `LEVELS` |
 | `pools.js` | catalog index (nations field/pots, leagues, clubs), `callUps`, `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
 | `nation-codes.js` | nationality → flag code fallback when the catalog has no `nations` table |
@@ -28,10 +29,10 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 
 Every pick is one spin. Re-rolls per drafter by `difficulty`: Amateur 2 · Semi-pro 2 · Pro 1 ·
 World Class 1 · Legendary 0 (or `rerolls: n`). A re-roll spins again without the options seen
-this round. No reveal pacing, no budget. **Dead-end guard**: an option whose pool cannot fill
+this round. No reveal pacing. **Dead-end guard**: an option whose pool cannot fill
 any open slot class (the GK slot vs outfield slots) gets weight 0 — so a keeper is always
 available when only the GK slot is left. All numbers live in `CONFIG.draft` (`nations`,
-`leagueTierWeights`, `clubs`, `rerolls`, `ladder`, `links`); a session snapshots them at creation.
+`leagueTierWeights`, `clubs`, `rerolls`, `ladder`, `links`, `budget`); a session snapshots them at creation.
 
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
@@ -49,6 +50,7 @@ const draft = createDraftSession(catalog, {
   difficulty: 'pro',         // sets re-rolls; the opponent ladder uses the same ids
   hideRatings: false,        // data flag only ("Ball Knower"): the UI hides numbers
   uniqueNations: false,      // each nation at most once per side
+  budget: false,             // Budget mode: rating-band caps (see below)
   excludeNations: [], excludeClubs: [], excludePlayers: [], // e.g. a pre-chosen opponent
   teams: [{ name: 'You', color: '#d9f580', secondary: '#16213a' }],
   useDefaultRules: false,    // true: DEFAULT_CONFIG rules (daily, challenge links)
@@ -84,7 +86,7 @@ Plain JSON, cached until the state changes (treat as read-only):
 
 ```js
 {
-  mode, modeLabel, difficulty, sides, hideRatings, uniqueNations, daily,
+  mode, modeLabel, difficulty, sides, hideRatings, uniqueNations, budget, daily,
   phase: 'spin' | 'pick' | 'complete', complete, first, turn,
   pickIndex, totalPicks, round,       // picks made overall / needed; the side's round 0–10
   category,                           // what the next/current spin draws: nation | league | club
@@ -93,15 +95,18 @@ Plain JSON, cached until the state changes (treat as read-only):
   pool: [{                            // the current spin's players, best open-slot fit first
     profileId, name, fullName, position, secondary, ovr, tier, nation, nationCode,
     club, clubId, league, leagueId,
+    band,                             // Budget mode: 'band1' | 'band2' | 'band3' | null (free)
     best: { slot, role, rating, familiarity, delta },  // best open slot (delta vs natural)
     naturalSlots,                     // open slots with familiarity >= 0.95
-    available, reason,                // false + 'Goalkeeper slot filled' etc.
+    available, reason,                // false + 'Goalkeeper slot filled', 'No 88+ slot left' etc.
   }],
   teams: [{                           // one per side
     side, name, color, secondary, formation, filled, complete, rerollsLeft,
     rating, lines: { DEF, MID, ATT },  // team OVR meters (mean slot ratings, 1 decimal)
     slots: [{ slot, role, x, y, line, player, rating, familiarity, link }],
-    links: { score, maxScore, chem, linked, pairs, levels },
+    links: { score, maxScore, total, chem, linked, pairs, captain, captainBoost,
+             boosts },                // boosts: per slot, mates + Captain (null = open)
+    budget,                           // Budget mode: [{ id, label, minimum, slots, used, left }]
   }],
   history: [{ side, round, slot, role, profileId, category, optionId, optionName, leagueId, rerolls }],
 }
@@ -115,34 +120,48 @@ Plain JSON, cached until the state changes (treat as read-only):
 allowed, reason }`. `rating` is the OVR in that slot after familiarity (what the slot shows:
 "79 → 75" = `natural → rating`, `delta = rating − natural`). `reason` when not allowed:
 `'Spin first'`, `'Already drafted'`, `'Not in this pool'`, `'Slot filled'`,
-`'Goalkeepers only'`, `'Outfield players only'`, `'Not this side’s turn'`,
+`'Goalkeepers only'`, `'Outfield players only'`, `'Not this side’s turn'`, `'No 88+ slot left'` (Budget mode),
 `'The draft is complete'`. Light up `allowed` slots; mark `familiarity < NATURAL_FIT` (0.95)
 as out of position.
 
-## Links (chemistry)
+## Mates (chemistry)
 
-`teamLinks(players)` (players in slot order, `null` = open slot):
-per player, count XI players sharing the club / nation / league (the player included):
-club 2 / 5 / 8, nation 2 / 5 / 8, league 3 / 5 / 8 → +1 / +2 / +3 each; the link **level** is
-the sum capped at 3; team **Links** = sum of levels (0–33); engine **chem** = level / 3 × 2
-(0–2 attribute points, added in `Player.skill` by the engine). `pairs: [{ a, b, kind, kinds }]`
-list linked pairs (indexes into the XI) for drawing lines — `kind` is the strongest shared link
-(club > nation > league). Real club and national XIs are fully linked (33, chem 2).
-Measured typical drafted XI: chem ≈ 0.6 (Nations), 0.4 (Leagues), 0.35 (Clubs); a link-chasing
-drafter gains ≈ +0.15 chem for −0.1 OVR, i.e. Links are a tiebreaker, not a strategy trap.
+One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 2, club: 2, captain: 1 }`):
+a player with a **nation team-mate** in the XI gets **+2**, with a **club mate +2**, and the
+two **stack** (both: **+4**). One mate is enough, there are no thresholds and no league mates.
+A **Captain** in the XI adds +1 to everyone on top, so a player's boost (`chem`, added to
+every skill by the engine, capped at 5) is 0–5.
+
+`teamLinks(players)` (players in slot order, `null` = open slot) returns
+`players[i] = { boost, kinds, chem, mates: { nation, club } }` (`boost` = the mates boost,
+`kinds` = what gives it, `chem` = boost + Captain, `mates` = number of XI mates per kind),
+`pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates — one line per pair for
+the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the mates boosts, max
+`maxScore` = 44), `total` (sum of `chem`, Captain included, max 55: the UI's "Boosts +14"),
+`chem` (mean chem), `linked` (players with a mate), `captain`, `captainBoost`.
+`linkBoosts(rules)` gives the three numbers; rules saved before this rule (thresholds per
+kind) read as the defaults. Real national XIs are all nation mates (+2 each, +4 for club mates
+inside them, +1 with a captain), real club XIs club mates (+2, +4 for compatriots). In a
+Nations draft a nation mate needs the same nation twice — lucky and strong; club mates are the
+common boost there.
+Measured typical drafted XI (300 drafts, 1 re-roll, pick the best player): chem 1.69 (Nations:
+mates 0.81 + Captain 0.88), 1.95 (Leagues), 1.25 (Clubs); with 0 / 2 re-rolls 1.64 / 1.72,
+1.83 / 2.03, 1.20 / 1.31. A drafter who also values the boosts gets 2.05 / 2.83 / 1.77 for
+−0.2 to −0.5 OVR (effective +0.18 / +0.33 / +0.24). `MODE_BASELINES` still holds the chem of
+the old rule until it is re-measured.
 
 ### Captain (team-boost tag)
 
 Some players carry the **Captain** tag (catalog `captain: true`, 34 of 15,378: Salah, van Dijk,
 Kane, Kimmich, Messi, …). The source has no captaincy, so the compiler derives it from real
 fields: international reputation 4–5 and age 28+ (`scripts/compile-players.mjs`). Drafting the
-best player at each spin lands a captain often (MODE_BASELINES chem: Nations 0.64 → 1.52), and
+best player at each spin lands a captain often (88% of Nations drafts), and
 most top national XIs have one. An XI with a captain adds `CONFIG.draft.links.captain`
-(1 attribute point) to every player's `chem`, on top of Links; the highest-rated captain wears
+(1 attribute point) to every player's `chem`, on top of the mates boost; the highest-rated captain wears
 the armband and two captains do not stack. `teamLinks()` returns `captain` (slot) and
 `captainBoost`; the UI marks Captain-tagged players with a "C" (rows, cards) and the armband
 on the pitch (`captainSlot()` in `ui/lib/player-view.js`, same rule). Opponent XIs get it the
-same way. The engine adds `chem` to every skill (capped at 4).
+same way. The engine adds `chem` to every skill (capped at 5).
 
 ## Match setup
 
@@ -176,8 +195,7 @@ solo drafts per mode × re-roll count, positional policy; chem includes the Capt
 Gap (`CONFIG.draft.ladder`): Amateur −7 · Semi-pro −3.5 · Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: national best XIs
 (Nations), club XIs (Leagues, Clubs), both (Club & Country), plus bosses **World XI** (88.5)
-and **All-Stars** (87.3, the best XI without the World XI). Real XIs carry +2 chem, so a
-national XI of 81.5 OVR is a fair Pro opponent for an 82.9 draft. Nations examples:
+and **All-Stars** (87.3, the best XI without the World XI). Real national and club XIs carry +2 chem or more (club mates in a national XI and compatriots in a club XI get +4; +1 with a captain). Nations examples:
 Amateur ≈ Ireland/Kosovo/Paraguay, Semi-pro ≈ Poland/Austria/Japan, Pro ≈ Belgium/Uruguay/
 Croatia/Switzerland, World Class ≈ Brazil/Spain/France/England, Legendary ≈ World XI.
 
@@ -214,3 +232,29 @@ Same catalog + options + rules + seed + sequence of `spin`/`reroll`/`pick` calls
 spins. Only those three calls consume the RNG (one draw per reel; a scheduled/daily spin
 consumes none). For shareable runs (daily, challenge links) use `useDefaultRules: true` so the
 device's config cannot change the odds.
+
+## Budget mode (`budget.js`, session option `budget: true`)
+
+A harder draft: the XI may hold only so many players per rating band — `CONFIG.draft.budget`
+(`band1`–`band3`, each `{ minimum, slots }`): **1 player rated 88+, 2 rated 84–87, 3 rated
+80–83**, everyone else under 80 (free). The rating is the OVR shown on the player (his rounded
+natural rating), so what a row shows is what it costs.
+
+- A player whose band is full is not available: pool entries carry `band` (`'band1'`… or `null`
+  = free), `available: false` and `reason: 'No 84–87 slot left'`; `placementOptions` gives the
+  same reason, `pick` refuses, `suggestPick` (Auto-pick) skips him. `affordable(player, side)`
+  is the check.
+- `snapshot().budget` is the flag; `teams[i].budget` is `[{ id, label, minimum, slots, used,
+left }]` (or `null`). Helpers: `budgetBands(rules)`, `bandIndex`, `bandUse`, `freeLabel`.
+- Never a dead end: the spin guard also needs an affordable player for an open slot class, and
+  a nation's pool is its usual 23 call-ups (the stars you cannot afford are listed, closed)
+  plus the best 23 call-ups you can afford.
+- Serialised with the session (`options.budget`, `rules.budget`); old saves have no budget.
+- The game offers it in the World Cup Run only (setup switch → `context.options.budget` →
+  run `meta.budget`).
+
+Measured (300 Nations drafts, 1 re-roll; `tools/calibration/draft-baselines.mjs --budget
+"off;88:1,84:2,80:3" --policies positional,smart`): team OVR 81.03 ± 0.66 (82.89 ± 1.07
+without), chem 1.34, effective 82.37 ± 0.97 (84.58 ± 1.37 without); the best player of a spin
+is closed in 4.2 picks per draft; a drafter who values boosts and saves band slots for the top
+of a band reaches 82.75 (+0.38; without the budget the same drafter gains +0.18).

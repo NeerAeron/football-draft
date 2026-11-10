@@ -604,6 +604,105 @@ export const flows = [
     },
   },
   {
+    name: 'draft-budget',
+    async run({ page, shot, step, base, viewport }) {
+      await seed(page, ONBOARDED);
+      await step('the World Cup setup offers Budget mode', async () => {
+        await page.goto(`${base}#/play/run`);
+        await visible(page, '[data-screen="setup"][data-mode="run"]');
+        const toggle = page.getByRole('switch', { name: 'Budget mode' });
+        if (await toggle.isChecked()) throw new Error('Budget mode is on by default');
+        await toggle.check();
+        const text = await page.textContent('[data-screen="setup"]');
+        if (!/1 player rated 88\+, 2 at 84–87 and 3 at 80–83/.test(text))
+          throw new Error('the Budget switch does not say its caps');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await page.getByRole('switch', { name: 'Budget mode' }).scrollIntoViewIfNeeded();
+      await shot('setup');
+      await step('Quick Match has no Budget mode', async () => {
+        await page.goto(`${base}#/play/quick`);
+        await visible(page, '[data-screen="setup"][data-mode="quick"]');
+        if (await page.getByRole('switch', { name: 'Budget mode' }).count())
+          throw new Error('Budget switch on the quick setup');
+      });
+      await step('start a seeded budget run draft', () =>
+        startFromSetup(page, base, '#/play/run?type=nations&seed=8&formation=433&budget=1'),
+      );
+      await step('the budget slots are shown, all open', async () => {
+        await visible(page, '[data-testid="spin-result"]');
+        await visible(page, '.draft-budget');
+        const on = await page.locator('.draft-budget__pips i.is-on').count();
+        if (on !== 0) throw new Error(`${on} budget slots used before the first pick`);
+        const tags = await page.locator('[data-testid="pool"] .prow__cost').count();
+        if (!tags) throw new Error('pool rows do not show their band');
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await shot('first-spin');
+      await step('selecting a player says which slot he uses', async () => {
+        await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
+        await visible(page, '[data-testid="budget-effect"]:visible');
+        await visible(page, '[data-testid="mates-effect"]:visible');
+      });
+      await shot('selected');
+      await step('pick 1', async () => {
+        await page.click('[data-testid="confirm-pick"]:visible');
+        await picksMade(page, 1);
+      });
+      let closed = false;
+      for (let pick = 2; pick <= 11; pick++) {
+        await step(`pick ${pick}`, async () => {
+          const spin = page.locator('[data-testid="spin"]');
+          if (await spin.isVisible().catch(() => false))
+            await spin.click({ timeout: 1500 }).catch(() => {});
+          await visible(page, '[data-testid="pool"] button.prow:not([disabled])');
+          // Closed rows sit under the players he can still pick: show the whole pool.
+          const more = page.locator('[data-testid="pool"] .pool__more button');
+          if (!closed && (await more.count())) await more.click();
+          const full = page.locator('[data-testid="pool"] .prow.is-disabled:has-text("full")');
+          if (!closed && (await full.count())) {
+            closed = true;
+            await full.first().scrollIntoViewIfNeeded();
+            await shot('band-full');
+            await page.evaluate(() => scrollTo(0, 0));
+          }
+          await draftPick(page);
+          await picksMade(page, pick);
+        });
+        if (pick === 6) await shot('mid-draft', viewport === 'mobile' ? { fullPage: true } : {});
+      }
+      await step('a full band closed its players', async () => {
+        if (!closed) throw new Error('no pool row was closed by the budget');
+      });
+      await step('completion sheet shows the budget and the boosts', async () => {
+        await visible(page, 'dialog.complete-sheet[open] .xi-summary__budget');
+        await visible(page, 'dialog.complete-sheet[open] [data-testid="final-boosts"]');
+        const used = await page.$$eval(
+          'dialog.complete-sheet[open] .draft-budget__band[data-band]',
+          l =>
+            l.map(b => [
+              b.querySelectorAll('.draft-budget__pips i.is-on').length,
+              b.querySelectorAll('.draft-budget__pips i').length,
+            ]),
+        );
+        if (used.map(u => u[1]).join() !== '1,2,3') throw new Error(`budget slots: ${used}`);
+        if (used.some(([on, slots]) => on > slots)) throw new Error(`over budget: ${used}`);
+      });
+      await shot('complete');
+      await step('the run remembers it was a Budget run', async () => {
+        await page.click('[data-testid="draft-continue"]');
+        await page.waitForFunction(() => location.hash === '#/run');
+        await page.waitForFunction(
+          () => JSON.parse(localStorage.getItem('football-draft-run-state') || 'null')?.meta,
+        );
+        const meta = await page.evaluate(
+          () => JSON.parse(localStorage.getItem('football-draft-run-state')).meta,
+        );
+        if (meta.budget !== true) throw new Error(`run meta.budget = ${meta.budget}`);
+      });
+    },
+  },
+  {
     name: 'draft-clubs',
     async run({ page, shot, step, base }) {
       await seed(page, ONBOARDED);

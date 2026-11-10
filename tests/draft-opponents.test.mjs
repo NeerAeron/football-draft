@@ -71,15 +71,12 @@ test('real XIs are all mates and bosses top the ladder', () => {
   const list = opponentCandidates(catalog),
     world = list.find(c => c.key === 'boss:world-xi'),
     stars = list.find(c => c.key === 'boss:all-stars');
-  // National XIs are all nation mates (+3), club XIs at least club mates (+2; more for the
-  // players with a compatriot), plus the captain's boost when the XI has one.
+  // National XIs are all nation mates (+2, +4 for club mates inside them), club XIs all club
+  // mates (+2, +4 for compatriots), plus the captain's boost when the XI has one.
   const { nation, club, captain } = DEFAULT_CONFIG.draft.links;
-  const nations = list.filter(c => c.kind === 'nation'),
-    clubs = list.filter(c => c.kind === 'club');
-  assert.ok(nations.every(c => c.chem === nation || c.chem === nation + captain));
-  assert.ok(nations.some(c => c.chem === nation + captain) && nations.some(c => c.chem === nation));
-  assert.ok(clubs.every(c => c.chem >= club && c.chem <= nation + captain));
-  assert.ok(clubs.some(c => c.chem === club));
+  const real = list.filter(c => c.kind !== 'boss');
+  assert.ok(real.every(c => c.chem >= 2 && c.chem <= nation + club + captain));
+  assert.ok(real.some(c => c.chem === 2) && real.some(c => c.chem > 3));
   assert.ok(list.every(c => c.rating <= world.rating));
   assert.ok(stars.rating < world.rating && stars.rating > 85);
   const a = buildOpponent(catalog, world),
