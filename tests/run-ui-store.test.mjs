@@ -40,7 +40,10 @@ test('saved.js readers tolerate missing and malformed data', () => {
   assert.equal(saved.readSavedRun(), null);
   store.set(saved.RUN_KEY, '{not json');
   assert.equal(saved.readSavedRun(), null);
-  store.set(saved.RUN_KEY, JSON.stringify({ stage: 'X9', record: { w: 'a' }, status: 'weird' }));
+  store.set(
+    saved.RUN_KEY,
+    JSON.stringify({ stage: 'X9', record: { w: 'a' }, status: 'weird', rounds: 8 }),
+  );
   const run = saved.readSavedRun();
   assert.equal(run.stage, 'G1');
   assert.deepEqual(run.record, { w: 0, d: 0, l: 0 });
@@ -127,12 +130,12 @@ test('trophy cabinet: one cup per difficulty, every run counted once', () => {
     stage,
     record: { w, d: 0, l },
   });
-  const won = (difficulty, w = 6) => ({
+  const won = (difficulty, w = 7) => ({
     complete: true,
     status: 'champion',
     difficulty,
     stage: 'F',
-    record: { w, d: 7 - w, l: 0 },
+    record: { w, d: 8 - w, l: 0 },
   });
   // Unfinished, unknown or id-less runs are not counted.
   assert.equal(records.recordRun({ ...out('QF', 3, 1), complete: false }, 'a'), null);
@@ -142,25 +145,25 @@ test('trophy cabinet: one cup per difficulty, every run counted once', () => {
 
   assert.deepEqual(records.recordRun(out('G3', 1, 2), 'a'), [], 'a first run is no "best"');
   assert.equal(records.recordRun(out('G3', 1, 2), 'a'), null, 'counted once');
-  assert.deepEqual(records.recordRun(out('SF', 4, 1), 'b'), ['best']);
+  assert.deepEqual(records.recordRun(out('SF', 5, 1), 'b'), ['best']);
   assert.deepEqual(records.recordRun(out('QF', 3, 1), 'c'), []);
   let pro = records.readRecords().levels.find(l => l.id === 'pro');
   assert.deepEqual(
     [pro.runs, pro.titles, pro.best, pro.bestShort, pro.bestLabel],
-    [3, 0, 5, 'SF', 'Semi-final'],
+    [3, 0, 6, 'SF', 'Semi-final'],
   );
   assert.deepEqual(records.runNews('b'), { level: null, news: [] }, 'only the last run has news');
 
   assert.deepEqual(records.recordRun(won('pro'), 'd'), ['title']);
-  assert.deepEqual(records.recordRun(won('pro', 7), 'e'), ['perfect']);
-  assert.deepEqual(records.recordRun(won('pro', 7), 'f'), []);
-  assert.deepEqual(records.recordRun(out('F', 6, 1), 'g'), [], 'a final is no best after a title');
+  assert.deepEqual(records.recordRun(won('pro', 8), 'e'), ['perfect']);
+  assert.deepEqual(records.recordRun(won('pro', 8), 'f'), []);
+  assert.deepEqual(records.recordRun(out('F', 7, 1), 'g'), [], 'a final is no best after a title');
   pro = records.readRecords().levels.find(l => l.id === 'pro');
   assert.deepEqual([pro.runs, pro.titles, pro.perfect, pro.bestShort], [7, 3, 2, 'Won']);
 
   for (const [i, level] of ['amateur', 'semipro', 'worldclass'].entries())
     assert.deepEqual(records.recordRun(won(level), `h${i}`), ['title']);
-  assert.deepEqual(records.recordRun(won('legendary', 7), 'last'), ['title', 'perfect', 'cabinet']);
+  assert.deepEqual(records.recordRun(won('legendary', 8), 'last'), ['title', 'perfect', 'cabinet']);
   const full = records.readRecords();
   assert.deepEqual([full.runs, full.titles, full.perfect, full.won], [11, 7, 3, 5]);
   assert.deepEqual(records.runNews('last'), {
@@ -174,7 +177,7 @@ test('trophy cabinet: one cup per difficulty, every run counted once', () => {
   store.set(
     records.RECORDS_KEY,
     JSON.stringify({
-      format: 1,
+      format: 2,
       levels: { pro: { runs: 'x', titles: 2, perfect: 9, best: 99 }, amateur: { best: 42 } },
       seen: 'no',
       last: { id: 4 },
@@ -184,15 +187,45 @@ test('trophy cabinet: one cup per difficulty, every run counted once', () => {
   assert.deepEqual(
     fixed.levels.map(l => [l.runs, l.titles, l.perfect, l.best]),
     [
-      [0, 0, 0, 6],
+      [0, 0, 0, 7],
       [0, 0, 0, 0],
-      [2, 2, 2, 7],
+      [2, 2, 2, 8],
       [0, 0, 0, 0],
       [0, 0, 0, 0],
     ],
   );
   assert.equal(fixed.last, null);
   assert.deepEqual(records.recordRun(out('QF', 3, 1), 'z'), []);
+
+  // A format-1 cabinet (seven rounds, no Round of 32) keeps its rounds: best 3 (R16) and up
+  // move by one, group stages stay, titles stay titles; the next write stores format 2.
+  store.set(
+    records.RECORDS_KEY,
+    JSON.stringify({
+      format: 1,
+      levels: {
+        amateur: { runs: 2, titles: 1, perfect: 1, best: 7 },
+        pro: { runs: 3, best: 3 },
+        legendary: { runs: 1, best: 2 },
+      },
+      seen: ['old'],
+    }),
+  );
+  const migrated = records.readRecords().levels;
+  assert.deepEqual(
+    migrated.map(l => [l.best, l.bestShort]),
+    [
+      [8, 'Won'],
+      [0, ''],
+      [4, 'R16'],
+      [0, ''],
+      [2, 'Group'],
+    ],
+  );
+  assert.equal(records.recordRun(out('R32', 3, 1), 'old'), null, 'seen ids carry over');
+  assert.deepEqual(records.recordRun(out('R32', 3, 1), 'new'), []);
+  assert.equal(JSON.parse(store.get(records.RECORDS_KEY)).format, 2);
+  assert.equal(records.readRecords().levels.find(l => l.id === 'pro').bestLabel, 'Round of 16');
 });
 
 test('a corrupt or foreign saved run is ignored', () => {
@@ -200,6 +233,29 @@ test('a corrupt or foreign saved run is ignored', () => {
   assert.equal(runStore.loadRun(catalog), null);
   store.set(runStore.RUN_STATE_KEY, JSON.stringify({ format: 99 }));
   assert.equal(runStore.readRunState(), null);
+});
+
+test('a run saved in the seven-match format reads as no run; a finished one stays on Home', () => {
+  const { run, meta } = runStore.createRunFromDraft(catalog, {
+    session: draft,
+    context: { kind: 'run', type: 'nations', difficulty: 'pro', seed: 42 },
+  });
+  runStore.saveRun(run, meta);
+  // What an older version stored: cup format 1 and a Home summary without `rounds`.
+  const state = JSON.parse(store.get(runStore.RUN_STATE_KEY));
+  state.run.format = 1;
+  store.set(runStore.RUN_STATE_KEY, JSON.stringify(state));
+  const { rounds, ...summary } = JSON.parse(store.get(saved.RUN_KEY));
+  assert.equal(rounds, 8);
+  store.set(saved.RUN_KEY, JSON.stringify({ ...summary, stage: 'QF' }));
+  assert.equal(runStore.readRunState(), null);
+  assert.equal(runStore.loadRun(catalog), null);
+  assert.equal(saved.readSavedRun(), null, 'an old run in progress cannot be continued');
+  store.set(
+    saved.RUN_KEY,
+    JSON.stringify({ ...summary, stage: 'F', status: 'champion', complete: true, grade: 'S+' }),
+  );
+  assert.equal(saved.readSavedRun().grade, 'S+', 'a finished old run still shows as the last run');
 });
 
 test('draft types map to core modes and back', () => {
@@ -211,11 +267,13 @@ test('draft types map to core modes and back', () => {
 
 test('stage ids follow the next match, then the last one', () => {
   const rounds = n =>
-    Array.from({ length: 7 }, (_, i) => ({ result: i < n ? { outcome: 'W' } : null }));
+    Array.from({ length: 8 }, (_, i) => ({ result: i < n ? { outcome: 'W' } : null }));
   assert.equal(runStore.stageIdOf({ rounds: rounds(0), complete: false }), 'G1');
-  assert.equal(runStore.stageIdOf({ rounds: rounds(4), complete: false }), 'QF');
-  assert.equal(runStore.stageIdOf({ rounds: rounds(4), complete: true }), 'R16');
-  assert.equal(runStore.stageIdOf({ rounds: rounds(7), complete: true }), 'F');
+  assert.equal(runStore.stageIdOf({ rounds: rounds(3), complete: false }), 'R32');
+  assert.equal(runStore.stageIdOf({ rounds: rounds(4), complete: false }), 'R16');
+  assert.equal(runStore.stageIdOf({ rounds: rounds(4), complete: true }), 'R32');
+  assert.equal(runStore.stageIdOf({ rounds: rounds(8), complete: true }), 'F');
+  assert.deepEqual([3, 4, 7].map(runStore.roundShort), ['R32', 'R16', 'Final']);
 });
 
 test('group stakes on the last matchday read the points honestly', () => {
@@ -227,7 +285,8 @@ test('group stakes on the last matchday read the points honestly', () => {
   ];
   const fx = (md, home, away, score) => ({ md, home, away, score });
   const snapshot = fixtures => ({ complete: false, round: 2, group: { teams, fixtures } });
-  // You 1 pt, A 4, B 3, C 3: a win may not be enough, a draw or a loss is out.
+  // You 1 pt, A 4, B 3, C 3: a win (4 pts) is enough even in third place; a draw or a
+  // loss is out.
   const tight = snapshot([
     fx(1, 'user', 'a', [1, 1]),
     fx(1, 'b', 'c', [0, 2]),
@@ -238,9 +297,10 @@ test('group stakes on the last matchday read the points honestly', () => {
   ]);
   assert.deepEqual(
     { W: runStore.groupStakes(tight).W, D: runStore.groupStakes(tight).D },
-    { W: 'depends', D: 'out' },
+    { W: 'through', D: 'out' },
   );
   assert.equal(runStore.groupStakes(tight).L, 'out');
+  assert.equal(runStore.groupStakes(tight).third, true);
   assert.deepEqual(runStore.groupStakes(tight).other, { home: 'A', away: 'B' });
   // You 6 pts after two wins: through whatever happens.
   const safe = snapshot([
@@ -252,7 +312,20 @@ test('group stakes on the last matchday read the points honestly', () => {
     fx(3, 'a', 'b', null),
   ]);
   assert.equal(runStore.groupStakes(safe).W, 'through');
+  assert.equal(runStore.groupStakes(safe).L, 'through', 'six points: third at worst');
   assert.equal(runStore.groupStakes({ ...safe, round: 1 }), null);
+  // You 0 pts, A 6, B 3, C 3: a win gives 3 pts — top two or a third on goal difference.
+  const third = snapshot([
+    fx(1, 'user', 'a', [0, 1]),
+    fx(1, 'b', 'c', [1, 0]),
+    fx(2, 'user', 'b', [0, 1]),
+    fx(2, 'c', 'a', [0, 1]),
+    fx(3, 'user', 'c', null),
+    fx(3, 'a', 'b', null),
+  ]);
+  const stakes = runStore.groupStakes(third);
+  assert.deepEqual([stakes.W, stakes.D, stakes.L, stakes.third], ['depends', 'out', 'out', true]);
+  assert.equal(runStore.groupStakes(safe).third, false);
 });
 
 test('challenge links carry the draft and the friend result, on this page', () => {

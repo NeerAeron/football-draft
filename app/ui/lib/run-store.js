@@ -7,7 +7,13 @@
 //   saveRun(run, meta);                       // after every recordResult
 //   const saved = loadRun(catalog);           // { run, meta, pending } | null
 import { DEFAULT_CONFIG } from '../../core/config/config.js';
-import { createCupRun, restoreCupRun, CUP_ROUNDS } from '../../core/competition/cup.js';
+import {
+  createCupRun,
+  restoreCupRun,
+  CUP_ROUNDS,
+  CUP_FORMAT,
+  BEST_THIRD,
+} from '../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../core/competition/model.js';
 import { encodeChallenge, decodeChallenge } from '../../core/competition/share.js';
 import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/competition/daily.js';
@@ -42,16 +48,19 @@ export const modeOf = type => TYPE_TO_MODE[type] || 'nations';
 export const typeOf = mode => MODE_TO_TYPE[mode] || MODE_TO_TYPE[TYPE_TO_MODE[mode]] || 'nations';
 
 // ---- stages -------------------------------------------------------------------------------
-export const STAGE_IDS = STAGES.map(s => s.id); // G1 G2 G3 R16 QF SF F
+export const STAGE_IDS = STAGES.map(s => s.id); // G1 G2 G3 R32 R16 QF SF F
 /** Stage id ('G1'…'F') of the next match, or of the last match once the run is over. */
 export function stageIdOf(snapshot) {
   const played = snapshot.rounds.filter(r => r.result).length;
-  const index = snapshot.complete ? Math.max(0, played - 1) : Math.min(6, played);
+  const index = snapshot.complete
+    ? Math.max(0, played - 1)
+    : Math.min(STAGE_IDS.length - 1, played);
   return STAGE_IDS[index];
 }
 export const roundLabel = round => CUP_ROUNDS[round]?.label ?? '';
 /** Short label for the path strip: 'MD1' … 'Final'. */
-export const roundShort = round => ['MD1', 'MD2', 'MD3', 'R16', 'QF', 'SF', 'Final'][round] ?? '';
+export const roundShort = round =>
+  ['MD1', 'MD2', 'MD3', 'R32', 'R16', 'QF', 'SF', 'Final'][round] ?? '';
 
 // ---- kits -----------------------------------------------------------------------------------
 // National teams have no kit colours in the catalog: lib/kits.js holds their home kits.
@@ -151,6 +160,7 @@ export function runSummary(snapshot, meta = {}) {
     verdict: snapshot.grade?.verdict ?? null,
     stageLabel: snapshot.stageLabel,
     difficulty: snapshot.difficulty,
+    rounds: snapshot.rounds.length,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -183,11 +193,15 @@ export function patchRunState(patch) {
   writeJSON(RUN_STATE_KEY, next);
   return next;
 }
-/** The raw saved state (tolerant: null for anything that does not look like ours). */
+/**
+ * The raw saved state (tolerant: null for anything that does not look like ours). A run saved
+ * in the seven-match format (cup format 1, before the Round of 32) cannot be resumed: it reads
+ * as no run (Home's summary of a finished one stays, see lib/saved.js).
+ */
 export function readRunState() {
   const state = readJSON(RUN_STATE_KEY, null);
   if (!state || typeof state !== 'object' || state.format !== RUN_STATE_FORMAT) return null;
-  if (!state.run || state.run.type !== 'cup-run') return null;
+  if (!state.run || state.run.type !== 'cup-run' || state.run.format !== CUP_FORMAT) return null;
   return {
     run: state.run,
     meta: state.meta && typeof state.meta === 'object' ? state.meta : {},
@@ -259,9 +273,11 @@ const OUTCOMES = [
 ];
 /**
  * What the last group match means, by points: for each user result 'W' | 'D' | 'L' →
- * 'through' (top two whatever happens elsewhere), 'out' (two teams finish above on points
- * whatever happens), or 'depends' (on the other match or goal difference). null before
- * matchday 3. { md: 3, other: { home, away }, W, D, L }.
+ * 'through' (top two, or a third place on 4+ points, whatever happens elsewhere), 'out' (below
+ * the cut whatever happens), or 'depends' (on the other match or goal difference). A third
+ * place goes through on BEST_THIRD (core/competition/cup.js): 4 points, or 3 and a goal
+ * difference of −2 or better. null before matchday 3.
+ * { md: 3, other: { home, away }, W, D, L, third: bool (some result hangs on third place) }.
  */
 export function groupStakes(snapshot) {
   if (snapshot.complete || snapshot.round !== 2) return null;
@@ -277,7 +293,18 @@ export function groupStakes(snapshot) {
   const other = fixtures.find(f => !f.score && f !== mine);
   if (!mine || !other) return null;
   const rival = mine.home === 'user' ? mine.away : mine.home;
-  const out = { md: 3, other: { home: name(other.home), away: name(other.away) } };
+  const out = { md: 3, other: { home: name(other.home), away: name(other.away) }, third: false };
+  // Whether finishing in a position on `me` points goes through: true, false or null (on GD).
+  const goesThrough = (position, me) =>
+    position <= 2
+      ? true
+      : position >= 4
+        ? false
+        : me >= BEST_THIRD.points
+          ? true
+          : me === BEST_THIRD.points - 1
+            ? null
+            : false;
   for (const [outcome, [u, r]] of OUTCOMES) {
     const verdicts = OUTCOMES.map(([, [h, a]]) => {
       const p = new Map(points);
@@ -288,9 +315,17 @@ export function groupStakes(snapshot) {
       const me = p.get('user'),
         above = [...p].filter(([k, v]) => k !== 'user' && v > me).length,
         level = [...p].filter(([k, v]) => k !== 'user' && v === me).length;
-      if (above >= 2) return 'out';
-      if (above + level <= 1) return 'through';
-      return 'depends';
+      // Level teams can finish either side of you: every position in the range counts.
+      const fates = [];
+      for (let pos = above + 1; pos <= above + level + 1; pos++) {
+        fates.push(goesThrough(pos, me));
+        if (pos === 3 && me >= BEST_THIRD.points - 1) out.third = true;
+      }
+      return fates.every(f => f === true)
+        ? 'through'
+        : fates.every(f => f === false)
+          ? 'out'
+          : 'depends';
     });
     out[outcome] = verdicts.every(v => v === verdicts[0]) ? verdicts[0] : 'depends';
   }
