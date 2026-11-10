@@ -155,7 +155,7 @@ async function draftPick(page, { tryAuto = false } = {}) {
   // there for a moment, so a missed click is fine.
   const spin = page.locator('[data-testid="spin"]');
   if (await spin.isVisible().catch(() => false))
-    await spin.click({ timeout: 1500 }).catch(() => {});
+    await spin.click({ timeout: 6000 }).catch(() => {});
   const row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
   await row.waitFor({ state: 'visible', timeout: 10000 });
   await row.click();
@@ -710,7 +710,7 @@ export const flows = [
         await step(`pick ${pick}`, async () => {
           const spin = page.locator('[data-testid="spin"]');
           if (await spin.isVisible().catch(() => false))
-            await spin.click({ timeout: 1500 }).catch(() => {});
+            await spin.click({ timeout: 6000 }).catch(() => {});
           await visible(page, '[data-testid="pool"] button.prow:not([disabled])');
           // Closed rows sit under the players he can still pick: show the whole pool.
           const more = page.locator('[data-testid="pool"] .pool__more button');
@@ -793,7 +793,7 @@ export const flows = [
         });
       await step('filter + search the pool', async () => {
         // Auto-spin starts the reel by itself; click only if the button is still there.
-        await page.click('[data-testid="spin"]', { timeout: 1500 }).catch(() => {});
+        await page.click('[data-testid="spin"]', { timeout: 6000 }).catch(() => {});
         await visible(page, '[data-testid="pool"]');
         await page.click('[data-testid="pool"] .toggle-chip:has-text("DEF")');
         await page.fill('[data-testid="pool"] input[type="search"]', 'a');
