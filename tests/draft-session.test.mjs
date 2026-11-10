@@ -15,7 +15,6 @@ import { overallRating, positionFamiliarity } from '../app/core/players/ratings.
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { lcg } from '../app/core/util/rng.js';
 import { Match } from '../app/core/sim/engine.js';
-import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 
 const catalog = loadRuntimeCatalog();
 const index = catalogIndex(catalog);
@@ -463,7 +462,7 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
   assert.equal(home.players.length, 11);
   home.players.forEach((p, i) => {
     assert.equal(p.role, FORMATIONS['4231'][i][2]);
-    assert.ok(p.chem >= 0 && p.chem <= 2 + DEFAULT_CONFIG.draft.links.captain);
+    assert.ok(p.chem >= 0 && p.chem <= 4 && Number.isInteger(p.chem));
   });
   const setup = matchSetup(home, { ...away, color: home.color });
   assert.notEqual(setup.teams[1].color, setup.teams[0].color, 'clashing kits switch');
@@ -476,7 +475,6 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
     match.players.map(p => p.profileId),
     [...home.players, ...away.players].map(p => p.profileId),
   );
-  // A national XI is fully linked: chem 2 for every player.
   const nation = index.nations.get('Brazil'),
     xi = buildSide({
       name: 'Brazil',
@@ -485,10 +483,11 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
       formation: '433',
       players: assignXI(nation.players),
     });
-  // A national XI is fully linked: chem 2, plus the captain's boost (Brazil has one).
+  // A national XI is all nation mates: +3 each, plus the captain's +1 (Brazil has one).
   assert.ok(nation.players.some(p => p.captain));
-  assert.ok(xi.players.every(p => p.chem === 2 + DEFAULT_CONFIG.draft.links.captain));
+  assert.ok(xi.players.every(p => p.chem === 4));
   assert.equal(xi.links.score, 33);
+  assert.equal(xi.links.total, 44);
 });
 
 function assignXI(players) {

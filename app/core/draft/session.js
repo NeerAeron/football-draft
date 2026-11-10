@@ -19,6 +19,7 @@ import {
   LINE_OF,
 } from './pools.js';
 import { teamLinks } from './links.js';
+import { budgetBands, bandIndex, bandUse } from './budget.js';
 
 export const DRAFT_MODES = {
   nations: { label: 'Nations', categories: ['nation'] },
@@ -96,6 +97,7 @@ function normalizeOptions(o = {}) {
     rerolls: o.rerolls ?? null,
     hideRatings: !!o.hideRatings,
     uniqueNations: !!o.uniqueNations,
+    budget: !!o.budget,
     excludeNations: [...(o.excludeNations || [])].map(String),
     excludeClubs: [...(o.excludeClubs || [])].map(String),
     excludePlayers: [...(o.excludePlayers || [])].map(String),
@@ -126,6 +128,8 @@ export class DraftSession {
     this.mode = this.options.mode;
     this.sides = this.options.sides;
     this.formations = [...this.options.formations];
+    // Budget mode: the rating bands and their slots (null when off).
+    this.bands = this.options.budget ? budgetBands(this.rules.budget) : null;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
     this.excluded = {
       nations: new Set(this.options.excludeNations),
@@ -186,6 +190,27 @@ export class DraftSession {
       !this.excluded.clubs.has(String(s.clubId))
     );
   }
+  // ---- Budget mode ------------------------------------------------------------------------
+  /** The rating a player is priced by: the OVR shown on him (rounded natural rating). */
+  #price(p) {
+    return Math.round(naturalRating(p));
+  }
+  /** Players a side holds per band (aligned with this.bands). */
+  #bandUsed(side) {
+    return bandUse(
+      this.bands,
+      this.picks[side].filter(Boolean).map(id => this.#price(this.player(id))),
+    );
+  }
+  /** Budget mode: the side still has a slot of this player's band (always true when off). */
+  affordable(p, side = this.turn) {
+    if (!this.bands) return true;
+    const band = bandIndex(this.bands, this.#price(p));
+    return band < 0 || this.#bandUsed(side)[band] < this.bands[band].slots;
+  }
+  #budgetReason(p) {
+    return `No ${this.bands[bandIndex(this.bands, this.#price(p))].label} slot left`;
+  }
   /** Open slot classes of a side: { gk, out } booleans. */
   openClasses(side = this.turn) {
     const rows = FORMATIONS[this.formations[side]];
@@ -196,8 +221,9 @@ export class DraftSession {
     });
     return { gk, out };
   }
-  // The guard: some available player of the group can fill an open slot class. Call-ups always
-  // include the best available keepers and outfield players, so the whole group is checked.
+  // The guard: some available (Budget mode: affordable) player of the group can fill an open
+  // slot class. Call-ups always include the best available keepers and outfield players, so
+  // the whole group is checked.
   #fills(category, id, side) {
     const ix = this.#index,
       group =
@@ -207,14 +233,35 @@ export class DraftSession {
             ? ix.leagueById.get(id)
             : ix.clubs.get(id);
     if (!group) return false;
-    const open = this.openClasses(side);
-    return group.players.some(p => (isKeeper(p) ? open.gk : open.out) && this.available(p));
+    const open = this.openClasses(side),
+      used = this.bands && this.#bandUsed(side),
+      afford = p => {
+        if (!used) return true;
+        const band = bandIndex(this.bands, this.#price(p));
+        return band < 0 || used[band] < this.bands[band].slots;
+      };
+    return group.players.some(
+      p => (isKeeper(p) ? open.gk : open.out) && this.available(p) && afford(p),
+    );
   }
   #poolOf(category, id) {
     const ix = this.#index;
     if (category === 'nation') {
       const nation = ix.nations.get(id);
-      return nation ? callUps(nation, p => this.available(p), this.rules.nations) : [];
+      if (!nation) return [];
+      const squad = callUps(nation, p => this.available(p), this.rules.nations);
+      if (!this.bands) return squad;
+      // Budget mode: the squad as always (stars you cannot afford are shown, closed) plus the
+      // best call-ups you can afford, so a spin always offers a full choice.
+      const side = this.turn,
+        seen = new Set(squad);
+      for (const p of callUps(
+        nation,
+        q => this.available(q) && this.affordable(q, side),
+        this.rules.nations,
+      ))
+        if (!seen.has(p)) squad.push(p);
+      return squad;
     }
     const group = category === 'league' ? ix.leagueById.get(id) : ix.clubs.get(id);
     return group ? group.players.filter(p => this.available(p)) : [];
@@ -383,7 +430,9 @@ export class DraftSession {
             ? 'Already drafted'
             : !this.#inPool(p)
               ? 'Not in this pool'
-              : '';
+              : !this.affordable(p, side)
+                ? this.#budgetReason(p)
+                : '';
     return rows.map(([, , role], slot) => {
       const rating = Math.round(roleRating(p, role)),
         reason =
@@ -479,12 +528,14 @@ export class DraftSession {
     const rows = FORMATIONS[this.formations[this.turn]],
       open = rows.map((r, i) => (this.picks[this.turn][i] ? null : r[2]));
     let best = null;
-    for (const p of this.poolPlayers())
+    for (const p of this.poolPlayers()) {
+      if (!this.affordable(p)) continue;
       open.forEach((role, slot) => {
         if (!role || (role === 'GK') !== isKeeper(p)) return;
         const v = roleRating(p, role);
         if (!best || v > best.v + 1e-9) best = { v, profileId: p.profileId, slot };
       });
+    }
     return best && { profileId: best.profileId, slot: best.slot, rating: Math.round(best.v) };
   }
   /** Swap two slots of a side (or move into an empty slot). GK slot takes keepers only. */
@@ -550,7 +601,7 @@ export class DraftSession {
       leagueId: s.leagueId == null ? null : String(s.leagueId),
     };
   }
-  #entry(p, side) {
+  #entry(p, side, used) {
     const rows = FORMATIONS[this.formations[side]],
       natural = naturalRating(p);
     let best = null,
@@ -562,9 +613,12 @@ export class DraftSession {
       if (fit >= NATURAL_FIT) naturalSlots++;
       if (!best || v > best.v + 1e-9) best = { v, slot, role, fit };
     });
-    const ok = this.available(p) && !!best;
+    const band = this.bands ? bandIndex(this.bands, this.#price(p)) : -1,
+      afford = band < 0 || used[band] < this.bands[band].slots,
+      ok = this.available(p) && !!best && afford;
     return {
       ...this.playerSummary(p),
+      band: band < 0 ? null : this.bands[band].id,
       best: best && {
         slot: best.slot,
         role: best.role,
@@ -578,9 +632,11 @@ export class DraftSession {
         ? ''
         : !this.available(p)
           ? 'Already drafted'
-          : isKeeper(p)
-            ? 'Goalkeeper slot filled'
-            : 'Outfield slots filled',
+          : !afford && best
+            ? `No ${this.bands[band].label} slot left`
+            : isKeeper(p)
+              ? 'Goalkeeper slot filled'
+              : 'Outfield slots filled',
       _v: best ? best.v : -1,
     };
   }
@@ -625,17 +681,31 @@ export class DraftSession {
         MID: mean(slots.filter(s => s.line === 'MID')),
         ATT: mean(slots.filter(s => s.line === 'ATT')),
       },
-      links: { ...linkSummary, levels: linkPlayers.map(e => e?.level ?? null) },
+      links: { ...linkSummary, boosts: linkPlayers.map(e => e?.chem ?? null) },
+      budget: this.bands && this.#budgetView(side),
       rerollsLeft: this.rerollsLeft[side],
       complete: filled.length === 11,
     };
   }
+  /** Budget mode: the bands with what the side has used: [{ id, label, slots, used, left }]. */
+  #budgetView(side) {
+    const used = this.#bandUsed(side);
+    return this.bands.map((b, i) => ({
+      id: b.id,
+      label: b.label,
+      minimum: b.minimum,
+      slots: b.slots,
+      used: used[i],
+      left: Math.max(0, b.slots - used[i]),
+    }));
+  }
   /** Serialisable view for the UI (cached until the state changes). */
   snapshot() {
     if (this.#snapshot) return this.#snapshot;
-    const side = this.turn;
+    const side = this.turn,
+      bandUsed = this.bands && this.#bandUsed(side);
     const pool = this.poolPlayers()
-      .map(p => this.#entry(p, side))
+      .map(p => this.#entry(p, side, bandUsed))
       .sort(
         (a, b) =>
           b.available - a.available ||
@@ -651,6 +721,7 @@ export class DraftSession {
       sides: this.sides,
       hideRatings: this.options.hideRatings,
       uniqueNations: this.options.uniqueNations,
+      budget: this.options.budget,
       daily: !!this.options.schedule,
       phase: this.phase,
       complete: this.complete,
@@ -745,6 +816,7 @@ export function buildSide({
     links: {
       score: summary.score,
       maxScore: summary.maxScore,
+      total: summary.total,
       chem: round3(summary.chem),
       pairs: summary.pairs,
     },

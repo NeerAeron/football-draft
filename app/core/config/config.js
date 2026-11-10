@@ -64,27 +64,31 @@ export const DEFAULT_CONFIG = {
       worldclass: 4,
       legendary: 7,
     },
-    // Links: a player's level is the sum of club / nation / league levels (teammates sharing
-    // it, the player included, reaching each threshold), capped at 3. chem = level / 3 * maxChem.
+    // Mates (draft/links.js): attribute points for a player with a nation team-mate, a club
+    // mate or a league mate in the XI — the highest one applies, one mate is enough.
     links: {
-      club: {
-        level1: 2,
-        level2: 5,
-        level3: 8,
-      },
-      nation: {
-        level1: 2,
-        level2: 5,
-        level3: 8,
-      },
-      league: {
-        level1: 3,
-        level2: 5,
-        level3: 8,
-      },
-      maxChem: 2,
-      // A Captain in the XI: attribute points added to every player (draft/links.js).
+      nation: 3,
+      club: 2,
+      league: 1,
+      // A Captain in the XI: attribute points added to every player on top.
       captain: 1,
+    },
+    // Budget mode (session option `budget`): at most `slots` players rated `minimum` or more
+    // per band (by the rating shown on the player, bands highest first); players under the
+    // last band are free.
+    budget: {
+      band1: {
+        minimum: 88,
+        slots: 1,
+      },
+      band2: {
+        minimum: 84,
+        slots: 2,
+      },
+      band3: {
+        minimum: 80,
+        slots: 3,
+      },
     },
   },
   playerTiers: {
@@ -785,9 +789,11 @@ const DRAFT_FIELDS = {
   'draft.clubs.leagueTierWeights.': [null, 0, 50, 0.05],
   'draft.rerolls.': [null, 0, 5, 1],
   'draft.ladder.': [null, -15, 15, 0.5],
-  'draft.links.': [null, 1, 11, 1],
-  'draft.links.maxChem': ['Maximum link boost (attribute points)', 0, 4, 0.25],
+  'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
+  'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
+  'draft.links.league': ['League mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
+  'draft.budget.': [null, 0, 99, 1],
 };
 const LEVEL_LABELS = {
   amateur: 'Amateur',
@@ -795,9 +801,8 @@ const LEVEL_LABELS = {
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',
-  level1: 'Level 1 at … players',
-  level2: 'Level 2 at … players',
-  level3: 'Level 3 at … players',
+  minimum: 'Budget band: rating from',
+  slots: 'Budget band: players allowed',
 };
 const draftField = path => {
   const key = Object.keys(DRAFT_FIELDS)
@@ -909,14 +914,17 @@ const CROSS_FIELD_RULES = [
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
   },
   {
-    message: 'Link thresholds must rise from level 1 to level 3.',
+    message: 'Mates and Captain boosts cannot total more than 4 (the engine cap).',
     reset: ['draft.links'],
-    ok: c =>
-      ['club', 'nation', 'league'].every(
-        k =>
-          c.draft.links[k].level1 <= c.draft.links[k].level2 &&
-          c.draft.links[k].level2 <= c.draft.links[k].level3,
-      ),
+    ok: ({ draft: { links: l } }) => Math.max(l.nation, l.club, l.league) + l.captain <= 4,
+  },
+  {
+    message: 'Budget bands must descend and their slots stay within an XI.',
+    reset: ['draft.budget'],
+    ok: ({ draft: { budget: b } }) =>
+      b.band1.minimum > b.band2.minimum &&
+      b.band2.minimum > b.band3.minimum &&
+      [b.band1, b.band2, b.band3].every(x => x.slots <= 11),
   },
   {
     message: 'Minimum added time exceeds maximum.',

@@ -67,14 +67,19 @@ test('opponents land within the target gap for every mode and level', () => {
   );
 });
 
-test('real XIs are fully linked and bosses top the ladder', () => {
+test('real XIs are all mates and bosses top the ladder', () => {
   const list = opponentCandidates(catalog),
     world = list.find(c => c.key === 'boss:world-xi'),
     stars = list.find(c => c.key === 'boss:all-stars');
-  // Fully linked (chem 2), plus the captain's boost when the XI has one.
-  const captain = DEFAULT_CONFIG.draft.links.captain;
-  assert.ok(list.filter(c => c.kind !== 'boss').every(c => c.chem === 2 || c.chem === 2 + captain));
-  assert.ok(list.some(c => c.chem === 2 + captain) && list.some(c => c.chem === 2));
+  // National XIs are all nation mates (+3), club XIs at least club mates (+2; more for the
+  // players with a compatriot), plus the captain's boost when the XI has one.
+  const { nation, club, captain } = DEFAULT_CONFIG.draft.links;
+  const nations = list.filter(c => c.kind === 'nation'),
+    clubs = list.filter(c => c.kind === 'club');
+  assert.ok(nations.every(c => c.chem === nation || c.chem === nation + captain));
+  assert.ok(nations.some(c => c.chem === nation + captain) && nations.some(c => c.chem === nation));
+  assert.ok(clubs.every(c => c.chem >= club && c.chem <= nation + captain));
+  assert.ok(clubs.some(c => c.chem === club));
   assert.ok(list.every(c => c.rating <= world.rating));
   assert.ok(stars.rating < world.rating && stars.rating > 85);
   const a = buildOpponent(catalog, world),
