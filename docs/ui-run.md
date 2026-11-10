@@ -26,7 +26,10 @@ links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/r
 2. **Play.** `openPrematch({ id: 'run:<runId>:<round>', seed: run.matchSeed(round), sides,
    competition: { mode: 'ai', difficulty: 'medium', knockout }, meta: { context: 'run',
    title, returnTo: '/run', fixture: id } })`. The pending fixture `{ id, round, seed }` is saved
-   first.
+   first. In the first match (round 0) the user side carries `formationLocked: true`: the
+   formation chosen before the draft cannot change before kick-off or during the match
+   (`changeFormation` refuses it; the request's `meta.formationLocked` lists the side); from
+   the second match on it can.
 3. **Return.** `readMatchResult(id)` (fallback: the stored result with the same seed and
    `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` → save.
    The hub shows a "Full time" banner, the other group match ticking in, table moves.
@@ -41,7 +44,7 @@ links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/r
    `recordRun(summary, meta.id)`): Home shows one cup per difficulty (won, perfect, or the
    furthest round so far), each a link to a run on that difficulty, and the end screen
    announces what was new (`runNews(meta.id)`: first title on a difficulty, first perfect
-   seven, a personal best, the cabinet completed).
+   eight, a personal best, the cabinet completed).
 
 Auto-sims (`autoSimulate`) run the engine in a module Worker (`auto-sim-worker.js`, which runs
 the same `simulateHere()` loop and streams the ticker updates); without Worker support or if the
@@ -65,14 +68,22 @@ perfect, streak, share, replays of each match via `requestMatch(…, view 'key')
 | Key | Shape |
 | --- | --- |
 | `football-draft-run-state` | `{ format: 1, run: CupRun.serialize(), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation, seed, hideRatings, uniqueNations, defaultRules, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
-| `football-draft-run` | Home summary: `{ mode: 'run', type, stage: 'G1'…'F', record: { w, d, l }, team, status, complete, grade, verdict, stageLabel, difficulty, updatedAt }` |
+| `football-draft-run` | Home summary: `{ mode: 'run', type, stage: 'G1' \| 'G2' \| 'G3' \| 'R32' \| 'R16' \| 'QF' \| 'SF' \| 'F', record: { w, d, l }, team, status, complete, grade, verdict, stageLabel, difficulty, rounds: 8, updatedAt }` |
 | `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, grade, verdict, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
-| `football-draft-records` | `{ format: 1, levels: { [difficulty]: { runs, titles, perfect, best } }, seen: [run ids, last 24], last: { id, level, news: ['title' \| 'perfect' \| 'best' \| 'cabinet'] } }` — `best` is the furthest round (0–6, 7 = champion); World Cup Runs only (the Daily keeps its own streak) |
+| `football-draft-records` | `{ format: 2, levels: { [difficulty]: { runs, titles, perfect, best } }, seen: [run ids, last 24], last: { id, level, news: ['title' \| 'perfect' \| 'best' \| 'cabinet'] } }` — `best` is the furthest round (0–7, 8 = champion); World Cup Runs only (the Daily keeps its own streak) |
 | `football-draft-exhibition` | `{ home: key, away: key }` (`nation:…`, `club:…`, `boss:…`, `random:<seed>`) |
 | `football-draft-dev` | `{ fastSim: true }` — dev/test only: auto-sims use the fast rating model |
 
 Readers are tolerant (`lib/saved.js` and `lib/records.js` for Home, `readRunState()` / `readDaily()`): unknown or
 broken data reads as "nothing saved".
+
+**Saves from the seven-match format** (before the Round of 32; cup format 1): a run in progress
+cannot be resumed — `readRunState()` returns null, so the hub shows "No run in progress", and
+Home ignores a playing summary without `rounds: 8`; a finished run's summary still shows as the
+last run. A Daily attempt being simulated restarts from matchday 1 with the same XI against the
+day's eight opponents; finished Daily entries keep their record, grade and points (their match
+replays no longer rebuild). The trophy cabinet's format-1 `best` of 3 (Round of 16) or more moves
+up by one when read; titles and perfect runs carry over.
 
 ## Share text and challenge links
 

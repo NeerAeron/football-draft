@@ -4,7 +4,7 @@ import { clamp, lerp } from '../util/math.js';
 import { footExecution } from './player-model.js';
 import { offsideSnapshot } from './rules.js';
 import { shootingAbility } from '../players/ratings.js';
-import { segment, sigmoid, skillError, dist, hypot } from './constants.js';
+import { segment, sigmoid, skillError, dist, hypot, PASS_ROLL, PASS_ARRIVAL } from './constants.js';
 
 // players/ratings.js passingAbility, without allocating per call (hot path).
 function passingAbility(p, distance, delivery = 'pass') {
@@ -35,7 +35,8 @@ export class PassingMethods {
     return (
       (loft
         ? clamp(18 + length * 0.12, 19, 29)
-        : clamp(Math.sqrt(196 + 2 * 3.8 * length), 15, 30)) * this.tuning.gameplay.passSpeed
+        : clamp(Math.sqrt(PASS_ARRIVAL ** 2 + 2 * PASS_ROLL * length), 15, 30)) *
+      this.tuning.gameplay.passSpeed
     );
   }
   deliveryDemand({ d = 0, aim, r, loft = false, delivery = 'pass' }) {
@@ -57,12 +58,12 @@ export class PassingMethods {
   }
   flightTime(length, loft = false, fraction = 1) {
     const speed = this.passSpeed(length, loft),
-      remaining = speed * speed - 2 * 3.8 * length * fraction;
+      remaining = speed * speed - 2 * PASS_ROLL * length * fraction;
     return loft
       ? (length * fraction) / speed
       : remaining < 0
         ? Infinity
-        : (speed - Math.sqrt(remaining)) / 3.8;
+        : (speed - Math.sqrt(remaining)) / PASS_ROLL;
   }
   laneRisk(p, r, end, loft = null, delivery = 'pass') {
     const length = dist(p, end);
@@ -554,7 +555,7 @@ export class PassingMethods {
     b.saver = null;
     b.deliveryOrigin = this.origin(p);
     b.passCraft = passingAbility(p, d, delivery) * 0.65 + p.vision() * 0.35;
-    b.roll = 3.8;
+    b.roll = PASS_ROLL;
     b.kicker = p.id;
     b.target = r.id;
     b.age = 0;

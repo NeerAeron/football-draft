@@ -117,7 +117,7 @@ Stored when the match finishes (and persisted, so a refresh shows it again):
   heldYouBack: { ...player, reason } | null,   // lowest-rated player of userSides[0]
   heldBack: [player | null, player | null],    // per user side (Versus)
   analysis: [{ id, tone: 'positive' | 'negative' | 'neutral', label, detail }], // 2–3 chips
-  share: '⚽ Liverpool 2–1 Real Madrid · Salah 23\' 67\' · Football Draft',
+  share: '⚽ Liverpool 2–1 Real Madrid · Salah 23\' 67\' · World Cup Draft',
   finishedAt: ISO string,
 }
 ```

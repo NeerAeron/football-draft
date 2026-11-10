@@ -1,7 +1,7 @@
-# Football Draft Challenge — agent guide
+# World Cup Draft — agent guide
 
-Browser football (soccer) game: draft an XI from real EA FC 26 players, then play it through a
-continuous 2D 11v11 physics simulation in a World Cup Run, the Daily Challenge, a Quick Match,
+Browser football (soccer) game, **World Cup Draft**: draft an XI from real EA FC 26 players, then
+play it through a continuous 2D 11v11 physics simulation in a World Cup Run (Nations draft only), the Daily Challenge, a Quick Match,
 local Versus or an Exhibition. Static site, **no build step**: `app/` is served as-is (native ES
 modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dependencies
 (Prettier, ESLint, svgo, flag-icons for the data build).
@@ -37,7 +37,6 @@ Never `npm i playwright` or run `playwright install` locally (CI installs its ow
 app/                     served statically (deploy = publish this folder); runtime files only
   index.html             the game: import map (preact, htm), fonts → ui/main.js
   gallery.html           component gallery (design review, screenshot QA)
-  config.html            Advanced tuning page → tuning/ (plain DOM, no framework)
   manifest.webmanifest   install metadata (icons, shortcuts); og/twitter preview tags live in index.html
   sw.js                  offline service worker, network first (registered by ui/lib/offline.js)
   core/                  pure logic: no DOM, no storage, Node-testable
@@ -58,7 +57,6 @@ app/                     served statically (deploy = publish this folder); runti
     styles/              app.css (the one stylesheet entry, cascade layers), tokens, base, fonts
     gallery/             gallery page + generated fixture (make-fixture.mjs)
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
-  tuning/                tuning.js + tuning.css for config.html
   data/catalog.v3.json   compiled columnar catalog (the only JSON fetched; decode via services/catalog.js)
   assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
@@ -90,7 +88,7 @@ client), `docs/ui-draft.md` (setup, draft board, pre-match), `docs/ui-run.md` (r
 exhibition, challenge links, persistence).
 
 **Import rules.** `ui/` may import `core/` and `services/`; `services/` may import `core/`;
-`core/` never imports `services/`, `ui/` or `tuning/`. Inside `core/`, the engine (`sim/`)
+`core/` never imports `services/` or `ui/`. Inside `core/`, the engine (`sim/`)
 imports only `sim/`, `players/`, `config/` and `util/` — never `draft/` or `competition/`.
 Runtime URLs such as catalog asset paths (`./assets/logos/…`, `./assets/flags/…`) and worker
 modules resolve against the page in `app/`, not against the module file. Load the catalog only
@@ -122,17 +120,17 @@ club-less national-team players have `source.club === null` and appear only in n
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
   `DIFFICULTIES`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
-  `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem),
+  `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem, the Captain boost),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
-- **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group + four
-  knockouts, standings, grades, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
+- **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
+  best thirds, `BEST_THIRD`) + five knockouts from the Round of 32, standings, grades, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
   club-XI fit + coach, gameplay, discipline, stamina, periods, formats, ratings, badges), live
-  `CONFIG`, `loadConfig`/`saveConfig` (diff-only, `football-draft-settings-v1`; unknown keys are
-  ignored), `normalizeConfig`, `CONFIG_FIELDS`; `v8-defaults.js` (old-save migration). Each
+  `CONFIG` (a copy of the defaults; `setRuntimeConfig` for tools), `loadConfig`/`saveConfig`
+  (diff-only storage, kept for tools and tests; unknown keys are ignored), `normalizeConfig`, `CONFIG_FIELDS`; `v8-defaults.js` (old-save migration). Each
   `Match` snapshots it into `match.tuning`; a draft session snapshots `CONFIG.draft`.
 - **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
   uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
@@ -159,14 +157,15 @@ club-less national-team players have `source.club === null` and appear only in n
   module Worker (`auto-sim-worker.js`), falling back to main-thread slices; the Daily's perfect
   XI is computed in `ui/screens/daily/perfect-xi-worker.js` the same way. A new module worker
   must also be listed in `WORKERS` in `ui/lib/offline.js` (so the installed app caches it).
-- **Tuning page** (`app/tuning/tuning.js`) — renders every `CONFIG_FIELDS` entry by section,
-  the draft session's first-spin league/club odds, save/import/export/reset.
+- **Tuning** is for developers only: edit `DEFAULT_CONFIG` (and rebuild data / recalibrate as
+  the invariants say); tools take `--tuning` patches. Players cannot tune: the game ignores
+  saved overrides (`CONFIG` is a copy of `DEFAULT_CONFIG`) and `ui/main.js` deletes the old
+  `football-draft-settings-v1` key.
 
 ### localStorage keys (all start with `football-draft`; Settings → Reset clears exactly those)
 
 | Key | Owner | Holds |
 | --- | --- | --- |
-| `football-draft-settings-v1` | `core/config` | tuning overrides (diff from defaults) |
 | `football-draft-ui` | `ui/lib/prefs.js` | motion, hideRatings, onboarded, draftType |
 | `football-draft-sound` | `services/sound.js` | muted, volume |
 | `football-draft-setup` | setup screen | last choices per mode |
@@ -245,9 +244,14 @@ club metadata. After catalog changes, regenerate the gallery fixture
 - Plain modern JS (ES2024 modules), no bundler, no runtime dependencies beyond the vendored
   Preact/htm/Lucide subset in `app/ui/vendor/` (copied unmodified; upgrade steps in its README).
 - Prettier: single quotes, 100 columns, `arrowParens: avoid`. ESLint flat config.
-- UI components never `innerHTML` catalog text (htm escapes interpolations). Plain-DOM code (the
-  tuning page) escapes catalog text with `escapeHtml` from `core/util/text.js`.
+- UI components never `innerHTML` catalog text (htm escapes interpolations). Plain-DOM code
+  escapes catalog text with `escapeHtml` from `core/util/text.js`.
 - UI must work at 390 px wide (touch) and 1366 px desktop; respect `prefers-reduced-motion`.
+- **Mobile first: it must look great and run great on a mid-range phone**, not just fit. Check
+  every UI change in phone screenshots (`npm run shots`, iPhone-size viewport) as well as
+  desktop; keep animations on transform/opacity, the match frame loop allocation-free and 60 fps
+  with the CPU throttled ×4 (Chrome DevTools / CDP `Emulation.setCPUThrottlingRate`), and no
+  main-thread task over ~50 ms (heavy work goes to a worker or a step-wise generator).
 - Screen CSS is global (every stylesheet is imported by `styles/app.css`): prefix screen classes
   with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names like `.stage` collided.
 - Displayed numbers go through `ui/lib/format.js` ('.' decimals everywhere, whatever the locale).

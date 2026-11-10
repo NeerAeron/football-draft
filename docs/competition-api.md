@@ -6,29 +6,42 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 
 | Module | Exports |
 | --- | --- |
-| `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `cupGrade`, `projectRun`, `cupOffsets`, `CUP_ROUNDS`, `CUP_TUNING`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `GRADES` |
+| `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `cupGrade`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `CUP_TUNING`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `GRADES` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
 | `daily.js` | `dailyId`, `dailyNumber`, `dailyIdFromNumber`, `previousDay`, `nextDay`, `dailyChallenge`, `perfectXI`, `perfectPercent`, `dailyScore`, `canPlayDaily`, `updateStreak`, `currentStreak`, `DAILY_EPOCH`, `DAILY_RULES`, `DAILY_POINTS` |
 | `share.js` | `shareText`, `resultEmoji`, `encodeChallenge`, `decodeChallenge`, `challengeUrl`, `parseChallengeUrl`, `challengeDraftOptions` |
 
 ## World Cup Run
 
-Group of four (you + three AI teams), three matches, top two advance, then Round of 16,
-quarter-final, semi-final, final. Opponents come from the draft ladder
-(`docs/draft-api.md`), offset per round and difficulty (`CUP_TUNING`, effective rating vs the
-level target; `cupOffsets(difficulty)` returns the seven offsets):
+Group of four (you + three AI teams), three matches; the top two advance, and so does a third
+place that makes the best-thirds cut; then Round of 32, Round of 16, quarter-final, semi-final,
+final — eight matches, as the 2026 World Cup (48 teams, 12 groups, the top two and the eight best
+thirds to a Round of 32). Opponents come from the draft ladder (`docs/draft-api.md`), offset per
+round and difficulty (`CUP_TUNING`, effective rating vs the level target; `cupOffsets(difficulty)`
+returns the eight offsets):
 
-| Difficulty | MD1 | MD2 | MD3 | R16 | QF | SF | Final | final opponents (typical) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Amateur | −10.5 | −9.5 | −9 | −8.5 | −8 | −5 | +3 | Norway, Senegal, Scotland, Czechia (≈ 79.5) |
-| Semi-pro | −11 | −9.5 | −8 | −7 | −4 | −1 | +2 | Uruguay, Colombia, USA, Morocco (≈ 81.4) |
-| Pro | −12.5 | −11 | −9.5 | −8.5 | −5.5 | −2.5 | +2.5 | Brazil, Italy, England, Argentina (≈ 86.3) |
-| World Class | −12.5 | −11 | −9.5 | −8.5 | −5.5 | −2.5 | 0 | Brazil, France, Spain, Italy (≈ 87) |
-| Legendary | −13 | −11.5 | −10 | −9 | −6 | −3 | −1 | World XI, All-Stars, France (≈ 88.6) |
+| Difficulty | MD1 | MD2 | MD3 | R32 | R16 | QF | SF | Final | final opponents (typical) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Amateur | −10.5 | −9.5 | −9 | −9 | −8.5 | −8 | −5 | +0.5 | Mexico, Bosnia, Scotland, Ecuador (≈ 78.1) |
+| Semi-pro | −11 | −9.5 | −8 | −8 | −7.5 | −5 | −2.5 | −0.5 | Serbia, Mexico, Nigeria, Colombia (≈ 80.4) |
+| Pro | −12.5 | −11 | −9.5 | −9.5 | −9 | −6 | −3 | +2 | Italy, England, Belgium, Germany (≈ 86.6) |
+| World Class | −12.5 | −11 | −9.5 | −9.5 | −9 | −5.5 | −2.5 | 0 | All-Stars, France, England, Brazil (≈ 88) |
+| Legendary | −13 | −11.5 | −10 | −10 | −9.5 | −6.5 | −3.5 | −1 | All-Stars, World XI, France (≈ 89.6) |
 
-Offsets are to the level's ladder target (Amateur 76.7 … Legendary 90.1 in Nations): weak groups
+**Best thirds** (`BEST_THIRD`, `thirdQualifies(row)`): third place goes through with 4 points, or
+3 points and a goal difference of −2 or better. A fixed, explainable rule standing in for the
+ranking of twelve thirds: over many simulated sets of twelve groups (fast model), every third
+on 4+ points makes the real cut, one on 3 points makes it 97% of the time at GD ≥ 0, ~90% at
+−1, ~70% at −2 and at most ~50% below; the rule passes ~63% of thirds (the real cut is 8/12).
+Snapshot table rows carry `qualifies` (as the table stands); the hub shows the rule under the
+group table and in the last-matchday stakes. Since the rule came in (with the Round of 32),
+fewer runs end in the group (World Class 13.7% → 4.7%, Legendary 23% → 10%), and the extra
+knockout round takes their place.
+
+Offsets are to the level's ladder target (Amateur 77.6 … Legendary 90.9 in Nations): weak groups
 and early rounds, then knockouts that climb to a real final (the Amateur floor is the weakest
-nations, ~66–70). `KNOCKOUT_EDGE` (1.5 rating points) is added to the user in the fast
+nations, ~66–70, so its early knockouts cannot get any easier: each costs ~4% of runs, and the
+Amateur and Semi-pro finals came down ~2 points to keep their title odds with the extra round). `KNOCKOUT_EDGE` (1.5 rating points) is added to the user in the fast
 model's knockout ties (`projectRun`, `simulateNext`): in the engine a drafted XI goes through
 77.6% of its cup knockout ties where independent Poisson goals say 73.0% (584 ties); group
 matches agree with the model (81.7% vs 79.7% wins).
@@ -38,26 +51,27 @@ knockouts escalate to a final against a top side for the level; no opponent repe
 opponent XI excludes the user's players. The Daily Challenge uses the Pro offsets.
 
 **Odds** for a typical drafted XI (Nations, positional picks with the level's re-rolls, XI ≈
-83.0–83.6), `tools/calibration/cup-calibration.mjs runs`: 1,000 runs per level with the fitted
+83.8–84.4), `tools/calibration/cup-calibration.mjs runs`: 1,000 runs per level with the fitted
 model for the user's matches (real opponents, AI-vs-AI group results), and `projectRun` at the
-mode baseline (6,000 runs):
+mode baseline (6,000 runs). Before the Round of 32 the champions column read 60.5 / 38.1 / 19.3 /
+7.7 / 4.0%; `--only <level> --tuning '[…]'` tries other offsets for one level.
 
-| Difficulty | champions | out in the group | reached: group / R16 / QF / SF / final / champions | `projectRun` |
+| Difficulty | champions | out in the group | reached: group / R32 / R16 / QF / SF / final / champions | `projectRun` |
 | --- | --- | --- | --- | --- |
-| Amateur | 60.5% | 0.9% | 1 / 4 / 4 / 8 / 22 / 61 | 60% · Champions |
-| Semi-pro | 38.1% | 1.6% | 2 / 9 / 14 / 20 / 18 / 38 | 35% · Final |
-| Pro | 19.3% | 3.7% | 4 / 13 / 18 / 24 / 23 / 19 | 17% · Semi-finals |
-| World Class | 7.7% | 13.7% | 14 / 23 / 22 / 24 / 10 / 8 | 9% · Quarter-finals |
-| Legendary | 4.0% | 23.0% | 23 / 28 / 22 / 17 / 6 / 4 | 3% · Round of 16 |
+| Amateur | 61.9% | 0.1% | 0 / 3 / 4 / 5 / 8 / 19 / 62 | 69% · Champions |
+| Semi-pro | 38.7% | 0.3% | 0 / 8 / 8 / 13 / 15 / 18 / 39 | 41% · Final |
+| Pro | 19.6% | 0.9% | 1 / 11 / 10 / 17 / 16 / 25 / 20 | 20% · Semi-finals |
+| World Class | 7.7% | 4.7% | 5 / 21 / 17 / 20 / 18 / 11 / 8 | 7% · Quarter-finals |
+| Legendary | 3.6% | 9.9% | 10 / 30 / 18 / 19 / 12 / 7 / 4 | 3% · Round of 16 |
 
 **Real engine** for the user's matches (30 runs per level, measured with the Phase 3 engine
-when instant results still alternated 180 s / 300 s; ±9 points at this size): champions Amateur 46.7%, Semi-pro 40.0%, Pro 20.0% (no group exits), World Class
+when instant results still alternated 180 s / 300 s, and seven rounds; ±9 points at this size): champions Amateur 46.7%, Semi-pro 40.0%, Pro 20.0% (no group exits), World Class
 3.3%, Legendary 10.0%. Match by match it agrees with the model plus `KNOCKOUT_EDGE`: group wins
 74.0% vs 75.1%, knockout ties won 74.8% vs 69.9% without the edge (≈ 74% with it). Re-check with
 `cup-calibration.mjs runs --runs 1000 --engine 30 --workers 2` after engine changes.
 
 `projectRun` plays the same rounds against the exact targets (the real candidates sit within a
-point of them); the setup screen's "a typical draft reaches …" line is its median stage
+point of them); the setup screen's "a good manager reaches …" line is its median stage
 (300 runs).
 
 ```js
@@ -70,7 +84,7 @@ const run = createCupRun(catalog, {
 });
 
 for (let m = run.nextMatch(); m; m = run.nextMatch()) {
-  // m = { round 0–6, id: 'group1'…'final', label, stage, knockout, seed, opponent, home, away }
+  // m = { round 0–7, id: 'group1'…'final', label, stage, knockout, seed, opponent, home, away }
   // Engine: new Match(m.seed, 180) + applyMatchSetup(…, matchSetup(m.home, m.away), …).
   // knockout: a draw goes to the engine's penalty shootout.
   run.recordResult({
@@ -86,30 +100,30 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 
 ```js
 { mode, difficulty, daily, status: 'playing' | 'eliminated' | 'champion', complete, round,
-  stage: 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'champion', stageLabel,
+  stage: 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'champion', stageLabel,
   user: { name, rating, effective },
   rounds: [{ id, label, stage, knockout,
              opponent: { key, kind, id, name, code, flag, color, secondary, formation, rating,
                          effective, nominal, target, pot },
              result: { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L', shootout } | null }],
   group: { teams, fixtures: [{ md, home, away, score }], table: [{ key, name, user, position,
-           played, won, drawn, lost, gf, ga, gd, points, decidedBy }] },
+           played, won, drawn, lost, gf, ga, gd, points, decidedBy, qualifies }] },
   results: ['W', 'D', …], record: { w, d, l, gf, ga, played }, grade: { grade, verdict, … } | null }
 ```
 
 * **Record** is W-D-L by the 90-minute score: a knockout won on penalties is a D (and the run
-  continues). Perfect = 7-0.
+  continues). Perfect = 8-0.
 * **Standings** (`standings(keys, fixtures, lots)`): points, goal difference, goals scored;
   for teams still level, head-to-head points, GD, goals; then a seeded drawing of lots.
   `decidedBy` tells the UI why a team is above the next ('points' | 'goalDifference' |
   'goalsFor' | 'headToHead' | 'lots').
 * **AI vs AI** group results use a seeded stream that does not depend on the user's results.
-* **Grades** (`cupGrade`): champion 7-0 **S+** Perfect Seven · unbeaten **S** Invincibles ·
+* **Grades** (`cupGrade`): champion 8-0 **S+** Perfect Eight · unbeaten **S** Invincibles ·
   **A+** World Champions · lost final **A** Final Heartbreak (Heartbreak on Penalties) ·
-  semi-final **B+** Semi-final Heartbreak (5 wins) / **B** Semi-finalists · quarter-final
-  **C+** Quarter-final Heartbreak (4 wins) / **C** Quarter-finalists · Round of 16 **D**
-  Round of 16 Exit (Out on Penalties) · group **F** Group Stage Exit (no points: Early Flight
-  Home).
+  semi-final **B+** Semi-final Heartbreak (6 wins) / **B** Semi-finalists · quarter-final
+  **C+** Quarter-final Heartbreak (5 wins) / **C** Quarter-finalists · Round of 16 **D+**
+  Round of 16 Exit · Round of 32 **D** Round of 32 Exit (both: Out on Penalties) · group **F**
+  Group Stage Exit (no points: Early Flight Home).
 * `run.playerOfTheTournament()` → `{ profileId, name, role, average, matches, goals, assists,
   … }` (best average rating, at least half the matches). `run.heldYouBack(n)` → the lowest
   averages with a `reason` ("Out of position at LB: 71 (natural 79)", "Weakest link: …",
@@ -117,7 +131,8 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 * `projectRun({ rating: team.effective, mode, difficulty })` → `{ stage, label: 'Projected:
   Quarter-finals', probabilities }` — a seeded 300-run Monte-Carlo (~5 ms) for the live meter.
 * Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~5 KB) and
-  `restoreCupRun(catalog, data)`. Persist after every `recordResult`.
+  `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 2 (eight
+  rounds); a format-1 run (seven rounds, before the Round of 32) throws 'Not a saved run'.
 
 ### Fast rating model (`model.js`)
 
@@ -142,7 +157,7 @@ import { dailyId, dailyChallenge, perfectXI, perfectPercent, dailyScore,
 const today = dailyId(new Date());           // UTC 'YYYY-MM-DD'
 const day = dailyChallenge(catalog, today);  // { id, number, seed, mode: 'nations',
 //   difficulty: 'pro', rerolls: 2, formation, schedule: { rounds: [{ spin, alternate }] × 11 },
-//   opponents: [7 keys], draft: {…}, cup: {…} }
+//   opponents: [8 keys], draft: {…}, cup: {…} }
 const draft = createDraftSession(catalog, day.draft);   // spins follow the schedule
 // … draft (a re-roll lands on that round's fixed alternate; one alternate per round) …
 const run = createCupRun(catalog, { ...day.cup, user: draft.matchSide(0) });
@@ -152,13 +167,13 @@ const perfect = perfectPercent(draft.matchSide(0).rating, optimum);   // 0–100
 const points = dailyScore(run.snapshot(), { rating: draft.matchSide(0).rating, perfect });
 ```
 
-* Everyone gets the same 11 nations, the same alternates and the same seven opponents for a
+* Everyone gets the same 11 nations, the same alternates and the same eight opponents for a
   date (DEFAULT_CONFIG rules; the device's config cannot change them). Opponent XIs still
   drop the players you drafted.
 * **Perfect XI**: the exact hindsight optimum — one player per round from that round's
   call-ups (repeat nations refill), using the alternate in at most `rerolls` rounds, distinct
   players and slots. A positional drafter averages ≈ 97.7% of it.
-* **Points** (`DAILY_POINTS`): W 100 · D 40 · shootout won +20 · stage R16 20 / QF 40 / SF 80 /
+* **Points** (`DAILY_POINTS`): W 100 · D 40 · shootout won +20 · stage R32 10 / R16 20 / QF 40 / SF 80 /
   final 120 / champion 200 · 10 per team-OVR point above 70 · 10 per % of perfect above 80.
 * One attempt per day: `canPlayDaily(lastPlayedId, today)`. Streaks:
   `updateStreak(streak, today)` after a finished attempt → `{ current, best, last }`;
@@ -172,7 +187,7 @@ import { shareText, challengeUrl, parseChallengeUrl, challengeDraftOptions } fro
 
 shareText(run.snapshot(), { daily: day, rating, perfectPct, points, hideRatings, uniqueNations,
                             url: challengeUrl(location.href, { kind: 'daily', daily: day.number }) });
-// ⚽ Football Draft · Daily #7
+// ⚽ World Cup Draft · Daily #7
 // 🟩🟨🟩 🟨🟥
 // 2-2-1 · Quarter-finals · C Quarter-finalists
 // XI 82.9 · 98.4% of perfect · 1,104 pts

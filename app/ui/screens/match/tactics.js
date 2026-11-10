@@ -92,7 +92,12 @@ function TeamTactics({ team, name, tactics, effective, access, onSet }) {
       >
         ${Object.keys(FORMATIONS).map(f => html`<option value=${f}>${formationLabel(f)}</option>`)}
       </select>
-      ${!access?.formation && html`<span class="tactics__hint field__hint">Formation changes only at half-time.</span>`}
+      ${
+        !access?.formation &&
+        html`<span class="tactics__hint field__hint"
+          >${access?.formationLocked ? 'Your draft formation is locked for the first match.' : 'Formation changes only at half-time.'}</span
+        >`
+      }
     </label>
     <label class="tactics__field field">
       <span class="tactics__label field__label">Style</span>

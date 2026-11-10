@@ -144,6 +144,34 @@ test('quick drafts reveal a ladder opponent and open the pre-match; kick-off req
   assert.equal(readMatchResult(data.id), null);
 });
 
+test('a locked formation (the World Cup opener) cannot change, here or in the match', () => {
+  reset();
+  const side = (formation, extra = {}) => ({
+    name: 'Side',
+    formation,
+    players: Array.from({ length: 11 }, (_, i) => ({
+      profileId: `p${i}`,
+      primaryPosition: i ? 'CM' : 'GK',
+      attrs: {},
+    })),
+    ...extra,
+  });
+  prematch.openPrematch(
+    {
+      id: 'run:x:0',
+      seed: 1,
+      sides: [side('433', { kind: 'user', formationLocked: true }), side('442', { kind: 'ai' })],
+      meta: { context: 'run' },
+    },
+    { go: false },
+  );
+  assert.equal(prematch.prematchStore.get().sides[0].formationLocked, true);
+  assert.equal(prematch.changeFormation(0, '442'), false);
+  assert.equal(prematch.prematchStore.get().sides[0].formation, '433');
+  assert.ok(prematch.setSideTactic(0, 'mentality', 'push'), 'other tactics still change');
+  assert.deepEqual(prematch.kickOff({ go: false }).meta.formationLocked, [0]);
+});
+
 test('versus drafts alternate turns and open the pre-match with both XIs editable', async () => {
   reset();
   await draft.startDraft({ kind: 'versus', type: 'clubs', seed: 5, names: ['Ann', 'Bo'] });

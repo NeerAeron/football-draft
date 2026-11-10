@@ -10,6 +10,14 @@ export const W = 105,
 // length never scales movement. DURATION_PROFILES also holds a 300 s profile for tests/tools.
 export const MATCH_SECONDS = 180;
 export const DURATION_PROFILES = CONFIG.formats;
+// Ball on grass. A ground pass decelerates by PASS_ROLL (m/s²) and is struck so it reaches its
+// target at PASS_ARRIVAL m/s: a 20 m pass leaves at ~19 m/s and visibly slows. Any other ball
+// on the ground (deflections, loose balls, a missed pass is still a pass) slows by LOOSE_ROLL
+// plus LOOSE_DRAG × speed, so a hard ball dies quickly and a slow one trickles to a stop.
+export const PASS_ROLL = 5.5,
+  PASS_ARRIVAL = 13,
+  LOOSE_ROLL = 3.2,
+  LOOSE_DRAG = 0.12;
 
 // Euclidean distance / length with a plain square root (Math.hypot guards
 // against overflow at a large cost; pitch-scale values never need it).

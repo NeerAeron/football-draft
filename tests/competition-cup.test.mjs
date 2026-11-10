@@ -10,6 +10,8 @@ import {
   projectRun,
   CUP_ROUNDS,
   cupOffsets,
+  thirdQualifies,
+  BEST_THIRD,
 } from '../app/core/competition/cup.js';
 import {
   outcomeProbabilities,
@@ -118,7 +120,11 @@ test('group table: points, goal difference, goals, head-to-head, then lots', () 
 test('a run draws a weaker group, escalating knockouts and never repeats an opponent', () => {
   const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 5, user });
   const keys = run.opponents.map(o => o.key);
-  assert.equal(new Set(keys).size, 7);
+  assert.equal(new Set(keys).size, 8);
+  assert.deepEqual(
+    CUP_ROUNDS.map(r => r.id),
+    ['group1', 'group2', 'group3', 'r32', 'r16', 'qf', 'sf', 'final'],
+  );
   const offsets = cupOffsets('pro');
   run.opponents.forEach((o, i) => {
     assert.equal(o.target, ladderTarget('nations', 'pro', { offset: offsets[i] }));
@@ -139,7 +145,7 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
   );
   // Nobody plays for both sides.
   const mine = new Set(user.players.map(p => p.profileId));
-  for (let r = 0; r < 7; r++)
+  for (let r = 0; r < CUP_ROUNDS.length; r++)
     assert.ok(run.opponentSide(r).players.every(p => !mine.has(p.profileId)));
   const next = run.nextMatch();
   assert.equal(next.knockout, false);
@@ -147,19 +153,19 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
   assert.equal(next.seed, run.matchSeed(0));
 });
 
-test('seven wins make a perfect run: S+ and the champion status', () => {
+test('eight wins make a perfect run: S+ and the champion status', () => {
   const run = createCupRun(catalog, { mode: 'nations', difficulty: 'semipro', seed: 8, user });
-  for (let r = 0; r < 7; r++) {
+  for (let r = 0; r < 8; r++) {
     assert.equal(run.nextMatch().id, CUP_ROUNDS[r].id);
     assert.equal(run.nextMatch().knockout, r >= 3);
     run.recordResult(win);
   }
   const snap = run.snapshot();
   assert.equal(snap.status, 'champion');
-  assert.deepEqual(snap.record, { w: 7, d: 0, l: 0, gf: 14, ga: 0, played: 7 });
+  assert.deepEqual(snap.record, { w: 8, d: 0, l: 0, gf: 16, ga: 0, played: 8 });
   assert.deepEqual(
     [snap.grade.grade, snap.grade.verdict, snap.stageLabel],
-    ['S+', 'Perfect Seven', 'Champions'],
+    ['S+', 'Perfect Eight', 'Champions'],
   );
   assert.equal(snap.group.table[0].user, true);
   assert.equal(run.nextMatch(), null);
@@ -176,12 +182,14 @@ test('group elimination, knockout shootouts and draws in the record', () => {
   const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 3, user });
   for (let r = 0; r < 3; r++) run.recordResult(win);
   assert.throws(() => run.recordResult({ goalsFor: 1, goalsAgainst: 1 }), /shootout/);
+  assert.equal(run.nextMatch().id, 'r32');
   run.recordResult({ goalsFor: 1, goalsAgainst: 1, shootout: { winner: 'user', score: [4, 3] } });
   assert.equal(run.status, 'playing');
+  run.recordResult(win);
   run.recordResult({ goalsFor: 0, goalsAgainst: 0, shootout: { winner: 'opponent' } });
   const snap = run.snapshot();
   assert.equal(snap.stage, 'qf');
-  assert.deepEqual(snap.results, ['W', 'W', 'W', 'D', 'D']);
+  assert.deepEqual(snap.results, ['W', 'W', 'W', 'D', 'W', 'D']);
   assert.deepEqual([snap.grade.grade, snap.grade.verdict], ['C', 'Quarter-finalists']);
   assert.deepEqual(snap.rounds[3].result.shootout, { winner: 'user', score: [4, 3] });
 });
@@ -191,21 +199,23 @@ test('grades: S+ to F with named verdicts', () => {
     cupGrade({ stage, record: { w, d, l }, lostOnPenalties: pens });
   assert.deepEqual(
     [
-      g('champion', 7, 0, 0),
-      g('champion', 6, 1, 0),
-      g('champion', 6, 0, 1),
-      g('final', 6, 0, 1),
-      g('final', 5, 1, 0, true),
-      g('sf', 5, 0, 1),
-      g('sf', 4, 1, 1),
-      g('qf', 4, 0, 1),
-      g('qf', 2, 2, 1),
-      g('r16', 2, 0, 2),
+      g('champion', 8, 0, 0),
+      g('champion', 7, 1, 0),
+      g('champion', 7, 0, 1),
+      g('final', 7, 0, 1),
+      g('final', 6, 1, 0, true),
+      g('sf', 6, 0, 1),
+      g('sf', 5, 1, 1),
+      g('qf', 5, 0, 1),
+      g('qf', 3, 2, 1),
+      g('r16', 4, 0, 1),
       g('r16', 2, 1, 1, true),
+      g('r32', 2, 0, 2),
+      g('r32', 1, 2, 1, true),
       g('group', 1, 0, 2),
     ].map(x => `${x.grade} ${x.verdict}`),
     [
-      'S+ Perfect Seven',
+      'S+ Perfect Eight',
       'S Invincibles',
       'A+ World Champions',
       'A Final Heartbreak',
@@ -214,11 +224,59 @@ test('grades: S+ to F with named verdicts', () => {
       'B Semi-finalists',
       'C+ Quarter-final Heartbreak',
       'C Quarter-finalists',
-      'D Round of 16 Exit',
+      'D+ Round of 16 Exit',
+      'D+ Out on Penalties',
+      'D Round of 32 Exit',
       'D Out on Penalties',
       'F Group Stage Exit',
     ],
   );
+});
+
+test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference ≥ −2', () => {
+  const row = (points, gd) => ({ points, gd });
+  assert.deepEqual(BEST_THIRD, { points: 4, goalDifference: -2 });
+  assert.equal(thirdQualifies(row(4, -6)), true);
+  assert.equal(thirdQualifies(row(3, -2)), true);
+  assert.equal(thirdQualifies(row(3, -3)), false);
+  assert.equal(thirdQualifies(row(2, 0)), false);
+  // Play W 1-0, L 0-1, L 0-1 (3 pts, GD −1) and W 1-0, L 0-3, L 0-3 (GD −5) on seeds where
+  // you finish third: the first goes through to the Round of 32, the second goes home.
+  const thirdOn = (results, seeds) => {
+    for (const seed of seeds) {
+      const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed, user });
+      for (const [goalsFor, goalsAgainst] of results) run.recordResult({ goalsFor, goalsAgainst });
+      const snap = run.snapshot();
+      if (snap.group.table[2].user) return { run, snap };
+    }
+    return null;
+  };
+  const seeds = Array.from({ length: 60 }, (_, i) => i + 1);
+  const through = thirdOn(
+    [
+      [1, 0],
+      [0, 1],
+      [0, 1],
+    ],
+    seeds,
+  );
+  assert.ok(through, 'some seed puts you third');
+  assert.equal(through.snap.status, 'playing');
+  assert.equal(through.snap.group.table[2].qualifies, true);
+  assert.equal(through.snap.group.table[3].qualifies, false);
+  assert.equal(through.run.nextMatch().id, 'r32');
+  const out = thirdOn(
+    [
+      [1, 0],
+      [0, 3],
+      [0, 3],
+    ],
+    seeds,
+  );
+  assert.ok(out, 'some seed puts you third');
+  assert.equal(out.snap.status, 'eliminated');
+  assert.equal(out.snap.group.table[2].qualifies, false);
+  assert.equal(out.snap.stage, 'group');
 });
 
 test('AI-vs-AI group results come from the seed, not from the user’s results', () => {
@@ -342,14 +400,14 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
     if (difficulty === 'pro') assert.ok(p.group <= 0.22, `pro group exit ${p.group}`);
   }
   // The final is the strongest opponent of a run, and a recognisable side for the level.
-  const finalFloor = { amateur: 78.5, semipro: 80.5, pro: 85, worldclass: 86, legendary: 87.5 };
+  const finalFloor = { amateur: 76, semipro: 78.5, pro: 85, worldclass: 86, legendary: 87.5 };
   for (const [difficulty, floor] of Object.entries(finalFloor))
     for (const seed of [3, 4]) {
       const run = createCupRun(catalog, { mode: 'nations', difficulty, seed, user });
-      const final = run.opponents[6].effective;
-      assert.ok(final >= floor, `${difficulty} final ${run.opponents[6].name} ${final}`);
+      const final = run.opponents.at(-1).effective;
+      assert.ok(final >= floor, `${difficulty} final ${run.opponents.at(-1).name} ${final}`);
       assert.ok(
-        run.opponents.slice(0, 6).every(o => o.effective <= final + 1.5),
+        run.opponents.slice(0, -1).every(o => o.effective <= final + 1.5),
         difficulty,
       );
     }

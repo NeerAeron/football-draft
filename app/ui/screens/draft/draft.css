@@ -1057,7 +1057,9 @@
 }
 
 /* ---------- moments ---------- */
+/* The signing holds the screen for --moment-ms (moments.js MOMENT_MS): in, hold, out. */
 .pick-moment {
+  --moment-ms: 2400ms;
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
@@ -1065,19 +1067,15 @@
   place-content: center;
   justify-items: center;
   gap: var(--space-3);
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 45%, rgb(7 11 22 / 0.55), transparent 65%);
-  animation: moment-out 1.15s var(--ease-out) both;
-}
-.pick-moment.is-superstar,
-.pick-moment.is-superstar .pick-moment__card {
-  animation-duration: 1.7s;
+  cursor: pointer;
+  background: radial-gradient(circle at 50% 45%, rgb(7 11 22 / 0.82), rgb(7 11 22 / 0.6) 70%);
+  animation: moment-out var(--moment-ms) linear both;
 }
 .pick-moment__card {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  animation: moment-card 1.15s var(--ease-spring) both;
+  animation: moment-card var(--moment-ms) var(--ease-out) both;
 }
 .pick-moment__sheen {
   position: absolute;
@@ -1085,7 +1083,8 @@
   background: var(--tier-star-sheen);
   background-size: 250% 100%;
   mix-blend-mode: screen;
-  animation: foil-sweep 1.1s var(--ease-out) 0.2s both;
+  pointer-events: none;
+  animation: foil-sweep 1.2s var(--ease-out) 0.35s both;
 }
 .pick-moment.is-superstar .pick-moment__sheen {
   background: var(--tier-superstar-sheen);
@@ -1103,27 +1102,38 @@
 .pick-moment.is-superstar .pick-moment__label {
   color: var(--tier-superstar);
 }
+.pick-moment__hint {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: rgb(7 11 22 / 0.85);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
 @keyframes moment-card {
   0% {
     opacity: 0;
-    transform: scale(0.6) rotate(-6deg);
+    transform: scale(0.7) rotate(-5deg);
   }
-  25% {
+  12% {
     opacity: 1;
     transform: scale(1.04) rotate(1deg);
   }
-  40%,
-  80% {
+  20%,
+  88% {
+    opacity: 1;
     transform: scale(1) rotate(0);
   }
   100% {
     opacity: 0;
-    transform: scale(0.9) translateY(-20px);
+    transform: scale(0.94) translateY(-12px);
   }
 }
 @keyframes moment-out {
-  0%,
-  80% {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  88% {
     opacity: 1;
   }
   100% {
@@ -1158,4 +1168,74 @@
 .draft-loading {
   display: grid;
   gap: var(--space-4);
+}
+
+/* ---------- All attributes (pick sheet + dock) ---------- */
+.attrs {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--line-1);
+}
+.attrs__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  list-style: none;
+}
+.attrs__summary::-webkit-details-marker {
+  display: none;
+}
+.attrs__summary > span {
+  flex: 1;
+}
+.attrs__chevron {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.attrs[open] .attrs__chevron {
+  transform: rotate(180deg);
+}
+.attrs__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-2) var(--space-5);
+  padding: 0 var(--space-3) var(--space-3);
+}
+.attrs__group {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.attrs__head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.attrs__group {
+  align-content: start;
+}
+.attrs .statbar {
+  grid-template-columns: 7.2em minmax(0, 1fr) 2ch;
+  font-size: var(--text-xs);
+}
+.attrs .statbar__label {
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pick-effects__captain {
+  align-items: center;
 }

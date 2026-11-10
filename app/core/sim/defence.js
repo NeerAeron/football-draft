@@ -1,7 +1,7 @@
 // Defensive assignment helpers: marking points, press/cover bids, marks, lane reading.
 // Methods are installed on Match.prototype by match.js.
 import { clamp, lerp } from '../util/math.js';
-import { H, dist, hypot } from './constants.js';
+import { H, dist, hypot, PASS_ROLL } from './constants.js';
 
 const NONE = [],
   THREAT = new Float64Array(22); // scratch: threat value by player id
@@ -383,7 +383,7 @@ export class DefenceMethods {
         if (time > 0.25 + reading * 0.75) break;
         const travel = Math.max(
           0,
-          speed * time - (b.z < 0.15 ? (b.roll || 3.8) * time * time * 0.5 : 0),
+          speed * time - (b.z < 0.15 ? (b.roll || PASS_ROLL) * time * time * 0.5 : 0),
         );
         const point = { x: b.x + (b.vx / speed) * travel, y: b.y + (b.vy / speed) * travel };
         if (

@@ -21,6 +21,7 @@ import { resolveTier } from '../lib/tiers.js';
 import { teamStyle } from '../lib/color.js';
 import { surname } from '../lib/player-view.js';
 import { Flag } from './flag.js';
+import { CaptainMark } from './captain-mark.js';
 import { Crest, LeagueLogo } from './crest.js';
 import { Chip } from './chip.js';
 import { Icon } from './icon.js';
@@ -90,6 +91,7 @@ export function PlayerCard({
         <span class="pcard__rating">
           <span class="pcard__ovr num">${hideRatings ? '?' : p.ovr}</span>
           <span class="pcard__pos">${p.position}</span>
+          ${p.captain && html`<${CaptainMark} size=${size === 's' ? 'sm' : 'md'} />`}
         </span>
         <span class="pcard__art"><${KitShirt} colors=${p.club?.colors} /></span>
         <span class="pcard__marks">

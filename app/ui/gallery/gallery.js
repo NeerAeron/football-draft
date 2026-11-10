@@ -115,7 +115,7 @@ function Tokens() {
     <//>
     <${Demo} label="Type" wide>
       <div class="g-type">
-        <p class="display display-2xl">7–0</p>
+        <p class="display display-2xl">8–0</p>
         <p class="display display-xl">World Cup Run</p>
         <h1>Display LG · h1</h1>
         <h2>Display MD · h2</h2>
@@ -244,7 +244,6 @@ function Chips() {
             { value: 'nations', label: 'Nations' },
             { value: 'leagues', label: 'Leagues' },
             { value: 'clubs', label: 'Clubs' },
-            { value: 'club-country', label: 'Club & Country' },
           ]}
         />
         <div class="cluster">
@@ -718,7 +717,7 @@ function Results() {
     <//>
     <${Demo} label="Grade + verdict" wide>
       <div class="g-grades">
-        <${GradeBadge} grade="S+" size="lg" verdict="Perfect run" detail="7–0 · 1,048 pts" />
+        <${GradeBadge} grade="S+" size="lg" verdict="Perfect run" detail="8–0 · 1,148 pts" />
         <${GradeBadge}
           grade="B+"
           size="lg"
@@ -790,7 +789,7 @@ function Gallery() {
   return html`<div class="gallery">
     <header class="gallery__top">
       <div class="container gallery__bar">
-        <a class="gallery__brand" href="./">Football Draft</a>
+        <a class="gallery__brand" href="./">World Cup Draft</a>
         <span class="gallery__name">Component gallery</span>
       </div>
     </header>

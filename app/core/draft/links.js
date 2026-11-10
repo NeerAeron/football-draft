@@ -5,6 +5,8 @@
 //   * a player's link level = sum of the three, capped at 3; team Links = sum (0–33);
 //   * engine boost `chem` = level / 3 × maxChem (0–2 attribute points, added in Player.skill).
 // Real club XIs and national XIs are fully linked (level 3, chem 2 for everyone).
+//   * Captain: an XI with a Captain-tagged player (catalog `captain`) adds `rules.captain`
+//     attribute points to every player's chem (one captain counts; it does not stack).
 import { CONFIG } from '../config/config.js';
 
 export const LINK_KINDS = ['club', 'nation', 'league'];
@@ -14,6 +16,7 @@ const keyOf = {
   nation: p => p?.source?.nationality || null,
   league: p => (p?.source?.leagueId == null ? null : String(p.source.leagueId)),
 };
+const rating = p => p.sourceOverall ?? p.overall ?? 0;
 const kindLevel = (count, t) =>
   count >= t.level3 ? 3 : count >= t.level2 ? 2 : count >= t.level1 ? 1 : 0;
 
@@ -24,7 +27,8 @@ const kindLevel = (count, t) =>
  * @returns {{
  *   players: Array<{level, chem, club, nation, league, counts}|null>,
  *   pairs: Array<{a, b, kind, kinds}>,
- *   score: number, maxScore: number, chem: number, linked: number
+ *   score: number, maxScore: number, chem: number, linked: number,
+ *   captain: number | null (input index of the captain), captainBoost: number
  * }} per-player entries aligned with the input; pairs index into it. A pair is listed for
  * every active shared kind (its group reached level 1); `kind` is the strongest one
  * (club > nation > league), for drawing one line per pair.
@@ -37,6 +41,12 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
         const key = keyOf[k](p);
         if (key !== null) counts[k].set(key, (counts[k].get(key) || 0) + 1);
       }
+  // The captain: the first Captain-tagged player, by source rating (ties: slot order).
+  let captain = null;
+  players.forEach((p, i) => {
+    if (p?.captain && (captain === null || rating(p) > rating(players[captain]))) captain = i;
+  });
+  const captainBoost = captain === null ? 0 : rules.captain || 0;
   const entries = players.map(p => {
     if (!p) return null;
     const c = {},
@@ -47,7 +57,12 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
       levels[k] = kindLevel(c[k], rules[k]);
     }
     const level = Math.min(MAX_LINK_LEVEL, levels.club + levels.nation + levels.league);
-    return { level, chem: (level / MAX_LINK_LEVEL) * rules.maxChem, ...levels, counts: c };
+    return {
+      level,
+      chem: (level / MAX_LINK_LEVEL) * rules.maxChem + captainBoost,
+      ...levels,
+      counts: c,
+    };
   });
   const pairs = [];
   for (let a = 0; a < players.length; a++)
@@ -67,6 +82,8 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
     maxScore: players.length * MAX_LINK_LEVEL,
     chem: filled.length ? filled.reduce((s, e) => s + e.chem, 0) / filled.length : 0,
     linked: filled.filter(e => e.level > 0).length,
+    captain,
+    captainBoost,
   };
 }
 

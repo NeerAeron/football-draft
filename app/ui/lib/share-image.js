@@ -53,7 +53,7 @@ export function pitchTokenLayout(formation, box) {
   return out;
 }
 
-/** Result squares row: positions of up to 7 squares (+ a gap between group and knockouts). */
+/** Result squares row: positions of up to 8 squares (+ a gap between group and knockouts). */
 export function resultSquares(count, { x, y, size = 64, gap = 12, groupGap = 36 }) {
   return Array.from({ length: count }, (_, i) => ({
     x: x + i * (size + gap) + (i >= 3 ? groupGap - gap : 0),
@@ -311,7 +311,7 @@ export async function renderShareImage(card, { canvas } = {}) {
   ctx.fillStyle = C.volt;
   ctx.font = `700 30px ${DISPLAY}`;
   ctx.letterSpacing = '5px';
-  ctx.fillText('FOOTBALL DRAFT', M, 104);
+  ctx.fillText('WORLD CUP DRAFT', M, 104);
   ctx.textAlign = 'right';
   ctx.fillStyle = card.champion ? C.gold : C.text2;
   ctx.fillText(String(card.title || 'World Cup Run').toUpperCase(), SHARE_W - M, 104);
@@ -348,7 +348,7 @@ export async function renderShareImage(card, { canvas } = {}) {
   ctx.fillText('W – D – L', textX + rw + 18, gy + 192);
 
   // result squares
-  const squares = resultSquares(7, { x: M, y: 384, size: 62, gap: 12, groupGap: 40 });
+  const squares = resultSquares(8, { x: M, y: 386, size: 58, gap: 10, groupGap: 36 });
   squares.forEach((s, i) => {
     const res = card.results?.[i];
     roundRect(ctx, s.x, s.y, s.size, s.size, 12);

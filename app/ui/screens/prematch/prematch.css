@@ -215,6 +215,13 @@
   background: var(--surface-2);
   color: var(--text-1);
 }
+.lineup__locked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--gold-300);
+  font-size: var(--text-sm);
+}
 .lineup__hint {
   display: flex;
   align-items: center;

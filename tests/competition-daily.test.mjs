@@ -64,7 +64,7 @@ test('same date, same spins, alternates and opponents', () => {
     assert.ok(field.has(r.spin) && field.has(r.alternate));
     assert.notEqual(r.spin, r.alternate);
   }
-  assert.equal(new Set(a.opponents).size, 7);
+  assert.equal(new Set(a.opponents).size, 8);
   assert.ok(a.opponents.every(k => k.startsWith('nation:') || k.startsWith('boss:')));
   // The draft follows the schedule: spins land on it, a re-roll lands on the alternate.
   const s = createDraftSession(catalog, a.draft);
@@ -139,11 +139,12 @@ test('share text: emoji row, record, grade, numbers, mode flags and link', () =>
     [1, 1],
     [3, 1],
     [0, 0, 'user'],
+    [1, 0],
     [1, 2],
   ])
     run.recordResult({ goalsFor: r[0], goalsAgainst: r[1], shootout: r[2] && { winner: r[2] } });
   const snap = run.snapshot();
-  assert.equal(resultEmoji(snap), '🟩🟨🟩 🟨🟥');
+  assert.equal(resultEmoji(snap), '🟩🟨🟩 🟨🟩🟥');
   const url = challengeUrl('https://example.com/play?x=1#old', {
     kind: 'daily',
     daily: day.number,
@@ -158,9 +159,9 @@ test('share text: emoji row, record, grade, numbers, mode flags and link', () =>
     url,
   });
   const lines = text.split('\n');
-  assert.equal(lines[0], '⚽ Football Draft · Daily #7');
-  assert.equal(lines[1], '🟩🟨🟩 🟨🟥');
-  assert.equal(lines[2], '2-2-1 · C Quarter-finalists');
+  assert.equal(lines[0], '⚽ World Cup Draft · Daily #7');
+  assert.equal(lines[1], '🟩🟨🟩 🟨🟩🟥');
+  assert.equal(lines[2], '3-2-1 · C Quarter-finalists');
   assert.equal(lines[3], `XI ${side.rating.toFixed(1)} · 98.4% of perfect · 1,104 pts`);
   assert.equal(lines[4], 'Nations · Pro · 🙈 Ratings hidden');
   assert.equal(lines[5], `https://example.com/play?x=1#c=c1.d.n.${day.formation}.p.0.7`);

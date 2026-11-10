@@ -11,6 +11,7 @@ export { Crest, LeagueLogo, clubInitials } from './crest.js';
 export { FitTag, fitText } from './fit-tag.js';
 export { PlayerCard, KitShirt } from './player-card.js';
 export { PlayerRow } from './player-row.js';
+export { CaptainMark, CAPTAIN_TEXT } from './captain-mark.js';
 export { PitchView, layoutSlots } from './pitch-view.js';
 export { Meter, StatBar, StatTile, statTone } from './meter.js';
 export { Reel } from './reel.js';

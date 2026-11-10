@@ -1,5 +1,7 @@
-// World Cup Run: a group of four (you + three AI teams), three group matches, top two advance,
-// then Round of 16, quarter-final, semi-final and final against escalating opponents. The UI
+// World Cup Run: a group of four (you + three AI teams), three group matches, top two advance
+// (and a third place with enough points: BEST_THIRD, the 2026 format's eight best thirds of
+// twelve groups), then Round of 32, Round of 16, quarter-final, semi-final and final against
+// escalating opponents. The UI
 // plays the user's matches with the engine and reports each result; AI-vs-AI group results
 // come from the seeded rating model (competition/model.js). Pure; serialise/restore for
 // localStorage. API guide: docs/competition-api.md.
@@ -21,6 +23,7 @@ export const CUP_ROUNDS = [
   { id: 'group1', label: 'Group · Matchday 1', stage: 'group', knockout: false },
   { id: 'group2', label: 'Group · Matchday 2', stage: 'group', knockout: false },
   { id: 'group3', label: 'Group · Matchday 3', stage: 'group', knockout: false },
+  { id: 'r32', label: 'Round of 32', stage: 'r32', knockout: true },
   { id: 'r16', label: 'Round of 16', stage: 'r16', knockout: true },
   { id: 'qf', label: 'Quarter-final', stage: 'qf', knockout: true },
   { id: 'sf', label: 'Semi-final', stage: 'sf', knockout: true },
@@ -29,25 +32,26 @@ export const CUP_ROUNDS = [
 /** How far the run got: eliminated in a stage, or champion. */
 export const STAGE_LABELS = {
   group: 'Group stage',
+  r32: 'Round of 32',
   r16: 'Round of 16',
   qf: 'Quarter-finals',
   sf: 'Semi-finals',
   final: 'Final',
   champion: 'Champions',
 };
-const STAGE_ORDER = ['group', 'r16', 'qf', 'sf', 'final', 'champion'];
+const STAGE_ORDER = ['group', 'r32', 'r16', 'qf', 'sf', 'final', 'champion'];
 /**
  * Opponent strength per round and difficulty: offsets (effective rating) to the level's ladder
- * target, in round order MD1, MD2, MD3, R16, QF, SF, final. The group is drawn from "lower
+ * target, in round order MD1, MD2, MD3, R32, R16, QF, SF, final. The group is drawn from "lower
  * pots" (weaker than the level); the knockouts escalate so the final is a top side for that
  * difficulty. Tuned with tools/calibration/cup-calibration.mjs (docs/competition-api.md).
  */
 export const CUP_TUNING = {
-  amateur: [-10.5, -9.5, -9, -8.5, -8, -5, 3],
-  semipro: [-11, -9.5, -8, -7, -4, -1, 2],
-  pro: [-12.5, -11, -9.5, -8.5, -5.5, -2.5, 2.5],
-  worldclass: [-12.5, -11, -9.5, -8.5, -5.5, -2.5, 0],
-  legendary: [-13, -11.5, -10, -9, -6, -3, -1],
+  amateur: [-10.5, -9.5, -9, -9, -8.5, -8, -5, 0.5],
+  semipro: [-11, -9.5, -8, -8, -7.5, -5, -2.5, -0.5],
+  pro: [-12.5, -11, -9.5, -9.5, -9, -6, -3, 2],
+  worldclass: [-12.5, -11, -9.5, -9.5, -9, -5.5, -2.5, 0],
+  legendary: [-13, -11.5, -10, -10, -9.5, -6.5, -3.5, -1],
 };
 /**
  * Rating points the fast model adds to the user in his knockout matches (projectRun,
@@ -58,11 +62,27 @@ export const CUP_TUNING = {
  * 79.7% wins), so they get no edge.
  */
 export const KNOCKOUT_EDGE = 1.5;
-/** The seven round offsets (group ×3, R16, QF, SF, final) of a difficulty. */
+/** The eight round offsets (group ×3, R32, R16, QF, SF, final) of a difficulty. */
 export function cupOffsets(difficulty = 'pro', tuning = CUP_TUNING) {
   return [...(tuning[difficulty] ?? tuning.pro)];
 }
-export const CUP_FORMAT = 1;
+/**
+ * Third place in the group goes through with BEST_THIRD.points, or one point fewer and a goal
+ * difference of at least BEST_THIRD.goalDifference. In the 2026 format the eight best of twelve
+ * third-placed teams go through; with the fast model over many sets of twelve groups, every
+ * third on 4+ points makes the cut, 3 points makes it 97% of the time at GD ≥ 0, ~90% at −1,
+ * ~70% at −2 and ≤ 50% below: this threshold passes ~63% of thirds (the real cut: 8/12 = 67%).
+ * A fixed rule, so the hub can tell the user exactly what a third place needs.
+ */
+export const BEST_THIRD = { points: 4, goalDifference: -2 };
+/** Does a group-table row in third place go through (BEST_THIRD)? */
+export const thirdQualifies = row =>
+  row.points >= BEST_THIRD.points ||
+  (row.points === BEST_THIRD.points - 1 && row.gd >= BEST_THIRD.goalDifference);
+/** Whether a row of the final group table goes through: top two, or a qualifying third. */
+const advances = (row, index) => index < 2 || (index === 2 && thirdQualifies(row));
+// Format 2: eight rounds (Round of 32). A format-1 run (seven rounds) does not restore.
+export const CUP_FORMAT = 2;
 const USER = 'user';
 const round2 = x => Math.round(x * 100) / 100;
 // Group fixtures by matchday: team indexes into [user, A, B, C] (A weakest).
@@ -156,28 +176,29 @@ export function standings(keys, fixtures, lots = keys) {
 }
 
 // ---- grades ---------------------------------------------------------------------------------
-export const GRADES = ['S+', 'S', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'];
+export const GRADES = ['S+', 'S', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F'];
 /**
  * Grade and named verdict of a finished run.
- * champion: 7 wins S+ "Perfect Seven", unbeaten S "Invincibles", else A+ "World Champions";
- * lost final A "Final Heartbreak"; semi-final B+ (5 wins) / B; quarter-final C+ (4 wins) / C;
- * Round of 16 D; group exit F. Penalty exits get their own verdicts.
+ * champion: 8 wins S+ "Perfect Eight", unbeaten S "Invincibles", else A+ "World Champions";
+ * lost final A "Final Heartbreak"; semi-final B+ (6 wins) / B; quarter-final C+ (5 wins) / C;
+ * Round of 16 D+; Round of 32 D; group exit F. Penalty exits get their own verdicts.
  */
 export function cupGrade({ stage, record, lostOnPenalties = false }) {
   const w = record.w;
   const g = (grade, verdict) => ({ grade, verdict, stage, stageLabel: STAGE_LABELS[stage] });
   if (stage === 'champion')
-    return w === 7
-      ? g('S+', 'Perfect Seven')
+    return w === CUP_ROUNDS.length
+      ? g('S+', 'Perfect Eight')
       : record.l === 0
         ? g('S', 'Invincibles')
         : g('A+', 'World Champions');
   if (stage === 'final')
     return g('A', lostOnPenalties ? 'Heartbreak on Penalties' : 'Final Heartbreak');
-  if (stage === 'sf') return w >= 5 ? g('B+', 'Semi-final Heartbreak') : g('B', 'Semi-finalists');
+  if (stage === 'sf') return w >= 6 ? g('B+', 'Semi-final Heartbreak') : g('B', 'Semi-finalists');
   if (stage === 'qf')
-    return w >= 4 ? g('C+', 'Quarter-final Heartbreak') : g('C', 'Quarter-finalists');
-  if (stage === 'r16') return g('D', lostOnPenalties ? 'Out on Penalties' : 'Round of 16 Exit');
+    return w >= 5 ? g('C+', 'Quarter-final Heartbreak') : g('C', 'Quarter-finalists');
+  if (stage === 'r16') return g('D+', lostOnPenalties ? 'Out on Penalties' : 'Round of 16 Exit');
+  if (stage === 'r32') return g('D', lostOnPenalties ? 'Out on Penalties' : 'Round of 32 Exit');
   return g('F', record.w + record.d === 0 ? 'Early Flight Home' : 'Group Stage Exit');
 }
 
@@ -228,7 +249,7 @@ export class CupRun {
       kind: 'draft',
     });
   }
-  /** Engine-ready side of the opponent in a round (0–6). */
+  /** Engine-ready side of the opponent in a round (0–7). */
   opponentSide(round) {
     const o = this.opponents[round];
     return {
@@ -311,8 +332,9 @@ export class CupRun {
           f.score = simulateResult(rating(f.home), rating(f.away), () => this.#random()).goals;
         }
       if (md === 2) {
-        const table = standings(teams, this.group.fixtures, this.group.lots);
-        if (table.findIndex(r => r.key === USER) > 1) this.status = 'eliminated';
+        const table = standings(teams, this.group.fixtures, this.group.lots),
+          position = table.findIndex(r => r.key === USER);
+        if (!advances(table[position], position)) this.status = 'eliminated';
       }
     } else if (!won) this.status = 'eliminated';
     else if (info.id === 'final') this.status = 'champion';
@@ -489,8 +511,10 @@ export class CupRun {
               },
         ),
         fixtures: structuredClone(this.group.fixtures),
-        table: table.map(r => ({
+        // qualifies: goes through as the table stands (top two, or a third on BEST_THIRD).
+        table: table.map((r, i) => ({
           ...r,
+          qualifies: advances(r, i),
           name: r.key === USER ? this.user.name : this.opponents.find(o => o.key === r.key).name,
           user: r.key === USER,
         })),
@@ -518,7 +542,7 @@ export class CupRun {
  * @param options {
  *   mode, difficulty, seed,
  *   user: { name, color, secondary, formation, players: 11 catalog players or ids (slot order) },
- *   opponents?: 7 candidate keys (daily: fixed), rules?: CONFIG.draft-like, rerolls?: number,
+ *   opponents?: 8 candidate keys (daily: fixed), rules?: CONFIG.draft-like, rerolls?: number,
  *   daily?: daily id for the snapshot }
  */
 export function createCupRun(catalog, options) {
@@ -538,7 +562,7 @@ export function createCupRun(catalog, options) {
     opponents = [],
     avoid = [];
   const byKey = new Map(opponentCandidates(catalog, { rules }).map(c => [c.key, c]));
-  while (opponents.length < 7) {
+  while (opponents.length < CUP_ROUNDS.length) {
     const round = opponents.length,
       fixed = options.opponents?.[round];
     const ref = fixed
@@ -619,7 +643,7 @@ export function restoreCupRun(catalog, data) {
 /**
  * Projected stage for a team rating (effective) in a mode and level: a seeded Monte-Carlo of
  * runs against the ladder's round targets with the fast model. For live draft meters.
- * @returns {{ stage, label, probabilities: {group, r16, qf, sf, final, champion} }}
+ * @returns {{ stage, label, probabilities: {group, r32, r16, qf, sf, final, champion} }}
  */
 export function projectRun({
   rating,
@@ -649,13 +673,15 @@ export function projectRun({
       })),
     );
     let stage = 'group';
-    if (standings(keys, fixtures).findIndex(r => r.key === USER) < 2) {
-      stage = 'r16';
-      for (let r = 3; r < 7; r++) {
+    const table = standings(keys, fixtures),
+      position = table.findIndex(r => r.key === USER);
+    if (advances(table[position], position)) {
+      stage = 'r32';
+      for (let r = 3; r < CUP_ROUNDS.length; r++) {
         const res = simulateResult(rating + KNOCKOUT_EDGE, targets[r], random, { knockout: true });
         const won = res.goals[0] > res.goals[1] || res.shootout?.winner === 0;
         if (!won) break;
-        stage = r === 6 ? 'champion' : CUP_ROUNDS[r + 1].stage;
+        stage = r === CUP_ROUNDS.length - 1 ? 'champion' : CUP_ROUNDS[r + 1].stage;
       }
     }
     reached[stage]++;

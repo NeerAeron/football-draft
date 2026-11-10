@@ -33,6 +33,7 @@ function sample() {
     weakFoot: 60,
     tendencies: tendencies(0.5 + id / 1000),
     tags: position === 'GK' ? ['reflexes'] : ['finisher', 'speedster'],
+    captain: id === 2,
     sourceOverall: 70 + id,
     source: club
       ? { club: club.name, clubId: club.id, leagueId: club.leagueId, nationality: 'Wales' }

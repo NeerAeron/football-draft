@@ -233,7 +233,7 @@
   text-transform: uppercase;
 }
 .run-path__group {
-  width: calc((100% - 6 * 6px - 12px) * 3 / 7 + 12px);
+  width: calc((100% - 7 * 6px - 12px) * 3 / 8 + 12px);
 }
 .run-path__perfect,
 .run-path__record {
@@ -683,17 +683,4 @@
   color: var(--text-3);
   font-size: var(--text-xs);
   text-align: center;
-}
-.home__links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-1) var(--space-5);
-}
-.home__links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--touch);
-  color: var(--text-2);
-  font-size: var(--text-sm);
 }

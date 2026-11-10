@@ -47,7 +47,7 @@ const challenges = new WeakMap();
  * The challenge of a day: {
  *   id, number, seed, mode, difficulty, rerolls, formation,
  *   schedule: { rounds: [{ spin, alternate }] × 11 }  (nation ids),
- *   opponents: 7 opponent keys (3 group, then R16, QF, SF, final),
+ *   opponents: 8 opponent keys (3 group, then R32, R16, QF, SF, final),
  *   draft: options for createDraftSession, cup: options for createCupRun (add `user`) }
  * Deterministic for the date and catalog; uses DEFAULT_CONFIG draft rules, not the device's.
  */
@@ -270,7 +270,7 @@ export const DAILY_POINTS = {
   win: 100,
   draw: 40,
   shootoutWin: 20,
-  stage: { group: 0, r16: 20, qf: 40, sf: 80, final: 120, champion: 200 },
+  stage: { group: 0, r32: 10, r16: 20, qf: 40, sf: 80, final: 120, champion: 200 },
   ovrFrom: 70,
   perOvrPoint: 10,
   perfectFrom: 80,
@@ -278,7 +278,7 @@ export const DAILY_POINTS = {
 };
 /**
  * Points for a finished daily run: matches (W 100, D 40, +20 per shootout won), stage bonus
- * (R16 20 … champion 200), team OVR (10 per point above 70) and perfection (10 per % above 80).
+ * (R32 10, R16 20 … champion 200), team OVR (10 per point above 70) and perfection (10 per % above 80).
  * `snapshot` = CupRun.snapshot(); rating = team OVR; perfect = perfectPercent().
  */
 export function dailyScore(snapshot, { rating, perfect }) {

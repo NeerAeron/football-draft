@@ -96,7 +96,7 @@ export function SharePanel({
     const nav = globalThis.navigator;
     if (nav?.share && globalThis.matchMedia?.('(pointer: coarse)').matches) {
       try {
-        await nav.share({ title: title || 'Football Draft', text: 'Beat my run:', url: link });
+        await nav.share({ title: title || 'World Cup Draft', text: 'Beat my run:', url: link });
         return;
       } catch (error) {
         if (error?.name === 'AbortError') return;

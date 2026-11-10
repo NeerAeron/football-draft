@@ -4,7 +4,8 @@
  * Props:
  *   player       PlayerView (lib/player-view.js)
  *   fit          FitTag fit { state, label?, from?, to? } shown at the end of the row
- *   stats        number of summary stats to show when the row is wide enough (default 3;
+ *   stats        number of summary stats to show when the row is wide enough, the position's
+ *                key stats first (default 3;
  *                the row hides them below ~460 px of its own width, container query)
  *   meta         override the second line (default "Club · League")
  *   selected     volt edge + aria-pressed;  disabled (dimmed, not clickable)
@@ -17,6 +18,8 @@
  */
 import { html, cx } from '../lib/html.js';
 import { resolveTier } from '../lib/tiers.js';
+import { keyStatsFirst } from '../lib/player-view.js';
+import { CaptainMark } from './captain-mark.js';
 import { Flag } from './flag.js';
 import { FitTag, fitText } from './fit-tag.js';
 
@@ -37,7 +40,8 @@ export function PlayerRow({
   const p = player || {};
   const t = resolveTier(p.tier, p.ovr);
   const sub = meta ?? [p.club?.name, p.league?.name].filter(Boolean).join(' · ');
-  const shown = hideRatings ? [] : (p.stats || []).slice(0, stats);
+  // The stats that matter for the player's position (lib/player-view.js KEY_STATS).
+  const shown = hideRatings ? [] : keyStatsFirst(p.stats, p.position).slice(0, stats);
   const classes = cx(
     'prow',
     selected && 'is-selected',
@@ -49,7 +53,9 @@ export function PlayerRow({
     ${rank != null && html`<span class="prow__rank num">${rank}</span>`}
     <${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative />
     <span class="prow__who">
-      <span class="prow__name">${p.name}</span>
+      <span class="prow__name"
+        >${p.name}${p.captain && html` <${CaptainMark} class="prow__captain" />`}</span
+      >
       ${sub && html`<span class="prow__meta">${sub}</span>`}
     </span>
     <span class="prow__pos">${p.position}</span>
