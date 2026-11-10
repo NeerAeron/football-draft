@@ -21,7 +21,7 @@ Everything you do is saved in your own browser.
    minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
    are the same match: one seed, one result, however you watch it. The action camera follows the
    ball (the camera button or `C` switches to the whole pitch), and on **Auto** mentality your
-   team reads the game itself: it pushes when behind and holds a late lead.
+   team reads the game itself: late on it pushes when behind and holds a lead.
 
 ### Modes
 
