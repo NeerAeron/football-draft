@@ -223,10 +223,19 @@ test('every outfield detail contributes to every outfield role overall; GK overa
       assert.ok(weights[k] > 0, `${role}: ${k}`);
   }
 });
-test('FC alignment improves across the catalog with 50–75 Superstars and no source-overall shortcut', () => {
+test('FC alignment improves across the catalog with about as many Superstars as EA and no source-overall shortcut', () => {
   const ps = catalog.players,
     superstars = ps.filter(p => playerTier(p).name === 'Superstar');
-  assert.ok(superstars.length >= 50 && superstars.length <= 75);
+  // 99 against the 95 players EA rates 85+; the top is level with EA, not under it.
+  const ea = ps.filter(p => p.sourceOverall >= 85);
+  assert.ok(Math.abs(superstars.length - ea.length) <= 8, 'Superstars: ' + superstars.length);
+  const bias =
+    ea.reduce((n, p) => n + overallRating(p, true, p.primaryPosition) - p.sourceOverall, 0) /
+    ea.length;
+  assert.ok(Math.abs(bias) < 0.25, 'EA 85+: ours − EA = ' + bias.toFixed(2));
+  // A keeper's overall is his goalkeeping attribute, which is EA's overall: never stretched.
+  for (const p of ps.filter(p => p.primaryPosition === 'GK'))
+    assert.equal(overallRating(p, true, 'GK'), p.sourceOverall, p.name);
   const mae =
     ps.reduce(
       (n, p) => n + Math.abs(overallRating(p, true, p.primaryPosition) - p.sourceOverall),
@@ -242,7 +251,8 @@ test('FC alignment improves across the catalog with 50–75 Superstars and no so
   const changed = structuredClone(yamal);
   changed.sourceOverall = 1;
   assert.equal(overallRating(changed, true, 'RM'), overallRating(yamal, true, 'RM'));
-  const striker = structuredClone(ps.find(p => p.primaryPosition === 'ST'));
+  // Heading's weight for a striker, read below the stretch of the top ratings.
+  const striker = structuredClone(ps.find(p => p.primaryPosition === 'ST' && p.sourceOverall < 70));
   striker.attrs.heading = 60;
   const before = overallRating(striker, false, 'ST');
   striker.attrs.heading += 10;

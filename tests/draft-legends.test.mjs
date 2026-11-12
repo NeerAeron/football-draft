@@ -43,7 +43,7 @@ const keeperLast = s => {
 test('the Legend reel: nations with an 85+ legend, slightly weighted by their legends', () => {
   const rules = DEFAULT_CONFIG.draft.legends;
   assert.deepEqual(rules, {
-    minimum: 83,
+    minimum: 85,
     reelStar: 85,
     shown: 10,
     weightPerLegend: 0.15,
@@ -68,8 +68,11 @@ test('the Legend reel: nations with an 85+ legend, slightly weighted by their le
   }
   const weights = legends.reel.map(n => n.weight);
   assert.equal(Math.min(...weights), 1.15);
-  assert.equal(Math.max(...weights), 4);
+  assert.equal(Math.max(...weights), 3.55);
   assert.ok(Math.max(...weights) / Math.min(...weights) < 4, 'gentle: under 4× apart');
+  // Twelve nations are on the reel for their one legend.
+  assert.equal(legends.reel.filter(n => n.count === 1).length, 12);
+  assert.equal(catalog.legends.players.length, 90);
   for (const name of ['Brazil', 'Spain', 'Wales', 'Sweden', 'Uruguay'])
     assert.ok(
       legends.reel.some(n => n.name === name),
@@ -169,19 +172,53 @@ test('the Legend spin can be re-rolled, respects exclusions and Budget mode, and
   }
   // An excluded nation is not on the reel; excluded legends are not offered.
   const brazil = legends.nations.get('Brazil'),
-    top = brazil.players.slice(0, 10).map(p => p.profileId);
+    top = brazil.players.slice(0, 10).map(p => p.profileId),
+    rest = brazil.players.slice(10).map(p => p.profileId);
+  assert.equal(rest.length, 7);
   const s = worldCup(3, { excludeNations: ['Spain'], excludePlayers: top });
   const spin = s.spin();
   assert.equal(spin.reels[0].options.find(o => o.id === 'Spain').weight, 0);
-  // Force Brazil by walking seeds: its pool is then the next ten.
+  let found = false;
+  // Force Brazil by walking seeds: its pool is then the legends that are left.
   for (let seed = 1; seed < 400; seed++) {
     const d = worldCup(seed, { excludePlayers: top });
     if (d.spin().option.id !== 'Brazil') continue;
     const pool = d.snapshot().pool.map(e => e.profileId);
-    assert.ok(pool.length === 10 && pool.every(id => !top.includes(id)));
-    return;
+    assert.deepEqual([...pool].sort(), [...rest].sort());
+    found = true;
+    break;
   }
-  assert.fail('Brazil never came up');
+  assert.ok(found, 'Brazil never came up');
+  // Never a dead end with the one-legend nations either: local Versus (the second side cannot
+  // take the first side's legend), Budget mode, every re-roll spent, every formation.
+  const formations = Object.keys(FORMATIONS);
+  let single = 0;
+  for (let seed = 1; seed <= 150; seed++) {
+    const d = worldCup(seed, {
+      sides: 2,
+      budget: seed % 2 === 0,
+      rerolls: 5,
+      formation: formations[seed % formations.length],
+    });
+    for (let turn = 0; turn < 2; turn++) {
+      const side = d.turn;
+      let spin = d.spin();
+      for (let n = turn ? seed % 6 : 5; ; n--) {
+        const open = d.snapshot().pool.filter(e => e.available && e.legend);
+        assert.ok(open.length >= 1, `seed ${seed}: ${spin.option.id}`);
+        if (legends.nations.get(spin.option.id).count === 1) single++;
+        if (n <= 0 || d.rerollBlocked()) break;
+        spin = d.reroll();
+      }
+      const move = d.suggestPick();
+      assert.equal(d.pick(move.profileId, move.slot).ok, true);
+      assert.equal(d.lineup(side)[move.slot].legend, true);
+    }
+    // A legend who was picked is gone for the other side: his nation drops off its reel.
+    const [a, b] = [0, 1].map(side => d.lineup(side).find(p => p?.legend));
+    assert.notEqual(a.profileId, b.profileId);
+  }
+  assert.ok(single > 100, 'one-legend nations landed: ' + single);
 });
 
 test('with only the goalkeeper slot left, a spin lands only where a keeper is available', () => {

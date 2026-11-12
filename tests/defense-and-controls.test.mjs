@@ -15,6 +15,8 @@ test('every role has a normalized overall, with heading contributing to striker 
     assert.ok(Math.abs(overallRating(equal, false) - (70 + OVERALL_OFFSETS[role])) < 1e-9, role);
     assert.equal(overallRating(equal), Math.round(overallRating(equal, false)));
   }
+  // Heading's weight, measured without the stretch of the top ratings.
+  m.tuning.ratings.topLift = 0;
   p.role = 'ST';
   p.attrs.heading = 40;
   const lower = overallRating(p, false);

@@ -58,9 +58,9 @@ test('configuration round-trips all fields and rejects invalid tiers, odds and r
     globalThis.localStorage = previous;
   }
 });
-test('club strength is the median of the best ten retained players, with twelve default S clubs', () => {
+test('club strength is the median of the best ten retained players, with seventeen default S clubs', () => {
   const clubs = clubSquads(catalog);
-  assert.equal(clubs.filter(c => c.tier === 'S').length, 12);
+  assert.equal(clubs.filter(c => c.tier === 'S').length, 17);
   const club = clubs.find(c => c.players.length > 20),
     ratings = club.players
       .map(p => overallRating(p, false, p.primaryPosition))
@@ -105,7 +105,13 @@ test('unchanged saved role weights upgrade while custom settings and replay weig
     const custom = loadConfig();
     assert.deepEqual(custom.ratings.roleWeights.RM, old.ratings.roleWeights.RM);
     assert.equal(custom.ratings.roleOffsets.RM, 2.75);
-    assert.deepEqual(normalizeConfig({ ratings: oldRatings }).ratings, oldRatings);
+    // Old ratings survive as they are; settings they did not have yet take the defaults.
+    const { topFrom, topLift } = DEFAULT_CONFIG.ratings;
+    assert.deepEqual(normalizeConfig({ ratings: oldRatings }).ratings, {
+      ...oldRatings,
+      topFrom,
+      topLift,
+    });
   } finally {
     globalThis.localStorage = previous;
   }

@@ -23,8 +23,8 @@ export const DEFAULT_CONFIG = {
       // with odds that halve every `fieldHalving` rating points below the last core nation.
       fieldCore: 30,
       fieldHalving: 1.5,
-      // Star nations: nations that cannot field an XI but are still on the reel because they
-      // have a star — at least one player rated reelStar or better and reelPlayers players
+      // Star nations: nations that are not playable (no XI, or an XI outside the strongest
+      // `playableSize`) but are still on the reel because they have a star — at least one player rated reelStar or better and reelPlayers players
       // (no keeper needed: they are spun, never met as opponents).
       reelStar: 80,
       reelPlayers: 9,
