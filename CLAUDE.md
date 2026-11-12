@@ -46,7 +46,8 @@ app/                     served statically (deploy = publish this folder); runti
     draft/               draft session, catalog pools, Links, opponent ladder, nation codes
     competition/         World Cup Run (cup), fast rating model, Daily Challenge, share/links
     config/              DEFAULT_CONFIG, live CONFIG, saved overrides, normalizeConfig
-    util/                rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey)
+    util/                rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey),
+                         assignment.js (the one Hungarian solver)
   services/              browser services any UI can use: catalog, sim client/worker, sound, playback
   ui/                    the UI (Preact + htm, no build) — read docs/ui-guide.md before touching it
     main.js routes.js    entry (renders the shell) and the hash-route table
@@ -149,7 +150,12 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `Match` snapshots it into `match.tuning`; a draft session snapshots `CONFIG.draft`.
 - **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
   uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
-  `searchKey`).
+  `searchKey`), `assignment.js` (`assignRows` + `costMatrix`: the one rectangular assignment
+  solver — best XIs in `pools.js`, club line-ups, `randomLineups`, the Daily's perfect XI; its
+  scratch arrays are module-level, so read a result before the next call; ties resolve by
+  column order, which the callers' player order relies on. The pre-match's `bestSlots` DP in
+  `ui/lib/prematch-store.js` is a different problem — ten players, any subset of slots — and
+  stays).
 - **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `legends.js`
   (`loadLegends`: the legends file, attached to the catalog), `sim-client.js`
   (`createSimClient`: Instant results and Key Moments halves in a module Worker, main-thread

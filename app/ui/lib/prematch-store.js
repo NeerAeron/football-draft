@@ -239,7 +239,10 @@ export function swapSlots(players, formation, a, b) {
 // The best assignment of an XI to a formation: the best keeper in goal, the outfield players
 // on the slots that give the highest total slot rating (= the best team OVR). Exact: a DP over
 // slot masks on a 10 × 10 table of slot ratings (about 10,000 additions, so all 21 formations
-// are compared in a millisecond or two — no worker needed, even on a phone).
+// are compared in a millisecond or two — no worker needed, even on a phone). Not the Hungarian
+// solver of core/util/assignment.js: with a slot rating table this small the exact DP is
+// simpler, handles fewer than ten outfield players (any subset of the slots) and takes a
+// memoised rating function.
 function bestSlots(players, formation, rate = roleRating) {
   const roles = rolesOf(formation);
   const gkSlot = roles.indexOf('GK');

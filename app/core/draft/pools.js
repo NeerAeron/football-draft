@@ -5,6 +5,7 @@ import { CONFIG } from '../config/config.js';
 import { overallRating, positionFamiliarity } from '../players/ratings.js';
 import { FORMATIONS } from '../players/formations.js';
 import { editionYear } from '../players/legends.js';
+import { assignRows, costMatrix } from '../util/assignment.js';
 import { NATION_CODES } from './nation-codes.js';
 
 export const ROLES = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW', 'ST'];
@@ -76,13 +77,13 @@ export const byNatural = (a, b) =>
   naturalRating(b) - naturalRating(a) || (a.profileId < b.profileId ? -1 : 1);
 
 // ---- best XI ------------------------------------------------------------------------------
-// Rectangular Hungarian assignment of slots to players maximising the summed slot rating.
+// Assignment of slots to players maximising the summed slot rating (util/assignment.js).
 // Same model as players/club-lineups.js assignClubLineup, on cached ratings.
 function assign(rows, players, minimumFit) {
   const n = rows.length,
     m = players.length;
   if (m < n) return null;
-  const cost = new Float64Array(n * m);
+  const cost = costMatrix(n * m);
   for (let i = 0; i < n; i++) {
     const role = rows[i][2];
     for (let j = 0; j < m; j++) {
@@ -93,47 +94,7 @@ function assign(rows, players, minimumFit) {
           : -roleRating(p, role);
     }
   }
-  const u = new Float64Array(n + 1),
-    v = new Float64Array(m + 1),
-    owner = new Int32Array(m + 1),
-    via = new Int32Array(m + 1),
-    best = new Float64Array(m + 1),
-    used = new Uint8Array(m + 1);
-  for (let i = 1; i <= n; i++) {
-    owner[0] = i;
-    let column = 0;
-    best.fill(Infinity);
-    used.fill(0);
-    do {
-      used[column] = 1;
-      const row = owner[column];
-      let delta = Infinity,
-        next = 0;
-      for (let j = 1; j <= m; j++)
-        if (!used[j]) {
-          const reduced = cost[(row - 1) * m + j - 1] - u[row] - v[j];
-          if (reduced < best[j]) {
-            best[j] = reduced;
-            via[j] = column;
-          }
-          if (best[j] < delta) {
-            delta = best[j];
-            next = j;
-          }
-        }
-      for (let j = 0; j <= m; j++)
-        if (used[j]) {
-          u[owner[j]] += delta;
-          v[j] -= delta;
-        } else best[j] -= delta;
-      column = next;
-    } while (owner[column] !== 0);
-    do {
-      const previous = via[column];
-      owner[column] = owner[previous];
-      column = previous;
-    } while (column !== 0);
-  }
+  const owner = assignRows(cost, n, m);
   const lineup = Array(n);
   let total = 0;
   for (let j = 1; j <= m; j++)
