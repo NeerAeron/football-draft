@@ -22,7 +22,8 @@ import { seedNumber, difficultyOf } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 import { RUN_KEY, DAILY_KEY, STAGES, PLAYOFF_STAGE, RUN_SUMMARY_FORMAT } from './saved.js';
 import { recordRun } from './records.js';
-import { teamCode } from './match-store.js';
+import { teamCode, buildMatchConfig } from './match-store.js';
+import { engineCompetition } from './prematch-store.js';
 import { sideColors, nationTrigram } from './kits.js';
 
 export const RUN_STATE_KEY = 'football-draft-run-state';
@@ -106,8 +107,56 @@ export function matchSideFor(side, { kind = 'ai', editable = kind !== 'ai', name
     kind,
     formation: side.formation,
     players: side.players,
+    // The tactics set up for the run (CupRun.setLineup), when there are any.
+    ...(side.tactics ? { tactics: side.tactics } : {}),
     editable,
   };
+}
+/**
+ * Engine config for a run fixture (run.nextMatch()): what an auto-sim plays, and what the
+ * pre-match screen builds for the same line-up — the user's side with the run's tactics.
+ */
+export function fixtureConfig(m, difficulty, tuning) {
+  return buildMatchConfig({
+    sides: [matchSideFor(m.home, { kind: 'user' }), matchSideFor(m.away)],
+    // Same engine competition as the pre-match screen builds (AI coach level by difficulty).
+    competition: engineCompetition({
+      sides: [{ kind: 'user' }, { kind: 'ai' }],
+      competition: { mode: 'ai', difficulty, knockout: m.knockout },
+    }),
+    ...(tuning ? { tuning } : {}),
+  });
+}
+/**
+ * What the player set up for a run fixture: the pre-match as he left it (or kicked it off), else
+ * the kick-off config of its match request — { formation, players, tactics } for
+ * CupRun.setLineup, or null when neither is this fixture's.
+ *   prematch: prematchStore.get(), request: matchStore.get()?.request
+ */
+export function fixtureLineup(id, { prematch = null, request = null } = {}) {
+  const side = prematch?.id === id ? prematch.sides?.[0] : null;
+  if (side?.players)
+    return { formation: side.formation, players: side.players, tactics: side.tactics };
+  const team = request?.id === id ? request.config?.teams?.[0] : null;
+  if (!team?.tactics) return null;
+  // The engine's tactics, cut to the ones the pre-match keeps (the same line-up either way).
+  const tactics = {};
+  for (const key of LINEUP_TACTICS) if (team.tactics[key] != null) tactics[key] = team.tactics[key];
+  return {
+    formation: team.tactics.formation,
+    players: request.config.players.slice(0, 11),
+    tactics,
+  };
+}
+const LINEUP_TACTICS = ['style', 'tempo', 'width', 'press', 'mentality'];
+/**
+ * Keep a line-up for the rest of the run (formation once the group stage is over, positions,
+ * tactics). Returns true when the run changed (save it then).
+ */
+export function applyLineup(run, lineup) {
+  if (!lineup || run.complete) return false;
+  const before = JSON.stringify(run.user);
+  return run.setLineup(lineup) && JSON.stringify(run.user) !== before;
 }
 /** Display name of the user's drafted team ('You' reads oddly on cards). */
 export const userTeamName = name => (!name || name === 'You' ? 'Your XI' : name);

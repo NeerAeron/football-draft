@@ -19,14 +19,8 @@ import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { toast } from '../../components/toast.js';
 import { completedDraft, clearDraft, loadDraft } from '../../lib/draft-store.js';
-import { openPrematch, engineCompetition } from '../../lib/prematch-store.js';
-import {
-  buildMatchConfig,
-  readMatchResult,
-  runResultFor,
-  clearMatch,
-  matchStore,
-} from '../../lib/match-store.js';
+import { openPrematch, clearPrematch, prematchStore } from '../../lib/prematch-store.js';
+import { readMatchResult, runResultFor, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
   createRunFromDraft,
   loadRun,
@@ -34,6 +28,9 @@ import {
   patchRunState,
   clearRun,
   matchSideFor,
+  fixtureConfig,
+  fixtureLineup,
+  applyLineup,
   fixtureId,
   fixtureOdds,
   groupStakes,
@@ -88,18 +85,6 @@ function matchInProgress(pending) {
     (state.request.id === pending.id || state.request.seed === pending.seed)
   );
 }
-/** Engine config for a run fixture (auto-sim; the match screen builds the same via prematch). */
-export function fixtureConfig(m, difficulty, tuning) {
-  return buildMatchConfig({
-    sides: [matchSideFor(m.home, { kind: 'user' }), matchSideFor(m.away)],
-    // Same engine competition as the pre-match screen builds (AI coach level by difficulty).
-    competition: engineCompetition({
-      sides: [{ kind: 'user' }, { kind: 'ai' }],
-      competition: { mode: 'ai', difficulty, knockout: m.knockout },
-    }),
-    ...(tuning ? { tuning } : {}),
-  });
-}
 const positions = snapshot =>
   Object.fromEntries(snapshot.group.table.map(r => [r.key, r.position]));
 /** The other group fixture of a matchday (AI v AI). */
@@ -136,7 +121,7 @@ function RunHeader({ snapshot, meta, nations }) {
                   meta.links?.total != null
                     ? html`<b class="num" key="l">+${meta.links.total}</b>`
                     : '',
-                  ` · ${formationLabel(meta.formation || '433')}`,
+                  ` · ${formationLabel(snapshot.user.formation || meta.formation || '433')}`,
                 ]
           }
         </p>
@@ -530,6 +515,15 @@ export default function RunScreen() {
           setState({ phase: 'empty', last: readSavedRun() });
           return;
         }
+        // What was set up before the pending match — positions, mentality and, after the group
+        // stage, the formation — stays for the rest of the run (auto-sims included).
+        if (saved.pending && !saved.run.complete && saved.run.round === saved.pending.round) {
+          const lineup = fixtureLineup(saved.pending.id, {
+            prematch: prematchStore.get(),
+            request: matchStore.get()?.request,
+          });
+          if (applyLineup(saved.run, lineup)) saveRun(saved.run, saved.meta);
+        }
         if (saved.pending && !saved.run.complete) {
           const result = pendingResult(saved.pending);
           if (result && saved.run.round === saved.pending.round) {
@@ -544,6 +538,8 @@ export default function RunScreen() {
             saved.pending = null;
             saveRun(saved.run, saved.meta, { pending: null, log: saved.log });
             clearMatch(result.id);
+            // Its pre-match is done with too (the line-up is in the run now).
+            if (prematchStore.get()?.id === result.id) clearPrematch();
             flash = { kind: 'result', round, before, entry };
             playCue(input.outcome === 'L' ? 'full' : 'goal');
           } else if (saved.pending.round !== saved.run.round) {
@@ -590,11 +586,11 @@ export default function RunScreen() {
       id,
       seed: m.seed,
       sides: [
-        // The formation chosen before the draft is played in the first match; it can change
-        // from the second one on.
+        // The formation chosen before the draft stays for the group stage; it can change from
+        // the Round of 32 on. The side is the run's line-up as it was last set up.
         {
           ...matchSideFor(m.home, { kind: 'user', editable: true }),
-          formationLocked: m.round === 0,
+          formationLocked: m.formationLocked,
         },
         matchSideFor(m.away, { kind: 'ai', editable: false }),
       ],

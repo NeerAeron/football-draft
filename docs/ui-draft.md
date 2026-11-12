@@ -35,7 +35,7 @@ whose XI may hold only 2 Superstars (88+), 2 Stars (84–87) and 3 Starters (80�
 difficulty line also says the Prime boosts ("2 re-rolls and 2 Prime boosts per draft"). The difficulty ladder shows each level's name, a
 word on the opponents and the re-rolls — no ratings or example teams — and, for runs, the stage
 "a good manager reaches" (`projectRun` on the mode baseline). The World Cup setup says the
-formation is played in the first match (`formationLocked` on that pre-match side, see
+formation stays for the group stage (`formationLocked` on those pre-match sides, see
 `docs/ui-run.md`).
 
 ## `lib/draft-store.js` (framework-free, Node-tested)
@@ -127,7 +127,7 @@ openPrematch({
 * The lineup panel's formation picker (`data-testid="formation-select"`) lists every
   formation with that team OVR ("4–3–3 · Attacking · 84.2", ★ on the best; the formation in
   play shows the lineup as it stands) and choosing one fields its best lineup. No numbers
-  with hidden ratings; a locked formation (the World Cup opener) stays locked.
+  with hidden ratings; a locked formation (a World Cup run's group stage) stays locked.
 
 ## The draft board (`screens/draft/`)
 

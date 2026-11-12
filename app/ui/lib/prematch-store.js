@@ -9,7 +9,8 @@
 //     seed,                          // match seed (uint32)
 //     sides: [{ name, short?, colors: [p, s], flagCode?, kind: 'user'|'ai'|'p2', formation,
 //               tactics?, players: [11 profiles in slot order], editable,
-//               formationLocked? (the formation cannot change, here or in the match) }, …],
+//               formationLocked? (the formation cannot change, here or in the match: a World Cup
+//               run's group stage) }, …],
 //     competition: { mode?: 'ai'|'pvp', difficulty: 'pro', knockout: false },
 //     meta: { context: 'run', title: 'Quarter-final', returnTo: '#/run', fixture: 'run:abc:qf' },
 //   });
@@ -105,7 +106,7 @@ function normalizeSide(side, i) {
     tactics: cleanTactics(side.tactics),
     players: side.players.map(p => p),
     editable: side.editable ?? kind !== 'ai',
-    // The formation picked before the draft, kept for this match (World Cup: the first game).
+    // The formation picked before the draft, kept for this match (World Cup: the group stage).
     formationLocked: !!side.formationLocked,
   };
 }

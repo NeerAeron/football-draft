@@ -458,7 +458,7 @@ function Setup({ mode, query }) {
           onChange=${v => update({ formation: v })}
           hint=${
             mode === 'run'
-              ? 'You play it in your first match. From the second match on you can change it.'
+              ? 'It stays for the group stage.'
               : 'You can still change it before kick-off.'
           }
         />

@@ -1220,7 +1220,11 @@ export const flows = [
           await page.click('[data-testid="play-fixture"]');
           await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
           if (!(await page.isDisabled('[data-testid="formation-select"]')))
-            throw new Error('the formation can change before the first match');
+            throw new Error('the formation can change in the group stage');
+          // What is set up here stays for the run: push. (Back to the top: on a phone the
+          // Kick off bar would otherwise cover the view radios finishMatch() presses.)
+          await page.click('.tactics__mentality label:has-text("Push")');
+          await page.evaluate(() => scrollTo(0, 0));
           if ((await prematchView()) !== 'key') throw new Error(`view is ${await prematchView()}`);
         },
       );
@@ -1236,6 +1240,16 @@ export const flows = [
         await page.goto(base);
         await visible(page, '[data-testid="continue-run"]');
         await page.click('[data-testid="continue-run"]');
+        await visible(page, '[data-testid="next-fixture"]');
+      });
+      await step('matchday 2: still the draft formation, and the mentality was kept', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+        if (!(await page.isDisabled('[data-testid="formation-select"]')))
+          throw new Error('the formation can change before matchday 2');
+        if (!(await page.isChecked('.tactics__mentality input[value="push"]')))
+          throw new Error('the mentality of matchday 1 was not kept');
+        await page.goBack();
         await visible(page, '[data-testid="next-fixture"]');
       });
       await step('"Simulate this match" plays one fixture and shows its result', async () => {
@@ -1298,6 +1312,72 @@ export const flows = [
         if (/Not played/.test(status)) throw new Error('the Pro slot ignores the run');
       });
       await shot('home-cabinet', { fullPage: true });
+    },
+  },
+  {
+    // The line-up of a run: after the group stage the formation can change, and what is set
+    // up before a match (formation, mentality) is kept for the next ones and for auto-sims.
+    name: 'run-lineup',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      // Up to the semi-final: whatever its result, a match follows (the final or the play-off).
+      await savedRun(page, { difficulty: 'pro', results: Array(6).fill([2, 0]) });
+      const lineup = () =>
+        page.evaluate(() => {
+          const user = JSON.parse(localStorage.getItem('football-draft-run-state')).run.user;
+          return `${user.formation}:${user.tactics?.mentality ?? '-'}:${user.players.join()}`;
+        });
+      let before = null,
+        chosen = null;
+      await step('after the group stage the formation can change', async () => {
+        await page.goto(`${base}#/run`);
+        await visible(page, '[data-testid="next-fixture"][data-round="sf"]');
+        before = await lineup();
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-select"]');
+        if (await page.locator('[data-testid="formation-locked"]').count())
+          throw new Error('the formation is still locked after the group stage');
+        if (await page.isDisabled('[data-testid="formation-select"]'))
+          throw new Error('the formation cannot change in a knockout match');
+        chosen = before.startsWith('442:') ? '4231' : '442';
+        await page.selectOption('[data-testid="formation-select"]', chosen);
+        await page.click('.tactics__mentality label:has-text("Hold")');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('prematch-new-formation', { fullPage: true });
+      await step('left without kicking off: the hub keeps the set-up', async () => {
+        await page.goBack();
+        await visible(page, '[data-testid="next-fixture"][data-round="sf"]');
+        const now = await lineup();
+        if (!now.startsWith(`${chosen}:hold:`)) throw new Error(`the run has ${now}`);
+        const head = await page.textContent('.run-head__meta');
+        const label = chosen === '442' ? '4–4–2' : '4–2–3–1';
+        if (!head.includes(label)) throw new Error(`header reads "${head}", expected ${label}`);
+      });
+      await step('the match is played with it, and the next pre-match starts from it', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await page.inputValue('[data-testid="formation-select"]')) !== chosen)
+          throw new Error('the pre-match forgot the formation');
+        await finishMatch(page);
+        await visible(page, '[data-testid="result-banner"]', 60000);
+        const now = await lineup();
+        if (!now.startsWith(`${chosen}:hold:`)) throw new Error(`after the match: ${now}`);
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-prematch')))
+          throw new Error('the pre-match of a finished match is still stored');
+        await page.reload();
+        await visible(page, '[data-testid="next-fixture"]');
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await page.inputValue('[data-testid="formation-select"]')) !== chosen)
+          throw new Error('the next pre-match was rebuilt from the draft');
+        if (!(await page.isChecked('.tactics__mentality input[value="hold"]')))
+          throw new Error('the next pre-match forgot the mentality');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('next-prematch', { fullPage: true });
     },
   },
   {

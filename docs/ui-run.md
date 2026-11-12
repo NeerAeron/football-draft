@@ -31,16 +31,28 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
      competition: { mode: 'ai', difficulty, knockout }, meta: { context: 'run', title,
      returnTo: '/run', fixture: id } })`: the pre-match opens with that view selected (it can
      still be changed there). The pending fixture `{ id, round, seed }` is saved first. In the
-     first match (round 0) the user side carries `formationLocked: true`: the formation chosen
-     before the draft cannot change before kick-off or during the match (`changeFormation`
-     refuses it; the request's `meta.formationLocked` lists the side); from the second match on
-     it can.
+     **group stage** (rounds 0–2, `m.formationLocked` from `run.nextMatch()`) the user side
+     carries `formationLocked: true`: the formation chosen before the draft cannot change
+     before kick-off or during the match (`changeFormation` refuses it; the request's
+     `meta.formationLocked` lists the side; `CupRun.setLineup` refuses it too); from the Round
+     of 32 on it can.
    * **Simulate this match** → `useSimTicker().start(run, { limit: 1, … })`: the engine plays
      just the next fixture (live clock + score), then the hub shows its "Full time" banner.
    * **Simulate the whole cup** → the same ticker without a limit (step 4).
    A match in progress adds "Resume match" above them.
+   **The line-up stays.** What is set up in a pre-match — player positions, mentality and,
+   once allowed, the formation — is kept with the run for the matches that follow, watched or
+   simulated: when the hub loads with a pending fixture it reads that fixture's pre-match as
+   it was left (kicked off or not; else the kick-off config of its match request) —
+   `fixtureLineup(id, { prematch, request })` → `applyLineup(run, lineup)` →
+   `run.setLineup(…)` → `saveRun`. The run's user side (`run.user`: `formation`, `players` in
+   slot order, `tactics`) is then what `nextMatch().home`, the next pre-match
+   (`matchSideFor` passes the tactics), `fixtureConfig()` (auto-sims) and the XI panels use;
+   the team OVR follows the new slots. Changes made during a match (the in-match tactics
+   panel) are not kept. The Daily never opens a pre-match — its XI plays every match as
+   drafted, in the day's formation.
 3. **Return.** `readMatchResult(id)` (fallback: the stored result with the same seed and
-   `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` → save.
+   `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` (and `clearPrematch()` for that fixture's pre-match) → save.
    The hub shows a "Full time" banner, the other group match ticking in, table moves. A lost
    semi-final does not end the run: the next fixture is the third-place play-off (the path's
    last node reads "3rd").
@@ -100,7 +112,7 @@ dropped too and the day can start again.
 
 | Key | Shape |
 | --- | --- |
-| `football-draft-run-state` | `{ format: 1, run: CupRun.serialize(), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation, seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
+| `football-draft-run-state` | `{ format: 1, run: CupRun.serialize() (its `user` holds the line-up: `formation`, `players` in slot order, `tactics?`), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation (the draft's, for the challenge link), seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
 | `football-draft-run` | Home summary: `{ format: 3, mode: 'run', type, stage: 'G1' \| 'G2' \| 'G3' \| 'R32' \| 'R16' \| 'QF' \| 'SF' \| 'F' \| '3P' (the play-off), record: { w, d, l }, team, status, complete, place, placeLabel, medal, perfect, budget, stageLabel, difficulty, rounds: 8, updatedAt }` |
 | `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, place, placeLabel, medal, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, draft: { id, context, session, savedAt } \| null (the day's draft from its first pick, as the draft store saves it), current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
 | `football-draft-records` | `{ format: 3, levels: { pro \| worldclass \| legendary: { runs, gold, silver, bronze, perfect, best } }, budget: { the same per level, for Budget-mode runs }, ultimate: { count, first: ISO date \| null }, seen: [run ids, last 24], last: { id, level, budget, news: ['title' \| 'perfect' \| 'best' \| 'cabinet' \| 'ultimate'] } }` — `best` is the index of the best place (0 group stage, 1 R32, 2 R16, 3 QF, 4 fourth, 5 third, 6 runners-up, 7 champions); World Cup Runs only (the Daily keeps its own streak) |

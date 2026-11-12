@@ -25,6 +25,7 @@ import { ladderTarget, MODE_BASELINES, opponentCandidates } from '../app/core/dr
 import { catalogIndex } from '../app/core/draft/pools.js';
 import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
+import { FORMATIONS } from '../app/core/players/formations.js';
 
 const catalog = loadRuntimeCatalog();
 const drafted = seed => {
@@ -489,6 +490,103 @@ test('serialize/restore round-trips a run mid-tournament', () => {
     /Not a saved run/,
   );
   assert.ok(JSON.stringify(run.serialize()).length < 20000, 'small enough for localStorage');
+});
+
+test('the line-up is kept for the run; the draft formation stays for the group stage', () => {
+  const side = drafted(21),
+    run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 7, user: side }),
+    ids = side.players.map(p => p.profileId),
+    other = Object.keys(FORMATIONS).find(f => f !== side.formation && f.startsWith('4')),
+    swapped = () => {
+      // Two outfield players change places.
+      const next = [...run.user.players],
+        rows = FORMATIONS[run.user.formation],
+        [a, b] = rows.map((r, i) => i).filter(i => rows[i][2] !== 'GK');
+      [next[a], next[b]] = [next[b], next[a]];
+      return next;
+    };
+  assert.equal(run.formationLocked, true);
+  assert.equal(run.nextMatch().formationLocked, true);
+  assert.equal(run.snapshot().user.formation, side.formation);
+  // Group stage: positions and tactics may change, the formation may not.
+  const before = JSON.stringify(run.user);
+  assert.equal(run.setLineup({ formation: other }), false);
+  assert.equal(JSON.stringify(run.user), before, 'a refused line-up changes nothing');
+  const order = swapped();
+  assert.equal(run.setLineup({ players: order, tactics: { mentality: 'push', tempo: 4 } }), true);
+  assert.deepEqual(run.user.players, order);
+  assert.deepEqual(run.user.tactics, { mentality: 'push', tempo: 4 });
+  const home = run.nextMatch().home;
+  assert.deepEqual(
+    home.players.map(p => p.profileId),
+    order,
+  );
+  assert.deepEqual(home.tactics, { mentality: 'push', tempo: 4 });
+  assert.equal(run.user.rating, home.rating);
+  assert.equal(run.snapshot().user.rating, home.rating);
+  assert.ok(Math.abs(home.effective - home.rating - (side.effective - side.rating)) < 0.011);
+  // Players as objects are taken too; tactics are kept when none are given.
+  assert.equal(run.setLineup({ players: home.players }), true);
+  assert.deepEqual(run.user.tactics, { mentality: 'push', tempo: 4 });
+  // Not this XI, a keeper out of goal, an unknown formation, junk: refused, nothing changes.
+  const stranger = catalog.players.find(p => !ids.includes(p.profileId)).profileId,
+    kept = JSON.stringify(run.user),
+    gk = FORMATIONS[run.user.formation].findIndex(r => r[2] === 'GK'),
+    keeperOut = [...order];
+  [keeperOut[gk], keeperOut[(gk + 1) % 11]] = [keeperOut[(gk + 1) % 11], keeperOut[gk]];
+  for (const bad of [
+    { players: [stranger, ...order.slice(1)] },
+    { players: order.slice(0, 10) },
+    { players: [order[1], ...order.slice(1)] },
+    { players: keeperOut },
+    { players: 'x' },
+    { formation: 'nope' },
+  ])
+    assert.equal(run.setLineup(bad), false, JSON.stringify(bad).slice(0, 60));
+  assert.equal(JSON.stringify(run.user), kept);
+  // Tactics are plain data: short strings and numbers.
+  run.setLineup({ tactics: { mentality: 'hold', bad: { a: 1 }, long: 'x'.repeat(40), n: NaN } });
+  assert.deepEqual(run.user.tactics, { mentality: 'hold' });
+  // The second and the third group match are still locked; the Round of 32 is not.
+  run.recordResult(win);
+  assert.equal(run.setLineup({ formation: other }), false);
+  run.recordResult(win);
+  assert.equal(run.nextMatch().formationLocked, true);
+  run.recordResult(win);
+  assert.equal(run.formationLocked, false);
+  assert.equal(run.nextMatch().formationLocked, false);
+  // A new formation: the players in the order given; ratings follow the new slots.
+  const keeper = run.user.players[gk],
+    rows = FORMATIONS[other],
+    outfield = run.user.players.filter(id => id !== keeper),
+    lineup = rows.map(r => (r[2] === 'GK' ? keeper : outfield.shift()));
+  assert.equal(run.setLineup({ formation: other, players: lineup }), true);
+  assert.equal(run.user.formation, other);
+  assert.equal(run.snapshot().user.formation, other);
+  assert.deepEqual(run.user.tactics, { mentality: 'hold' });
+  const next = run.nextMatch();
+  assert.equal(next.home.formation, other);
+  assert.deepEqual(
+    next.home.players.map(p => [p.profileId, p.role]),
+    lineup.map((id, i) => [id, rows[i][2]]),
+  );
+  // It survives a save, and the fast model plays the line-up's rating.
+  const copy = restoreCupRun(catalog, JSON.parse(JSON.stringify(run.serialize())));
+  assert.deepEqual(copy.user, run.user);
+  assert.deepEqual(copy.nextMatch().home, next.home);
+  run.simulateNext();
+  copy.simulateNext();
+  assert.deepEqual(copy.snapshot(), run.snapshot());
+  // The awards read the players in their slots of the line-up.
+  assert.ok(run.heldYouBack(11).every(r => r.role === rows[lineup.indexOf(r.profileId)][2]));
+  // A finished run takes no line-up.
+  while (!run.complete) run.recordResult({ goalsFor: 0, goalsAgainst: 3 });
+  assert.equal(run.formationLocked, false);
+  assert.equal(run.setLineup({ tactics: { mentality: 'push' } }), false);
+  // A run saved before line-ups were kept has no tactics: its side has none either.
+  const plain = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 7, user: side });
+  assert.equal('tactics' in plain.userSide(), false);
+  assert.deepEqual(plain.userSide(), side);
 });
 
 test('rating model: probabilities, determinism, shootouts and projections', () => {

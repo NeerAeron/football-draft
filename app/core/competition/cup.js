@@ -21,6 +21,7 @@ import {
   roleRating,
   roleFit,
   naturalRating,
+  isKeeper,
 } from '../draft/pools.js';
 import { buildSide, seedValue, mixSeed, DIFFICULTIES } from '../draft/session.js';
 import {
@@ -240,6 +241,17 @@ const sideRef = s => ({
   target: s.target ?? null,
   pot: s.pot ?? null,
 });
+/** The group stage: three matches, played in the formation the XI was drafted in. */
+const GROUP_MATCHES = 3;
+// A side's tactics as the UI keeps them ({ mentality: 'push', tempo: 3, … }): a few short
+// strings and numbers, nothing else.
+function plainTactics(tactics) {
+  const out = {};
+  if (!tactics || typeof tactics !== 'object') return out;
+  for (const [key, value] of Object.entries(tactics).slice(0, 12))
+    if (typeof value === 'string' ? value.length <= 24 : Number.isFinite(value)) out[key] = value;
+  return out;
+}
 /** A recorded match the user got through: won, or won on penalties. */
 const wonMatch = m => m.outcome === 'W' || m.shootout?.winner === 'user';
 
@@ -266,15 +278,53 @@ export class CupRun {
   #players(ids) {
     return ids.map(id => this.#player(id));
   }
-  /** Engine-ready user side (buildSide). */
+  /** Engine-ready user side (buildSide), with the tactics set for the run (setLineup), if any. */
   userSide() {
-    const u = this.user;
-    return buildSide({
+    const { tactics, ...u } = this.user;
+    const side = buildSide({
       ...u,
       players: this.#players(u.players),
       links: this.rules.links,
       kind: 'draft',
     });
+    return tactics ? { ...side, tactics: { ...tactics } } : side;
+  }
+  /**
+   * The formation the XI was drafted in is played through the group stage: it can change from
+   * the Round of 32 on.
+   */
+  get formationLocked() {
+    return !this.complete && this.matches.length < GROUP_MATCHES;
+  }
+  /**
+   * The user's line-up for the matches to come — what was set up before a match stays for the
+   * next ones: { formation?, players? (the same eleven, ids or players, in the new slot
+   * order), tactics? ({ mentality, … }) }. Team OVR and effective rating follow the new slots.
+   * Returns false, changing nothing, when it is not this XI, a keeper is not in goal (or an
+   * outfield player is), the formation is unknown, or it would change during the group stage.
+   */
+  setLineup({ formation = this.user.formation, players = this.user.players, tactics } = {}) {
+    if (this.complete || !FORMATIONS[formation]) return false;
+    if (formation !== this.user.formation && this.formationLocked) return false;
+    if (!Array.isArray(players) || players.length !== 11) return false;
+    const ids = players.map(p => (typeof p === 'string' ? p : String(p?.profileId))),
+      mine = new Set(this.user.players);
+    if (new Set(ids).size !== 11 || ids.some(id => !mine.has(id))) return false;
+    const rows = FORMATIONS[formation],
+      xi = this.#players(ids);
+    if (xi.some((p, slot) => (rows[slot][2] === 'GK') !== isKeeper(p))) return false;
+    const { tactics: kept, ...u } = this.user,
+      side = buildSide({ ...u, formation, players: xi, links: this.rules.links, kind: 'draft' });
+    const next = tactics === undefined ? kept : plainTactics(tactics);
+    this.user = {
+      ...u,
+      formation,
+      players: ids,
+      rating: side.rating,
+      effective: side.effective,
+      ...(next && Object.keys(next).length ? { tactics: next } : {}),
+    };
+    return true;
   }
   /** The semi-final was lost: the eighth match is the third-place play-off. */
   #playoff() {
@@ -309,6 +359,8 @@ export class CupRun {
       round,
       ...info,
       seed: this.matchSeed(round),
+      // Group matches are played in the formation the XI was drafted in.
+      formationLocked: this.formationLocked,
       opponent: this.#opponentSummary(round),
       home: this.userSide(),
       away: this.opponentSide(round),
@@ -534,7 +586,12 @@ export class CupRun {
       placeLabel: place ? PLACE_LABELS[place] : null,
       medal: (place && MEDALS[place]) ?? null,
       perfect: place === 'champion' && record.w === CUP_ROUNDS.length,
-      user: { name: this.user.name, rating: this.user.rating, effective: this.user.effective },
+      user: {
+        name: this.user.name,
+        rating: this.user.rating,
+        effective: this.user.effective,
+        formation: this.user.formation,
+      },
       // The eighth round is the final, or the play-off once the semi-final is lost.
       rounds: CUP_ROUNDS.map((_, round) => {
         const m = this.matches[round],

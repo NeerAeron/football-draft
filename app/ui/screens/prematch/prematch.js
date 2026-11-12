@@ -271,8 +271,7 @@ function Lineup({ side, index, players, title, hideRatings }) {
     ${
       side.formationLocked &&
       html`<p class="lineup__locked" data-testid="formation-locked">
-        <${Icon} name="lock" size=${14} /> You play your draft formation in the first match. From
-        the second match on you can change it.
+        <${Icon} name="lock" size=${14} /> Your draft formation stays for the group stage.
       </p>`
     }
     <p class="lineup__hint" aria-live="polite">

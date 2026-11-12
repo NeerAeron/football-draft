@@ -719,6 +719,118 @@ test('kits: national teams get stable colours, clubs keep theirs', () => {
   assert.deepEqual(runStore.sideColors({ color: null, code: 'fr' }), ['#1b2a5c', '#ffffff']);
 });
 
+test('what is set up before a run match is kept for the next ones', async () => {
+  const prematch = await import('../app/ui/lib/prematch-store.js');
+  const { run, meta } = runStore.createRunFromDraft(catalog, { session: draft, context: {} });
+  const m = run.nextMatch(),
+    id = runStore.fixtureId(meta, m.round);
+  assert.equal(m.formationLocked, true);
+  // The hub opens the pre-match from the run's line-up, the formation locked in the group.
+  const open = fixture =>
+    prematch.openPrematch(
+      {
+        id: runStore.fixtureId(meta, fixture.round),
+        seed: fixture.seed,
+        sides: [
+          {
+            ...runStore.matchSideFor(fixture.home, { kind: 'user', editable: true }),
+            formationLocked: fixture.formationLocked,
+          },
+          runStore.matchSideFor(fixture.away),
+        ],
+        competition: { mode: 'ai', difficulty: 'pro', knockout: fixture.knockout },
+        meta: { context: 'run', returnTo: '/run' },
+      },
+      { go: false },
+    );
+  open(m);
+  assert.equal(prematch.prematchStore.get().sides[0].formationLocked, true);
+  assert.equal(prematch.changeFormation(0, '442'), false, 'locked in the group stage');
+  // Swap two outfield players and push.
+  const rows = prematch.prematchStore.get().sides[0].players.map(p => p.role),
+    [a, b] = rows.map((r, i) => i).filter(i => rows[i] !== 'GK');
+  assert.equal(prematch.swapPlayers(0, a, b), true);
+  prematch.setSideTactic(0, 'mentality', 'push');
+  const edited = prematch.prematchStore.get();
+  // Not this fixture's pre-match or request: nothing to keep.
+  assert.equal(runStore.fixtureLineup('run:other:0', { prematch: edited }), null);
+  assert.equal(runStore.fixtureLineup(id, {}), null);
+  assert.equal(runStore.applyLineup(run, null), false);
+  // The pre-match as it was left (also without a kick-off).
+  const lineup = runStore.fixtureLineup(id, { prematch: edited });
+  assert.equal(lineup.tactics.mentality, 'push');
+  assert.equal(runStore.applyLineup(run, lineup), true);
+  assert.equal(runStore.applyLineup(run, lineup), false, 'nothing new the second time');
+  const order = edited.sides[0].players.map(p => p.profileId);
+  assert.deepEqual(run.user.players, order);
+  assert.notDeepEqual(
+    order,
+    m.home.players.map(p => p.profileId),
+  );
+  // The kick-off config says the same when the pre-match is gone.
+  const request = prematch.kickOff({ go: false }),
+    fromRequest = runStore.fixtureLineup(id, { request });
+  assert.equal(fromRequest.formation, m.home.formation);
+  assert.deepEqual(
+    fromRequest.players.map(p => p.profileId),
+    order,
+  );
+  assert.equal(fromRequest.tactics.mentality, 'push');
+  assert.equal(runStore.applyLineup(run, fromRequest), false);
+  // The next match — watched or simulated — starts from it; it survives a reload.
+  run.recordResult({ goalsFor: 1, goalsAgainst: 0 });
+  runStore.saveRun(run, meta);
+  const again = runStore.loadRun(catalog).run,
+    next = again.nextMatch();
+  assert.deepEqual(
+    next.home.players.map(p => p.profileId),
+    order,
+  );
+  assert.equal(next.home.tactics.mentality, 'push');
+  const side = runStore.matchSideFor(next.home, { kind: 'user' });
+  assert.equal(side.tactics.mentality, 'push');
+  open(next);
+  const reopened = prematch.prematchStore.get().sides[0];
+  assert.deepEqual(
+    reopened.players.map(p => p.profileId),
+    order,
+  );
+  assert.equal(reopened.tactics.mentality, 'push');
+  assert.equal(reopened.formationLocked, true);
+  // The auto-sim's config (what "Simulate this match" plays) carries the mentality.
+  // …exactly the config the pre-match would kick off.
+  const config = runStore.fixtureConfig(next, 'pro');
+  assert.equal(config.teams[0].tactics.mentality, 'push');
+  assert.deepEqual(
+    config.players.slice(0, 11).map(p => p.profileId),
+    order,
+  );
+  // (The pre-match does not carry the opponent's team id, which the engine never reads.)
+  const sameMatch = c => ({ ...c, teams: c.teams.map(({ id: _, ...team }) => team) });
+  assert.deepEqual(sameMatch(config), sameMatch(prematch.kickOff({ go: false }).config));
+  // After the group stage the formation is free, and a new one is kept too.
+  again.recordResult({ goalsFor: 1, goalsAgainst: 0 });
+  again.recordResult({ goalsFor: 1, goalsAgainst: 0 });
+  const r32 = again.nextMatch();
+  assert.equal(r32.formationLocked, false);
+  open(r32);
+  const target = r32.home.formation === '442' ? '433' : '442';
+  assert.equal(prematch.changeFormation(0, target), true);
+  assert.equal(
+    runStore.applyLineup(
+      again,
+      runStore.fixtureLineup(runStore.fixtureId(meta, 3), {
+        prematch: prematch.prematchStore.get(),
+      }),
+    ),
+    true,
+  );
+  assert.equal(again.user.formation, target);
+  assert.equal(again.nextMatch().home.formation, target);
+  assert.equal(again.user.tactics.mentality, 'push');
+  prematch.clearPrematch();
+});
+
 test('auto-sim results convert to CupRun input for the user side', () => {
   const result = {
     score: [1, 1],

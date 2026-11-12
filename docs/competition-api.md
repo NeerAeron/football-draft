@@ -113,7 +113,7 @@ const run = createCupRun(catalog, {
 
 for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   // m = { round 0–7, id: 'group1'…'sf', then 'final' or 'third', label, stage, knockout, seed,
-  //       opponent, home, away }
+  //       formationLocked (the group stage), opponent, home, away }
   // Engine: new Match(m.seed, 180) + applyMatchSetup(…, matchSetup(m.home, m.away), …).
   // knockout: a draw goes to the engine's penalty shootout.
   run.recordResult({
@@ -133,7 +133,7 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   stageLabel,
   place: null | 'group' | 'r32' | 'r16' | 'qf' | 'fourth' | 'third' | 'final' | 'champion',
   placeLabel: 'Third place' …, medal: 'gold' | 'silver' | 'bronze' | null, perfect: bool (8–0),
-  user: { name, rating, effective },
+  user: { name, rating, effective, formation },
   rounds: [{ id, label, stage, knockout,           // 8; the last is the final, or the play-off
              opponent: { key, kind, id, name, code, flag, color, secondary, formation, rating,
                          effective, nominal, target, pot },
@@ -143,6 +143,16 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   results: ['W', 'D', …], record: { w, d, l, gf, ga, played } }
 ```
 
+* **The line-up** (`run.user`: `formation`, `players` in slot order, `rating`, `effective`,
+  `tactics?`) can change between matches: `run.setLineup({ formation?, players?, tactics? })`
+  takes the same eleven in a new slot order (ids or players; the keeper in goal), a formation
+  — only once the group stage is over: `run.formationLocked` is true for the three group
+  matches, which are played in the formation the XI was drafted in — and tactics as plain
+  data (`{ mentality: 'push', … }`, handed back on `userSide().tactics`). It returns false and
+  changes nothing when the line-up is not this XI or the formation is locked. Rating and
+  effective rating follow the new slots, so `simulateNext()`, the awards ("Out of position at
+  LB") and the snapshot (`user.formation`) read the line-up as it stands. Opponents were drawn
+  at creation and do not move. Serialised with the run (format unchanged).
 * **Status**: `'eliminated'` is every finished run without the title (a third place included);
   read `place` for where it finished. A lost semi-final keeps the run `'playing'`: the eighth
   round becomes `THIRD_ROUND` (`id: 'third'`) against `run.opponents[8]`.

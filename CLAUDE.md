@@ -139,7 +139,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
   best thirds, `BEST_THIRD`) + five knockouts from the Round of 32 (the semi-final loser plays the
   third-place play-off), places and medals instead of grades (`PLACES`), Pro / World Class on the
-  ladder (`CUP_TUNING`), Legendary on a real 48-nation World Cup (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
+  ladder (`CUP_TUNING`), Legendary on a real 48-nation World Cup (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`; `setLineup`: the line-up set up before a match — positions, tactics and, after the group stage, the formation — stays for the rest of the run), `model.js` (fast Poisson rating model, shootouts),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
