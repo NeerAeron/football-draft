@@ -344,3 +344,7 @@
     transition: none;
   }
 }
+
+.cabinet__mode {
+  margin-top: var(--space-1);
+}

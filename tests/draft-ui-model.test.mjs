@@ -293,14 +293,12 @@ test('Budget mode: rows show their band, closed rows say which band is full, the
 
 test('Budget mode travels from the setup to the session and the run, World Cup only', async () => {
   const { normalizeContext, sessionOptions } = await import('../app/ui/lib/draft-store.js');
-  const run = setupDefaults('run', { saved: { budget: true } });
+  // Chosen on Home (its own button → ?budget=1); never remembered.
+  const run = setupDefaults('run', { query: { budget: '1' } });
   assert.equal(run.budget, true);
   assert.equal(setupDefaults('run', {}).budget, false);
-  assert.equal(setupDefaults('quick', { saved: { budget: true } }).budget, false);
-  assert.equal(
-    setupDefaults('run', { saved: { budget: true }, query: { seed: '5' } }).budget,
-    false,
-  );
+  assert.equal(setupDefaults('run', { saved: { budget: true } }).budget, false);
+  assert.equal(setupDefaults('quick', { query: { budget: '1' } }).budget, false);
   const ctx = setupContext('run', run);
   assert.equal(ctx.options.budget, true);
   assert.ok(!('budget' in setupContext('run', { ...run, budget: false }).options));

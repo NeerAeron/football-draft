@@ -370,6 +370,12 @@ function Setup({ mode, query }) {
         <p class="eyebrow">${copy.eyebrow}</p>
         <h1 class="setup__title">${copy.title}</h1>
         <p class="setup__lead">${copy.lead}</p>
+        ${
+          state.budget &&
+          html`<p class="setup__budget" data-testid="setup-budget">
+            <b>Budget mode.</b> ${budgetCopy()}
+          </p>`
+        }
       </header>
 
       <div class="setup__main">
@@ -449,17 +455,6 @@ function Setup({ mode, query }) {
           }
         />
         <${ChoiceGroup} legend="Options" class="setup-options">
-          ${
-            mode === 'run' &&
-            state.seed == null &&
-            html`<${Switch}
-              label="Budget mode"
-              description=${budgetCopy()}
-              checked=${state.budget}
-              onChange=${v => update({ budget: v })}
-              id="setup-budget"
-            />`
-          }
           <${Switch}
             label="Hide ratings"
             description="Ball Knower: no numbers during the draft. Trust your football knowledge."

@@ -120,11 +120,9 @@ export function setupDefaults(mode, { query = {}, saved = {}, prefs = {} } = {})
     formation,
     hideRatings: query.hide != null ? truthy(query.hide) : !!prefs.hideRatings,
     uniqueNations: query.unique != null ? truthy(query.unique) : !!saved.uniqueNations,
-    // Budget mode: a harder World Cup (core/draft/budget.js). Runs only; a seeded link plays
-    // it only when it says so (?budget=1).
-    budget:
-      mode === 'run' &&
-      (query.budget != null ? truthy(query.budget) : seed == null && !!saved.budget),
+    // Budget mode: a harder World Cup (core/draft/budget.js), chosen on Home (its own button)
+    // and carried by the link (?budget=1); never a remembered setting.
+    budget: mode === 'run' && query.budget != null && truthy(query.budget),
     names: [0, 1].map(i => String(saved.names?.[i] || '').slice(0, 20)),
     kits,
     seed,

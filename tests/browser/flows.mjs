@@ -666,15 +666,14 @@ export const flows = [
       await step('the World Cup setup offers Budget mode', async () => {
         await page.goto(`${base}#/play/run`);
         await visible(page, '[data-screen="setup"][data-mode="run"]');
-        const toggle = page.getByRole('switch', { name: 'Budget mode' });
-        if (await toggle.isChecked()) throw new Error('Budget mode is on by default');
-        await toggle.check();
-        const text = await page.textContent('[data-screen="setup"]');
-        if (!/1 player rated 88\+, 2 at 84–87 and 3 at 80–83/.test(text))
-          throw new Error('the Budget switch does not say its caps');
+        if (await page.locator('[data-testid="setup-budget"]').count())
+          throw new Error('Budget mode is on by default');
+        // Budget mode is its own button on Home, under Start World Cup.
+        await page.goto(base);
+        await page.click('[data-testid="start-budget"]');
+        await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
       });
       await page.evaluate(() => document.fonts.ready);
-      await page.getByRole('switch', { name: 'Budget mode' }).scrollIntoViewIfNeeded();
       await shot('setup');
       await step('Quick Match has no Budget mode', async () => {
         await page.goto(`${base}#/play/quick`);
@@ -1164,10 +1163,10 @@ export const flows = [
         if (!/Runners-up/.test(await best('worldclass'))) throw new Error(await best('worldclass'));
         // The Legendary title was a Budget one: the standard slot is still to be won.
         if (!/Not played/.test(await best('legendary'))) throw new Error(await best('legendary'));
-        const budget = await page.textContent(
-          '.cabinet__slot[data-level="legendary"] .cabinet__budget',
-        );
-        if (!/Budget Won/.test(budget)) throw new Error(`budget: ${budget}`);
+        // The Budget cabinet is one tap away and has the Legendary cup.
+        await page.click('.cabinet__mode label:has-text("Budget mode")');
+        await visible(page, '.cabinet__shelf[data-mode="budget"]');
+        if (!/Champions/.test(await best('legendary'))) throw new Error(await best('legendary'));
       });
     },
   },
@@ -1235,8 +1234,11 @@ export const flows = [
         if (!/Runners-up/.test(await text('worldclass'))) throw new Error(await text('worldclass'));
         if (!/Quarter-finals/.test(await text('legendary')))
           throw new Error(await text('legendary'));
-        if (!/Budget 3rd/.test(await text('worldclass'))) throw new Error('budget bronze');
         await visible(page, '[data-testid="ultimate"][data-done="0"]');
+        await page.click('.cabinet__mode label:has-text("Budget mode")');
+        await visible(page, '.cabinet__shelf[data-mode="budget"]');
+        if (!/Third place/.test(await text('worldclass'))) throw new Error('budget bronze');
+        await page.click('.cabinet__mode label:has-text("World Cup")');
       });
       await shot('partly');
       await step('an old cabinet migrates: titles become golds, removed levels go', async () => {

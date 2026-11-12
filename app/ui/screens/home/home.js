@@ -105,6 +105,16 @@ function Hero() {
       data-testid="start-run"
       >Start World Cup<//
     >
+    <${Button}
+      variant="secondary"
+      size="lg"
+      block
+      icon="gem"
+      href=${href('/play/:mode', { mode: 'run' }, { budget: 1 })}
+      class="home-hero__budget"
+      data-testid="start-budget"
+      >Budget mode<//
+    >
   </section>`;
 }
 
