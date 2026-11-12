@@ -1035,9 +1035,6 @@
 .trophy {
   overflow: visible;
 }
-.trophy--glow {
-  filter: drop-shadow(0 12px 30px rgb(245 200 76 / 0.35));
-}
 
 /* ---------- End screen ---------- */
 .run-end {

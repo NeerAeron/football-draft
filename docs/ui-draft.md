@@ -108,7 +108,7 @@ openPrematch({
   or `buildOpponent(...).players` (their `chem` is kept); `editable` defaults to `kind !== 'ai'`.
 * Persisted under `football-draft-prematch` (edits survive a reload). Edits: `swapPlayers(side,
   a, b)` (GK slot keepers only), `changeFormation(side, f)` (exact best re-slot: the lineup with the best team OVR, keeper in
-  goal), `setSideTactic(side, key, value)` (`style tempo width press mentality`),
+  goal), `setSideTactic(side, key, value)` (the screens set `mentality` only),
   `setMatchView(view)` (remembered in `football-draft-match-view`).
 * `kickOff({ go = true })` → `buildMatchConfig({ sides, competition: engineCompetition(data) })`
   and `requestMatch({ id, seed, view, config, meta: { ...meta, sides, userSides } })`.

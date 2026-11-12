@@ -746,7 +746,7 @@ export function createCupRun(catalog, options) {
     avoid = [...(field?.keys ?? [])];
   const candidates = opponentCandidates(catalog, { rules }),
     byKey = new Map(candidates.map(c => [c.key, c])),
-    pots = field?.pots ?? new Map(index.field.map(n => ['nation:' + n.id, n.pot]));
+    pots = field?.pots;
   const build = ref => buildOpponent(catalog, ref, { excludePlayers: taken, rules });
   while (opponents.length <= CUP_ROUNDS.length) {
     const round = opponents.length,

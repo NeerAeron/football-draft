@@ -1,7 +1,7 @@
 // Lucide icons 1.50.0 (ISC; see LICENSE in this folder) — generated subset of
 // lucide-static/icon-nodes.json. Each entry: [[tag, attrs], …] drawn in a 24×24 viewBox
-// with stroke="currentColor", stroke-width 2, round caps/joins. Do not edit by hand:
-// add names to the generator list and regenerate (see docs/ui-guide.md#icons).
+// with stroke="currentColor", stroke-width 2, round caps/joins. To add an icon,
+// copy its entry from icon-nodes.json of the same version (see ../README.txt).
 export const LUCIDE = {
   "activity": [["path",{d:"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"}]],
   "arrow-left": [["path",{d:"m12 19-7-7 7-7"}],["path",{d:"M19 12H5"}]],

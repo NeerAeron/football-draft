@@ -285,7 +285,6 @@ export async function startDraft(input, { go: navigateTo = true, spin = true } =
   }
 }
 
-/** The saved draft without restoring it (sync): { context, picks, total, complete } | null. */
 /**
  * The current draft, restoring the saved one after a reload: { session, context } | null.
  * Sets status 'empty' when nothing is saved and 'error' when the save no longer fits the

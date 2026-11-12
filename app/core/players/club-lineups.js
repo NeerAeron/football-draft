@@ -73,7 +73,7 @@ export function assignClubLineup(players, formation, { minimumFit = CONFIG.ai.mi
   return lineup;
 }
 // Stamps of the configuration that club ratings and club lineups depend on. The catalog file
-// stores the stamps its precomputed values were made with; a mismatch (user overrides or a
+// stores the stamps its precomputed values were made with; a mismatch (a tool's tuning or a
 // change to FORMATIONS) falls back to computing them here.
 export const clubRatingStamp = (config = CONFIG) => stamp([config.teamTiers, config.ratings]);
 export const clubLineupStamp = (config = CONFIG) =>

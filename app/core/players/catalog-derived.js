@@ -43,7 +43,8 @@ export function deriveCatalog(catalog) {
 }
 
 // Load time: recompute badges and club ratings when the live configuration differs from the
-// one the file was built with (user overrides). Club lineups are handled by clubSquads.
+// one the file was built with (a tool's --tuning, or data not rebuilt after a change of
+// defaults; never in the game). Club lineups are handled by clubSquads.
 export function reconcileCatalog(catalog) {
   const precomputed = (catalog.precomputed ||= {});
   if (precomputed.badges !== badgeStamp()) {

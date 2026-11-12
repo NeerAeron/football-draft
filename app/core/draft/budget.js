@@ -1,7 +1,7 @@
 // The draft's player tiers and Budget mode. One vocabulary: a player is a Superstar, a Star, a
 // Starter, a Normal or a Bench player by the rating shown on him (his rounded natural OVR) —
 // the top three start at CONFIG.draft.budget[tier].minimum (88 / 84 / 80). Budget mode (session
-// option `budget`) lets an XI hold only `slots` players of each of those three tiers (1 / 2 /
+// option `budget`) lets an XI hold only `slots` players of each of those three tiers (2 / 2 /
 // 3); Normal and Bench players are free. Pure helpers; the draft session enforces the caps.
 import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
 

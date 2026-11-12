@@ -7,7 +7,7 @@
 // goes to `back`, not one step back in history), immersive (true = no top bar, e.g. a
 // full-screen match).
 // To add a screen: create app/ui/screens/<name>/<name>.js (+ .css imported in styles/app.css)
-// and point its route's load() at it — see docs/ui-guide.md#add-a-screen.
+// and point its route's load() at it — see docs/ui-guide.md, "Add a screen".
 const placeholder = () => import('./screens/placeholder/placeholder.js');
 
 // Challenge links in the core's short form ('#c=<token>', share.js challengeUrl) land on the

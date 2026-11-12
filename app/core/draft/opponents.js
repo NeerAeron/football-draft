@@ -57,17 +57,29 @@ export function ladderTarget(mode, level, { offset = 0, rules = CONFIG.draft, re
 
 // ---- candidates ---------------------------------------------------------------------------
 const candidateCache = new WeakMap();
+// Sorting the whole catalog is the cost of a boss: once per index (and rating refresh).
+const bossPoolCache = new WeakMap();
 function bossPools(index) {
+  const stamp = clubLineupStamp(),
+    cached = bossPoolCache.get(index);
+  if (cached?.stamp === stamp) return cached.pool;
   // The world's best 120 outfield players and 12 keepers by natural rating cover every slot.
   const sorted = [...index.players].sort((a, b) => naturalRating(b) - naturalRating(a));
-  return [
+  const pool = [
     ...sorted.filter(p => !isKeeper(p)).slice(0, 120),
     ...sorted.filter(isKeeper).slice(0, 12),
   ];
+  bossPoolCache.set(index, { stamp, pool, world: null });
+  return pool;
 }
 function bossXI(index, id, exclude = new Set()) {
-  const pool = bossPools(index).filter(p => !exclude.has(p.profileId));
-  const world = bestEleven(pool, { minimumFit: BOSS_FIT });
+  const all = bossPools(index),
+    cache = bossPoolCache.get(index),
+    pool = exclude.size ? all.filter(p => !exclude.has(p.profileId)) : all;
+  // The World XI of the untouched pool is shared by both bosses.
+  const world = exclude.size
+    ? bestEleven(pool, { minimumFit: BOSS_FIT })
+    : (cache.world ??= bestEleven(pool, { minimumFit: BOSS_FIT }));
   if (id === 'world-xi' || !world) return world;
   const taken = new Set(world.players.map(p => p.profileId));
   return bestEleven(
@@ -171,13 +183,17 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
       );
     if (++clubs % 12 === 0) yield;
   }
-  for (const [id, b] of Object.entries(BOSSES))
+  yield;
+  bossPools(index); // the sort of the whole catalog: a step of its own, like each boss XI
+  for (const [id, b] of Object.entries(BOSSES)) {
+    yield;
     add(
       'boss',
       id,
       { name: b.name, code: null, flag: null, color: b.color, secondary: b.secondary },
       bossXI(index, id),
     );
+  }
   list.sort((a, b) => b.effective - a.effective || (a.key < b.key ? -1 : 1));
   // Someone needed it synchronously meanwhile: keep theirs, so there is one list.
   const raced = candidateCache.get(catalog);
