@@ -17,12 +17,6 @@ import { readChallengeQuery, typeOf, todayDailyId } from '../../lib/run-store.js
 import { modeLabel, levelLabel } from './team-view.js';
 import { useReplaceRun } from './replace-run.js';
 
-const KIND = {
-  cup: { title: 'World Cup Run', draft: 'run', mode: 'run', returnTo: '/run' },
-  quick: { title: 'Quick Match', draft: 'quick', mode: 'quick', returnTo: '/' },
-  versus: { title: 'Versus', draft: 'versus', mode: 'versus', returnTo: '/' },
-};
-
 export default function ChallengeScreen({ query }) {
   const { challenge: c, score } = readChallengeQuery(query);
   const [busy, setBusy] = useState(false);
@@ -75,13 +69,13 @@ export default function ChallengeScreen({ query }) {
     </div>`;
   }
 
-  const kind = KIND[c.kind] || KIND.cup;
+  // The other kind of link: a World Cup run.
   const type = typeOf(c.mode);
   const accept = async () => {
     setBusy(true);
     try {
       await startDraft({
-        kind: kind.draft,
+        kind: 'run',
         type,
         difficulty: c.difficulty,
         formation: c.formation,
@@ -101,7 +95,7 @@ export default function ChallengeScreen({ query }) {
               : null,
           },
         },
-        returnTo: kind.returnTo,
+        returnTo: '/run',
       });
     } catch (error) {
       console.error('[challenge] could not start the draft', error);
@@ -110,7 +104,7 @@ export default function ChallengeScreen({ query }) {
   };
   const setup = href(
     '/play/:mode',
-    { mode: kind.mode },
+    { mode: 'run' },
     {
       type,
       difficulty: c.difficulty,
@@ -127,7 +121,7 @@ export default function ChallengeScreen({ query }) {
         <${Icon} name="swords" size=${30} />
       </div>
       <p class="eyebrow">You've been challenged</p>
-      <h1 class="challenge-card__title" id="challenge-title">${kind.title}</h1>
+      <h1 class="challenge-card__title" id="challenge-title">World Cup Run</h1>
       ${
         score
           ? html`<${FriendScore} score=${score} />`
@@ -144,14 +138,13 @@ export default function ChallengeScreen({ query }) {
         ${c.hideRatings && html`<li><${Chip} icon="eye-off" tone="holo">Ratings hidden<//></li>`}
         ${c.uniqueNations && html`<li><${Chip} icon="flag">One per nation<//></li>`}
         ${c.budget && html`<li data-testid="challenge-budget"><${Chip} icon="gem">Budget<//></li>`}
-        ${c.sides === 2 && html`<li><${Chip} icon="users">Two players<//></li>`}
       </ul>
       <${Button}
         variant="primary"
         size="xl"
         block
         iconEnd="arrow-right"
-        onClick=${() => (kind.draft === 'run' ? replace.ask(accept) : accept())}
+        onClick=${() => replace.ask(accept)}
         loading=${busy}
         data-testid="accept-challenge"
         >Accept challenge<//

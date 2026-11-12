@@ -432,7 +432,7 @@ export const placeFromToken = token => TOKEN_PLACES[String(token || '')] ?? null
 /**
  * "Challenge a friend" URL for the run/daily that was just played:
  *   <page>#/challenge?c=<token>&r=<w>-<d>-<l>.<place>
- * The token is core/competition/share.js encodeChallenge; parseChallengeUrl reads it too.
+ * The token is core/competition/share.js encodeChallenge.
  */
 export function challengeLink(challenge, { record = null, place = null, base = pageBase() } = {}) {
   const token = encodeChallenge(challenge);

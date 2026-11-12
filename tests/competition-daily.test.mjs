@@ -24,9 +24,6 @@ import {
   resultEmoji,
   encodeChallenge,
   decodeChallenge,
-  challengeUrl,
-  parseChallengeUrl,
-  challengeDraftOptions,
   isUltimate,
   ULTIMATE,
 } from '../app/core/competition/share.js';
@@ -154,11 +151,9 @@ test('share text: emoji row, record, place, numbers, mode flags and link', () =>
     run.recordResult({ goalsFor: r[0], goalsAgainst: r[1], shootout: r[2] && { winner: r[2] } });
   const snap = run.snapshot();
   assert.equal(resultEmoji(snap), '🟩🟨🟩 🟨🟩🟥');
-  const url = challengeUrl('https://example.com/play?x=1#old', {
-    kind: 'daily',
-    daily: day.number,
-    formation: day.formation,
-  });
+  const url =
+    'https://example.com/play#/challenge?c=' +
+    encodeChallenge({ kind: 'daily', daily: day.number, formation: day.formation });
   const text = shareText(snap, {
     daily: day,
     rating: side.rating,
@@ -174,7 +169,7 @@ test('share text: emoji row, record, place, numbers, mode flags and link', () =>
   assert.ok(!/\b[SABCDF][+]? /.test(lines[2]), 'no letter grade');
   assert.equal(lines[3], `XI ${side.rating.toFixed(1)} · 98.4% of perfect · 1,104 pts`);
   assert.equal(lines[4], 'Nations · Pro · 🙈 Ratings hidden');
-  assert.equal(lines[5], `https://example.com/play?x=1#c=c1.d.n.${day.formation}.p.0.7`);
+  assert.equal(lines[5], `https://example.com/play#/challenge?c=c1.d.n.${day.formation}.p.0.7`);
   // The summary line: where the run finished (or the stage of a run in progress).
   const base = {
     record: { w: 6, d: 1, l: 1 },
@@ -232,7 +227,6 @@ test('challenge links round-trip and replay the same spins', () => {
           hideRatings: difficulty === 'pro',
           uniqueNations: mode === 'nations',
           budget: formation === '352',
-          sides: 1,
           catalog: 'abc123',
         };
         const token = encodeChallenge(c);
@@ -248,12 +242,17 @@ test('challenge links round-trip and replay the same spins', () => {
   assert.equal(decodeChallenge('c1.c.n.433.p.h.9').budget, false);
   assert.equal(decodeChallenge('c1.c.n.433.p.0.9').budget, false);
   assert.equal(decodeChallenge('c1.d.n.433.p.b.9'), null, 'no Budget Daily');
-  assert.equal(decodeChallenge('c1.q.n.433.p.b.9'), null, 'no Budget Quick Match');
   assert.throws(() => encodeChallenge({ kind: 'daily', daily: 3, budget: true }), /Budget/);
-  const versus = decodeChallenge(
-    encodeChallenge({ kind: 'versus', mode: 'clubs', seed: 'pizza', sides: 2 }),
+  // Only the two links the game makes: a World Cup run and the Daily. Quick Match and Versus
+  // links (kinds q, v) and the two-sides flag never had a way to be created.
+  const daily = decodeChallenge(encodeChallenge({ kind: 'daily', daily: 12, formation: '442' }));
+  assert.deepEqual(
+    [daily.kind, daily.daily, daily.seed, daily.formation],
+    ['daily', 12, null, '442'],
   );
-  assert.equal(versus.sides, 2);
+  assert.equal('sides' in daily, false);
+  for (const kind of ['quick', 'versus'])
+    assert.throws(() => encodeChallenge({ kind, seed: 1 }), /Invalid challenge/);
   for (const bad of [
     '',
     'c2.c.n.433.p.0.1',
@@ -261,23 +260,23 @@ test('challenge links round-trip and replay the same spins', () => {
     'c1.z.n.433.p.0.1',
     'c1.c.n.433.p.x.1',
     'c1.c.n.433.p.0.zzzzzzzz',
+    'c1.q.l.442.w.0.1a',
+    'c1.v.c.433.p.2.1a',
+    'c1.c.n.433.p.2.1a',
+    'c1.c.n.433.p.hu2.1a',
+    'c1.d.n.433.p.0.0',
     // Club & Country (mode x) is gone: such a link is not valid.
     'c1.c.x.433.p.0.1',
     null,
     42,
   ])
     assert.equal(decodeChallenge(bad), null, String(bad));
-  assert.deepEqual(parseChallengeUrl('https://x.io/?c=C1.Q.L.442.W.0.1A'), {
-    ...decodeChallenge('c1.q.l.442.w.0.1a'),
-  });
   // Old links on the removed difficulties (a: Amateur, s: Semi-pro) play as Pro.
   for (const old of ['a', 's']) {
     const c = decodeChallenge(`c1.c.n.433.${old}.0.1a`);
     assert.equal(c.difficulty, 'pro');
-    assert.equal(challengeDraftOptions(c).difficulty, 'pro');
   }
   assert.throws(() => encodeChallenge({ difficulty: 'amateur', seed: 1 }), /Invalid challenge/);
-  assert.equal(parseChallengeUrl('https://x.io/#nothing'), null);
   // A friend opening the link drafts with the very same spins.
   const original = createDraftSession(catalog, {
     mode: 'leagues',
@@ -285,13 +284,16 @@ test('challenge links round-trip and replay the same spins', () => {
     difficulty: 'worldclass',
     useDefaultRules: true,
   });
-  const link = challengeUrl('https://x.io/', {
-    kind: 'cup',
-    mode: 'leagues',
-    seed: 'friend',
-    difficulty: 'worldclass',
+  const c = decodeChallenge(
+    encodeChallenge({ kind: 'cup', mode: 'leagues', seed: 'friend', difficulty: 'worldclass' }),
+  );
+  const replay = createDraftSession(catalog, {
+    mode: c.mode,
+    seed: c.seed,
+    formation: c.formation,
+    difficulty: c.difficulty,
+    useDefaultRules: true,
   });
-  const replay = createDraftSession(catalog, challengeDraftOptions(parseChallengeUrl(link)));
   for (let k = 0; k < 5; k++) {
     assert.equal(replay.spin().option.id, original.spin().option.id);
     const m = original.suggestPick();

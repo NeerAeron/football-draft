@@ -9,7 +9,7 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 | `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `worldCupDraw`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `THIRD_ROUND`, `CUP_TUNING`, `FIELD_LEVEL`, `FIELD_TYPICAL`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `PLACES`, `PLACE_LABELS`, `MEDALS` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
 | `daily.js` | `dailyId`, `dailyNumber`, `dailyIdFromNumber`, `previousDay`, `nextDay`, `dailyChallenge`, `perfectXI`, `perfectPercent`, `dailyScore`, `canPlayDaily`, `updateStreak`, `currentStreak`, `DAILY_EPOCH`, `DAILY_RULES`, `DAILY_POINTS` |
-| `share.js` | `shareText`, `resultEmoji`, `isUltimate`, `ULTIMATE`, `encodeChallenge`, `decodeChallenge`, `challengeUrl`, `parseChallengeUrl`, `challengeDraftOptions` |
+| `share.js` | `shareText`, `resultEmoji`, `isUltimate`, `ULTIMATE`, `encodeChallenge`, `decodeChallenge` |
 
 ## World Cup Run
 
@@ -232,16 +232,16 @@ const points = dailyScore(run.snapshot(), { rating: draft.matchSide(0).rating, p
 ## Share text and challenge links
 
 ```js
-import { shareText, challengeUrl, parseChallengeUrl, challengeDraftOptions } from './core/competition/share.js';
+import { shareText, encodeChallenge, decodeChallenge } from './core/competition/share.js';
 
 shareText(run.snapshot(), { daily: day, rating, perfectPct, points, hideRatings, uniqueNations, budget,
-                            url: challengeUrl(location.href, { kind: 'daily', daily: day.number }) });
+                            url: page + '#/challenge?c=' + encodeChallenge({ kind: 'daily', daily: day.number }) });
 // ⚽ World Cup Draft · Daily #7
 // 🟩🟨🟩 🟨🟥
 // 2-2-1 · Quarter-finals
 // XI 82.9 · 98.4% of perfect · 1,104 pts
 // Nations · Pro · 🙈 Ratings hidden
-// https://…#c=c1.d.n.442.p.0.7
+// https://…#/challenge?c=c1.d.n.442.p.0.7
 ```
 
 Without `daily` the title reads "World Cup Run". Group results, a space, knockout results; the
@@ -250,17 +250,21 @@ top three end with 🏆 / 🥈 / 🥉. The second line of text is the record and
 a perfect Legendary run in Budget mode (`isUltimate(snapshot, budget)`, the ultimate
 achievement, `ULTIMATE.name` = Immortals) adds "👑 Immortals: Legendary · Budget · 8-0-0".
 
-Challenge links: `challengeUrl(base, { kind: 'cup' | 'quick' | 'versus' | 'daily', mode, seed,
-formation, difficulty, hideRatings, uniqueNations, budget, sides, catalog })` →
-`base#c=c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (mode `n` / `l` / `c`) (only `[a-z0-9.-]`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a World Cup
-run's only: any other kind with it does not encode or decode —, `2` two sides, or `0`;
-level `p` / `w` / `l`; an old link's `a` or `s` — Amateur, Semi-pro — decodes as Pro).
-On load: `const c = parseChallengeUrl(location.href)` (null if absent/invalid; never throws),
-then `createDraftSession(catalog, challengeDraftOptions(c))` replays the same spins (and
-`createCupRun(catalog, { mode: c.mode, difficulty: c.difficulty, seed: c.seed, rules:
-DEFAULT_CONFIG.draft, user })` the same opponents and AI results). Daily links carry the
-challenge number: `dailyIdFromNumber(c.daily)`. Pass `catalog: catalogStamp(catalog)` to detect
-a friend on a different player database.
+Challenge links — two kinds, the ones the game makes: a World Cup run (`cup`) and the Daily.
+`encodeChallenge({ kind: 'cup' | 'daily', mode, seed, formation, difficulty, hideRatings,
+uniqueNations, budget, catalog })` →
+`c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`; kind `c`
+/ `d`; mode `n` / `l` / `c`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a
+World Cup run's only — or `0`; level `p` / `w` / `l`; an old link's `a` or `s` — Amateur,
+Semi-pro — decodes as Pro). The UI puts the token in `#/challenge?c=<token>&r=…`
+(`challengeLink`, `docs/ui-run.md`). `decodeChallenge(token)` gives the challenge back, or
+null for anything else — never throws; then
+`createDraftSession(catalog, { mode: c.mode, seed: c.seed, formation: c.formation,
+difficulty: c.difficulty, hideRatings, uniqueNations, budget, useDefaultRules: true })` replays
+the same spins (and `createCupRun(catalog, { mode: c.mode, difficulty: c.difficulty, seed:
+c.seed, rules: DEFAULT_CONFIG.draft, user })` the same opponents and AI results). Daily links
+carry the challenge number: `dailyIdFromNumber(c.daily)`. Pass `catalog:
+catalogStamp(catalog)` to detect a friend on a different player database.
 
 ## Title odds after the Phase 5 engine (three levels, Budget mode)
 

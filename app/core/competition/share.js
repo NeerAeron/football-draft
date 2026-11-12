@@ -1,7 +1,7 @@
 // Share text (emoji row per match) and challenge links (mode + seed + options, URL-safe) so
 // a friend can replay the same spins. Pure string helpers; the UI owns clipboard/navigation.
 import { FORMATIONS } from '../players/formations.js';
-import { DRAFT_MODES, DIFFICULTIES, DIFFICULTY_LABELS, seedNumber } from '../draft/session.js';
+import { DRAFT_MODES, DIFFICULTY_LABELS, seedNumber } from '../draft/session.js';
 
 export const RESULT_EMOJI = { W: '🟩', D: '🟨', L: '🟥' };
 const MEDAL_EMOJI = { gold: '🏆', silver: '🥈', bronze: '🥉' };
@@ -44,7 +44,7 @@ const thousands = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',
  *   6-1-1 · Third place                       (where the run finished, or the stage it is in)
  *   XI 82.9 · 98.6% of perfect · 1,104 pts
  *   Nations · Pro · 🙈 Ratings hidden
- *   https://example.com/#c=…
+ *   https://example.com/#/challenge?c=…
  *
  * A perfect Legendary run in Budget mode adds "👑 Immortals: Legendary · Budget · 8-0".
  */
@@ -85,14 +85,14 @@ export function shareText(snapshot, extras = {}) {
 
 // ---- challenge links ----------------------------------------------------------------------
 // Token: c1.<kind>.<mode>.<formation>.<difficulty>.<flags>.<seed base36>[.<catalog stamp>]
-//   kind q quick match · c cup run · v versus · d daily; mode n/l/c; difficulty p/w/l (old
+//   kind c cup run · d daily (the two links the game makes); mode n/l/c; difficulty p/w/l (old
 //   links may carry a or s, the removed Amateur and Semi-pro: they decode as Pro);
 //   flags any of h (hide ratings), u (one per nation), b (Budget mode: World Cup runs only),
-//   2 (two sides), or 0.
+//   or 0.
 //   For a daily the seed field is the challenge number (dailyIdFromNumber gives the day).
 // Only [a-z0-9.-]: safe in a URL hash or query without escaping.
 export const CHALLENGE_VERSION = 'c1';
-const KINDS = { q: 'quick', c: 'cup', v: 'versus', d: 'daily' };
+const KINDS = { c: 'cup', d: 'daily' };
 const MODES = { n: 'nations', l: 'leagues', c: 'clubs' };
 const LEVEL_CODES = { p: 'pro', w: 'worldclass', l: 'legendary' };
 const OLD_LEVEL_CODES = { a: 'pro', s: 'pro' };
@@ -100,9 +100,8 @@ const invert = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k])
 
 /**
  * Encode a challenge: { kind = 'cup', mode, seed (number or string), formation, difficulty,
- * hideRatings, uniqueNations, budget (a cup run in Budget mode), sides, catalog (catalogStamp,
- * optional) }; a daily passes
- * { kind: 'daily', daily: challenge number } instead of a seed.
+ * hideRatings, uniqueNations, budget (a cup run in Budget mode), catalog (catalogStamp,
+ * optional) }; a daily passes { kind: 'daily', daily: challenge number } instead of a seed.
  */
 export function encodeChallenge({
   kind = 'cup',
@@ -114,7 +113,6 @@ export function encodeChallenge({
   hideRatings = false,
   uniqueNations = false,
   budget = false,
-  sides = 1,
   catalog = null,
 }) {
   const k = invert(KINDS)[kind],
@@ -122,11 +120,7 @@ export function encodeChallenge({
     d = invert(LEVEL_CODES)[difficulty];
   if (!k || !m || !d || !FORMATIONS[formation]) throw Error('Invalid challenge');
   if (budget && kind !== 'cup') throw Error('Only a World Cup run has a Budget mode');
-  const flags =
-    (hideRatings ? 'h' : '') +
-      (uniqueNations ? 'u' : '') +
-      (budget ? 'b' : '') +
-      (sides === 2 ? '2' : '') || '0';
+  const flags = (hideRatings ? 'h' : '') + (uniqueNations ? 'u' : '') + (budget ? 'b' : '') || '0';
   if (kind === 'daily' && !(Number.isInteger(daily) && daily > 0))
     throw Error('A daily link needs its challenge number');
   const value = kind === 'daily' ? daily : seedNumber(seed),
@@ -147,7 +141,7 @@ export function decodeChallenge(token) {
   const [, k, m, formation, d, flags, seed36, catalog = null] = parts;
   const difficulty = LEVEL_CODES[d] ?? OLD_LEVEL_CODES[d];
   if (!KINDS[k] || !MODES[m] || !difficulty || !FORMATIONS[formation]) return null;
-  if (!/^(0|[hub2]{1,4})$/.test(flags) || !/^[0-9a-z]{1,7}$/.test(seed36)) return null;
+  if (!/^(0|[hub]{1,3})$/.test(flags) || !/^[0-9a-z]{1,7}$/.test(seed36)) return null;
   const seed = parseInt(seed36, 36);
   if (!Number.isSafeInteger(seed) || seed > 0xffffffff) return null;
   if (catalog !== null && !/^[0-9a-z]{1,24}$/.test(catalog)) return null;
@@ -163,31 +157,7 @@ export function decodeChallenge(token) {
     hideRatings: flags.includes('h'),
     uniqueNations: flags.includes('u'),
     budget: flags.includes('b'),
-    sides: flags.includes('2') ? 2 : 1,
     ...(kind === 'daily' ? { daily: seed, seed: null } : { seed }),
     catalog,
-  };
-}
-/** `${base}#c=<token>` */
-export function challengeUrl(base, challenge) {
-  return `${String(base).split('#')[0]}#c=${encodeChallenge(challenge)}`;
-}
-/** Read a challenge from a URL, hash or query string (#c=… or ?c=…); null if none/invalid. */
-export function parseChallengeUrl(url) {
-  const match = /[#?&]c=([0-9a-z.-]+)/i.exec(String(url || ''));
-  return match ? decodeChallenge(match[1].toLowerCase()) : null;
-}
-/** Draft session options for a decoded challenge (spread into createDraftSession). */
-export function challengeDraftOptions(challenge) {
-  if (!DIFFICULTIES.includes(challenge.difficulty)) throw Error('Invalid challenge');
-  return {
-    mode: challenge.mode,
-    seed: challenge.seed,
-    sides: challenge.sides,
-    formation: challenge.formation,
-    difficulty: challenge.difficulty,
-    hideRatings: challenge.hideRatings,
-    uniqueNations: challenge.uniqueNations,
-    useDefaultRules: true,
   };
 }
