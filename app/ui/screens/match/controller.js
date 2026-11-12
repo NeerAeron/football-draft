@@ -55,6 +55,10 @@ const PENS_NAME = 0.35; // a taker's name on its own …
 const PENS_VERDICT = 0.5; // … then with his mark, before the next taker
 const PENS_WINNER = 2.2; // the winner, before the result
 const SPEEDS = [1, 2, 4];
+// A stage that keeps changing size (a phone's URL bar sliding away while the page scrolls, a
+// rotation, a window being dragged) is resized once it has been still for this long: until
+// then the picture is stretched by CSS instead of both pitch layers being repainted per frame.
+const RESIZE_SETTLE_MS = 140;
 
 let sharedSim = null;
 const simClient = () => (sharedSim ??= createSimClient());
@@ -1078,7 +1082,7 @@ export class MatchController {
     this.viewState.pitch = !this.layered;
     this.ctx = canvas.getContext('2d', { alpha: this.layered });
     this.resize();
-    this.ro = new ResizeObserver(() => this.resize());
+    this.ro = new ResizeObserver(() => this.resized());
     this.ro.observe(canvas);
     this.io = new IntersectionObserver(entries => {
       this.visible = entries.some(e => e.isIntersecting);
@@ -1095,10 +1099,19 @@ export class MatchController {
     this.requestDraw();
   }
 
+  /** The stage's box changed: size the canvases once it has settled (at once the first time). */
+  resized() {
+    clearTimeout(this.resizeTimer);
+    if (!this.sized) this.resize();
+    else this.resizeTimer = setTimeout(() => !this.disposed && this.resize(), RESIZE_SETTLE_MS);
+  }
+
   resize() {
     const c = this.canvas;
     if (!c) return;
     const rect = c.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    this.sized = true;
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.round(rect.width * dpr)),
       h = Math.max(1, Math.round(rect.height * dpr));
@@ -1432,6 +1445,7 @@ export class MatchController {
     clearTimeout(this.prefetchTimer);
     clearTimeout(this.fulltimeTimer);
     clearTimeout(this.layerTimer);
+    clearTimeout(this.resizeTimer);
     for (const name of Object.keys(this.jobs)) this.cancelJob(name);
     this.awaiting?.cancel();
     this.ro?.disconnect();

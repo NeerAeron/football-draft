@@ -213,7 +213,11 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
   is painted once per size (`paintPitch`): a 1:1 copy for the full-pitch view and a 1.25×
   copy that CSS moves (`translate3d … scale`) when the camera zooms. A frame clears and redraws
   only the transparent players' canvas. Backing stores are capped at DPR 2 (measured: DPR 3 on
-  a phone cost a third of the frames without making tokens easier to read).
+  a phone cost a third of the frames without making tokens easier to read). The stage's height
+  is set in `svh`, never `dvh`: it must not change while the page scrolls and a phone's URL bar
+  slides away (each resize repaints both pitch layers — replays stuttered). A stage that does
+  keep changing size (rotation, a dragged window) is resized once it has been still for 140 ms
+  (`MatchController.resized`); until then CSS stretches the picture.
 - **No per-frame allocations** in `draw()` or the controller's `render()`: the view/scene
   objects are reused, positions, crowd scales, the ball trail and label boxes live in typed
   arrays (`createRenderState()`), font strings and text widths are cached (cleared when web

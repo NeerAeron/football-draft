@@ -404,7 +404,9 @@
 @media (max-width: 959px) and (orientation: portrait) {
   .match-stage {
     aspect-ratio: 75.6 / 113.8;
-    max-height: calc(100dvh - 210px);
+    /* svh, not dvh: the stage must not change size while the page scrolls and the browser's
+       URL bar slides away (every resize repaints the pitch layers: a replay stuttered). */
+    max-height: calc(100svh - 210px);
     margin-inline: auto;
   }
 }
@@ -1829,7 +1831,7 @@
   }
   .match-stage {
     aspect-ratio: auto;
-    height: calc(100dvh - 132px);
+    height: calc(100svh - 132px);
   }
   .match-ticker {
     display: none;
