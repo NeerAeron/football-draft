@@ -2,6 +2,10 @@
 // Methods are installed on Match.prototype by match.js.
 import { offenceInBox } from './rules.js';
 import { cardRisk } from './discipline.js';
+import { positionFamiliarity } from '../players/ratings.js';
+
+// Lines of the team shape, for reshaping after a dismissal.
+const LINE = { CB: 0, LB: 0, RB: 0, DM: 1, CM: 1, LM: 1, RM: 1, AM: 2, LW: 2, RW: 2, ST: 2 };
 
 export class FoulMethods {
   checkRestartTouch(p) {
@@ -64,12 +68,15 @@ export class FoulMethods {
             b.skill('heading') - a.skill('heading'),
         )[0];
       if (standIn) {
+        const role = standIn.role;
         standIn.emergencyKeeper = true;
         standIn.role = 'GK';
         standIn._stamp = 0;
         standIn.action = 'Taking over in goal';
+        // The stand-in left his own position empty: cover that one.
+        this.coverDismissal(standIn, role);
       }
-    }
+    } else this.coverDismissal(p, p.dismissedRole);
     if (this.ball.owner === p.id) {
       this.ball.owner = null;
       this.ball.kind = 'loose';
@@ -98,6 +105,63 @@ export class FoulMethods {
       );
     }
     return true;
+  }
+  // Down a man, a side closes the hole instead of playing on around it, the way a coach
+  // reshapes at once: the back line and the midfield stay whole and a forward is given up.
+  // A lost defender is replaced by the midfielder who knows the position best, and a
+  // forward (the second striker, else an attacking midfielder or winger) drops into the
+  // midfield; a lost lone striker is replaced by another attacker. Players swap formation
+  // slots with the man who left, so every later formation change keeps the shape.
+  // `off` holds the free slot (the dismissed player, or the stand-in keeper), `role` is the
+  // position that slot plays. Applies to both sides; no RNG.
+  coverDismissal(off, role) {
+    let line = LINE[role];
+    if (line === undefined) return;
+    const mates = this.activePlayers.filter(
+        q => q.team === off.team && q.role !== 'GK' && q.id !== off.id,
+      ),
+      best = (list, target) =>
+        list
+          .map(q => ({ q, fit: positionFamiliarity(q, target) }))
+          .sort((a, c) => c.fit - a.fit || a.q.energy - c.q.energy || a.q.id - c.q.id)[0]?.q,
+      take = q => {
+        const from = q.role;
+        off.shiftedFrom ??= off.slot;
+        q.shiftedFrom ??= q.slot;
+        [q.slot, off.slot] = [off.slot, q.slot];
+        q.role = this.formation(q)[2];
+        q._stamp = 0;
+        q.action = 'Covering the gap';
+        role = from;
+        line = LINE[from];
+        return q;
+      };
+    const moved = [];
+    if (line === 0) {
+      const cover = best(
+        mates.filter(q => LINE[q.role] === 1),
+        role,
+      );
+      if (cover) moved.push(take(cover));
+    }
+    const strikers = mates.filter(q => q.role === 'ST' && !moved.includes(q)),
+      others = mates.filter(q => LINE[q.role] === 2 && q.role !== 'ST' && !moved.includes(q));
+    if (line === 2) {
+      // Somebody has to lead the line.
+      if (role === 'ST' && !strikers.length && others.length) moved.push(take(best(others, 'ST')));
+    } else if (line === 1) {
+      const spare = strikers.length >= 2 ? strikers : others;
+      if (spare.length) moved.push(take(best(spare, role)));
+    }
+    if (moved.length)
+      this.addEvent(
+        `${this.teams[off.team].name} reshape: ${moved
+          .map(q => `${q.name.split(' ').pop()} to ${q.role}`)
+          .join(', ')}.`,
+        off.team,
+        'reshape',
+        { playerIds: moved.map(q => q.id), roles: moved.map(q => q.role) },
+      );
   }
   awardFoul(offender, victim, point = { x: victim.x, y: victim.y }) {
     const penalty = offenceInBox(this, offender, point),
@@ -136,7 +200,7 @@ export class FoulMethods {
       team,
       penalty ? this.abs(94, team) : point.x,
       penalty ? 34 : point.y,
-      penalty ? 1.7 : 0.85,
+      penalty ? 2.6 : 0.85,
     );
   }
 }

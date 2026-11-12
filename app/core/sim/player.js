@@ -175,6 +175,7 @@ export class Player {
     this.feintTarget = null;
     this.actionSince = 0;
     this.bylineAt = null;
+    this.shiftedFrom = data.shiftedFrom ?? null;
     this._stamp = 0;
     // Per-step values; bit i of _skillBits / _tendencyBits says slot i is set.
     this._skills = null;

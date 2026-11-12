@@ -183,6 +183,7 @@ export function ResultView({ result: r, momentum, onContinue, onRematch, onHome 
     code: r.teams[t].flagCode || undefined,
     colors: teamColors(r.teams[t]),
     score: r.score[t],
+    reds: r.stats?.[t]?.redCards || 0,
   });
   return html`<div
     class="result"

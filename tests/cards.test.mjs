@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match, Player } from '../app/core/sim/engine.js';
-import { snapshot, applyReplayFrame, simulateHalf } from '../app/core/sim/replay.js';
+import {
+  snapshot,
+  applyReplayFrame,
+  simulateHalf,
+  selectHighlights,
+} from '../app/core/sim/replay.js';
 import { offsideSnapshot } from '../app/core/sim/rules.js';
 import { cardRisk } from '../app/core/sim/discipline.js';
 
@@ -243,4 +248,61 @@ test('a booked player has lower foul risk and avoids a risky challenge', () => {
   assert.equal(m.duel(victim, p), false);
   assert.equal(p.action, 'Staying on feet after booking');
   assert.equal(p.stats.fouls, 0);
+});
+
+test('ten men reshape: a lost centre-back is covered from midfield and a forward drops in', () => {
+  const m = playing(); // 4-3-3: GK LB CB CB RB DM CM CM LW ST RW
+  m.issueCard(m.players[2], 'red');
+  const roles = m.activePlayers.filter(p => p.team === 0).map(p => p.role);
+  const count = r => roles.filter(x => x === r).length;
+  assert.equal(count('CB'), 2, 'the back line is whole');
+  assert.equal(count('DM') + count('CM'), 3, 'so is the midfield');
+  assert.equal(count('ST'), 1, 'the striker stays up');
+  assert.equal(count('LW') + count('RW'), 1, 'a winger was given up');
+  const e = m.events.find(x => x.type === 'reshape');
+  assert.ok(e && e.team === 0 && e.playerIds.length === 2);
+  // Slots stay unique, so a later formation change keeps a sensible shape.
+  const slots = m.players.filter(p => p.team === 0).map(p => p.slot);
+  assert.equal(new Set(slots).size, 11);
+  m.setTactic(0, 'formation', '442');
+  assert.equal(m.activePlayers.filter(p => p.team === 0 && p.role === 'CB').length, 2);
+  // The other side is untouched, and a reset puts everyone back.
+  assert.ok(!m.events.some(x => x.type === 'reshape' && x.team === 1));
+  m.reset();
+  assert.deepEqual(
+    m.players.slice(0, 11).map(p => p.slot),
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  );
+});
+
+test('ten men reshape: a midfielder off costs a winger, the lone striker off is replaced', () => {
+  const a = playing();
+  a.issueCard(a.players[6], 'red');
+  const roles = a.activePlayers.filter(p => p.team === 0).map(p => p.role);
+  assert.equal(roles.filter(r => r === 'CM' || r === 'DM').length, 3);
+  assert.equal(roles.filter(r => r === 'ST').length, 1);
+  const b = playing();
+  b.issueCard(b.players[9], 'red');
+  assert.equal(b.activePlayers.filter(p => p.team === 0 && p.role === 'ST').length, 1);
+  // With two strikers, losing one changes nothing.
+  const c = playing();
+  c.setTactic(0, 'formation', '442');
+  c.issueCard(c.players[9], 'red');
+  assert.ok(!c.events.some(x => x.type === 'reshape'));
+  assert.equal(c.activePlayers.filter(p => p.team === 0 && p.role === 'ST').length, 1);
+});
+
+test('a red card is always one of the highlights, even in a half full of goals', () => {
+  const events = [
+    ...[20, 35, 50, 62, 75, 81].map(elapsed => ({ type: 'goal', elapsed })),
+    { type: 'red', elapsed: 10 },
+  ];
+  const clips = selectHighlights(events, 90, 30);
+  assert.ok(
+    clips.some(c => c.start <= 10 && c.end >= 10),
+    'the red card is shown',
+  );
+  for (const g of events.filter(e => e.type === 'goal'))
+    assert.ok(clips.some(c => c.start <= g.elapsed && c.end >= g.elapsed));
+  assert.ok(clips.reduce((s, c) => s + c.end - c.start, 0) <= 30 + 1e-6);
 });
