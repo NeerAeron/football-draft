@@ -121,7 +121,7 @@ app/                  the deployed site, served as-is
     players/          ratings, badges, formations, club lineups, catalog codec
     draft/            draft session, pools, mates boosts, Budget mode, opponent ladder
     competition/      World Cup Run, fast rating model, Daily Challenge, share links
-    config/           tuning defaults, saved overrides, normalisation
+    config/           tuning defaults, the live config, normalisation
     util/             seeded RNG, math and text helpers
   services/           catalog loader, simulation worker + client, sound, playback clock
   ui/                 the interface: Preact + htm (vendored), shell, components, screens

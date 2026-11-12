@@ -45,7 +45,7 @@ app/                     served statically (deploy = publish this folder); runti
     players/             ratings, badges, formations, club lineups, catalog codec + derived data
     draft/               draft session, catalog pools, Links, opponent ladder, nation codes
     competition/         World Cup Run (cup), fast rating model, Daily Challenge, share/links
-    config/              DEFAULT_CONFIG, live CONFIG, saved overrides, normalizeConfig
+    config/              DEFAULT_CONFIG, live CONFIG, normalizeConfig, CONFIG_FIELDS
     util/                rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey)
   services/              browser services any UI can use: catalog, sim client/worker, sound, playback
   ui/                    the UI (Preact + htm, no build) — read docs/ui-guide.md before touching it
@@ -144,8 +144,8 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
   club-XI fit + coach, gameplay, the favourite's edge (`userEdge`: a slightly better save balance for the user's side when it is the stronger team, AI matches only), discipline, stamina, periods, formats, ratings, badges), live
-  `CONFIG` (a copy of the defaults; `setRuntimeConfig` for tools), `loadConfig`/`saveConfig`
-  (diff-only storage, kept for tools and tests; unknown keys are ignored), `normalizeConfig`, `CONFIG_FIELDS`; `v8-defaults.js` (old-save migration). Each
+  `CONFIG` (a copy of the defaults; `setRuntimeConfig` for tools and tests — nothing is stored),
+  `normalizeConfig` (validates a patch; unknown keys are ignored), `CONFIG_FIELDS`. Each
   `Match` snapshots it into `match.tuning`; a draft session snapshots `CONFIG.draft`.
 - **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
   uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
@@ -174,8 +174,8 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   XI is computed in `ui/screens/daily/perfect-xi-worker.js` the same way. A new module worker
   must also be listed in `WORKERS` in `ui/lib/offline.js` (so the installed app caches it).
 - **Tuning** is for developers only: edit `DEFAULT_CONFIG` (and rebuild data / recalibrate as
-  the invariants say); tools take `--tuning` patches. Players cannot tune: the game ignores
-  saved overrides (`CONFIG` is a copy of `DEFAULT_CONFIG`) and `ui/main.js` deletes the old
+  the invariants say); tools take `--tuning` patches. Players cannot tune: `CONFIG` is a copy
+  of `DEFAULT_CONFIG`, nothing reads saved settings, and `ui/main.js` deletes the old
   `football-draft-settings-v1` key.
 
 ### localStorage keys (all start with `football-draft`; Settings → Reset clears exactly those)

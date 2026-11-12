@@ -6,8 +6,6 @@ import {
   CONFIG_FIELDS,
   normalizeConfig,
   setRuntimeConfig,
-  saveConfig,
-  loadConfig,
 } from '../app/core/config/config.js';
 import { clubSquads } from '../app/core/players/club-lineups.js';
 import { clubRating } from '../app/core/players/team-ratings.js';
@@ -46,17 +44,6 @@ test('configuration round-trips all fields and rejects invalid tiers, odds and r
     change(c);
     assert.throws(() => normalizeConfig(c));
   }
-  const previous = globalThis.localStorage,
-    values = new Map();
-  globalThis.localStorage = { getItem: k => values.get(k), setItem: (k, v) => values.set(k, v) };
-  try {
-    const config = structuredClone(DEFAULT_CONFIG);
-    config.gameplay.shotFrequency = 1.2;
-    saveConfig(config);
-    assert.equal(loadConfig().gameplay.shotFrequency, 1.2);
-  } finally {
-    globalThis.localStorage = previous;
-  }
 });
 test('club strength is the median of the best ten retained players, with eighteen default S clubs', () => {
   const clubs = clubSquads(catalog);
@@ -71,50 +58,13 @@ test('club strength is the median of the best ten retained players, with eightee
   const partial = clubRating(club.players.slice(0, 3));
   assert.equal(partial.sampleSize, 3);
 });
-test('saved defaults adopt Superstar85 once, preserving subsequent edits', () => {
-  const old = structuredClone(DEFAULT_CONFIG);
-  old._settingsVersion = 1;
-  old.playerTiers.Superstar.minimum = 83;
-  old.draft.rerolls.pro = 2;
-  const previous = globalThis.localStorage,
-    values = new Map([['football-draft-settings-v1', JSON.stringify(old)]]);
-  globalThis.localStorage = { getItem: k => values.get(k), setItem: (k, v) => values.set(k, v) };
-  try {
-    const updated = loadConfig();
-    assert.equal(updated.playerTiers.Superstar.minimum, 85);
-    assert.equal(updated.draft.rerolls.pro, 2);
-    updated.playerTiers.Superstar.minimum = 83;
-    saveConfig(updated);
-    assert.deepEqual(loadConfig(), updated);
-  } finally {
-    globalThis.localStorage = previous;
-  }
-});
-test('unchanged saved role weights upgrade while custom settings and replay weights survive', () => {
-  const old = structuredClone(DEFAULT_CONFIG);
-  old._settingsVersion = 1;
-  old.ratings = structuredClone(oldRatings);
-  const previous = globalThis.localStorage;
-  globalThis.localStorage = { getItem: () => JSON.stringify(old) };
-  try {
-    const next = loadConfig();
-    assert.deepEqual(next.ratings.roleWeights, DEFAULT_CONFIG.ratings.roleWeights);
-    assert.deepEqual(next.ratings.roleOffsets, DEFAULT_CONFIG.ratings.roleOffsets);
-    old.ratings.roleWeights.RM.crossing = 9;
-    old.ratings.roleOffsets.RM = 2.75;
-    const custom = loadConfig();
-    assert.deepEqual(custom.ratings.roleWeights.RM, old.ratings.roleWeights.RM);
-    assert.equal(custom.ratings.roleOffsets.RM, 2.75);
-    // Old ratings survive as they are; settings they did not have yet take the defaults.
-    const { topFrom, topLift } = DEFAULT_CONFIG.ratings;
-    assert.deepEqual(normalizeConfig({ ratings: oldRatings }).ratings, {
-      ...oldRatings,
-      topFrom,
-      topLift,
-    });
-  } finally {
-    globalThis.localStorage = previous;
-  }
+test('older rating settings are kept as they are; newer keys take the defaults', () => {
+  const { topFrom, topLift } = DEFAULT_CONFIG.ratings;
+  assert.deepEqual(normalizeConfig({ ratings: oldRatings }).ratings, {
+    ...oldRatings,
+    topFrom,
+    topLift,
+  });
 });
 test('configuration is frozen for the current match and restored with a replay', () => {
   const match = new Match(28),
@@ -156,31 +106,4 @@ test('unreachable ground passes are not treated as safe receiving options', () =
         o => o.loft || Number.isFinite(m.flightTime(Math.hypot(o.aim.x - p.x, o.aim.y - p.y))),
       ),
   );
-});
-test('saved movement defaults upgrade without changing custom values or replay physics', () => {
-  // Very old saves (before settings versions) carried display.commentaryInterval.
-  const saved = structuredClone(DEFAULT_CONFIG);
-  saved.display = { commentaryInterval: 3.5 };
-  Object.assign(saved.gameplay, {
-    movementSpeed: 1.03,
-    acceleration: 1.03,
-    shotFrequency: 1.12,
-    passSpeed: 1.15,
-  });
-  const previous = globalThis.localStorage;
-  globalThis.localStorage = { getItem: () => JSON.stringify(saved) };
-  try {
-    const next = loadConfig();
-    assert.equal(next.gameplay.movementSpeed, 1.28);
-    assert.equal(next.gameplay.acceleration, 1.1);
-    assert.equal(next.gameplay.shotFrequency, DEFAULT_CONFIG.gameplay.shotFrequency);
-    assert.equal(next.gameplay.passSpeed, 1.15);
-    saved.gameplay.movementSpeed = 1.4;
-    assert.equal(loadConfig().gameplay.movementSpeed, 1.4);
-    saved.gameplay.passSpeed = 1;
-    assert.equal(loadConfig().gameplay.passSpeed, 1.08);
-    assert.equal(normalizeConfig(saved).gameplay.shotFrequency, 1.12);
-  } finally {
-    globalThis.localStorage = previous;
-  }
 });

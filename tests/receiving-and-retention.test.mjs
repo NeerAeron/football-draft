@@ -1,13 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
-import {
-  DEFAULT_CONFIG,
-  CONFIG_FIELDS,
-  normalizeConfig,
-  loadConfig,
-  saveConfig,
-} from '../app/core/config/config.js';
+import { DEFAULT_CONFIG, CONFIG_FIELDS, normalizeConfig } from '../app/core/config/config.js';
 
 function scene() {
   const m = new Match(721, 300);
@@ -174,7 +168,7 @@ test('composed first touches help shield possession, with strong defenders still
   assert.ok(m.challengeModel(p, q).win > composed);
 });
 
-test('reception settings roundtrip below .5 and saved defaults upgrade without changing custom values', () => {
+test('reception settings roundtrip below .5', () => {
   assert.deepEqual(normalizeConfig(DEFAULT_CONFIG), DEFAULT_CONFIG);
   for (const key of ['receptionError', 'difficultReceptionError']) {
     const f = CONFIG_FIELDS.find(f => f.path === 'gameplay.' + key);
@@ -182,59 +176,4 @@ test('reception settings roundtrip below .5 and saved defaults upgrade without c
   }
   const { m } = scene();
   assert.doesNotThrow(() => m.importConfig(m.exportConfig()));
-  const saved = structuredClone(DEFAULT_CONFIG);
-  saved._settingsVersion = 3;
-  saved.gameplay.tackleSuccess = 1;
-  saved.formats[180].saveBoost = -0.6;
-  saved.formats[300].saveBoost = -0.37;
-  const previous = globalThis.localStorage;
-  let stored = JSON.stringify(saved);
-  globalThis.localStorage = { getItem: () => stored, setItem: (k, v) => (stored = v) };
-  try {
-    assert.equal(loadConfig().gameplay.tackleSuccess, DEFAULT_CONFIG.gameplay.tackleSuccess);
-    assert.equal(normalizeConfig(saved).gameplay.tackleSuccess, 1);
-    assert.equal(loadConfig().formats[180].saveBoost, DEFAULT_CONFIG.formats[180].saveBoost);
-    assert.equal(loadConfig().formats[300].saveBoost, DEFAULT_CONFIG.formats[300].saveBoost);
-    assert.equal(normalizeConfig(saved).formats[180].saveBoost, -0.6);
-    saved.gameplay.tackleSuccess = 1.15;
-    stored = JSON.stringify(saved);
-    assert.equal(loadConfig().gameplay.tackleSuccess, 1.15);
-    saved.gameplay.receptionError = 0.2;
-    saveConfig(saved);
-    assert.equal(loadConfig().gameplay.receptionError, 0.2);
-    saved._settingsVersion = 4;
-    saved.gameplay.receptionError = 0.18;
-    saved.gameplay.difficultReceptionError = 0.55;
-    saved.gameplay.tackleSuccess = 0.94;
-    saved.gameplay.shotFrequency = 1.24;
-    saved.formats[180].saveBoost = -0.5;
-    saved.formats[300].saveBoost = -0.27;
-    stored = JSON.stringify(saved);
-    for (const key of [
-      'receptionError',
-      'difficultReceptionError',
-      'tackleSuccess',
-      'shotFrequency',
-    ])
-      assert.equal(loadConfig().gameplay[key], DEFAULT_CONFIG.gameplay[key]);
-    for (const duration of [180, 300])
-      assert.equal(
-        loadConfig().formats[duration].saveBoost,
-        DEFAULT_CONFIG.formats[duration].saveBoost,
-      );
-    assert.equal(
-      normalizeConfig(saved).gameplay.receptionError,
-      0.18,
-      'Explicit replay settings remain reproducible',
-    );
-    saved.gameplay.receptionError = 0.4;
-    saved.gameplay.difficultReceptionError = 0.8;
-    saved.gameplay.tackleSuccess = 1.15;
-    stored = JSON.stringify(saved);
-    assert.equal(loadConfig().gameplay.receptionError, 0.4);
-    assert.equal(loadConfig().gameplay.difficultReceptionError, 0.8);
-    assert.equal(loadConfig().gameplay.tackleSuccess, 1.15);
-  } finally {
-    globalThis.localStorage = previous;
-  }
 });

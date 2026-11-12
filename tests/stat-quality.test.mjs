@@ -1,13 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
-import {
-  CONFIG_FIELDS,
-  DEFAULT_CONFIG,
-  normalizeConfig,
-  loadConfig,
-  saveConfig,
-} from '../app/core/config/config.js';
+import { CONFIG_FIELDS, DEFAULT_CONFIG, normalizeConfig } from '../app/core/config/config.js';
 
 function scene(half = 1, team = 0) {
   const m = new Match(239, 300);
@@ -662,55 +656,4 @@ test('nearby ratings improve passing and first touch gradually across the former
     );
   }
   assert.equal(m.stats[p.team].completed, 0, 'accuracy still requires a physical reception');
-});
-
-test('saved quality defaults soften once while custom influences and explicit match settings survive', () => {
-  const previous = globalThis.localStorage,
-    old = structuredClone(DEFAULT_CONFIG);
-  old._settingsVersion = 7;
-  Object.assign(old.gameplay, {
-    qualityImpact: 1.08,
-    controlQuality: 1.4,
-    passingQuality: 1.6,
-    defensiveQuality: 1,
-    creativeQuality: 1,
-  });
-  let stored = JSON.stringify(old);
-  globalThis.localStorage = {
-    getItem: () => stored,
-    setItem: (_key, value) => {
-      stored = value;
-    },
-  };
-  try {
-    const updated = loadConfig();
-    for (const key of [
-      'qualityImpact',
-      'controlQuality',
-      'passingQuality',
-      'defensiveQuality',
-      'creativeQuality',
-    ])
-      assert.equal(updated.gameplay[key], DEFAULT_CONFIG.gameplay[key]);
-    assert.equal(
-      normalizeConfig(old).gameplay.passingQuality,
-      1.6,
-      'explicit match settings are not migrated',
-    );
-    old.gameplay.passingQuality = 0.92;
-    old.gameplay.controlQuality = 1.1;
-    stored = JSON.stringify(old);
-    assert.equal(loadConfig().gameplay.passingQuality, 0.92);
-    assert.equal(loadConfig().gameplay.controlQuality, 1.1);
-    const custom = structuredClone(DEFAULT_CONFIG);
-    custom.gameplay.passingQuality = 1.6;
-    saveConfig(custom);
-    assert.equal(
-      loadConfig().gameplay.passingQuality,
-      1.6,
-      'saving a new custom setting prevents a repeated upgrade',
-    );
-  } finally {
-    globalThis.localStorage = previous;
-  }
 });
