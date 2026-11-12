@@ -732,6 +732,24 @@ export const flows = [
         if (picks.filter(id => /:legend$/.test(id)).length !== 1)
           throw new Error('no legend in the XI');
       });
+      await step(
+        'the sheet stays open and shows the boost; a second tap does nothing',
+        async () => {
+          await visible(page, 'dialog.draft-prime[open] [data-testid="prime-done"]');
+          const button = page.locator('[data-testid="prime-confirm"]');
+          if (!/Done/.test(await button.textContent())) throw new Error('the button is not Done');
+          // An impatient second tap must not fall through to "On to the World Cup".
+          await button.click();
+          await page.waitForTimeout(100);
+          if ((await page.evaluate(() => location.hash)) !== '#/draft')
+            throw new Error('the second tap left the draft');
+          await shot('prime-done');
+          await page.waitForTimeout(500);
+          if (await page.locator('dialog.draft-prime[open]').count()) await button.click();
+          await page.waitForSelector('dialog.draft-prime[open]', { state: 'detached' });
+          await page.waitForTimeout(450);
+        },
+      );
       await shot('primed');
       await step('continue to the run with the legend and the prime', async () => {
         await page.click('[data-testid="draft-continue"]');

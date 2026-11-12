@@ -68,10 +68,20 @@ export const primeVersion = (catalog, p) =>
 /** The id a player is known by in the catalog: a prime version counts as the current player. */
 export const baseProfileId = p => p.primeOf ?? p.profileId;
 /**
- * The year of an edition: a FIFA edition comes out in the autumn before its number (FIFA 19 in
- * September 2018), so legends and prime versions are labelled by the year before.
+ * The year of a legend or prime version: the year of the ratings snapshot it was compiled from
+ * (`year`, stored by the compiler from the source row's date). Takes a player, a version
+ * summary ({ year, edition }) or a bare edition number. Without a stored year the release
+ * snapshot is assumed: a FIFA edition comes out in the autumn before its number (FIFA 19 in
+ * September 2018).
  */
-export const editionYear = edition => (edition ? 1999 + edition : null);
-/** "’18" for edition 19 (FIFA 19): what the game shows, never the edition. */
-export const editionLabel = edition =>
-  edition ? `’${String(editionYear(edition) % 100).padStart(2, '0')}` : '';
+export function editionYear(version) {
+  if (version == null) return null;
+  if (typeof version === 'object')
+    return version.year ?? (version.edition ? 1999 + version.edition : null);
+  return version ? 1999 + version : null;
+}
+/** "’18" for a version of 2018 (FIFA 19): what the game shows, never the edition. */
+export function editionLabel(version) {
+  const year = editionYear(version);
+  return year ? `’${String(year % 100).padStart(2, '0')}` : '';
+}

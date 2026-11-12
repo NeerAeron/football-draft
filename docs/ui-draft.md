@@ -190,8 +190,15 @@ openPrematch({
 * **Prime boost** (`snap.primes`, `prime-sheet.js`): the `PrimeButton` ("Prime boost 2") sits
   under the meters and in the completion sheet's footer — boosts not used by "On to the World
   Cup" are gone. It opens one sheet (`PrimeSheet`) listing the XI: players with a prime version
-  first with the bump ("84 → 86 +2", "Prime ’22"), the rest dimmed and not selectable; select,
-  then "Boost Son · Prime ’22" confirms (not reversible). Players with a prime available carry
+  first with the bump in their slot ("84 → 86 +2", "Prime ’22"; a version that plays elsewhere
+  says so, "CB · Prime ’16 · LB 86", and a slot that gains nothing shows "±0" / "−1" in grey),
+  the rest dimmed and not selectable; select, then "Boost Son · Prime ’22" confirms (not
+  reversible). **The sheet stays open after a boost**: his row keeps its place (the order is
+  fixed when the sheet opens) with a tick, and the button says **Done** — or boosts the next
+  choice. The button ignores taps for 450 ms after a boost, and the board's Spin / Re-roll /
+  Auto-pick / Continue ignore taps for 400 ms after a sheet is closed (`hush()` in `draft.js`):
+  those buttons sit exactly under the sheet's button, and a second tap used to re-roll the spin
+  or start the World Cup. Players with a prime available carry
   a gold dot on the pitch and "Prime 94 · ’19" in their pool row while boosts are left.
 * **Captain**: the "C" (`CaptainMark`) on his row, card and pitch token (the armband: the
   highest-rated Captain of the XI), the green chips include his +1, and the pick preview says

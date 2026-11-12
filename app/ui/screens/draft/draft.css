@@ -1452,6 +1452,32 @@
   font-weight: var(--weight-heavy);
   text-align: center;
 }
+.draft-prime__bump i.is-flat {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+.draft-prime__row.is-done,
+.draft-prime__row.is-done:disabled {
+  opacity: 1;
+  border-color: var(--gold-300);
+  background: rgb(245 200 76 / 0.14);
+}
+.draft-prime__row.is-done .draft-prime__meta {
+  color: var(--gold-300);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .draft-prime__row.is-done {
+    animation: draft-prime-done 420ms ease-out;
+  }
+}
+@keyframes draft-prime-done {
+  from {
+    transform: scale(0.96);
+  }
+  to {
+    transform: none;
+  }
+}
 .pick-effects__captain {
   align-items: center;
   gap: var(--space-2);

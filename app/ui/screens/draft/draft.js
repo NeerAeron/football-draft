@@ -126,6 +126,15 @@ function Board({ state, draft, auto }) {
   const [moment, setMoment] = useState(null);
   const [announcement, announce] = useAnnouncer();
   const seenPick = useRef(lastPick?.token);
+  // A sheet that closes leaves the action bar (Spin, Re-roll, Continue) right under the thumb
+  // that closed it: those buttons ignore taps for a moment.
+  const hushed = useRef(0);
+  const hush = () => (hushed.current = performance.now() + 400);
+  const calm = () => performance.now() >= hushed.current;
+  const closePrime = () => {
+    setPrimeOpen(false);
+    hush();
+  };
 
   // ---- views ----
   const toView = useMemo(() => makePlayerView(catalog), [catalog]);
@@ -277,11 +286,13 @@ function Board({ state, draft, auto }) {
 
   // ---- actions ----
   const spin = () => {
+    if (!calm()) return;
     setPassAck(snap.pickIndex);
     if (!spinDraft()) return;
     playCue('tick');
   };
   const reroll = () => {
+    if (!calm()) return;
     if (rerollDraft()) announce('Re-rolling…');
   };
   const onLanded = () => {
@@ -313,20 +324,25 @@ function Board({ state, draft, auto }) {
   };
   const doPrime = slot => {
     const result = primeDrafted(slot);
-    if (!result.ok)
-      return toast({ title: 'No Prime boost', message: result.reason, tone: 'warning' });
+    if (!result.ok) {
+      toast({ title: 'No Prime boost', message: result.reason, tone: 'warning' });
+      return result;
+    }
     const p = session.player(result.profileId);
     playCue(hide ? 'pick' : selectionSound('Superstar'));
     announce(`${p.name} is now his prime version.`);
-    setPrimeOpen(false);
+    // The sheet stays open and shows the boost (prime-sheet.js).
+    return result;
   };
   const doAutoPick = () => {
+    if (!calm()) return;
     setPassAck(snap.pickIndex);
     const result = autoPick();
     if (result && !result.ok)
       toast({ title: 'Auto-pick failed', message: result.reason, tone: 'warning' });
   };
   const onContinue = async () => {
+    if (!calm()) return;
     setBusy(true);
     try {
       await finishDraft();
@@ -550,7 +566,10 @@ function Board({ state, draft, auto }) {
       !wide &&
       html`<${PickSheet}
         open=${!!entry}
-        onClose=${() => setSel(null)}
+        onClose=${() => {
+          setSel(null);
+          hush();
+        }}
         entry=${entry}
         view=${entry ? entryView(entry) : null}
         team=${team}
@@ -583,7 +602,7 @@ function Board({ state, draft, auto }) {
       snap.primes &&
       html`<${PrimeSheet}
         open=${primeOpen}
-        onClose=${() => setPrimeOpen(false)}
+        onClose=${closePrime}
         team=${team}
         hideRatings=${hide}
         onPrime=${doPrime}
