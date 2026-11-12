@@ -64,13 +64,17 @@ app/                     served statically (deploy = publish this folder); runti
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
                          source-map.json (the source's club/league/nation names → the reference),
-                         captains.json (reviewed Captain list with sources), logo and
+                         captains.json (reviewed Captain list with sources), legacy-titles.json
+                         (FIFA 98–14, the top 1,000 of each title: legends input), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
 scripts/                 catalog compiler (compile-league-catalog.mjs + compile-players.mjs),
-                         compile-legends.mjs (Legends and Prime versions from the legacy CSV)
+                         compile-legends.mjs (Legends and Prime versions from the 26 past titles),
+                         legends-calibration.mjs (who is who across FIFA 98–14, each title's
+                         overall on EA's modern scale: chain links, coarse-title pooling, cards)
 scripts/data/            data:fetch / data:reconcile / data:build pipeline (ea-source.mjs adapts the
-                         source rows); catalog-file.mjs = loadRuntimeCatalog() for Node
+                         source rows; legacy-titles.mjs decodes data/legacy-titles.json);
+                         catalog-file.mjs = loadRuntimeCatalog() for Node
 scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
 tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
@@ -80,7 +84,8 @@ tools/calibration/       manual calibration runners (write to /tmp; not run by n
                          cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md),
                          blunders.mjs (detector of frustrating plays) + watch.mjs (frame viewer),
                          lib/fixtures.mjs (their deterministic club fixtures)
-tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json
+tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json;
+                         legacy-titles.py (the FIFA 98–14 workbook → data/legacy-titles.json)
 tools/og/                og-image.html + render.mjs: re-renders og-image.png and the app icons
 docs/                    contracts, guides and calibration notes — index in docs/README.md
 .github/workflows/       ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
@@ -127,8 +132,9 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `indexCatalog`), `catalog-derived.js` (precomputed badges/club data, `reconcileCatalog`),
   `legends-codec.js` + `legends.js` (Legends and Prime versions: `attachLegends` puts them on
   `catalog.legends` — never in `catalog.players`; `legendPlayer`, `primeVersion`,
-  `baseProfileId`, `editionLabel`: the UI shows the year of that version's ratings — stored
-  with it, never the edition; a legend can be a catalog player's best past version, `legendOf`).
+  `baseProfileId`, `editionLabel`: the UI shows the year of that version's ratings (1997–2022)
+  — stored with it, never the edition; a legend can be a catalog player's best past version,
+  `legendOf`).
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
   draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
@@ -263,25 +269,53 @@ Second source (Legends, Prime versions): jsulz/FIFA23 on Hugging Face, `male_pla
 `13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`; pinned in
 `scripts/data/paths.mjs`). `player_id` is the same EA id as the catalog's `profileId`.
 
+Third source (Legends back to 1997): `data/legacy-titles.json` (2.7 MB, in the repository, SHA-256
+pinned as `LEGACY_TITLES` in `scripts/data/paths.mjs`) — the top 1,000 squad players of each of
+FIFA 98 … FIFA 14, extracted from the games' own PC databases (soccergaming.com archive,
+`https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/`; no licence
+stated, player data © Electronic Arts). It is a column-for-column copy of the owner's workbook
+`legends-98-14.xlsx` (SHA-256 `b49592c70e29b71af9d68d6fc53a108ac054473a425dde1ccf1875d7f625de2a`,
+not in the repository), made by `tools/research/legacy-titles.py` — values unchanged; the
+workbook's hash, each title's source file and scale and the ReadMe's links are recorded in it.
+FIFA 2000–14 use EA's player ids, FIFA 98/99 their own (joined by name and team); FIFA 09–14
+store an overall, the older titles do not; FIFA 98–2003 have coarse scales (8–16 levels) and
+8–17 skills, often surnames only. `scripts/data/legacy-titles.mjs` decodes it (positions,
+feet, which skill stands for a missing one, classic/all-star squads, stand-in names).
+
 ```sh
 npm run data:fetch   # both pinned CSVs -> data/raw/ (SHA-256 checked; no-op when present)
 npm run data:build   # -> app/data/catalog.v3.json, app/data/legends.v1.json, app/assets/flags/,
-                     #    data/build/players.json + legends.json (~30 s: 42,000 past versions are rated)
+                     #    data/build/players.json + legends.json (~30 s; legends.json also holds
+                     #    the calibration: every chain link, who was merged or dropped, and
+                     #    where each card's numbers come from)
+python3 -I tools/research/legacy-titles.py <legends-98-14.xlsx> data/legacy-titles.json
+                     # only for a new workbook (needs openpyxl): then pin the new SHA-256 in
+                     # paths.mjs; the build itself needs neither Python nor the workbook
 ```
 
 `app/data/legends.v1.json` (`core/players/legends-codec.js`, columnar; fetched only by
 `services/legends.js` when a World Cup draft or run opens — never on Home) is compiled by
-`scripts/compile-legends.mjs` through `compilePlayer`. Every threshold is in the rating the
-game shows on a card (`overallRating` at the primary position), never EA's overall: a player's
-**best version** is his highest shown rating (ties → EA overall, then the latest edition);
-**legends** = best versions shown 85+, of players not in the catalog and of catalog players
-whose card today shows less (`legendOf`; no rule about how far apart), with the club of that
-edition when the catalog has it; **prime versions** = catalog players whose best version shows
-2+ more than today, or 88+ and more. One person, one place in an XI: `baseProfileId` maps a
-legend or prime version to the catalog player. Each stores `year`, the year of its ratings
-snapshot (`fifa_update_date`; the build fails without one) — what `editionYear` /
-`editionLabel` show. FIFA 15/16 have no composure: taken from the player's
-nearest later edition, else his reactions. It is stamped with the catalog build (`catalog.ids`)
+`scripts/compile-legends.mjs` through `compilePlayer`, from 26 titles (FIFA 98–23).
+**The rule that puts every era on one scale** (`scripts/legends-calibration.mjs`): a past
+version keeps the overall EA printed (FIFA 09–23 — never pulled down to today's cards: the
+all-time best stand above them), and a title that printed none (FIFA 98–08) is chain-linked to
+the next one through the players both have, so that they carry on average and in spread what
+the next title gives them (FIFA 08 against 09 … back to 98; no ranking, no forced top). The
+card then has the skills of its year, moved together until the game's `overallRating` shows
+that overall, so every threshold is in the rating a card shows: a player's **best version** is
+his highest overall (ties → the latest title); **legends** = best versions shown 85+, of players
+not in the catalog and of catalog players whose card today shows less (`legendOf`; no rule
+about how far apart), with the club of that title when the catalog has it; **prime versions**
+= catalog players whose best version shows more than today — any gain (and EA rated him higher
+then). FIFA 98–2003 are too coarse to rate a player alone: their cards are pooled over the data
+generations within three years by a measured trust, a player only one of them knows gets
+none, and keepers start with FIFA 2005; classic/all-star squads and stand-in names are no
+source. One person, one place in an XI: `baseProfileId` maps a legend or prime version to the
+catalog player (two EA ids of one man are merged by rule). Each stores `year`, the year of its
+ratings (`fifa_update_date`, the build fails without one; FIFA 98–14: the year before the
+title's number) — what `editionYear` / `editionLabel` show. What a title lacks comes from the
+player's nearest version that has it (composure for FIFA 11–16, else his reactions; foot and
+weak foot for the early titles). It is stamped with the catalog build (`catalog.ids`)
 and the badge configuration, so rebuild both files together. **Captains** come from the reviewed
 list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
 

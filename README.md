@@ -132,7 +132,8 @@ scripts/              catalog compiler; scripts/data/ the data pipeline, scripts
 tests/                node:test suites, fixtures, browser flows
 tools/calibration/    calibration runners (manual, not part of the tests)
 tools/og/             the link-preview card and app icons (HTML template + render script)
-tools/research/       StatsBomb research scripts that produced the reference data
+tools/research/       StatsBomb research scripts that produced the reference data, and
+                      legacy-titles.py (the FIFA 98–14 workbook → data/legacy-titles.json)
 docs/                 API contracts, UI guides, calibration notes, development history
 ```
 
@@ -149,13 +150,19 @@ Legends and prime versions come from a second pinned source: `male_players (lega
 Hugging Face dataset [jsulz/FIFA23](https://huggingface.co/datasets/jsulz/FIFA23) (MIT; career-mode
 players of FIFA 15–23 from sofifa.com, the same columns; revision
 `0b74dbfc434808cf5573f0f11f4c977185bd0e0c`, 90,933,390 bytes, SHA-256
-`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`).
+`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`). Legends go back to 1997
+with a third one, `data/legacy-titles.json` (in the repository): the top 1,000 players of each
+of FIFA 98 … FIFA 14, extracted from the games' own PC databases
+([soccergaming.com archive](https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/))
+and copied column for column out of a workbook by `tools/research/legacy-titles.py`.
 
 ```sh
 npm run data:fetch   # downloads both pinned CSVs into data/raw/ and checks their SHA-256
 npm run data:reconcile  # a new snapshot only: its club, league and nation names -> the reference
 npm run data:build   # compiles app/data/catalog.v3.json, app/data/legends.v1.json, the flags
                      # and data/build/*.json (provenance)
+python3 -I tools/research/legacy-titles.py legends-98-14.xlsx data/legacy-titles.json
+                     # a new FIFA 98–14 workbook only (openpyxl); the build needs no Python
 ```
 
 The build is deterministic, so a rerun is byte-identical. The catalog holds every player of every
@@ -165,9 +172,12 @@ precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 189 legends — best past versions the game shows at 85+: 97 players who are
-not in the catalog and 92 catalog players who were better then — and the prime versions of
-2,362 catalog players (shown 2+ above today, or 88+), compiled by the same compiler. A draft
+draft starts) holds 407 legends — best past versions of 1997–2022 the game shows at 85+: 314
+players who are not in the catalog and 93 catalog players who were better then — and the prime
+versions of 2,814 catalog players (any gain on today's card), compiled by the same compiler. A
+past version shows the overall EA gave it that year (Messi ’19 and Cristiano Ronaldo ’18 are
+the top cards at 94); FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through
+the players neighbouring titles share (Ronaldo ’03 92, Zidane ’03 and Ronaldinho ’05 91). A draft
 offers only players shown at 65 or more (10,968 of the 15,788); teams field their real players.
 
 ## Deploy
@@ -188,7 +198,10 @@ tests and browser smoke test on every push and pull request.
   converted, not invented (see the compiler).
 - **Legends and prime versions:** the [FIFA23 dataset](https://huggingface.co/datasets/jsulz/FIFA23)
   by jsulz on Hugging Face (`male_players (legacy).csv`, FIFA 15–23 career-mode players), MIT
-  licence; upstream data from SoFIFA / EA SPORTS FIFA.
+  licence; upstream data from SoFIFA / EA SPORTS FIFA. The versions of 1997–2013 (FIFA 98–14,
+  the top 1,000 players of each title) were extracted from the games' own databases
+  ([soccergaming.com archive](https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/);
+  no licence stated — player data belongs to Electronic Arts).
 - **Club and league strength:** a September 2026 snapshot of the
   [Opta Power Rankings](https://dataviz.theanalyst.com/opta-power-rankings/), stored in
   `data/catalog-reference.json`.

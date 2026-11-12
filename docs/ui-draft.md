@@ -200,7 +200,7 @@ openPrematch({
 * **Legend spin** (World Cup Run drafts, `snap.legendRound`): the first spin's stage is gold
   (`.stage.is-legend`, "Legend spin", the button says "Legend spin", the pool "Pick a legend")
   and shows **no odds** (no ⓘ, no dialog: the reel's weighting is silent). One line says where
-  the legends come from: "Best versions, 2014–2022" (`legendYearsLine(snap.legendYears)`,
+  the legends come from: "Best versions, 1997–2022" (`legendYearsLine(snap.legendYears)`,
   `data-testid="legend-years"`, from the data). At most ten legends are listed, nobody under 85.
   A legend's — and a prime version's — card, row and pitch token carry the year of that version
   ("’18": `view.era`, `editionLabel(player)` — the year stored with the version; an edition
