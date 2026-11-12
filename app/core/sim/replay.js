@@ -1,6 +1,7 @@
 import { Match, Player, clamp, MATCH_SECONDS } from './engine.js';
 import { freshStats } from './constants.js';
 export const RECORD_STEP = 3; // 20 stored frames/s; interpolate display, retain 60 Hz physics.
+export const EXTRA_TIME_REEL = 20; // seconds of Key Moments for extra time (30 for a half)
 // Shallow equality of two flat records (a stats row, a restart, an animation).
 function sameRecord(a, b) {
   if (a === b) return true;
@@ -266,6 +267,11 @@ function restoreMatch(data) {
   });
   return m;
 }
+/**
+ * One stretch of a match between two breaks, with its highlight clips: the first half (from
+ * kick-off to half-time), the second (to the end, or to the break before extra time) or the
+ * whole of extra time (both periods; the sides only change ends between them).
+ */
 export async function simulateHalf(source, onProgress = () => {}, cancelled = () => false) {
   // Keep the authoritative simulation separate from the display snapshots.
   const m = restoreMatch(structuredClone(source));
@@ -284,19 +290,30 @@ export async function simulateHalf(source, onProgress = () => {}, cancelled = ()
         frames.push(snapshot(m, frames.at(-1)));
     }
     if (cancelled()) return null;
-    onProgress(clamp((m.elapsed - start) / (m.periodDeadline() - start), 0, 1));
+    // Extra time is two periods in one stretch: the first one's length stands for both.
+    const end = m.periodDeadline() + (m.half === 3 ? m.periodDeadline() - m.periodStart : 0);
+    onProgress(clamp((m.elapsed - start) / (end - start), 0, 1));
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   if (!m.shootout && frames.at(-1).elapsed !== m.elapsed) frames.push(snapshot(m, frames.at(-1)));
+  // Extra time is a third as long as the ninety minutes, and so is its reel.
+  const extra = half > 2,
+    budget = extra ? EXTRA_TIME_REEL : 30;
   const events = m.events
-    .filter(e => e.half === half)
+    .filter(e => e.half >= half)
     .map(e => ({ ...e, elapsed: e.elapsed - start }));
-  const clips = selectHighlights(events, m.elapsed - start, 30).map(c => ({
+  const clips = selectHighlights(events, m.elapsed - start, budget).map(c => ({
     ...c,
     start: c.start + start,
     end: c.end + start,
   }));
-  return { result: m, frames, clips, viewDuration: 30, viewOffset: (half - 1) * 30 };
+  return {
+    result: m,
+    frames,
+    clips,
+    viewDuration: budget,
+    viewOffset: extra ? 60 : (half - 1) * 30,
+  };
 }
 function frameIndex(frames, time) {
   let lo = 0,

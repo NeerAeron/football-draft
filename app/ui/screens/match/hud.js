@@ -49,7 +49,11 @@ export function MomentumChart({
 }) {
   const n = Math.max(90, samples.length),
     w = 100 / n,
-    mid = height / 2;
+    mid = height / 2,
+    // Half-time sits in the middle of the ninety minutes (and their added time); with extra
+    // time on the axis a second line marks the end of them.
+    regular = Math.min(n, 96),
+    extraTime = n > 105;
   const home = teamStyle(teamColors(teams[0]))['--team'],
     away = teamStyle(teamColors(teams[1]))['--team'];
   const lead = (final ? samples : samples.slice(-5)).reduce((a, b) => a + b, 0);
@@ -71,7 +75,23 @@ export function MomentumChart({
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <line x1="50" x2="50" y1="0" y2=${height} class="momentum__half" />
+      <line
+        x1=${(regular / 2) * w}
+        x2=${(regular / 2) * w}
+        y1="0"
+        y2=${height}
+        class="momentum__half"
+      />
+      ${
+        extraTime &&
+        html`<line
+          x1=${regular * w}
+          x2=${regular * w}
+          y1="0"
+          y2=${height}
+          class="momentum__half"
+        />`
+      }
       <line x1="0" x2="100" y1=${mid} y2=${mid} class="momentum__axis" />
       ${samples.map((v, i) => {
         const h = Math.min(1, Math.abs(v) * 1.6) * (mid - 2);

@@ -57,7 +57,7 @@ const FORMATION_NAME = [null, null],
   FORMATION_ROWS = [null, null];
 import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
-import { hypot } from './constants.js';
+import { WhistleMethods } from './whistle.js';
 
 // Cold start. V8 chooses how a field is stored from the first values written to it and, when
 // a later value does not fit (a whole-number field receives a fraction), re-shapes the object
@@ -82,6 +82,8 @@ const WHOLE_NUMBER_FIELDS = new Set([
   'lastTeam',
   'lastTouch',
   'taker',
+  'holdTeam',
+  'holdCorners',
 ]);
 let shapesPrimed = false;
 function primeShapes(duration) {
@@ -235,6 +237,9 @@ export class Match {
     this.periodStart = 0;
     this.addedMinutes = stoppageMinutes(this.seed, this.tuning.periods);
     this.addedAnnounced = [false, false];
+    // Real seconds each period ran past its deadline (a held whistle, whistle.js).
+    this.heldTime = [0, 0, 0, 0];
+    this.resetHold();
     this.halftime = null;
     this.score = [0, 0];
     this.stats = [0, 1].map(() => ({
@@ -693,6 +698,8 @@ export class Match {
     );
   }
   finishPeriod() {
+    this.heldTime[this.half - 1] = Math.max(0, this.elapsed - this.periodDeadline());
+    this.resetHold();
     this.resolveShot('off target');
     if (this.half === 1) {
       const outfield = this.activePlayers.filter(p => p.role !== 'GK'),
@@ -723,14 +730,26 @@ export class Match {
       this.mode = 'halftime';
       this.phase = 'Half-time';
       this.addEvent('Half-time. Time to recover and adjust tactics.', null, 'half');
-    } else if (this.half === 2 && this.knockoutLevel() && this.competition.extraTime)
-      this.startExtraHalf(3);
-    else if (this.half === 3) this.startExtraHalf(4);
+    } else if (this.half === 2 && this.knockoutLevel() && this.competition.extraTime) {
+      // The break before extra time: like half-time, the match waits here for resumeHalf()
+      // (pauseAtHalf) — the moment for a team talk — and goes straight on otherwise.
+      for (const p of this.activePlayers) p.vx = p.vy = 0;
+      this.mode = 'halftime';
+      this.phase = 'Extra time';
+      this.addEvent('Full-time. Level, so it goes to extra time.', null, 'full', {
+        extraTime: true,
+      });
+    } else if (this.half === 3) this.startExtraHalf(4);
     else if (this.knockoutLevel()) {
       for (const p of this.activePlayers) p.vx = p.vy = 0;
-      this.addEvent('Full-time. Level, so it goes to penalties.', null, 'full', {
-        shootout: true,
-      });
+      this.addEvent(
+        this.half > 2
+          ? 'Still level after extra time. Penalties.'
+          : 'Full-time. Level, so it goes to penalties.',
+        null,
+        'full',
+        { shootout: true, ...(this.half > 2 ? { afterExtraTime: true } : {}) },
+      );
       this.startShootout();
     } else {
       this.finished = true;
@@ -738,7 +757,11 @@ export class Match {
       this.phase = 'Full time';
       for (const p of this.activePlayers) p.vx = p.vy = 0;
       this.finalizeStory();
-      this.addEvent('Full-time. The final whistle.', null, 'full');
+      if (this.half > 2)
+        this.addEvent('The final whistle, after extra time.', null, 'full', {
+          afterExtraTime: true,
+        });
+      else this.addEvent('Full-time. The final whistle.', null, 'full');
     }
   }
   // The side that won (0 / 1), null for a draw or while undecided. A shootout
@@ -749,8 +772,13 @@ export class Match {
     if (this.score[0] !== this.score[1]) return this.score[0] > this.score[1] ? 0 : 1;
     return this.shootout?.winner ?? null;
   }
+  // Out of a break: the second half after half-time, extra time after the one at 90'.
   resumeHalf() {
     if (this.mode !== 'halftime') return false;
+    if (this.half === 2) {
+      this.startExtraHalf(3);
+      return true;
+    }
     this.half = 2;
     this.periodStart = this.elapsed;
     this.time = 2700;
@@ -824,19 +852,8 @@ export class Match {
         { minutes: this.addedMinutes[this.half - 1] },
       );
     }
-    const pendingPenalty =
-      (this.mode === 'restart' && this.restart.type === 'Penalty') ||
-      (this.ball.penaltyKick &&
-        (this.ball.kind === 'shot' || this.ball.kind === 'loose') &&
-        hypot(this.ball.vx, this.ball.vy) > 0.5);
-    const settling =
-      (this.ball.kind === 'shot' && this.ball.age < 3) ||
-      (this.mode === 'restart' && this.restart.type === 'Goal' && this.restart.timer > 0.1);
-    if (
-      this.elapsed >= this.periodDeadline() - 1e-7 &&
-      !pendingPenalty &&
-      (!settling || this.elapsed > this.periodDeadline() + 4)
-    ) {
+    const over = this.elapsed - this.periodDeadline();
+    if (over >= -1e-7 && !this.whistleHeld(over)) {
       this.finishPeriod();
       return;
     }
@@ -881,4 +898,5 @@ install(
   InsightMethods,
   ShootoutMethods,
   KeeperMethods,
+  WhistleMethods,
 );

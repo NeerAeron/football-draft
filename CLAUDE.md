@@ -123,7 +123,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `player.js` (skill/awareness/speed view), `player-model.js` (hidden tendencies), `rules.js`
   (offside), `discipline.js` (cards; `fouls.js coverDismissal` reshapes a side to ten men),
   `keeper.js` (dive/save model; a save's ball does what its `saveType` says), `goal-zones.js`,
-  `insights.js` (xG fitted to the engine's own conversion, situations — display only), `periods.js` (clock, stoppage), `shootout.js` (extra time, penalties), `replay.js`
+  `insights.js` (xG fitted to the engine's own conversion, situations — display only), `periods.js` (clock, stoppage), `whistle.js` (the whistle waits for a live attack or an awarded corner: `whistleHeld`, caps in `tuning.periods.hold*`), `shootout.js` (extra time, penalties), `replay.js`
   (record, highlights, `simulateComplete`/`simulateHalf`, `performanceRating`), `coach.js`
   (`coachAI` for side 1 in AI mode, `tacticAccess`), `constants.js`.
 - **Players** (`players/`) — `ratings.js` (attributes, role weights, `overallRating`,

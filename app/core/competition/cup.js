@@ -332,12 +332,14 @@ export class CupRun {
     return this.aiRng / LCG_RANGE;
   }
   /**
-   * Report the user's match: { goalsFor, goalsAgainst, shootout?, players? }.
+   * Report the user's match: { goalsFor, goalsAgainst, extraTime?, shootout?, players? }.
+   * The goals are the final score: a knockout tie that went to extra time (`extraTime: true`)
+   * reports the score after it, and counts as a win or a defeat when that decided it.
    * shootout (knockout draws only): { winner: 'user' | 'opponent', score?: [for, against] }.
    * players: [{ profileId, rating (engine performance 3–10), goals?, assists? }] for the
    * Player of the Tournament / Held you back helpers.
    */
-  recordResult({ goalsFor, goalsAgainst, shootout = null, players = [] }) {
+  recordResult({ goalsFor, goalsAgainst, extraTime = false, shootout = null, players = [] }) {
     if (this.complete) throw Error('The run is over');
     for (const v of [goalsFor, goalsAgainst])
       if (!Number.isInteger(v) || v < 0) throw Error('Goals must be whole numbers');
@@ -356,6 +358,8 @@ export class CupRun {
       opponent: this.#opponent(round).key,
       goals: [goalsFor, goalsAgainst],
       outcome,
+      // Knockouts only: the tie went to extra time (the goals include it).
+      extraTime: info.knockout && !!extraTime,
       shootout: pens,
       players: players.map(p => ({
         profileId: String(p.profileId),
@@ -397,13 +401,17 @@ export class CupRun {
     return this.recordResult({
       goalsFor: r.goals[0],
       goalsAgainst: r.goals[1],
+      extraTime: r.extraTime,
       shootout: r.shootout && {
         winner: r.shootout.winner ? 'opponent' : 'user',
         score: r.shootout.score,
       },
     });
   }
-  /** W-D-L by the 90-minute score (a knockout decided on penalties counts as a draw). */
+  /**
+   * W-D-L by the final score — after extra time in a knockout tie that needed it (a tie decided
+   * on penalties counts as a draw).
+   */
   record() {
     const r = { w: 0, d: 0, l: 0, gf: 0, ga: 0, played: this.matches.length };
     for (const m of this.matches) {
@@ -547,6 +555,7 @@ export class CupRun {
                 goalsFor: m.goals[0],
                 goalsAgainst: m.goals[1],
                 outcome: m.outcome,
+                extraTime: !!m.extraTime,
                 shootout: m.shootout,
               }
             : null,

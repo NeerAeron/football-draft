@@ -268,11 +268,20 @@ export function commentary(e, ctx = {}) {
       };
       break;
     case 'full':
+      // The whistle at 90' (extraTime: on to extra time), after extra time, or into penalties
       line = {
-        text: e.shootout ? 'Level at full time — penalties!' : 'Full-time.',
+        text: e.extraTime
+          ? 'Level after 90 minutes — extra time!'
+          : e.shootout
+            ? e.afterExtraTime
+              ? 'Still level after extra time — penalties!'
+              : 'Level at full time — penalties!'
+            : e.afterExtraTime
+              ? 'Full-time, after extra time.'
+              : 'Full-time.',
         tone: 'whistle',
         icon: 'whistle',
-        level: e.shootout ? 2 : 1,
+        level: e.shootout || e.extraTime ? 2 : 1,
       };
       break;
     case 'shootout-start':

@@ -309,12 +309,17 @@ export function analysisChips(result, side = 0, max = 3) {
     .map(({ weight, ...chip }) => chip);
 }
 
-/** One line to paste in a chat: "⚽ Liverpool 2–1 Real Madrid · Salah 23' 67' · MOTM Salah 8.4". */
+/**
+ * One line to paste in a chat: "⚽ Liverpool 2–1 Real Madrid · Salah 23' 67' · MOTM Salah 8.4"
+ * ("2–1 Real Madrid (aet)" after extra time, "1–1 Real Madrid (4–3 pens)" after a shootout).
+ */
 export function shareLine(result) {
   const [home, away] = result.teams;
   const pens = result.shootout
     ? ` (${result.shootout.score[0]}–${result.shootout.score[1]} pens)`
-    : '';
+    : result.extraTime
+      ? ' (aet)'
+      : '';
   const scorers = new Map();
   for (const g of result.goals) {
     const key = g.ownGoal ? `${g.player || '?'} (og)` : g.player || '?';

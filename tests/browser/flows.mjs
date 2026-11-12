@@ -222,6 +222,47 @@ async function skipClips(page, until, limit = 80) {
   await visible(page, until, 20000);
 }
 
+/**
+ * A seed for the demo's level knockout tie (`et=1`) whose extra time ends the way a flow needs:
+ * 'pens' (still level, a shootout) or 'aet' (a winner in extra time). Found with the engine in
+ * the page, so the flows keep working when the engine changes.
+ */
+async function demoSeed(page, step, base, want) {
+  let seed = null;
+  await step(`find a seed: ${want}`, async () => {
+    await page.goto(base);
+    seed = await page.evaluate(async want => {
+      const { loadCatalog } = await import('./services/catalog.js');
+      const { buildDemoRequest, forceLevel } = await import('./ui/screens/match/demo.js');
+      const { Match } = await import('./core/sim/engine.js');
+      const catalog = await loadCatalog();
+      for (let seed = 1; seed <= 80; seed++) {
+        const request = buildDemoRequest(catalog, { et: '1', seed: String(seed) });
+        const m = new Match(request.seed, request.duration);
+        m.importConfig(request.config);
+        forceLevel(m);
+        while (!m.finished) m.step(1 / 60);
+        if (!!m.shootout === (want === 'pens')) return seed;
+      }
+      return null;
+    }, want);
+    if (seed == null) throw new Error(`no demo seed ends in ${want}`);
+  });
+  return seed;
+}
+
+/** The break at 90 minutes: the score, a team talk, then "Extra time". */
+async function extraTimeBreak(page, step, view, shot) {
+  await step(`${view}: the break before extra time`, async () => {
+    await visible(page, '[data-testid="halftime"]', 30000);
+    const text = await page.textContent('[data-testid="halftime"]');
+    if (!/Level after 90 minutes/.test(text)) throw new Error(`break reads "${text}"`);
+    await visible(page, '[data-testid="halftime"] .segmented');
+  });
+  if (shot) await shot('break');
+  await step(`${view}: extra time`, () => page.click('[data-testid="extra-time"]'));
+}
+
 /** The controller's own frame-time counter (window.__matchPerf). */
 async function framePerf(page) {
   return page.evaluate(() => {
@@ -382,15 +423,39 @@ const matchFlows = [
     },
   },
   {
+    // A knockout tie that is level at 90 minutes (demo `et=1`): the break, extra time, and —
+    // with a seed whose extra time ends level — the shootout.
     name: 'match-pens',
     async run({ page, shot, step, base }) {
+      const seed = await demoSeed(page, step, base, 'pens');
       // The shootout is a list of marks, never played on the pitch. Reduced motion (emulated
       // here) shows every kick and the winner at once; with motion they come one by one.
       for (const view of ['full', 'key']) {
-        await page.goto(`${base}${MATCH}&view=${view}&pens=1`);
+        await page.goto(`${base}${MATCH}&view=${view}&et=1&seed=${seed}`);
         await kickOff(page, step);
+        await extraTimeBreak(page, step, view, view === 'full' ? shot : null);
+        if (view === 'full') {
+          await step('full: extra time is played, first period then second', async () => {
+            await page.click('.match-speed label:has-text("4×")');
+            for (const period of ['ET1', 'ET2'])
+              await page.waitForFunction(
+                label =>
+                  document.querySelector('.match-bug')?.getAttribute('aria-label')?.includes(label),
+                period,
+                { timeout: 60000 },
+              );
+          });
+          await shot('extra-time');
+        } else
+          await step('key: the extra-time reel shows minutes after the ninetieth', async () => {
+            await visible(page, '[data-testid="clip-minute"]', 30000);
+            const minute = parseInt(await page.textContent('[data-testid="clip-minute"]'), 10);
+            if (!(minute > 90 && minute <= 125)) throw new Error(`clip minute ${minute}`);
+          });
         await step(`${view}: every kick and the winner`, async () => {
-          await visible(page, '[data-testid="shootout"] .pens.is-decided', 30000);
+          const decided = '[data-testid="shootout"] .pens.is-decided';
+          if (view === 'key') await skipClips(page, decided);
+          await visible(page, decided, 90000);
           const marks = await page.locator('.pens__dot.is-goal, .pens__dot.is-miss').count();
           if (marks < 6) throw new Error(`only ${marks} kicks shown`);
           await visible(page, '.pens__row.is-winner');
@@ -401,6 +466,50 @@ const matchFlows = [
           visible(page, '[data-testid="match-result"] .pens.is-decided'),
         );
         if (view === 'full') await shot('result');
+        await page.evaluate(() => localStorage.removeItem('football-draft-match'));
+      }
+    },
+  },
+  {
+    // The same tie with a seed whose extra time has a winner: no shootout, "AET".
+    name: 'match-aet',
+    async run({ page, shot, step, base, viewport }) {
+      const seed = await demoSeed(page, step, base, 'aet');
+      for (const view of ['key', 'instant']) {
+        await page.goto(`${base}${MATCH}&view=${view}&et=1&seed=${seed}`);
+        await kickOff(page, step);
+        if (view === 'key') {
+          await extraTimeBreak(page, step, view, shot);
+          await step('key: extra time plays', () =>
+            visible(page, '[data-testid="clip-minute"]', 30000),
+          );
+          await shot('extra-time');
+          await step('key: skip to the end', () => skipClips(page, '[data-testid="match-result"]'));
+        }
+        await step(`${view}: decided after extra time, without penalties`, async () => {
+          await visible(page, '[data-testid="match-result"]', 60000);
+          const label = await page.getAttribute(
+            '[data-testid="match-result"] .scorebug',
+            'aria-label',
+          );
+          if (!/, AET$/.test(label || '')) throw new Error(`score bug reads "${label}"`);
+          const hero = await page.textContent('.res-hero__ft');
+          if (!/After extra time/.test(hero)) throw new Error(`result reads "${hero}"`);
+          if (await page.locator('[data-testid="match-result"] .pens').count())
+            throw new Error('a shootout panel on a match decided in extra time');
+          const score = label.match(/ (\d+), .* (\d+), AET$/);
+          if (!score || score[1] === score[2]) throw new Error(`no winner in "${label}"`);
+        });
+        if (view === 'key') {
+          await page.evaluate(() => document.fonts.ready);
+          await shot('result');
+          if (viewport === 'mobile') await shot('result-full', { fullPage: true });
+          await step('the stored result says extra time', async () => {
+            const saved = await page.evaluate(() => localStorage.getItem('football-draft-match'));
+            if (!/"extraTime":true/.test(saved || '')) throw new Error('extraTime not stored');
+            if (!/\(aet\)/.test(saved || '')) throw new Error('share line without (aet)');
+          });
+        }
         await page.evaluate(() => localStorage.removeItem('football-draft-match'));
       }
     },

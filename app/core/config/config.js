@@ -286,13 +286,25 @@ export const DEFAULT_CONFIG = {
     halftimeVariation: 1,
   },
   periods: {
-    firstHalfMean: 2,
-    secondHalfMean: 3,
+    // Announced added time (minutes): 1.5 and 2 on average since the whistle waits for an
+    // attack to finish (they were 2 and 3; the minute and a half pays for the goals that
+    // scores, docs/calibration.md).
+    firstHalfMean: 1.5,
+    secondHalfMean: 2,
     firstHalfSpread: 0.8,
     secondHalfSpread: 1,
     minimum: 1,
     firstHalfMaximum: 5,
     secondHalfMaximum: 6,
+    // The whistle is held for an attack that is on when time runs out (sim/whistle.js): the
+    // attackers on the ball within holdRange metres of the goal line, for at most holdAttack
+    // seconds of play (and again from the delivery of a set piece they win); at most
+    // holdCorners corners awarded after time was up are taken; nothing new is waited for
+    // beyond holdMaximum seconds. Real seconds: 2 are a minute on the match clock.
+    holdRange: 30,
+    holdAttack: 4,
+    holdCorners: 1,
+    holdMaximum: 10,
   },
   formats: {
     180: {
@@ -816,6 +828,10 @@ const labels = {
   sprintRecovery: 'Sprint reserve recovery',
   firstHalfMean: 'First-half added time mean',
   secondHalfMean: 'Second-half added time mean',
+  holdRange: 'Whistle held for an attack within (m of the goal line)',
+  holdAttack: 'Whistle held: seconds an attack gets',
+  holdCorners: 'Whistle held: corners awarded after time that are taken',
+  holdMaximum: 'Whistle held: longest wait (seconds)',
   storedTendencyWeight: 'Source tendency contribution',
   attributeCap: 'Total badge boost per attribute',
   shotUrge: 'Box shooting willingness',
@@ -960,7 +976,11 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
       ? [0, 5, 0.1]
       : f.key.includes('Mean')
         ? [0, 15, 0.25]
-        : [0, 15, 1];
+        : f.key === 'holdAttack' || f.key === 'holdMaximum'
+          ? [0, 30, 0.5]
+          : f.key === 'holdRange'
+            ? [0, 52, 0.5]
+            : [0, 15, 1];
   return {
     ...f,
     label:

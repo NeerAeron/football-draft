@@ -36,7 +36,25 @@ test('buildMatchConfig makes an engine config that imports unchanged', () => {
   });
   assert.deepEqual(Object.keys(config).sort(), ['competition', 'players', 'teams', 'tuning']);
   assert.equal(config.players.length, 22);
-  assert.deepEqual(config.competition, { mode: 'ai', difficulty: 'medium', knockout: true });
+  // A match that must have a winner plays extra time before penalties.
+  assert.deepEqual(config.competition, {
+    mode: 'ai',
+    difficulty: 'medium',
+    knockout: true,
+    extraTime: true,
+  });
+  const sides = [side('Liverpool', ['#c8102e', '#ffffff']), side('Arsenal', ['#ef0107', '#fff'])];
+  assert.equal(
+    buildMatchConfig({ sides, competition: { knockout: true, extraTime: false } }).competition
+      .extraTime,
+    false,
+  );
+  // … and a match that may end level has none, whatever the caller says about knockouts.
+  assert.equal('extraTime' in buildMatchConfig({ sides }).competition, false);
+  assert.equal(
+    'extraTime' in buildMatchConfig({ sides, competition: { knockout: false } }).competition,
+    false,
+  );
   assert.equal(config.teams[0].tactics.formation, '4231');
   assert.equal(config.teams[1].tactics.formation, '442');
   assert.equal(config.teams[0].tactics.mentality, 'push');
@@ -96,10 +114,23 @@ test('requests get defaults, results round-trip and convert for the run', () => 
     goalsFor: 1,
     goalsAgainst: 1,
     outcome: 'D',
+    extraTime: false,
     shootout: { winner: 'opponent', score: [4, 5] },
     players: [{ profileId: 'a', rating: 7.1, goals: 1, assists: 0 }],
   });
   assert.equal(runResultFor(result, 1).shootout.winner, 'user');
+  // Decided in extra time: the final score counts, a win for one side and a defeat for the other.
+  const aet = { ...result, score: [2, 1], extraTime: true, shootout: null };
+  assert.deepEqual(
+    [0, 1].map(t => {
+      const r = runResultFor(aet, t);
+      return [r.goalsFor, r.goalsAgainst, r.outcome, r.extraTime, r.shootout];
+    }),
+    [
+      [2, 1, 'W', true, null],
+      [1, 2, 'L', true, null],
+    ],
+  );
   const again = rematch();
   assert.equal(again.id, 'run:qf');
   assert.notEqual(again.seed, 9);

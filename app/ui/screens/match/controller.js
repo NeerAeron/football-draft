@@ -16,7 +16,7 @@ import { isReducedMotion } from '../../lib/motion.js';
 import { markMatchLive, saveMatchResult, FULL_DURATION } from '../../lib/match-store.js';
 import { commentary, minuteLabel } from './commentary.js';
 import { summarizeMatch } from './report.js';
-import { forceShootout } from './demo.js';
+import { forceLevel } from './demo.js';
 import { readCameraPrefs, saveCameraPref, CAMERA_MODES } from './camera-prefs.js';
 import {
   draw,
@@ -66,9 +66,10 @@ const simClient = () => (sharedSim ??= createSimClient());
 /** Kick-off clock period label for the HUD. */
 export function periodLabel(m) {
   if (!m) return '';
-  if (m.finished) return 'FT';
+  if (m.finished) return m.shootout ? 'PENS' : m.half > 2 ? 'AET' : 'FT';
   if (m.mode === 'shootout') return 'PENS';
-  if (m.mode === 'halftime') return 'HT';
+  // The break at 90' before extra time is a full-time whistle too
+  if (m.mode === 'halftime') return m.half === 2 ? 'FT' : 'HT';
   return ['1H', '2H', 'ET1', 'ET2'][m.half - 1] || '';
 }
 
@@ -101,7 +102,7 @@ export class MatchController {
     this.preview = this.makeMatch(request.view);
     this.live = null; // Full: the authoritative live match
     this.display = null; // replay target for reels, rewinds and goal replays
-    this.htMatch = null; // Key Moments: authoritative match at half-time
+    this.htMatch = null; // Key Moments: authoritative match at a break (half-time, 90')
     this.clock = new PlaybackClock();
     this.sounds = new MatchSoundEvents((cue, options) => playCue(cue, options));
     this.ring = [];
@@ -285,6 +286,8 @@ export class MatchController {
     this.cancelJob('half1');
     this.cancelJob('instant');
     if (this.request.view === 'full') return;
+    // The demo's forced level match opens on the break before extra time: nothing to prefetch
+    if (this.request.view === 'key' && this.request.meta?.forceLevel) return;
     this.prefetchTimer = setTimeout(() => {
       if (this.disposed || this.hud.get().phase !== 'pre') return;
       if (this.request.view === 'key') this.jobs.half1 = this.startHalfJob(this.kickoffSource());
@@ -295,7 +298,7 @@ export class MatchController {
   kickoffSource() {
     const m = this.makeMatch(this.request.view);
     m.teams = this.preview.teams.map(t => ({ ...t, tactics: { ...t.tactics } }));
-    if (this.request.meta?.forceShootout) forceShootout(m);
+    if (this.request.meta?.forceLevel) forceLevel(m);
     return m;
   }
 
@@ -307,7 +310,7 @@ export class MatchController {
   }
 
   startInstantJob() {
-    if (this.request.meta?.forceShootout) return this.startHalfJob(this.kickoffSource());
+    if (this.request.meta?.forceLevel) return this.startHalfJob(this.kickoffSource());
     const config = this.preview.exportConfig();
     const job = simClient().complete(config, this.request.seed, {
       onProgress: p => this.jobProgress(job, p),
@@ -353,7 +356,7 @@ export class MatchController {
       clearTimeout(this.prefetchTimer);
       this.live = this.preview;
       this.live.pauseAtHalf = true;
-      if (this.request.meta?.forceShootout) forceShootout(this.live);
+      if (this.request.meta?.forceLevel) forceLevel(this.live);
       this.display = this.makeMatch('full');
       this.sounds.reset(this.live);
       this.hud.set({ phase: 'playing' });
@@ -362,6 +365,12 @@ export class MatchController {
       return;
     }
     this.display = this.makeMatch(view);
+    if (view === 'key' && this.request.meta?.forceLevel) {
+      // Demo: straight to the break before extra time, as the second half's reel would end
+      this.htMatch = this.kickoffSource();
+      this.onHalftime(this.htMatch);
+      return;
+    }
     if (view === 'key') {
       const job = this.jobs.half1 || this.startHalfJob(this.kickoffSource());
       this.jobs.half1 = null;
@@ -730,14 +739,16 @@ export class MatchController {
 
   // ---------- half-time / full time ----------
 
+  /** A break: half-time, or (m.half === 2) the one at 90' before extra time. */
   onHalftime(m) {
+    const extraTime = m.half === 2;
     this.presenting = 'idle';
     this.catchUp(m);
-    playCue('half');
+    playCue(extraTime ? 'full' : 'half');
     this.hud.set({
       phase: 'halftime',
       presenting: 'idle',
-      halftime: { score: [...this.score], stats: this.statsOf(m) },
+      halftime: { score: [...this.score], stats: this.statsOf(m), extraTime },
       stats: this.statsOf(m),
     });
     this.refreshTactics();
@@ -746,6 +757,7 @@ export class MatchController {
     if (this.request.view === 'key') this.jobs.half2 = this.startHalfJob(m);
   }
 
+  /** Out of a break: the second half, or extra time (both periods, one reel in Key Moments). */
   async secondHalf() {
     if (this.hud.get().phase !== 'halftime') return;
     playCue('kickoff');

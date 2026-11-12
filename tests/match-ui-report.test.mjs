@@ -14,7 +14,7 @@ import {
   shareLine,
   isSignificant,
 } from '../app/ui/screens/match/report.js';
-import { buildDemoRequest, forceShootout } from '../app/ui/screens/match/demo.js';
+import { buildDemoRequest, forceLevel } from '../app/ui/screens/match/demo.js';
 import { createMatchRequest, runResultFor } from '../app/ui/lib/match-store.js';
 
 const ctx = new Match(1, 180);
@@ -271,7 +271,7 @@ test('a forced shootout finishes deterministically and is summarised', () => {
     const c = m.exportConfig();
     c.competition = { mode: 'ai', knockout: true };
     m.importConfig(c);
-    forceShootout(m);
+    forceLevel(m);
     for (let i = 0; i < 60 * 150 && !m.finished; i++) m.step(1 / 60);
     return m;
   };
@@ -290,6 +290,57 @@ test('a forced shootout finishes deterministically and is summarised', () => {
     r.shootout,
   );
   assert.equal(runResultFor(r, 0).shootout.winner, r.shootout.winner === 0 ? 'user' : 'opponent');
+  assert.equal(r.extraTime, false);
+  assert.match(shareLine(r), / \(\d+–\d+ pens\) /);
+});
+
+test('a match level at 90 minutes goes to extra time and is summarised as AET or penalties', () => {
+  const play = seed => {
+    const m = new Match(seed, 180);
+    const c = m.exportConfig();
+    c.competition = { mode: 'ai', knockout: true, extraTime: true };
+    m.importConfig(c);
+    forceLevel(m);
+    assert.equal(m.mode, 'halftime', 'the break before extra time');
+    for (let i = 0; i < 60 * 300 && !m.finished; i++) m.step(1 / 60);
+    assert.equal(m.finished, true);
+    return m;
+  };
+  const seen = { aet: 0, pens: 0 };
+  for (let seed = 1; seed <= 40 && !(seen.aet && seen.pens); seed++) {
+    const m = play(seed),
+      request = { id: 'et', seed, view: 'full', meta: { userSides: [0] } },
+      r = summarizeMatch(m, request);
+    assert.equal(r.extraTime, true);
+    assert.ok([0, 1].includes(r.winner));
+    const mine = runResultFor(r, 0);
+    assert.equal(mine.extraTime, true);
+    if (r.shootout) {
+      if (seen.pens++) continue;
+      assert.deepEqual(r.outcomes, ['D', 'D']);
+      assert.equal(mine.outcome, 'D');
+      assert.match(shareLine(r), / \(\d+–\d+ pens\) /);
+      assert.doesNotMatch(shareLine(r), /aet/);
+    } else {
+      if (seen.aet++) continue;
+      // A win and a defeat by the score after 120 minutes, with the goal of extra time in it.
+      assert.deepEqual([...r.outcomes].sort(), ['L', 'W']);
+      assert.equal(mine.outcome, r.winner === 0 ? 'W' : 'L');
+      assert.equal(mine.shootout, null);
+      assert.match(shareLine(r), / \(aet\) /);
+      const late = r.goals.filter(g => g.half > 2);
+      assert.ok(late.length > 0);
+      assert.match(late[0].minute, /^(9[1-9]|1[0-2]\d)(\+\d+)?'$/);
+      assert.deepEqual(summarizeMatch(play(seed), request).score, r.score);
+    }
+  }
+  assert.ok(seen.aet && seen.pens, `decided in extra time ${seen.aet}, on penalties ${seen.pens}`);
+  // The whistles read differently: on to extra time, after it, into the shootout.
+  const say = e => commentary({ id: 1, type: 'full', ...e }, { players: [], teams: [] }).text;
+  assert.match(say({ extraTime: true }), /extra time!$/);
+  assert.match(say({ afterExtraTime: true }), /after extra time/);
+  assert.match(say({ shootout: true, afterExtraTime: true }), /after extra time — penalties/);
+  assert.equal(say({}), 'Full-time.');
 });
 
 test('the demo request uses two real club XIs and is deterministic per seed', async () => {
@@ -303,10 +354,15 @@ test('the demo request uses two real club XIs and is deterministic per seed', as
   assert.notEqual(a.config.teams[0].name, a.config.teams[1].name);
   assert.ok(a.config.players.every(p => p.profileId && p.sourceOverall));
   assert.deepEqual(createMatchRequest(a), a, 'already normalised');
-  const pens = buildDemoRequest(catalog, { pens: '1' });
-  assert.equal(pens.config.competition.knockout, true);
-  assert.equal(pens.meta.forceShootout, true);
-  assert.equal(pens.view, 'key');
+  // et=1 (or pens=1): a knockout tie that is level at 90 minutes, extra time to come.
+  for (const query of [{ et: '1' }, { pens: '1' }]) {
+    const level = buildDemoRequest(catalog, query);
+    assert.equal(level.config.competition.knockout, true);
+    assert.equal(level.config.competition.extraTime, true);
+    assert.equal(level.meta.forceLevel, true);
+    assert.equal(level.view, 'key');
+  }
+  assert.equal(a.meta.forceLevel, false);
 });
 
 test('the goal banner never calls a goal the winner while the match is being shown', () => {

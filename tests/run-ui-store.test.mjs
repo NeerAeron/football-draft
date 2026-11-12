@@ -657,6 +657,7 @@ test('auto-sim results convert to CupRun input for the user side', () => {
   assert.deepEqual(runSide(result), {
     goalsFor: 1,
     goalsAgainst: 1,
+    extraTime: false,
     shootout: { winner: 'opponent', score: [4, 5] },
     players: [{ profileId: 'a', rating: 7.1, goals: 1, assists: 0 }],
   });

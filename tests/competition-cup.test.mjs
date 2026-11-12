@@ -19,6 +19,7 @@ import {
 import {
   outcomeProbabilities,
   simulateResult,
+  MATCH_MODEL,
   simulateShootout,
 } from '../app/core/competition/model.js';
 import { ladderTarget, MODE_BASELINES, opponentCandidates } from '../app/core/draft/opponents.js';
@@ -210,7 +211,12 @@ test('group elimination, knockout shootouts and draws in the record', () => {
   for (let r = 0; r < 3; r++) run.recordResult(win);
   assert.throws(() => run.recordResult({ goalsFor: 1, goalsAgainst: 1 }), /shootout/);
   assert.equal(run.nextMatch().id, 'r32');
-  run.recordResult({ goalsFor: 1, goalsAgainst: 1, shootout: { winner: 'user', score: [4, 3] } });
+  run.recordResult({
+    goalsFor: 1,
+    goalsAgainst: 1,
+    extraTime: true,
+    shootout: { winner: 'user', score: [4, 3] },
+  });
   assert.equal(run.status, 'playing');
   run.recordResult(win);
   run.recordResult({ goalsFor: 0, goalsAgainst: 0, shootout: { winner: 'opponent' } });
@@ -219,6 +225,54 @@ test('group elimination, knockout shootouts and draws in the record', () => {
   assert.deepEqual(snap.results, ['W', 'W', 'W', 'D', 'W', 'D']);
   assert.deepEqual([snap.place, snap.placeLabel, snap.medal], ['qf', 'Quarter-finals', null]);
   assert.deepEqual(snap.rounds[3].result.shootout, { winner: 'user', score: [4, 3] });
+  assert.deepEqual(
+    snap.rounds.slice(0, 6).map(r => r.result.extraTime),
+    [false, false, false, true, false, false],
+  );
+});
+
+test('a knockout tie settled in extra time is a win or a defeat, not a draw', () => {
+  const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 3, user });
+  // A group match has no extra time, whatever the caller says.
+  run.recordResult({ ...win, extraTime: true });
+  assert.equal(run.snapshot().rounds[0].result.extraTime, false);
+  run.recordResult(win);
+  run.recordResult(win);
+  // Round of 32: 2–1 after extra time. The score is the final one; the run goes on.
+  run.recordResult({ goalsFor: 2, goalsAgainst: 1, extraTime: true });
+  let snap = run.snapshot();
+  assert.equal(run.status, 'playing');
+  assert.deepEqual(snap.rounds[3].result, {
+    goalsFor: 2,
+    goalsAgainst: 1,
+    outcome: 'W',
+    extraTime: true,
+    shootout: null,
+  });
+  assert.deepEqual(snap.record, { w: 4, d: 0, l: 0, gf: 8, ga: 1, played: 4 });
+  // Round of 16: beaten in extra time. Out, with a defeat in the record.
+  run.recordResult({ goalsFor: 1, goalsAgainst: 2, extraTime: true });
+  snap = run.snapshot();
+  assert.equal(run.status, 'eliminated');
+  assert.equal(snap.place, 'r16');
+  assert.deepEqual(snap.results, ['W', 'W', 'W', 'W', 'L']);
+  assert.equal(snap.rounds[4].result.extraTime, true);
+  // It survives a save, and the fast model reports its own extra time the same way.
+  const copy = restoreCupRun(catalog, JSON.parse(JSON.stringify(run.serialize())));
+  assert.deepEqual(copy.snapshot(), snap);
+  let seen = 0;
+  for (let seed = 1; seed <= 60 && !seen; seed++) {
+    const sim = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed, user });
+    while (!sim.complete) sim.simulateNext();
+    for (const r of sim.snapshot().rounds) {
+      if (!r.result?.extraTime) continue;
+      seen++;
+      assert.equal(r.knockout, true);
+      if (r.result.shootout) assert.equal(r.result.outcome, 'D');
+      else assert.notEqual(r.result.outcome, 'D');
+    }
+  }
+  assert.ok(seen > 0, 'no simulated run went to extra time');
 });
 
 test('places: the semi-final loser plays for third; runners-up, third and fourth', () => {
@@ -502,7 +556,8 @@ test('rating model: probabilities, determinism, shootouts and projections', () =
   assert.deepEqual(r1, r2);
   let draws = 0;
   for (let s = 1; s <= 200; s++) {
-    const r = simulateResult(80, 80, lcg(s), { knockout: true });
+    const r = simulateResult(80, 80, lcg(s), { knockout: true, extraTime: false });
+    assert.equal(r.extraTime, false);
     if (r.goals[0] === r.goals[1]) {
       draws++;
       assert.ok(r.shootout && r.shootout.score[0] !== r.shootout.score[1]);
@@ -510,6 +565,45 @@ test('rating model: probabilities, determinism, shootouts and projections', () =
     } else assert.equal(r.shootout, null);
   }
   assert.ok(draws > 20);
+  // A knockout tie that is level after 90 minutes plays extra time before penalties: the same
+  // 90 minutes (the same draws from the seed), then a third of the match at a lower rate.
+  let extra = 0,
+    decided = 0,
+    extraGoals = 0;
+  for (let s = 1; s <= 2000; s++) {
+    const ninety = simulateResult(80, 80, lcg(s)),
+      r = simulateResult(80, 80, lcg(s), { knockout: true });
+    assert.equal(r.extraTime, ninety.goals[0] === ninety.goals[1]);
+    if (!r.extraTime) {
+      assert.deepEqual(r.goals, ninety.goals);
+      assert.equal(r.shootout, null);
+      continue;
+    }
+    extra++;
+    extraGoals += r.goals[0] + r.goals[1] - ninety.goals[0] - ninety.goals[1];
+    assert.ok(r.goals[0] >= ninety.goals[0] && r.goals[1] >= ninety.goals[1]);
+    if (r.goals[0] !== r.goals[1]) {
+      decided++;
+      assert.equal(r.shootout, null);
+    } else assert.ok([0, 1].includes(r.shootout.winner));
+  }
+  assert.ok(extra > 300);
+  // Goals in extra time: MATCH_MODEL.extraTime of the ninety minutes' (two sides).
+  const rate = extraGoals / extra / (2 * MATCH_MODEL.goals);
+  assert.ok(Math.abs(rate - MATCH_MODEL.extraTime) < 0.04, `extra-time rate ${rate}`);
+  assert.ok(MATCH_MODEL.extraTime > 0.15 && MATCH_MODEL.extraTime < 1 / 3);
+  assert.ok(decided / extra > 0.3 && decided / extra < 0.6, `decided ${decided / extra}`);
+  // Extra time is a longer look at the two sides than five kicks each: the stronger side goes
+  // through more often with it than straight to penalties.
+  const through = options => {
+    let won = 0;
+    for (let s = 1; s <= 3000; s++) {
+      const r = simulateResult(86, 80, lcg(s), { knockout: true, ...options });
+      if (r.goals[0] > r.goals[1] || r.shootout?.winner === 0) won++;
+    }
+    return won / 3000;
+  };
+  assert.ok(through({}) > through({ extraTime: false }));
   const pens = simulateShootout(80, 80, lcg(3));
   assert.ok(pens.score.every(n => n >= 0 && n <= 30));
   const weak = projectRun({ rating: 78, mode: 'nations', difficulty: 'pro' }),
@@ -530,7 +624,9 @@ test('rating model: probabilities, determinism, shootouts and projections', () =
 test('difficulty ladder: title odds fall level by level and finals are top sides', () => {
   const windows = {
     pro: [0.14, 0.27],
-    worldclass: [0.06, 0.15],
+    // 6% at this baseline rating (80,000 runs, with or without extra time in the model): the
+    // window leaves room for the 3,000 runs here to read 5%.
+    worldclass: [0.04, 0.15],
     legendary: [0.015, 0.08],
   };
   let previous = 1;
