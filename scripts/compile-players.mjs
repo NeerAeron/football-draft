@@ -35,44 +35,74 @@ const fields = {
   stamina: 'power_stamina',
   strength: 'power_strength',
 };
-export function parseCSV(text) {
-  text = text.replace(/^\uFEFF/, '');
-  const records = [];
-  let row = [],
-    field = '',
-    quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      if (quoted && text[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (quoted || field === '') quoted = !quoted;
+/**
+ * Walk a CSV text record by record without keeping it: `onRecord(fields, header, line)` gets
+ * each data record as an array of strings (reused: copy what you keep) — a 91 MB file never
+ * becomes 160,000 objects. Handles quotes, escaped quotes, embedded newlines and a BOM.
+ */
+export function scanCSV(text, onRecord) {
+  let header = null,
+    row = [],
+    quoted = false,
+    wasQuoted = false,
+    start = text.charCodeAt(0) === 0xfeff ? 1 : 0,
+    line = 0;
+  const n = text.length;
+  const field = end => {
+    let value = text.slice(start, end);
+    if (wasQuoted) value = value.slice(1, -1).replaceAll('""', '"');
+    row.push(value);
+    wasQuoted = false;
+  };
+  const record = () => {
+    line++;
+    if (!row.some(v => v !== '')) return void (row = []);
+    if (!header) {
+      header = row;
+      if (new Set(header).size !== header.length)
+        throw new Error('Missing or duplicate CSV headers');
+    } else {
+      if (row.length !== header.length)
+        throw new Error(`CSV row ${line}: expected ${header.length} fields, got ${row.length}`);
+      onRecord(row, header, line);
+    }
+    row = [];
+  };
+  for (let i = start; i < n; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 34) {
+      if (quoted && text.charCodeAt(i + 1) === 34) i++;
+      else if (quoted) quoted = false;
+      else if (i === start) quoted = wasQuoted = true;
       else throw new Error('Unexpected quote in CSV field');
-    } else if (c === ',' && !quoted) {
-      row.push(field);
-      field = '';
-    } else if ((c === '\n' || c === '\r') && !quoted) {
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(field);
-      if (row.some(v => v !== '')) records.push(row);
-      row = [];
-      field = '';
-    } else field += c;
+    } else if (quoted) continue;
+    else if (c === 44) {
+      field(i);
+      start = i + 1;
+    } else if (c === 10 || c === 13) {
+      field(i);
+      if (c === 13 && text.charCodeAt(i + 1) === 10) i++;
+      start = i + 1;
+      record();
+    }
   }
   if (quoted) throw new Error('Unclosed quoted CSV field');
-  if (field !== '' || row.length) {
-    row.push(field);
-    records.push(row);
+  if (start < n || row.length) {
+    field(n);
+    record();
   }
-  const header = records.shift();
-  if (!header || new Set(header).size !== header.length)
-    throw new Error('Missing or duplicate CSV headers');
-  return records.map((r, i) => {
-    if (r.length !== header.length)
-      throw new Error(`CSV row ${i + 2}: expected ${header.length} fields, got ${r.length}`);
-    return Object.fromEntries(header.map((k, j) => [k, r[j]]));
+  if (!header) throw new Error('Missing or duplicate CSV headers');
+  return header;
+}
+/** The whole CSV as one object per record (header name → string). */
+export function parseCSV(text) {
+  const records = [];
+  scanCSV(text, (fields, header) => {
+    const record = {};
+    for (let j = 0; j < header.length; j++) record[header[j]] = fields[j];
+    records.push(record);
   });
+  return records;
 }
 function number(row, key, min = 1, max = 99) {
   const raw = row[key],
