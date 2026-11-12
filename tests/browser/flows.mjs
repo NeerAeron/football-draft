@@ -606,7 +606,7 @@ export const flows = [
           record: { w: 4, d: 1, l: 0 },
           team: 'Brazil',
           rounds: 8,
-          format: 3,
+          format: 4,
         },
         'football-draft-daily': { streak: 4, best: 9, lastPlayed: '2000-01-01' },
       });
@@ -734,16 +734,16 @@ export const flows = [
             throw new Error(`${name} is not ${value}`);
       });
       await step(
-        'three difficulties, each with a re-roll; an old link on a removed one is Pro',
+        'three difficulties, nothing about tokens; an old link on a removed one is Pro',
         async () => {
           const levels = await page.$$eval('input[name="setup-difficulty"]', l =>
             l.map(i => i.value),
           );
           if (levels.join() !== 'pro,worldclass,legendary') throw new Error(`levels: ${levels}`);
-          const pips = await page.$$eval('.ladder__row', rows =>
-            rows.map(r => r.querySelectorAll('.pips__pip.is-on').length),
-          );
-          if (pips.join() !== '2,1,1') throw new Error(`re-rolls: ${pips}`);
+          // The tokens are the same on every level: the ladder does not count them.
+          const ladder = await page.textContent('.ladder');
+          if (/re-roll|respin|prime/i.test(ladder) || (await page.locator('.pips').count()))
+            throw new Error('the ladder talks about tokens: ' + ladder);
           await page.goto(`${base}#/play/quick?type=nations&difficulty=amateur&seed=5`);
           await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
           if (!(await page.isChecked('input[name="setup-difficulty"][value="pro"]')))

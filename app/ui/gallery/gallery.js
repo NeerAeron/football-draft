@@ -360,7 +360,7 @@ function Cards2() {
       <div class="g-cards g-cards--bottom">
         <${PlayerCard} player=${{ ...HAALAND, captain: true }} size="s" />
         <${PlayerCard}
-          player=${{ ...HAALAND, legend: true, era: '’18', name: 'Legend ’18' }}
+          player=${{ ...HAALAND, prime: true, era: '’18', name: 'Prime ’18' }}
           size="s"
         />
         <${PlayerCard} player=${HAALAND} size="m" />

@@ -349,7 +349,7 @@
   outline-offset: 2px;
 }
 
-/* A legend or a prime version: the year of that version under the position, a gold edge. */
+/* An era card: the year of that version under the position; a primed player has a gold edge. */
 .pcard__era {
   margin-top: 0.25em;
   padding: 0 0.35em;
@@ -363,7 +363,6 @@
 .pcard__rating .captain-mark {
   margin-top: 0.3em;
 }
-.pcard--legend,
 .pcard--prime {
   box-shadow:
     0 0 0 1.5px color-mix(in srgb, var(--gold-400) 75%, transparent),

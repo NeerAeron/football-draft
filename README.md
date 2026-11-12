@@ -11,20 +11,22 @@ Everything you do is saved in your own browser.
 
 1. **Pick a mode**, then a difficulty and a formation (Quick Match and Versus also pick a draft
    type).
-2. **Spin.** One tap spins the reel; where it lands is decided before it moves. You get the
-   players of what it lands on: a nation's best 30 players, a league, or a club's squad.
+2. **Spin.** One tap spins the reels; where they land is decided before they move. In a
+   **World Cup** draft (the run and the Daily) two reels land an **era** — a World Cup cycle
+   from France 98 to 2026 — and a **nation** of it, and you get that nation's squad of those
+   years: 26 players at most, each at his best version of the cycle ("Brazil · Korea/Japan
+   02"). Quick Match and Versus draft today's players: a nation's best 30, a league, or a
+   club's squad.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
-   A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
+   A World Cup draft has three **tokens**, the same on every difficulty: one **nation
+   respin** (the era stays, another nation), one **era respin** (another era; the nation stays
+   when that era has it) and one **Prime** (a drafted player becomes his best version of all
+   time). A player is in your XI once, whatever the era. Quick Match has one **re-roll**.
 4. **Mates.** A player with a nation team-mate in your XI gets **+1.5**, with a club mate
    **+1**, with both **+2.5** (shown as a green chip on the pitch; the pool says who would
    get one).
    A **Captain** (a "C" on his card) gives every player of your XI **+1** more.
-   In a World Cup Run the first spin is the **Legend spin** — a best version of 2014–2022,
-   rated 85 or more: a great of the past (Neymar ’19, Bale ’16, Buffon ’17…) or a current
-   player at his peak (Messi ’19, De Bruyne ’20) — and you have **Prime boosts** (2 on Pro, 1
-   above): each turns a drafted player into his best past version. A player is in your XI
-   once: his legend version and his card of today never both.
    **Budget mode** is the hard way: only 2 **Superstars** (rated 88+), 2 **Stars** (84–87) and
    3 **Starters** (80–83) — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
@@ -40,13 +42,13 @@ Everything you do is saved in your own browser.
 
 | Mode | What it is |
 | --- | --- |
-| **World Cup Run** | A Nations draft, then a group of four (three matches; the top two advance, and so does a third place on 4 points or more, as the 2026 format's best thirds), Round of 32, Round of 16, quarter-final, semi-final and final — or the third-place play-off for the beaten semi-finalist. Three difficulties: Pro, World Class and Legendary, the main challenge. Win all eight for a perfect run; every run ends on a place (champions, runners-up, third, fourth or the round you went out in) with a Player of the Tournament and a shareable result, and gold, silver and bronze go into the trophy cabinet on Home (Budget-mode trophies in their own; the ultimate achievement is a perfect Legendary run in Budget mode). Each match can be watched as highlights (1 min) or in full (3 min), or simulated — one match or the whole cup. |
-| **Daily Challenge** | One run a day, the same for everyone: the same eleven Nations spins, re-roll alternates and eight opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
+| **World Cup Run** | A draft across the World Cup eras (an era and a nation per spin), then a group of four (three matches; the top two advance, and so does a third place on 4 points or more, as the 2026 format's best thirds), Round of 32, Round of 16, quarter-final, semi-final and final — or the third-place play-off for the beaten semi-finalist. Three difficulties: Pro, World Class and Legendary, the main challenge. Win all eight for a perfect run; every run ends on a place (champions, runners-up, third, fourth or the round you went out in) with a Player of the Tournament and a shareable result, and gold, silver and bronze go into the trophy cabinet on Home (Budget-mode trophies in their own; the ultimate achievement is a perfect Legendary run in Budget mode). Each match can be watched as highlights (1 min) or in full (3 min), or simulated — one match or the whole cup. |
+| **Daily Challenge** | One run a day, the same for everyone: the same eleven era and nation spins, the same respin landings and the same opponents. Scored with points and "% of the perfect XI"; keep a daily streak. |
 | **Quick Match** | Draft from nations, leagues or clubs, then one match against an AI team at your difficulty. |
 | **Versus** | Two players on one device, drafting from nations, leagues or clubs: a coin toss, alternating picks, then kick off. |
 | **Exhibition** | Any two real teams, clubs or national sides, with no draft. |
 
-### Draft types (Quick Match and Versus; the World Cup is always Nations)
+### Draft types (Quick Match and Versus; the World Cup always spins eras and nations)
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
@@ -54,8 +56,8 @@ Everything you do is saved in your own browser.
 | **Leagues** | one of 41 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
-Three difficulties — Pro, World Class and Legendary — set your re-rolls (2, 1, 1) and how
-strong the opponents are. **Ball Knower** hides every rating
+Three difficulties — Pro, World Class and Legendary — set how strong the opponents are; the
+tokens are the same on each. **Ball Knower** hides every rating
 until the end; **one player per nation** is an extra challenge for nation spins. Results can be
 shared as text or an image, and **Challenge a friend** links replay the same spins and opponents.
 
@@ -184,8 +186,8 @@ including 831 players rated 65+ whose clubs the game does not carry (nation pool
 precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
-with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 431 legends — best past versions of 1998–2025 the game shows at 85+: 307
+with sources (`data/captains.json`). `app/data/legends.v1.json` (no longer loaded by the game: the World Cup draft and the Prime
+read the era file) holds 431 legends — best past versions of 1998–2025 the game shows at 85+: 307
 players who are not in the catalog and 124 catalog players who were at least two points better
 then — and the prime versions of 4,815 catalog players (any gain on today's card), compiled by
 the same compiler. `app/data/eras.v1.json` holds the era pools: for each of eight World Cup

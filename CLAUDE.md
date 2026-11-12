@@ -65,7 +65,9 @@ app/                     served statically (deploy = publish this folder); runti
     gallery/             gallery page + generated fixture (make-fixture.mjs)
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
   data/catalog.v3.json   compiled columnar catalog (decode via services/catalog.js)
-  data/legends.v1.json   Legends + Prime versions, fetched when a World Cup draft starts (services/legends.js)
+  data/legends.v1.json   Legends + Prime versions of the Legend-spin draft: no longer loaded by the game
+  data/eras.v1.json      era pools (nation × World Cup cycle), fetched when a World Cup draft, run or the
+                         Daily opens (services/eras.js) — never on Home
   data/eras.v1.json      era pools: per World Cup cycle and nation its best 26, each at his best
                          version of those years (services/eras.js; core/players/eras.js)
   assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
@@ -153,10 +155,14 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   titles); step-wise `decodeErasSteps` / `attachErasSteps` for the browser — contract in
   `docs/draft-api.md` "Eras").
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
-  re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
-  draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
-  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; `SESSION_FORMAT` 2), `pools.js` (catalog index: nations field/pots, leagues, clubs, `draftSquad` (a nation's draftable players: its best 30 of the players shown 65+, 3 GK and line minimums — a nation spin never offers anyone else, `nation.squad`),
-  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel; `legendIndex` for the Legend spin), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
+  re-rolls, picks, placement; World Cup drafts (`eras`: the run and the Daily) spin an era and a
+  nation per pick — the pool is `eraPool` (≤ 26, no rating minimum), one person once
+  (`personId`) — with the tokens of `CONFIG.draft.tokens`, the same on every difficulty:
+  `respin('nation')`, `respin('era')` (the nation stays when the new era has it) and the Prime
+  (`primes`, `prime(slot)`: `bestVersion`); guards: every landing has a pick, and while the
+  keeper slot is open at least half the nation reel has a keeper; `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
+  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; `SESSION_FORMAT` 3), `pools.js` (catalog index: nations field/pots, leagues, clubs, `draftSquad` (a nation's draftable players: its best 30 of the players shown 65+, 3 GK and line minimums — a nation spin never offers anyone else, `nation.squad`),
+  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel — all of this is the draft of today's players: Quick Match, Versus), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
@@ -179,8 +185,9 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   column order, which the callers' player order relies on. The pre-match's `bestSlots` DP in
   `ui/lib/prematch-store.js` is a different problem — ten players, any subset of slots — and
   stays).
-- **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `legends.js`
-  (`loadLegends`: the legends file, attached to the catalog), `sim-client.js`
+- **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `eras.js`
+  (`loadEras`: the era pools, attached to the catalog in slices; `legends.js` is unused),
+  `sim-client.js`
   (`createSimClient`: Instant results and Key Moments halves in a module Worker, main-thread
   fallback) + `sim-worker.js` (the worker; `runSimJob`, `hydrateMatch`), `sound.js` (Web Audio
   cues, `MatchSoundEvents`, `selectionSound`), `playback.js` (`PlaybackClock`).
@@ -215,7 +222,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 | `football-draft-ui` | `ui/lib/prefs.js` | motion, hideRatings, onboarded, draftType |
 | `football-draft-sound` | `services/sound.js` | muted, volume |
 | `football-draft-setup` | setup screen | last choices per mode |
-| `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`) |
+| `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`; a World Cup draft holds era card ids `ea:<id>:fc<edition>:era`, its tokens left and who was primed) |
 | `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits (until its match has a result) / last view |
 | `football-draft-match` | `match-store.js` | current match request + result |
 | `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
@@ -227,7 +234,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 
 Shapes are in `docs/ui-draft.md`, `docs/ui-match.md` and `docs/ui-run.md`; readers must stay
 tolerant of missing or broken data. **One cut-off for older saves and links**: only today's
-formats are read (cup 3, cabinet 3, draft 2, three difficulties, three modes, cup and daily
+formats are read (cup 4, cabinet 3, draft 3, three difficulties, three modes, cup and daily
 links); anything older reads as "nothing saved" / "link not valid" — never converted, never a
 crash. When a format changes, bump its number and let the old one fall through the readers
 (`tests/run-ui-store.test.mjs` fuzzes them); do not add mapping code.

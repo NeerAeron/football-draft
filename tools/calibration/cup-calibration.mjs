@@ -34,8 +34,7 @@ const MATCH_SECONDS = 180; // the game's one match length (core/sim/constants.js
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
 
 async function setup() {
-  const { loadRuntimeCatalog, readLegends } = await imp('scripts/data/catalog-file.mjs');
-  const { attachLegends } = await imp('app/core/players/legends.js');
+  const { loadEraCatalog } = await imp('scripts/data/catalog-file.mjs');
   const session = await imp('app/core/draft/session.js');
   const opponents = await imp('app/core/draft/opponents.js');
   const cup = await imp('app/core/competition/cup.js');
@@ -56,8 +55,8 @@ async function setup() {
   const { CONFIG } = await imp('app/core/config/config.js');
   const { lcg } = await imp('app/core/util/rng.js');
   return {
-    // With the legends file: the Legend spin and Prime boosts are part of a World Cup draft.
-    catalog: attachLegends(loadRuntimeCatalog(), readLegends()),
+    // With the era pools: a World Cup draft spins an era and a nation.
+    catalog: loadEraCatalog(),
     ...session,
     ...opponents,
     ...cup,
@@ -70,25 +69,28 @@ async function setup() {
 }
 
 const BUDGET = process.argv.includes('--budget') || process.env.CUP_BUDGET === '1';
-// A typical draft: the session's suggested (positional) pick, a smart re-roll below 78.
+// A typical World Cup draft: the session's suggested (positional) pick, the tokens spent.
 function draftXI(env, seed, difficulty) {
   const s = env.createDraftSession(env.catalog, {
     mode: 'nations',
     seed,
-    rerolls: env.CONFIG.draft.rerolls[difficulty],
+    difficulty,
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
     budget: BUDGET, // --budget: the user drafts in Budget mode (tier caps)
-    legendSpin: true,
-    primes: env.CONFIG.draft.primes[difficulty] || null,
+    // A World Cup draft: an era and a nation per spin, and the three tokens.
+    eras: true,
+    primes: true,
   });
   while (!s.complete) {
     s.spin();
-    if (s.rerollsLeft[0] > 0 && s.suggestPick().rating < 78) s.reroll();
+    // The respins, used sensibly: the nation, then the era, when the best pick is under 78.
+    if (!s.respinBlocked('nation') && s.suggestPick().rating < 78) s.respin('nation');
+    if (!s.respinBlocked('era') && s.suggestPick().rating < 78) s.respin('era');
     const move = s.suggestPick(),
       r = s.pick(move.profileId, move.slot);
     if (!r.ok) throw Error(r.reason);
   }
-  // Prime boosts, used sensibly: each on the player who gains most in his slot.
+  // The Prime, used sensibly: on the player who gains most in his slot.
   for (;;) {
     const options = s
       .primeOptions(0)
@@ -130,7 +132,8 @@ function runGap(env, Match, spec) {
       mode: 'nations',
       level: spec.difficulty,
       offset: user.effective - spec.gap - base,
-      excludePlayers: user.players.map(p => p.profileId),
+      // An era card of a catalog player counts as him.
+      excludePlayers: user.players.map(p => p.eraOf ?? p.profileId),
       random,
     });
   const config = env.fixtureConfig(

@@ -32,9 +32,9 @@ Starting a World Cup draft while a run is in progress asks first (`docs/ui-run.m
 Last choices per mode are remembered in `football-draft-setup` (`{ run: { difficulty, formation,
 uniqueNations, budget, names, kits }, … }`). The World Cup setup has a **Budget mode** switch
 (`#setup-budget`; `budgetCopy()` writes its sentence from `CONFIG.draft.budget`): a harder run
-whose XI may hold only 2 Superstars (88+), 2 Stars (84–87) and 3 Starters (80–83) (`docs/draft-api.md`). For a run the
-difficulty line also says the Prime boosts ("2 re-rolls and 2 Prime boosts per draft"). The difficulty ladder shows each level's name, a
-word on the opponents and the re-rolls — no ratings or example teams — and, for runs, the stage
+whose XI may hold only 2 Superstars (88+), 2 Stars (84–87) and 3 Starters (80–83) (`docs/draft-api.md`). The difficulty ladder shows each level's name and a
+word on the opponents — no ratings, no example teams, nothing about tokens (they are the same
+on every level) — and, for runs, the stage
 "a good manager reaches" (`projectRun` on the mode baseline). The World Cup setup says the
 formation stays for the group stage (`formationLocked` on those pre-match sides, see
 `docs/ui-run.md`).
@@ -47,7 +47,7 @@ import { startDraft, loadDraft, completedDraft, clearDraft, draftStore } from '.
 await startDraft(context, { go = true, spin = true });  // → #/draft, first spin made (not Versus)
 // context = { kind: 'run' | 'quick' | 'versus' | 'daily', type, difficulty, formation,
 //             options: { hideRatings, uniqueNations, budget? }, seed,   // budget: runs only
-//             schedule?, rerolls?, useDefaultRules?,          // daily: pass day.draft's values
+//             schedule?, rerolls?, useDefaultRules?,          // daily: day.schedule; versus: rerolls
 //             names?: [p1, p2], kits?: ['volt', 'sky'],        // versus (KIT_COLORS ids)
 //             returnTo?, daily?, meta? }                       // run/daily: where Continue goes;
 //                                                              // daily/meta are kept as given
@@ -64,16 +64,20 @@ await resumeDraft(saved);   // make a saved draft the current one → #/draft (t
   `nations`); `seed` numbers, digit strings or any
   string; kind `daily` implies `useDefaultRules`. `normalizeContext()` / `sessionOptions()`
   show exactly what reaches `createDraftSession`.
-* Persisted after **every** action: `{ format: 2, context, session: session.serialize(),
+* Persisted after **every** action: `{ format: 3, context, session: session.serialize(),
   savedAt }` under `football-draft-draft`. A reload restores the board where it was (a spin that
   was animating is shown landed). A Daily draft with a pick made is also kept with the Daily
   record after every action (`lockDailyDraft`, `docs/ui-run.md`): one attempt from the first
   pick. `readSavedDraft()` ignores a Daily draft of another day.
-* A World Cup Run's Nations draft (`worldCupDraft(ctx)`) gets `legendSpin: true, primes: true`;
-  for it (and when restoring one) the catalog loader is asked for `{ legends: true }` and
-  fetches `app/data/legends.v1.json` (`services/legends.js`) — Home and every other screen but
-  the run never fetch that file. `primeDrafted(slot)` spends a Prime boost.
-* Actions used by the board: `spinDraft()`, `rerollDraft()`, `pickPlayer(id, slot | null)`,
+* A World Cup draft — the run's and the Daily's (`worldCupDraft(ctx)`) — gets `eras: true,
+  primes: true`: an era and a nation per spin and the three tokens. For it (and when restoring
+  one) the catalog loader is asked for `{ eras: true }` and fetches `app/data/eras.v1.json`
+  (`services/eras.js` `loadEras()`, decoded in slices) under the board's loading state — Home
+  and every screen but the draft, the run and the Daily never fetch that file, and nothing
+  fetches `legends.v1.json` any more. `respinDraft('nation' | 'era')` spends a respin,
+  `primeDrafted(slot)` the Prime. Quick Match and Versus draft today's players as before.
+* Actions used by the board: `spinDraft()`, `rerollDraft()` (= `respinDraft('nation')`),
+  `respinDraft(kind)`, `pickPlayer(id, slot | null)`,
   `autoPick()` (spin if needed + `suggestPick()` + pick — the board's **Auto-pick**,
   `data-testid="auto-pick"`), `autoComplete()`, `markLanded()`.
 * `draftStore` state: `{ status: 'idle'|'loading'|'ready'|'empty'|'error', context, snap
@@ -159,7 +163,7 @@ openPrematch({
   he loses rating there; nothing when he plays his own position at full rating), or why he
   cannot be picked (`Taken`, `No slot`, `Star full`). **Nothing important is ever cut**
   (`PlayerRow`): the second line spans the whole row under the name; its tags — the Budget
-  cost, the boost, and "Prime 82 +7" (`primeNote`: a Prime boost is on offer, what it makes
+  cost, the boost, and "Prime 82 +7" (`primeNote`: the Prime is on offer, what it makes
   him and what it adds) — never shrink and wrap to another line when a 390 px row is too
   narrow; only the club text gives way, with an ellipsis. `tests/browser/flows.mjs` checks
   that no tag is cut. A Superstar's or a Star's row has a thin
@@ -169,10 +173,10 @@ openPrematch({
   on phones (132 px wide, beside the fit and the effects of the pick, so the pitch and the
   Draft button stay in reach) and in the dock on desktop. **Everything about him is in the
   sheet** (and the dock), whatever his row had room for: positions, his tier by name
-  ("Starter"; not with hidden ratings), "Legend ’18" for a legend (`data-testid=
-  "pick-standing"`), club and league, the slot and his overall there ("At DM 76",
+  ("Starter"; not with hidden ratings) and, in a World Cup draft, the year of that version
+  ("Star · ’02", `data-testid="pick-standing"`), club and league, the slot and his overall there ("At DM 76",
   `data-testid="pick-slot"`), the team OVR after the pick, the mates lines, the Captain line,
-  the Prime boost on offer ("Prime ’19 88 +6", `data-testid="prime-effect"`) and the Budget
+  the Prime on offer ("Prime ’19 88 +6", `data-testid="prime-effect"`) and the Budget
   slot.
 * **Fit**: selecting lights the pitch, and **every open slot shows his overall there** — the
   number in the slot (`.pitch-slot__rating`, from `slotHighlights` → `{ role, rating }`), so RB
@@ -205,43 +209,56 @@ openPrematch({
 * **Projection**: open slots count at the mode's typical drafted rating (`estimateRating`);
   run/daily → `projectRun` stage, quick → win chance vs the difficulty target, versus → win
   chance vs the other drafter.
-* **Legend spin** (World Cup Run drafts, `snap.legendRound`): the first spin's stage is gold
-  (`.stage.is-legend`, "Legend spin", the button says "Legend spin", the pool "Pick a legend")
-  and shows **no odds** (no ⓘ, no dialog: the reel's weighting is silent). One line says where
-  the legends come from: "Best versions, 1998–2025" (`legendYearsLine(snap.legendYears)`,
-  `data-testid="legend-years"`, from the data). At most ten legends are listed, nobody under 85.
-  A legend's — and a prime version's — card, row and pitch token carry the year of that version
-  ("’18": `view.era`, `editionLabel(player)` — the year stored with the version; an edition
-  name is never shown). A legend can be a current player's best past version (Messi ’19): he is
-  then gone from the ordinary pools, and has no Prime boost.
-* **Prime boost** (`snap.primes`, `prime-sheet.js`): the `PrimeButton` ("Prime boost 2") sits
-  under the meters and in the completion sheet's footer — boosts not used by "On to the World
-  Cup" are gone. It opens one sheet (`PrimeSheet`) listing the XI: players with a prime version
+* **Era + nation** (World Cup drafts, `snap.eras`): one press spins two reels, the era first
+  (text items: "Korea/Japan 02"), then the nations of that era (`SpinningReels`, `spin.reels`;
+  timing `TIMING.era`). The reveal card names both — the era above the nation
+  (`data-testid="spin-era"`, `.reveal__title`) with the pool's size — and the pool's heading is
+  "Brazil · Korea/Japan 02" (`spinTitle(spin)`). **No odds anywhere** (no ⓘ, no dialog, no
+  sentence under the idle panel: it says "Spin an era and a nation"). Every row, card and pitch
+  token carries the year of that version ("’02": `yearTag(entry.year)`; today's players
+  "’26") — an edition name is never shown. Era labels come from `ERAS` (the spin's `era.name`),
+  never from the UI.
+* **Tokens** (`tokens.js` `TokenBar`, model `tokenButtons(snap)`): three small buttons with an
+  icon, a short label and what is left — **Nation**, **Era**, **Prime** (`data-testid=
+  "token-nation" | "token-era" | "token-prime"`, `data-left`). While picking they are the
+  action bar (phones: the sticky bar; desktop: under the reveal card); beside **Spin** and
+  **Continue** only the Prime is shown, and the completion sheet has it too. A button is
+  disabled when its token is spent or there is nothing to spend it on (no spin yet, nobody
+  with a better version). What a respin does is shown, not said: **Nation** spins the nation
+  reel alone (the era reel stays landed, dimmed); **Era** spins the era reel, and the nation
+  reel only when the new era does not have that nation (`spin.spun`, `spin.kept`). A draft of
+  today's players keeps its **Re-roll** button (`data-testid="reroll"`).
+* **Prime** (`snap.primes`, `prime-sheet.js`): the token opens one sheet (`PrimeSheet`) listing
+  the XI: players with a better version
   first with the bump in their slot ("84 → 86 +2", "Prime ’22"; a version that plays elsewhere
   says so, "CB · Prime ’16 · LB 86", and a slot that gains nothing shows "±0" / "−1" in grey),
-  the rest dimmed and not selectable; select, then "Boost Son · Prime ’22" confirms (not
-  reversible). **The sheet stays open after a boost**: his row keeps its place (the order is
-  fixed when the sheet opens) with a tick, and the button says **Done** — or boosts the next
-  choice. The button ignores taps for 450 ms after a boost, and the board's Spin / Re-roll /
+  the rest dimmed and not selectable; select, then "Son · Prime ’22" confirms (not
+  reversible; a Prime not used by "On to the World Cup" is gone). **The sheet stays open
+  after it is spent**: his row keeps its place (the order is
+  fixed when the sheet opens) with a tick, and the button says **Done**. The button ignores
+  taps for 450 ms after that, and the board's Spin / tokens /
   Auto-pick / Continue ignore taps for 400 ms after a sheet is closed (`hush()` in `draft.js`):
-  those buttons sit exactly under the sheet's button, and a second tap used to re-roll the spin
-  or start the World Cup. Players with a prime available carry
-  a gold dot on the pitch and "Prime 94 +8" in their pool row while boosts are left.
+  those buttons sit exactly under the sheet's button, and a second tap used to respin
+  or start the World Cup. Players with a better version carry
+  a gold dot on the pitch and "Prime 94 +8" in their pool row while the Prime is left.
 * **Captain**: the "C" (`CaptainMark`) on his row, card and pitch token (the armband: the
   highest-rated Captain of the XI), the green chips include his +1, and the pick preview says
   "Captain: +1 to every player" when he would be the XI's first.
 * Test hooks: `data-testid` `spin`, `reroll`, `auto-pick`, `spin-result`, `pool`,
   `confirm-pick`, `auto-slot`, `draft-done`, `draft-continue`, `opponent-name`, `pass-spin`,
   `team-boosts`, `mates-effect`, `budget-effect`, `captain-effect`, `prime-effect`, `pick-card`,
-  `pick-slot`, `pick-standing`, `legend-years`, `final-boosts`, `prime-open`, `prime-option`,
-  `prime-done`, `prime-confirm`;
+  `pick-slot`, `pick-standing`, `spin-era`, `token-nation`, `token-era`, `token-prime`,
+  `final-boosts`, `prime-option`, `prime-done`, `prime-confirm`;
   `data-screen="draft"` + `data-phase="spin|spinning|pick|complete"`.
 
-Browser flows (`tests/browser/flows.mjs`): `setup`, `draft-nations` (the Legend spin: gold stage,
-years on the rows and the years line, nobody under 85, no odds, the legends file fetched; the
+Browser flows (`tests/browser/flows.mjs`): `setup`, `draft-nations` (a World Cup draft: an era and a nation land, both named, the pool's heading,
+a year on every row, at most 26, no odds, the era file fetched and the legends file not; the
+three tokens fit a phone; the nation respin keeps the era, the era respin moves it and keeps
+the nation when it can; the
 sheet's tier and year, his overall in every open slot; 11 picks, select → Auto → confirm; no
-pool row cuts a tag; the card's six stats; a Prime boost on the completion sheet that stays
-open, shows the boost and swallows a second tap; the run keeps the legend and the prime),
+pool row cuts a tag; the card's six stats; eleven different people; the Prime on the
+completion sheet that stays
+open, shows the bump and swallows a second tap; the run keeps the era cards),
 `draft-back` (Play again → the device's back shows the setup, the back arrow goes Home, the
 draft is kept and resumed), `draft-budget` (setup switch, tier tags, a full tier closes rows, run
 `meta.budget`), `draft-clubs` (re-roll, odds, filters, auto-pick), `draft-versus` (coin toss, four
