@@ -117,10 +117,11 @@ export function normalizeContext(context = {}) {
 }
 
 /**
- * A World Cup Run's Nations draft: the one with the Legend spin and the Prime boosts (Quick
- * Match, Versus and the Daily draft as before).
+ * A World Cup draft — the run's and the Daily's: every spin lands an era and a nation, with a
+ * nation respin, an era respin and the Prime (Quick Match and Versus draft today's players).
  */
-export const worldCupDraft = ctx => ctx?.kind === 'run' && ctx.mode === 'nations';
+export const worldCupDraft = ctx =>
+  (ctx?.kind === 'run' || ctx?.kind === 'daily') && ctx.mode === 'nations';
 
 /** createDraftSession options for a normalised context. */
 export function sessionOptions(ctx) {
@@ -135,8 +136,8 @@ export function sessionOptions(ctx) {
     hideRatings: ctx.options.hideRatings,
     uniqueNations: ctx.options.uniqueNations,
     budget: !!ctx.options.budget,
-    // World Cup drafts: the first spin is the Legend spin, and Prime boosts by difficulty.
-    ...(worldCupDraft(ctx) ? { legendSpin: true, primes: true } : {}),
+    // World Cup drafts: an era and a nation per spin, and the Prime.
+    ...(worldCupDraft(ctx) ? { eras: true, primes: true } : {}),
     ...(ctx.schedule ? { schedule: ctx.schedule } : {}),
     useDefaultRules: ctx.useDefaultRules,
     teams: Array.from({ length: sides }, (_, i) => {
@@ -173,17 +174,17 @@ let catalogRef = null;
 let opponent = null;
 let token = 0;
 let loading = null;
-// The catalog for a draft; with `legends`, the Legends and Prime versions are fetched too
-// (services/legends.js — only then, so no other screen pays for that file).
-const defaultLoader = ({ legends = false } = {}) =>
-  legends
-    ? loadWarmCatalog().then(() => import('../../services/legends.js').then(m => m.loadLegends()))
+// The catalog for a draft; with `eras`, the era pools are fetched too (services/eras.js —
+// only then, so no other screen pays for that file).
+const defaultLoader = ({ eras = false } = {}) =>
+  eras
+    ? loadWarmCatalog().then(() => import('../../services/eras.js').then(m => m.loadEras()))
     : loadWarmCatalog();
 let catalogLoader = defaultLoader;
 
 /**
  * Tests: replace the catalog loader (Node has no fetch for the relative catalog URL). It is
- * called with { legends: true } when the draft needs catalog.legends.
+ * called with { eras: true } when the draft needs catalog.eras.
  */
 export function setCatalogLoader(fn) {
   catalogLoader = fn || defaultLoader;
@@ -231,7 +232,7 @@ export async function startDraft(input, { go: navigateTo = true, spin = true } =
   const ctx = normalizeContext(input);
   draftStore.set(s => ({ ...s, status: 'loading', error: null }));
   try {
-    const catalog = await catalogLoader({ legends: worldCupDraft(ctx) });
+    const catalog = await catalogLoader({ eras: worldCupDraft(ctx) });
     const next = createDraftSession(catalog, sessionOptions(ctx));
     catalogRef = catalog;
     session = next;
@@ -267,7 +268,7 @@ export function loadDraft() {
   }
   draftStore.set(s => ({ ...s, status: 'loading', error: null }));
   const options = saved.session?.options || {};
-  loading = catalogLoader({ legends: !!(options.legendSpin || options.primes) })
+  loading = catalogLoader({ eras: !!(options.eras || options.primes) })
     .then(catalog => {
       session = restoreDraftSession(catalog, saved.session);
       catalogRef = catalog;
@@ -292,7 +293,7 @@ export function loadDraft() {
  */
 export async function restoreSaved(saved) {
   const options = saved?.session?.options || {};
-  const catalog = await catalogLoader({ legends: !!(options.legendSpin || options.primes) });
+  const catalog = await catalogLoader({ eras: !!(options.eras || options.primes) });
   return {
     session: restoreDraftSession(catalog, saved.session),
     context: normalizeContext(saved.context),
@@ -344,14 +345,19 @@ export function spinDraft() {
   return spin;
 }
 
-/** Spend a re-roll. Returns the new spin, or null when not allowed. */
-export function rerollDraft() {
-  if (!session || session.rerollBlocked()) return null;
-  const spin = session.reroll();
+/**
+ * Spend a respin token: 'nation' (the re-roll of a draft without eras) or 'era'. Returns the
+ * new spin, or null when not allowed.
+ */
+export function respinDraft(kind = 'nation') {
+  if (!session || session.respinBlocked(kind)) return null;
+  const spin = session.respin(kind);
   persist();
   publish({ animate: ++token });
   return spin;
 }
+/** Spend a re-roll. Returns the new spin, or null when not allowed. */
+export const rerollDraft = () => respinDraft('nation');
 
 /** The board finished animating the current spin. */
 export function markLanded() {
@@ -376,8 +382,8 @@ export function pickPlayer(profileId, slot = null) {
 }
 
 /**
- * Spend a Prime boost on the player in a slot of the side to act (session.prime): he becomes
- * his prime version. Returns the session's result ({ ok, … } | { ok: false, reason }).
+ * Spend the Prime on the player in a slot of the side to act (session.prime): he becomes
+ * his best version. Returns the session's result ({ ok, … } | { ok: false, reason }).
  */
 export function primeDrafted(slot) {
   if (!session) return { ok: false, reason: 'No draft' };
@@ -423,7 +429,7 @@ export function autoComplete() {
 export function quickOpponent() {
   if (!session?.complete) return null;
   if (!opponent) {
-    // A prime or legend version counts as the current player: the opponent never fields him.
+    // An era card counts as the current player: the opponent never fields him.
     const exclude = session.picks
       .flat()
       .filter(Boolean)

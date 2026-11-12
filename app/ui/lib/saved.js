@@ -24,8 +24,8 @@ import { readJSON } from './storage.js';
 export const RUN_KEY = 'football-draft-run';
 export const DAILY_KEY = 'football-draft-daily';
 export const DRAFT_KEY = 'football-draft-draft';
-// Format 2: sessions of core SESSION_FORMAT 2 (the rules of this version).
-export const DRAFT_FORMAT = 2;
+// Format 3: sessions of core SESSION_FORMAT 3 (the rules of this version: era drafts, tokens).
+export const DRAFT_FORMAT = 3;
 /** The draft modes (core DRAFT_MODES; kept here so Home loads no core code — a test compares). */
 export const DRAFT_TYPES = ['nations', 'leagues', 'clubs'];
 
@@ -41,7 +41,7 @@ export const STAGES = [
 ];
 
 /** The summary format of a resumable run (core cup.js CUP_FORMAT). */
-export const RUN_SUMMARY_FORMAT = 3;
+export const RUN_SUMMARY_FORMAT = 4;
 /** The semi-final loser's eighth match: it takes the final's place on the path. */
 export const PLAYOFF_STAGE = { id: '3P', short: '3rd', label: 'Third-place play-off' };
 const MEDALS = ['gold', 'silver', 'bronze'];

@@ -10,6 +10,7 @@ import { useStore } from '../../lib/store.js';
 import { prefs } from '../../lib/prefs.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
+import { loadEras } from '../../../services/eras.js';
 import { perfectXIOffThread } from './perfect-xi.js';
 import { DEFAULT_CONFIG } from '../../../core/config/config.js';
 import { createCupRun, restoreCupRun } from '../../../core/competition/cup.js';
@@ -129,16 +130,14 @@ function Intro({ catalog, day, state, today, onStart, starting, resume = false }
       </div>
       <h1 class="daily-hero__title" id="daily-title"><span>Today's</span> <em>World Cup</em></h1>
       <p class="daily-hero__lead">
-        Everyone gets the same eleven nation spins today. Draft your XI and the whole tournament is
+        Everyone gets the same eleven spins today. Draft your XI and the whole tournament is
         simulated — one attempt.
       </p>
       <ul class="daily-rules" role="list">
-        <li>
-          <${Icon} name="globe" size=${18} /><span>Nations draft · same spins for everyone</span>
-        </li>
+        <li><${Icon} name="globe" size=${18} /><span>An era and a nation per spin</span></li>
         <li>
           <${Icon} name="shuffle" size=${18} /><span
-            >${`${day.rerolls} re-rolls, each to that round's fixed alternate`}</span
+            >${`${day.tokens.nation} nation respin · ${day.tokens.era} era respin · ${day.tokens.prime} Prime`}</span
           >
         </li>
         <li>
@@ -533,6 +532,8 @@ export default function DailyScreen() {
     {
       try {
         const catalog = await loadWarmCatalog().then(warmOpponents);
+        // The Daily is a World Cup draft: its spins and XIs are era pools (catalog.eras).
+        await loadEras();
         if (!live()) return;
         const today = todayDailyId();
         const day = dailyChallenge(catalog, today);
@@ -560,7 +561,7 @@ export default function DailyScreen() {
         if (draft?.session.complete && !state.results[today] && state.current?.id !== today) {
           const user = draft.session.matchSide(0);
           const run = createCupRun(catalog, { ...day.cup, user });
-          // The perfect XI tries every re-roll combination (~250 ms): in a worker.
+          // The perfect XI tries every use of the tokens (~0.5 s): in a worker.
           const optimum = await perfectXIOffThread(catalog, day, { formation: user.formation });
           if (!live()) return;
           const perfect = perfectPercent(user.rating, optimum);
@@ -653,7 +654,6 @@ export default function DailyScreen() {
       formation: day.formation,
       seed: day.seed,
       schedule: day.schedule,
-      rerolls: day.rerolls,
       daily: day.id,
       useDefaultRules: true,
       options: { hideRatings, uniqueNations: false },

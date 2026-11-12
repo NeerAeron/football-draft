@@ -3,7 +3,7 @@
 // (app/ui/screens/setup/setup-model.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
+import { loadRuntimeCatalog, loadEraCatalog } from '../scripts/data/catalog-file.mjs';
 import { createDraftSession, NATURAL_FIT } from '../app/core/draft/session.js';
 import {
   filterPool,
@@ -16,7 +16,10 @@ import {
   rowStats,
   primeNote,
   primeLine,
-  legendYearsLine,
+  tokenButtons,
+  yearTag,
+  spinTitle,
+  landedAnnouncement,
   slotHighlights,
   linkLines,
   reelItems,
@@ -129,7 +132,7 @@ test('rowFit and slotHighlights show natural fit, small drops, poor fits and clo
   }
 });
 
-test('the Prime tag of a row says the bump; the Legend spin says its years in one line', () => {
+test('the Prime tag of a row says the bump', () => {
   const version = { profileId: 'ea:1:fc20:prime', ovr: 94, edition: 20, year: 2019 };
   assert.equal(primeNote(version, 86), 'Prime 94 +8');
   assert.equal(primeNote(version), 'Prime 94');
@@ -138,9 +141,68 @@ test('the Prime tag of a row says the bump; the Legend spin says its years in on
   // The year is the stored one (the snapshot's), not worked out from the edition.
   assert.equal(primeLine({ ...version, year: 2020 }, 86).era, '’20');
   assert.equal(primeLine(null, 86), null);
-  assert.equal(legendYearsLine([2014, 2022]), 'Best versions, 2014–2022');
-  assert.equal(legendYearsLine([2019, 2019]), 'Best versions, 2019');
-  assert.equal(legendYearsLine(null), '');
+  assert.deepEqual(
+    [yearTag(2002), yearTag(1998), yearTag(2026), yearTag(null)],
+    ['’02', '’98', '’26', ''],
+  );
+});
+
+test('a World Cup draft: two reels, a headline with both names, three token buttons, no odds', () => {
+  const eras = loadEraCatalog(),
+    d = createDraftSession(eras, { seed: 21, eras: true, primes: true }),
+    spin = d.spin(),
+    snap = d.snapshot();
+  // The era reel has text items, the nation reel flags; both land where the session decided.
+  const [era, nation] = spin.reels.map(r => reelItems(r));
+  assert.equal(era.items.length, 8);
+  assert.deepEqual(era.items[era.landIndex], { id: spin.era.id, label: spin.era.name, sub: '' });
+  assert.equal(nation.items[nation.landIndex].id, spin.option.id);
+  assert.ok(nation.items.every(i => i.flag && i.sub === ''));
+  // The headline: the nation, with the era beside it; the pool's size; never odds.
+  const head = spinHeadline(spin, snap.pool.length);
+  assert.deepEqual(
+    [head.title, head.era, head.meta],
+    [spin.option.name, spin.era.name, `${snap.pool.length} players`],
+  );
+  assert.equal(spinTitle(spin), `${spin.option.name} · ${spin.era.name}`);
+  assert.equal(landedAnnouncement(spin, 26), `${spin.option.name} · ${spin.era.name}. 26 players.`);
+  assert.ok(!/%|chance|odds/i.test(JSON.stringify(head)));
+  // Tokens: Nation, Era, Prime with what is left; the Prime needs somebody drafted.
+  const buttons = () => tokenButtons(d.snapshot());
+  assert.deepEqual(
+    buttons().map(b => [b.kind, b.label, b.left, b.disabled]),
+    [
+      ['nation', 'Nation', 1, false],
+      ['era', 'Era', 1, false],
+      ['prime', 'Prime', 1, true],
+    ],
+  );
+  assert.deepEqual(
+    buttons().map(b => b.name),
+    ['Nation respin: 1 left', 'Era respin: 1 left', 'Prime: 1 left'],
+  );
+  d.respin('nation');
+  d.respin('era');
+  assert.deepEqual(
+    buttons().map(b => [b.left, b.disabled]),
+    [
+      [0, true],
+      [0, true],
+      [1, true],
+    ],
+  );
+  // Between spins nothing can be respun.
+  const fresh = createDraftSession(eras, { seed: 22, eras: true, primes: true });
+  assert.deepEqual(
+    tokenButtons(fresh.snapshot()).map(b => b.disabled),
+    [true, true, true],
+  );
+  // A draft of today's players has its Re-roll button instead.
+  const classic = createDraftSession(catalog, { seed: 1 });
+  classic.spin();
+  assert.deepEqual(tokenButtons(classic.snapshot()), []);
+  assert.equal(spinTitle(classic.snapshot().spin), classic.snapshot().spin.option.name);
+  assert.equal(spinTitle(null), '');
 });
 
 test('pool rows say the boost a player would get in the XI', () => {
@@ -457,18 +519,19 @@ test('setup defaults: query beats saved choices beats prefs; challenge seeds use
   assert.notEqual(v.kits[0], v.kits[1], 'two different kits');
 });
 
-test('difficulty levels explain opponents and re-rolls', () => {
+test('difficulty levels explain the opponents; the tokens are the same on each', () => {
   const levels = difficultyLevels('nations');
   assert.deepEqual(
     levels.map(l => l.id),
     ['pro', 'worldclass', 'legendary'],
   );
   for (let i = 1; i < levels.length; i++) assert.ok(levels[i].target > levels[i - 1].target);
-  // Every difficulty gets a re-roll: Pro 2, World Class 1, Legendary 1.
   assert.deepEqual(
     levels.map(l => l.rerolls),
-    [2, 1, 1],
+    [1, 1, 1],
   );
+  for (const l of levels) assert.deepEqual(l.tokens, { nation: 1, era: 1, prime: 1 });
+  assert.ok(levels.every(l => !/re-roll/i.test(l.text)));
   assert.ok(levels.every(l => l.text.length > 20));
   // An unknown level in a link or a saved choice (a removed one too) falls back to Pro.
   assert.equal(setupDefaults('run', { query: { difficulty: 'amateur' } }).difficulty, 'pro');
@@ -508,10 +571,10 @@ test('the boost chips on the pitch follow the core rule; the Captain wears the a
   assert.equal(views[5].captain, true);
   assert.equal(view.captainSlot(views), 5);
   assert.equal(view.captainSlot(views.slice(0, 5)), null);
-  // A legend or a prime version carries the year of that version (FIFA 19 → ’18).
+  // An era card carries the year of that version (FIFA 19's ratings: ’18).
   assert.equal(views[0].era, '');
-  const legend = playerView({ ...raw('E', 1, 1), legend: true, edition: 19 });
-  assert.deepEqual([legend.legend, legend.prime, legend.era], [true, false, '’18']);
+  const card = playerView({ ...raw('E', 1, 1), era: 2018, edition: 19, year: 2018 });
+  assert.deepEqual([card.prime, card.era], [false, '’18']);
   assert.deepEqual(mateBoosts([{ name: 'no source' }, null]), [0, 0]);
   const { boost } = await import('../app/ui/lib/format.js');
   assert.deepEqual(

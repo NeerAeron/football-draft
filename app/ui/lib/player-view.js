@@ -18,8 +18,8 @@
 //   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
 //   source?: { nationality, clubId, … },  // what makes mates (core/draft/links.js)
 //   captain?: true,              // Captain tag (an armband mark; +1 for his whole XI)
-//   legend?: true, prime?: true, // a Legend / a prime version (core/players/legends.js)
-//   era?: '’18',                 // the year of a legend's or prime version's edition
+//   prime?: true,                // the Prime was spent on him (set by the draft board)
+//   era?: '’18',                 // an era card: the year of that version's ratings
 //   primeNote?: 'Prime 94 · ’19' // draft only: a Prime boost would make him this
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
@@ -118,9 +118,8 @@ export function playerView(p, { team, league, nation } = {}) {
     source: p.source, // nation / club: who his mates are (draft/links.js)
     captain: !!p.captain, // Captain tag: +1 for his whole XI (draft/links.js)
     sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
-    legend: !!p.legend,
     prime: !!p.prime,
-    era: editionLabel(p), // '’18' for a legend or a prime version (the year stored), else ''
+    era: editionLabel(p), // '’18' for an era card (the year of its ratings), else ''
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };
 }

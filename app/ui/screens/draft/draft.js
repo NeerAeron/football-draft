@@ -1,6 +1,7 @@
 // Draft board (#/draft): one-tap spin → honest reel → pool with visible fit → select →
-// place (pitch highlights) → lock. Live meters (team OVR, lines, Boosts, projection), the
-// Budget slots (Budget mode),
+// place (pitch highlights) → lock. A World Cup draft spins two reels — an era, then a nation —
+// and has three tokens (tokens.js: Nation, Era, Prime). Live meters (team OVR, lines, Boosts,
+// projection), the Budget slots (Budget mode),
 // Versus turns with a pass-the-device interstitial, pick moments and the completion sheet.
 // Phones: one column with a sticky action bar and a pick sheet. Desktop (≥ 960 px): the XI
 // on the left, spin + pool on the right, a dock for the selected player.
@@ -19,6 +20,7 @@ import {
   currentDraft,
   spinDraft,
   rerollDraft,
+  respinDraft,
   pickPlayer,
   primeDrafted,
   autoPick,
@@ -40,6 +42,8 @@ import {
   rowStats,
   primeNote,
   primeLine,
+  yearTag,
+  spinTitle,
 } from './draft-model.js';
 import { SpinStage } from './spin-stage.js';
 import { PoolPanel } from './pool-list.js';
@@ -53,7 +57,8 @@ import {
   History,
 } from './team-panel.js';
 import { PickSheet, PickDock } from './pick-panel.js';
-import { PrimeButton, PrimeSheet } from './prime-sheet.js';
+import { PrimeSheet } from './prime-sheet.js';
+import { TokenBar } from './tokens.js';
 import { CompleteSheet } from './complete-sheet.js';
 import { PickMoment, PassDevice, MOMENT_MS } from './moments.js';
 
@@ -151,7 +156,9 @@ function Board({ state, draft, auto }) {
           ovr: e.ovr,
           tier: e.tier,
           stats: rowStats(base.stats, base.position),
-          // A Prime boost is on offer for him (while the side has one left).
+          // A World Cup draft: every row carries the year of that version.
+          era: yearTag(e.year),
+          // The Prime is on offer for him (while the side has it).
           primeNote: primesOn ? primeNote(e.primeVersion, e.ovr) : '',
           primeLine: primesOn ? primeLine(e.primeVersion, e.ovr) : null,
         };
@@ -178,7 +185,7 @@ function Board({ state, draft, auto }) {
         const l = lookups.leagues.get(String(h.optionId));
         const c = lookups.teams.get(String(h.optionId));
         const media =
-          h.category === 'nation'
+          h.category === 'nation' || h.era
             ? { flag: { code: n?.code, name: h.optionName, src: n?.flag } }
             : h.category === 'league'
               ? { logo: { src: l?.logo, name: h.optionName } }
@@ -189,7 +196,7 @@ function Board({ state, draft, auto }) {
           key: `${h.side}:${h.round}`,
           round: h.round + 1,
           category: h.category,
-          from: h.optionName,
+          from: h.eraName ? `${h.optionName} · ${h.eraName}` : h.optionName,
           media,
           name: slot.player?.name || '',
           role: slot.role,
@@ -207,6 +214,8 @@ function Board({ state, draft, auto }) {
                 ...toView(session.player(s.player.profileId)),
                 ovr: s.rating,
                 tier: s.player.tier,
+                era: yearTag(s.player.year),
+                prime: s.player.prime,
                 primeNote: t.primesLeft > 0 ? primeNote(s.player.primeVersion, s.player.ovr) : '',
               }
             : null,
@@ -217,7 +226,7 @@ function Board({ state, draft, auto }) {
 
   // ---- selection and placement ----
   const spinId = snap.spin
-    ? `${snap.pickIndex}:${snap.spin.option.id}:${snap.spin.reroll}`
+    ? `${snap.pickIndex}:${snap.spin.era?.id ?? ''}:${snap.spin.option.id}:${snap.spin.reroll}`
     : `idle:${snap.pickIndex}`;
   useEffect(() => setSel(null), [spinId]);
   useEffect(() => setShownSide(side), [side]);
@@ -299,6 +308,11 @@ function Board({ state, draft, auto }) {
     if (!calm()) return;
     if (rerollDraft()) announce('Re-rolling…');
   };
+  const onToken = kind => {
+    if (!calm()) return;
+    if (kind === 'prime') setPrimeOpen(true);
+    else if (respinDraft(kind)) announce(kind === 'era' ? 'Era respin…' : 'Nation respin…');
+  };
   const onLanded = () => {
     markLanded();
     playCue('reveal');
@@ -329,13 +343,13 @@ function Board({ state, draft, auto }) {
   const doPrime = slot => {
     const result = primeDrafted(slot);
     if (!result.ok) {
-      toast({ title: 'No Prime boost', message: result.reason, tone: 'warning' });
+      toast({ title: 'No Prime', message: result.reason, tone: 'warning' });
       return result;
     }
     const p = session.player(result.profileId);
     playCue(hide ? 'pick' : selectionSound('Superstar'));
-    announce(`${p.name} is now his prime version.`);
-    // The sheet stays open and shows the boost (prime-sheet.js).
+    announce(`${p.name} is now his best version.`);
+    // The sheet stays open and shows it (prime-sheet.js).
     return result;
   };
   const doAutoPick = () => {
@@ -391,9 +405,10 @@ function Board({ state, draft, auto }) {
     budget=${shownTeam.budget}
     use=${placing && preview?.budget && !preview.budget.free ? preview.budget.id : null}
   />`;
-  const primeButton =
-    !versus &&
-    html`<${PrimeButton} team=${team} primes=${snap.primes} onOpen=${() => setPrimeOpen(true)} />`;
+  const eras = !!snap.eras;
+  // A World Cup draft: the three tokens while picking; beside Spin / Continue only the Prime.
+  const tokens = only =>
+    eras && html`<${TokenBar} snap=${snap} onToken=${onToken} only=${only} busy=${animating} />`;
   const pitch = html`<${TeamPitch}
     team=${shownTeam}
     players=${teamPlayers[versus ? shownSide : 0]}
@@ -403,8 +418,8 @@ function Board({ state, draft, auto }) {
     hideRatings=${hide}
     aspect=${wide ? '4 / 4.8' : undefined}
   />`;
-  const spinLabel = snap.legendRound
-    ? 'Legend spin'
+  const spinLabel = eras
+    ? 'Spin'
     : `Spin ${versus ? `· ${team.name}` : `a ${CATEGORY_LABEL[snap.category]?.toLowerCase()}`}`;
   const spinButton = html`<${Button}
     variant="primary"
@@ -439,21 +454,27 @@ function Board({ state, draft, auto }) {
     >Continue<//
   >`;
   // Desktop: the stage carries its own buttons; phones: the sticky action bar does.
+  const withPrime = button =>
+    eras
+      ? html`<div class="draft-bar draft-bar--tokens">${button} ${tokens(['prime'])}</div>`
+      : button;
   const stageActions =
     wide &&
     (snap.complete
-      ? doneButton
+      ? withPrime(doneButton)
       : animating
         ? null
         : snap.phase === 'spin'
-          ? spinButton
-          : html`<div class="stage__row">
-              <p class="stage__hint">
-                Select a player: the pitch lights up where he fits. Double-click (or Enter again)
-                drafts him to his best slot.
-              </p>
-              ${rerollButton}
-            </div>`);
+          ? withPrime(spinButton)
+          : eras
+            ? tokens(null)
+            : html`<div class="stage__row">
+                <p class="stage__hint">
+                  Select a player: the pitch lights up where he fits. Double-click (or Enter again)
+                  drafts him to his best slot.
+                </p>
+                ${rerollButton}
+              </div>`);
   const stage = html`<${SpinStage}
     snap=${snap}
     animate=${animating ? animate : null}
@@ -475,11 +496,7 @@ function Board({ state, draft, auto }) {
       onSelect=${select}
       onDraft=${wide ? quickDraft : undefined}
       heading=${
-        snap.legendRound
-          ? 'Pick a legend'
-          : versus
-            ? `${team.name}: pick a player`
-            : 'Pick a player'
+        eras ? spinTitle(snap.spin) : versus ? `${team.name}: pick a player` : 'Pick a player'
       }
       budget=${team.budget}
     />`;
@@ -502,11 +519,11 @@ function Board({ state, draft, auto }) {
         preview=${preview}
         hideRatings=${hide}
       />`;
-  else if (snap.complete) bar = doneButton;
+  else if (snap.complete) bar = withPrime(doneButton);
   else if (animating)
     bar = html`<${Button} variant="secondary" size="xl" block disabled loading>Spinning<//>`;
-  else if (snap.phase === 'spin') bar = spinButton;
-  else bar = rerollButton;
+  else if (snap.phase === 'spin') bar = withPrime(spinButton);
+  else bar = eras ? tokens(null) : rerollButton;
 
   const head = html`<header class="draft-head">
     <div class="draft-head__titles">
@@ -540,7 +557,7 @@ function Board({ state, draft, auto }) {
       ${
         wide
           ? html`<aside class="draft__team" aria-label="Your XI">
-                ${vstrip} ${summary} ${budget} ${primeButton} ${pitch}
+                ${vstrip} ${summary} ${budget} ${pitch}
                 <${LineMeters} team=${shownTeam} hideRatings=${hide} />
               </aside>
               <div class="draft__play">
@@ -548,7 +565,7 @@ function Board({ state, draft, auto }) {
                 ${snap.phase !== 'pick' && html`<${History} entries=${history} hideRatings=${hide} />`}
                 ${bar && html`<div class="action-bar draft__bar">${bar}</div>`}
               </div>`
-          : html`${vstrip} ${summary} ${budget} ${primeButton} ${stage}
+          : html`${vstrip} ${summary} ${budget} ${stage}
               ${
                 snap.phase === 'pick' && !animating
                   ? html`<button

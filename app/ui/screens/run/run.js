@@ -9,7 +9,7 @@ import { href, navigate } from '../../lib/router.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
 import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
-import { loadLegends } from '../../../services/legends.js';
+import { loadEras } from '../../../services/eras.js';
 import { Button } from '../../components/button.js';
 import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
@@ -497,8 +497,8 @@ export default function RunScreen() {
     (async () => {
       try {
         const catalog = await loadWarmCatalog().then(warmOpponents);
-        // A World Cup XI can hold a legend and primed players (catalog.legends).
-        await loadLegends();
+        // A World Cup XI holds era cards (catalog.eras).
+        await loadEras();
         if (!live) return;
         let saved = loadRun(catalog);
         let flash = null;

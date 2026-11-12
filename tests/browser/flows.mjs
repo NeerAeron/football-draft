@@ -551,12 +551,12 @@ export const flows = [
       await page.goto(base);
       await step('home screen', () => visible(page, '[data-screen="home"]'));
       await step('fonts', () => page.evaluate(() => document.fonts.ready));
-      await step('Home does not fetch the legends file', async () => {
+      await step('Home does not fetch the era file', async () => {
         await page.waitForTimeout(600);
         const fetched = await page.evaluate(() =>
-          performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1')),
+          performance.getEntriesByType('resource').some(e => /(eras|legends)\.v1/.test(e.name)),
         );
-        if (fetched) throw new Error('legends.v1.json was fetched on Home');
+        if (fetched) throw new Error('eras.v1.json was fetched on Home');
       });
       await shot('landing');
       if (viewport === 'mobile') await shot('landing-full', { fullPage: true });
@@ -773,40 +773,88 @@ export const flows = [
         startFromSetup(page, base, '#/play/run?type=nations&seed=21&formation=433'),
       );
       await step('first spin lands', () => visible(page, '[data-testid="spin-result"]'));
+      const state = () =>
+        page.evaluate(() => JSON.parse(localStorage.getItem('football-draft-draft')).session.state);
+      const landed = async () => ({
+        era: (await page.textContent('[data-testid="spin-era"]')).trim(),
+        nation: (await page.textContent('.reveal__title')).trim(),
+      });
       await step(
-        'it is the Legend spin: gold stage, legends with their year, no odds',
+        'it landed an era and a nation: both named, rows with a year, no odds',
         async () => {
-          await visible(page, '.stage.is-legend');
+          await visible(page, '.stage.is-eras');
+          const { era, nation } = await landed();
+          if (!/(98|02|06|10|14|18|22|2026)$/.test(era)) throw new Error('era: ' + era);
+          const heading = (await page.textContent('#pool-title')).trim();
+          if (heading !== `${nation} · ${era}`) throw new Error('pool heading: ' + heading);
           const stage = await page.textContent('.stage');
-          if (!/Legend spin/.test(stage)) throw new Error('the stage does not say Legend spin');
-          if (await page.locator('.reveal__odds').count())
-            throw new Error('the Legend reel shows odds');
-          if (/%|chance|likely/i.test(stage)) throw new Error('odds text on the Legend stage');
+          if (await page.locator('.reveal__odds').count()) throw new Error('the reels show odds');
+          if (/%|chance|likely/i.test(stage)) throw new Error('odds text on the stage');
           const rows = page.locator('[data-testid="pool"] button.prow');
           const count = await rows.count();
-          if (count < 1 || count > 10) throw new Error(`${count} legends shown, expected 1–10`);
-          const eras = await page.locator('[data-testid="pool"] .prow__era').allTextContents();
-          // A year of 1998–2025, two digits.
-          if (eras.length !== count || !eras.every(t => /^’(9[7-9]|[01]\d|2[0-5])$/.test(t)))
-            throw new Error('legend rows without a year: ' + eras.join(' '));
+          if (count < 1 || count > 26) throw new Error(`${count} players shown, expected 1–26`);
+          const years = await page.locator('[data-testid="pool"] .prow__era').allTextContents();
+          // A year of 1997–2026, two digits.
+          if (years.length !== count || !years.every(t => /^’(9[7-9]|[01]\d|2[0-6])$/.test(t)))
+            throw new Error('rows without a year: ' + years.join(' '));
           const text = await page.textContent('[data-screen="draft"]');
           if (/FIFA \d\d/.test(text)) throw new Error('an edition name is on screen');
-          // One line says which years the legends come from.
-          const years = await page.textContent('.stage [data-testid="legend-years"]');
-          if (!/^\s*Best versions, 1998–2025\s*$/.test(years))
-            throw new Error('no years line on the Legend stage: ' + years);
-          // Nobody under 85 is offered.
-          const ovrs = await page.locator('[data-testid="pool"] .prow__ovr').allTextContents();
-          if (!ovrs.every(t => Number(t) >= 85)) throw new Error('a legend under 85: ' + ovrs);
-          // The file is fetched for the draft only.
+          // The era file is fetched for the draft; the legends file is not needed any more.
           const fetched = await page.evaluate(() =>
-            performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1.json')),
+            performance.getEntriesByType('resource').map(e => e.name),
           );
-          if (!fetched) throw new Error('the legends file was not fetched');
+          if (!fetched.some(n => n.includes('eras.v1.json')))
+            throw new Error('the era file was not fetched');
+          if (fetched.some(n => n.includes('legends.v1.json')))
+            throw new Error('the legends file was fetched');
         },
       );
+      await step('three tokens, one of each', async () => {
+        for (const kind of ['nation', 'era', 'prime']) {
+          const token = page.locator(`[data-testid="token-${kind}"]:visible`);
+          if ((await token.getAttribute('data-left')) !== '1')
+            throw new Error(`${kind} token: ${await token.textContent()}`);
+        }
+        if (!(await page.locator('[data-testid="token-prime"]:visible').isDisabled()))
+          throw new Error('the Prime is on offer with nobody drafted');
+        const box = await page.locator('.draft-tokens:visible').boundingBox();
+        if (box.x < 0 || box.x + box.width > viewport.width + 1)
+          throw new Error('the tokens do not fit the screen');
+      });
       await page.evaluate(() => document.fonts.ready);
-      await shot('legend-spin');
+      await shot('era-spin');
+      await step('nation respin: the era stays, another nation', async () => {
+        const before = await landed();
+        await page.click('[data-testid="token-nation"]:visible');
+        await page.waitForFunction(was => {
+          const title = document.querySelector('.reveal__title');
+          return title && title.textContent.trim() !== was;
+        }, before.nation);
+        const after = await landed();
+        if (after.era !== before.era) throw new Error(`the era moved: ${after.era}`);
+        const token = page.locator('[data-testid="token-nation"]:visible');
+        if ((await token.getAttribute('data-left')) !== '0' || !(await token.isDisabled()))
+          throw new Error('the nation respin is not spent');
+        if ((await state()).rerollsLeft[0] !== 0) throw new Error('rerollsLeft');
+      });
+      await shot('nation-respin');
+      await step('era respin: another era', async () => {
+        const before = await landed();
+        await page.click('[data-testid="token-era"]:visible');
+        await page.waitForFunction(was => {
+          const era = document.querySelector('[data-testid="spin-era"]');
+          return era && era.textContent.trim() !== was;
+        }, before.era);
+        const spin = (await state()).current;
+        const after = await landed();
+        // The nation stays when the new era has it; otherwise it was drawn again.
+        if (spin.kept !== (after.nation === before.nation))
+          throw new Error(`kept ${spin.kept}: ${before.nation} → ${after.nation}`);
+        const token = page.locator('[data-testid="token-era"]:visible');
+        if ((await token.getAttribute('data-left')) !== '0' || !(await token.isDisabled()))
+          throw new Error('the era respin is not spent');
+      });
+      await shot('era-respin');
       await step('select a player', async () => {
         await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
         await visible(page, '[data-testid="confirm-pick"]');
@@ -818,18 +866,18 @@ export const flows = [
         if (await page.locator('[data-testid="player-attributes"]').count())
           throw new Error('the Stats dropdown is back');
       });
-      await step('the legend card shows his year', async () => {
+      await step('the card shows the year of that version', async () => {
         const era = await page
           .locator('[data-testid="pick-card"]:visible .pcard__era')
           .first()
           .textContent();
-        if (!/^’\d\d$/.test(era)) throw new Error('no year on the legend card');
+        if (!/^’\d\d$/.test(era)) throw new Error('no year on the card');
         const standing = await page
           .locator('[data-testid="pick-standing"]:visible')
           .first()
           .textContent();
-        if (!/(Superstar|Star)\s*·\s*Legend ’\d\d/.test(standing))
-          throw new Error('the sheet does not say his tier and year: ' + standing);
+        if (!/’\d\d/.test(standing))
+          throw new Error('the sheet does not say his year: ' + standing);
       });
       await step('every open slot shows his overall there; the best one is marked', async () => {
         const pitch = page.locator('.pitch--interactive:visible').first();
@@ -841,11 +889,10 @@ export const flows = [
           .locator('.pitch-slot.is-fit-best .pitch-slot__rating')
           .first()
           .textContent();
-        if (Number(best) < 85) throw new Error('the best slot shows ' + best);
         const line = await page.locator('[data-testid="pick-slot"]:visible').first().textContent();
         if (!line.includes(best)) throw new Error(`the sheet says "${line}", not ${best}`);
       });
-      await shot('legend-pick');
+      await shot('pick');
       await step('pick 1 (other slot, then Auto)', async () => {
         await page.click(
           '.pitch--interactive .pitch-slot.is-fit-ok, .pitch--interactive .pitch-slot.is-fit-penalty',
@@ -853,13 +900,6 @@ export const flows = [
         await page.click('[data-testid="auto-slot"]:visible');
         await page.click('[data-testid="confirm-pick"]:visible');
         await picksMade(page, 1);
-      });
-      await step('the second spin is an ordinary nation spin', async () => {
-        if (await page.locator('.stage.is-legend').count())
-          throw new Error('the Legend stage stays after the legend pick');
-        if (await page.locator('[data-testid="legend-years"]').count())
-          throw new Error('the years line stays after the legend pick');
-        await visible(page, '[data-testid="prime-open"]');
       });
       await shot('after-first-pick');
       for (let pick = 2; pick <= 11; pick++) {
@@ -889,74 +929,72 @@ export const flows = [
             if (cut.length) throw new Error('rows with a cut tag: ' + cut.slice(0, 3).join(' | '));
           });
       }
+      await step('one person once: eleven different people', async () => {
+        const picks = (await state()).picks[0];
+        const persons = new Set(picks.map(id => /^ea:(\d+):/.exec(id)?.[1] ?? id));
+        if (persons.size !== 11) throw new Error('a man twice: ' + picks.join(' '));
+        if (!picks.some(id => /:era$/.test(id))) throw new Error('no era card in the XI');
+      });
       await step('completion sheet', () => visible(page, 'dialog.complete-sheet[open]'));
       await shot('complete');
       await step(
-        'Prime boost: one sheet, eligible players show the bump, the rest are closed',
+        'Prime: one sheet, eligible players show the bump, the rest are closed',
         async () => {
-          await page.click('dialog.complete-sheet[open] [data-testid="prime-open"]');
+          await page.click('dialog.complete-sheet[open] [data-testid="token-prime"]');
           await visible(page, '.draft-prime [data-testid="prime-confirm"]');
           const rows = page.locator('.draft-prime__row');
           if ((await rows.count()) !== 11) throw new Error('the sheet does not list the XI');
           const options = page.locator('[data-testid="prime-option"]');
-          if (!(await options.count())) throw new Error('nobody in this XI has a prime version');
+          if (!(await options.count())) throw new Error('nobody in this XI has a better version');
           if (!(await page.locator('.draft-prime__row:disabled').count()))
-            throw new Error('players without a prime version are selectable');
+            throw new Error('players without a better version are selectable');
           const bump = await options.first().locator('.draft-prime__bump').textContent();
-          if (!/^\s*\d\d\s*\d\d\s*\+\d+\s*$/.test(bump)) throw new Error('no bump: ' + bump);
+          if (!/^\s*\d\d\s*\d\d\s*[+−±]\d+\s*$/.test(bump)) throw new Error('no bump: ' + bump);
           if (!(await page.locator('[data-testid="prime-confirm"]').isDisabled()))
             throw new Error('confirm is enabled before a choice');
           await options.first().click();
         },
       );
-      await shot('prime-boost');
-      await step('confirm: he is his prime version, the boost is spent', async () => {
-        const before = await page.evaluate(
-          () =>
-            JSON.parse(localStorage.getItem('football-draft-draft')).session.state.primesLeft[0],
-        );
+      await shot('prime-sheet');
+      await step('confirm: he is his best version, the Prime is spent', async () => {
+        const before = await state();
         await page.click('[data-testid="prime-confirm"]');
         await page.waitForFunction(
-          n =>
+          () =>
             JSON.parse(localStorage.getItem('football-draft-draft')).session.state.primesLeft[0] ===
-            n - 1,
-          before,
+            0,
         );
-        const picks = await page.evaluate(
-          () => JSON.parse(localStorage.getItem('football-draft-draft')).session.state.picks[0],
-        );
-        if (picks.filter(id => /:prime$/.test(id)).length !== 1)
-          throw new Error('no prime version in the XI');
-        if (picks.filter(id => /:legend$/.test(id)).length !== 1)
-          throw new Error('no legend in the XI');
+        const after = await state();
+        if (before.primesLeft[0] !== 1) throw new Error('the Prime was not there');
+        const changed = after.picks[0].filter((id, i) => id !== before.picks[0][i]);
+        if (changed.length !== 1 || after.primed[changed[0]] === undefined)
+          throw new Error('no primed player in the XI');
       });
-      await step(
-        'the sheet stays open and shows the boost; a second tap does nothing',
-        async () => {
-          await visible(page, 'dialog.draft-prime[open] [data-testid="prime-done"]');
-          const button = page.locator('[data-testid="prime-confirm"]');
-          if (!/Done/.test(await button.textContent())) throw new Error('the button is not Done');
-          // An impatient second tap must not fall through to "On to the World Cup".
-          await button.click();
-          await page.waitForTimeout(100);
-          if ((await page.evaluate(() => location.hash)) !== '#/draft')
-            throw new Error('the second tap left the draft');
-          await shot('prime-done');
-          await page.waitForTimeout(500);
-          if (await page.locator('dialog.draft-prime[open]').count()) await button.click();
-          await page.waitForSelector('dialog.draft-prime[open]', { state: 'detached' });
-          await page.waitForTimeout(450);
-        },
-      );
+      await step('the sheet stays open and shows it; a second tap does nothing', async () => {
+        await visible(page, 'dialog.draft-prime[open] [data-testid="prime-done"]');
+        const button = page.locator('[data-testid="prime-confirm"]');
+        if (!/Done/.test(await button.textContent())) throw new Error('the button is not Done');
+        // An impatient second tap must not fall through to "On to the World Cup".
+        await button.click();
+        await page.waitForTimeout(100);
+        if ((await page.evaluate(() => location.hash)) !== '#/draft')
+          throw new Error('the second tap left the draft');
+        await shot('prime-done');
+        await page.waitForTimeout(500);
+        if (await page.locator('dialog.draft-prime[open]').count()) await button.click();
+        await page.waitForSelector('dialog.draft-prime[open]', { state: 'detached' });
+        await page.waitForTimeout(450);
+      });
       await shot('primed');
-      await step('continue to the run with the legend and the prime', async () => {
+      await step('continue to the run with the era cards', async () => {
+        const picks = (await state()).picks[0];
         await page.click('[data-testid="draft-continue"]');
         await page.waitForFunction(() => location.hash === '#/run');
         await visible(page, '[data-screen="run"]');
-        await page.waitForFunction(() => {
+        await page.waitForFunction(ids => {
           const run = JSON.parse(localStorage.getItem('football-draft-run-state') || 'null');
-          return run?.run?.user?.players?.some(id => /:prime$/.test(id));
-        });
+          return run?.run?.user?.players?.join() === ids.join();
+        }, picks);
       });
       await shot('run');
     },

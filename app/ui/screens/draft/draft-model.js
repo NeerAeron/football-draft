@@ -13,8 +13,45 @@ import { editionLabel } from '../../../core/players/legends.js';
 import { keyStatsFirst, surname } from '../../lib/player-view.js';
 import { boost as fmtBoost } from '../../lib/format.js';
 
-export const CATEGORY_LABEL = { nation: 'Nation', league: 'League', club: 'Club' };
-export const CATEGORY_ICON = { nation: 'flag', league: 'layout-grid', club: 'shield' };
+export const CATEGORY_LABEL = { era: 'Era', nation: 'Nation', league: 'League', club: 'Club' };
+export const CATEGORY_ICON = {
+  era: 'hourglass',
+  nation: 'flag',
+  league: 'layout-grid',
+  club: 'shield',
+};
+
+/**
+ * The token buttons of a draft's side to act (snapshot().tokens): a World Cup draft has three
+ * — [{ kind: 'nation' | 'era' | 'prime', label, icon, left, disabled, name }] — and a draft
+ * of today's players none (its re-roll is the Re-roll button). `disabled`: spent, or nothing
+ * to spend it on now. `name` is the accessible name ("Nation respin: 1 left").
+ */
+export function tokenButtons(snap) {
+  const t = snap?.tokens;
+  if (!snap?.eras || !t) return [];
+  const NAME = { nation: 'Nation respin', era: 'Era respin', prime: 'Prime' };
+  return [
+    ['nation', 'Nation', 'flag'],
+    ['era', 'Era', 'hourglass'],
+    ['prime', 'Prime', 'sparkles'],
+  ]
+    .filter(([kind]) => t[kind])
+    .map(([kind, label, icon]) => ({
+      kind,
+      label,
+      icon,
+      left: t[kind].left,
+      disabled: !t[kind].can,
+      name: `${NAME[kind]}: ${t[kind].left} left`,
+    }));
+}
+
+/** "’02": the year tag of a version (a pool entry's or a slot player's `year`), '' without. */
+export const yearTag = year => (year ? `’${String(year % 100).padStart(2, '0')}` : '');
+/** "Brazil · Korea/Japan 02": the nation and the era a spin landed on (the nation alone without). */
+export const spinTitle = spin =>
+  spin ? (spin.era ? `${spin.option.name} · ${spin.era.name}` : spin.option.name) : '';
 
 /** Chips over the pool: one sort (Best fit / Overall) or a line filter. */
 export function poolFilters(hideRatings = false) {
@@ -174,7 +211,7 @@ const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 export const rowStats = (stats, position) => keyStatsFirst(stats, position);
 
 /**
- * "Prime 94 +8": a Prime boost is available for this player — what it makes him and what it
+ * "Prime 94 +8": the Prime is available for this player — what it makes him and what it
  * adds to the rating on his card (`ovr`). Short on purpose: a pool row must never cut it.
  */
 export const primeNote = (version, ovr) =>
@@ -184,10 +221,6 @@ export const primeLine = (version, ovr) =>
   version
     ? { era: editionLabel(version), ovr: version.ovr, gain: ovr != null ? version.ovr - ovr : null }
     : null;
-
-/** The Legend spin's one line: which years the legends' versions are from. */
-export const legendYearsLine = years =>
-  years ? `Best versions, ${years[0] === years[1] ? years[0] : `${years[0]}–${years[1]}`}` : '';
 
 /** PitchView link lines from mates pairs: nation mates 3 (gold), club mates 2 (volt). */
 export function linkLines(pairs = []) {
@@ -201,6 +234,7 @@ export function reelItems(reel, { league = null } = {}) {
   const landed = reel.options[reel.landing];
   const live = reel.options.filter(o => o.weight > 0);
   const items = live.map(o => {
+    if (reel.category === 'era') return { id: o.id, label: o.name, sub: '' };
     if (reel.category === 'nation')
       return {
         id: o.id,
@@ -271,14 +305,14 @@ export function spinHeadline(spin, poolSize = 0) {
   if (!spin) return null;
   const o = spin.option;
   const players = `${poolSize} player${poolSize === 1 ? '' : 's'}`;
-  if (spin.legend)
+  if (spin.era)
     return {
       title: o.name,
       kind: 'nation',
-      legend: true,
+      era: spin.era.name,
       flag: { code: o.code, name: o.name, src: o.flag || undefined },
-      meta: `${poolSize} legend${poolSize === 1 ? '' : 's'}`,
-      big: true,
+      meta: players,
+      big: false,
       badge: null,
     };
   if (spin.category === 'nation')
@@ -314,7 +348,8 @@ export function spinHeadline(spin, poolSize = 0) {
 export function landedAnnouncement(spin, poolSize) {
   const h = spinHeadline(spin, poolSize);
   if (!h) return '';
-  return `${spin.legend ? 'Legend spin' : CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
+  if (spin.era) return `${spinTitle(spin)}. ${h.meta}.`;
+  return `${CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
 }
 
 /**

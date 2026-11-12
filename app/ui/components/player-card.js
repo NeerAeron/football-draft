@@ -16,7 +16,7 @@
  *   onClick      makes the card a <button>;  href makes it a link
  *   showBadges   default true
  *   children     optional footer content inside the card (e.g. a fit chip)
- * A legend or a prime version shows the year of that version under the position ("’18"); a
+ * An era card shows the year of that version under the position ("’18"); a
  * Captain wears the "C".
  */
 import { html, cx } from '../lib/html.js';
@@ -76,18 +76,13 @@ export function PlayerCard({
     hideRatings ? null : t.label,
     p.nation?.name,
     p.club?.name,
-    p.legend
-      ? `legend, 20${p.era.slice(1)}`
-      : p.prime
-        ? `prime version, 20${p.era.slice(1)}`
-        : null,
+    p.era ? `${p.prime ? 'prime version, ' : ''}${p.era} version` : null,
     p.captain ? 'captain' : null,
   ]
     .filter(Boolean)
     .join(', ');
   const classes = cx(
     'pcard',
-    p.legend && 'pcard--legend',
     p.prime && 'pcard--prime',
     `pcard--${size}`,
     `pcard--tier-${frame}`,

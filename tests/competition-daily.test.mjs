@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
+import { loadRuntimeCatalog, loadEraCatalog } from '../scripts/data/catalog-file.mjs';
 import { createDraftSession } from '../app/core/draft/session.js';
-import { catalogIndex } from '../app/core/draft/pools.js';
+import { eraNations, eraPool, ERAS } from '../app/core/players/eras.js';
+import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
 import { createCupRun } from '../app/core/competition/cup.js';
 import {
@@ -29,7 +30,7 @@ import {
   ULTIMATE,
 } from '../app/core/competition/share.js';
 
-const catalog = loadRuntimeCatalog();
+const catalog = loadEraCatalog();
 const greedy = s => {
   while (!s.complete) {
     s.spin();
@@ -52,34 +53,60 @@ test('UTC day ids, numbers and neighbours', () => {
   assert.equal(nextDay('2028-02-28'), '2028-02-29');
 });
 
-test('same date, same spins, alternates and opponents', () => {
+test('same date, same spins, respin landings and opponents', () => {
   const a = dailyChallenge(catalog, '2026-11-07'),
-    b = dailyChallenge(loadRuntimeCatalog(), new Date('2026-11-07T15:00:00Z')),
+    b = dailyChallenge(loadEraCatalog(), new Date('2026-11-07T15:00:00Z')),
     c = dailyChallenge(catalog, '2026-11-08');
   assert.deepEqual(a, b);
   assert.notDeepEqual(a.schedule, c.schedule);
   assert.equal(a.schedule.rounds.length, 11);
-  const field = new Set(catalogIndex(catalog).field.map(n => n.id));
+  // It is a World Cup draft: it needs the era pools, and has the three tokens.
+  assert.throws(() => dailyChallenge(loadRuntimeCatalog(), '2026-11-07'), /needs the era data/);
+  assert.deepEqual(a.tokens, DEFAULT_CONFIG.draft.tokens);
+  assert.deepEqual([a.draft.eras, a.draft.primes, a.draft.useDefaultRules], [true, true, true]);
+  const has = (era, nation) => eraNations(catalog, era).some(n => n.name === nation);
   for (const r of a.schedule.rounds) {
-    assert.ok(field.has(r.spin) && field.has(r.alternate));
+    assert.ok(ERAS.some(e => e.id === r.era));
+    // The spin and the nation respin's landing: two nations of the round's era.
+    assert.ok(has(r.era, r.spin) && has(r.era, r.alternate));
     assert.notEqual(r.spin, r.alternate);
+    // The era respin: another era; its nation is the round's when that era has it.
+    assert.notEqual(r.eraAlternate.era, r.era);
+    assert.ok(has(r.eraAlternate.era, r.eraAlternate.nation));
+    if (has(r.eraAlternate.era, r.spin)) assert.equal(r.eraAlternate.nation, r.spin);
   }
   // Group ×3, five knockouts and the third-place play-off opponent: real nations only.
   assert.equal(new Set(a.opponents).size, 9);
   assert.ok(a.opponents.every(k => k.startsWith('nation:')));
-  // The draft follows the schedule: spins land on it, a re-roll lands on the alternate.
+  // The draft follows the schedule: spins land on it, and so do the respins.
   const s = createDraftSession(catalog, a.draft);
   for (let round = 0; round < 11; round++) {
-    const spin = s.spin();
-    assert.equal(spin.option.id, a.schedule.rounds[round].spin);
-    assert.ok(spin.scheduled);
-    if (round === 2) {
-      assert.equal(s.reroll().option.id, a.schedule.rounds[round].alternate);
-      assert.equal(s.rerollBlocked(), 'One alternate per round');
+    const r = a.schedule.rounds[round],
+      spin = s.spin();
+    if (spin.scheduled) assert.deepEqual([spin.era.id, spin.option.id], [r.era, r.spin]);
+    else assert.ok(round > 0, 'the first spin is always the schedule');
+    if (round === 2 && spin.scheduled) {
+      const again = s.respin('nation');
+      if (again.scheduled) assert.equal(again.option.id, r.alternate);
+      assert.equal(again.era.id, r.era);
+    }
+    if (round === 4 && spin.scheduled) {
+      const again = s.respin('era');
+      if (again.scheduled) assert.equal(again.era.id, r.eraAlternate.era);
+      if (again.scheduled && !again.kept) assert.equal(again.option.id, r.eraAlternate.nation);
     }
     s.pick(s.suggestPick().profileId);
   }
-  assert.equal(s.rerollsLeft[0], a.rerolls - 1);
+  assert.deepEqual([s.rerollsLeft[0], s.eraRespinsLeft[0], s.primesLeft[0]], [0, 0, 1]);
+  // Most rounds land on the schedule whatever was drafted before (the guard moves a spin only
+  // when its pool has no pick left for an open slot).
+  const follow = createDraftSession(catalog, a.draft);
+  let scheduled = 0;
+  while (!follow.complete) {
+    scheduled += follow.spin().scheduled ? 1 : 0;
+    follow.pick(follow.suggestPick().profileId);
+  }
+  assert.ok(scheduled >= 9, `scheduled spins: ${scheduled}`);
   // Two players drafting the same way get the same XI and the same opponents.
   const t = greedy(createDraftSession(catalog, a.draft)),
     u = greedy(createDraftSession(catalog, a.draft));
@@ -92,20 +119,46 @@ test('same date, same spins, alternates and opponents', () => {
 });
 
 test('the perfect XI bounds every draft and scores the daily', () => {
-  const day = dailyChallenge(catalog, '2026-11-09'),
-    optimum = perfectXI(catalog, day);
-  assert.ok(optimum.alternates.length <= day.rerolls);
-  for (const policy of ['greedy', 'reroll']) {
-    const s = createDraftSession(catalog, day.draft);
-    while (!s.complete) {
-      s.spin();
-      if (policy === 'reroll' && s.rerollsLeft[0] && s.suggestPick().rating < 83) s.reroll();
-      s.pick(s.suggestPick().profileId);
+  for (const date of ['2026-11-09', '2026-11-10', '2026-12-24']) {
+    const day = dailyChallenge(catalog, date),
+      optimum = perfectXI(catalog, day);
+    assert.ok(optimum.alternates.length <= day.tokens.nation);
+    assert.ok(optimum.eras.length <= day.tokens.era);
+    // Without the tokens the optimum is the best XI of the eleven scheduled pools.
+    const plain = perfectXI(catalog, { ...day, tokens: { nation: 0, era: 0, prime: 0 } });
+    assert.ok(plain.rating <= optimum.rating && plain.rating > 80);
+    assert.deepEqual([plain.alternates, plain.eras], [[], []]);
+    const best = day.schedule.rounds.map(r =>
+      Math.max(...eraPool(catalog, r.era, r.spin).map(p => p.sourceOverall ?? 0)),
+    );
+    assert.ok(best.every(v => v > 0));
+    for (const policy of ['greedy', 'tokens']) {
+      const s = createDraftSession(catalog, day.draft);
+      let scheduled = true;
+      while (!s.complete) {
+        scheduled &&= s.spin().scheduled;
+        if (policy === 'tokens' && s.suggestPick().rating < 83) {
+          if (s.snapshot().tokens.nation.can) scheduled &&= s.respin('nation').scheduled;
+          else if (s.snapshot().tokens.era.can) scheduled &&= s.respin('era').scheduled;
+        }
+        s.pick(s.suggestPick().profileId);
+      }
+      if (policy === 'tokens') {
+        const o = s
+          .primeOptions(0)
+          .sort((x, y) => y.to.rating - y.from.rating - (x.to.rating - x.from.rating))[0];
+        if (o && o.to.rating > o.from.rating) s.prime(o.slot, 0);
+      }
+      const rating = s.matchSide(0).rating;
+      // Every landing was the schedule's: the optimum bounds the XI.
+      if (scheduled)
+        assert.ok(
+          rating <= optimum.rating + 1e-9,
+          `${date} ${policy}: ${rating} <= ${optimum.rating}`,
+        );
+      const pct = perfectPercent(rating, optimum);
+      assert.ok(pct > 88 && pct <= 100, String(pct));
     }
-    const rating = s.matchSide(0).rating;
-    assert.ok(rating <= optimum.rating + 1e-9, `${rating} <= ${optimum.rating}`);
-    const pct = perfectPercent(rating, optimum);
-    assert.ok(pct > 90 && pct <= 100, String(pct));
   }
   assert.equal(perfectPercent(90, { rating: 85 }), 100);
   // Score: matches + stage + OVR + perfection.

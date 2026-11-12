@@ -23,7 +23,7 @@ import {
 import { quickOpponent, difficultyLabel } from '../../lib/draft-store.js';
 import { linkLines } from './draft-model.js';
 import { BudgetStrip } from './team-panel.js';
-import { PrimeButton } from './prime-sheet.js';
+import { TokenBar } from './tokens.js';
 import { fmt1, boost as fmtBoost } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
@@ -198,10 +198,10 @@ export function CompleteSheet({
     class="complete-sheet"
     footer=${html`
       ${
-        // Last chance: boosts not used here are gone once the World Cup starts.
+        // Last chance: a Prime not used here is gone once the World Cup starts.
         step === 'xi' &&
         mine.primesLeft > 0 &&
-        html`<${PrimeButton} team=${mine} primes=${snap.primes} onOpen=${onPrime} />`
+        html`<${TokenBar} snap=${snap} onToken=${onPrime} only=${['prime']} />`
       }
       ${
         context.options.hideRatings &&

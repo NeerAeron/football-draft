@@ -13,8 +13,8 @@
  *   boost        { label, text } the mates boost he would get, green, on the second line
  *                ('+1.5' 'nation mate')
  *
- * A Captain's name carries the "C", a legend's the year of his version ("’18"); `player.primeNote`
- * ("Prime 94 +8": a Prime boost is available, and what it adds) is a gold tag on the second
+ * A Captain's name carries the "C", an era card's the year of that version ("’18"); `player.primeNote`
+ * ("Prime 94 +8": the Prime is available, and what it adds) is a gold tag on the second
  * line. The second line spans the whole row under the name: cost, boost and Prime are never
  * cut (they wrap when the row is narrow); the club text takes what is left.
  * A Superstar's or a Star's row has a thin outline in the tier's colour (not with hideRatings).
@@ -121,7 +121,7 @@ export function PlayerRow({
       p.nation?.name,
       p.club?.name,
       p.captain && 'captain',
-      p.era && `20${p.era.slice(1)}`,
+      p.era && `${p.era} version`,
       cost && (cost.text || cost.label),
       boost && `${boost.label} ${boost.text}`,
       prime,
