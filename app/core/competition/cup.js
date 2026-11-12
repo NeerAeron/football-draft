@@ -117,28 +117,15 @@ export function cupOffsets(difficulty = 'pro', tuning = CUP_TUNING) {
   return [...(tuning[difficulty] ?? tuning.pro)];
 }
 /**
- * Third place in the group goes through with BEST_THIRD.points, or one point fewer and a goal
- * difference of at least BEST_THIRD.goalDifference. In the 2026 format the eight best of twelve
- * third-placed teams go through; with the fast model over many sets of twelve groups, every
- * third on 4+ points makes the cut, 3 points makes it 97% of the time at GD ≥ 0, ~90% at −1,
- * ~70% at −2 and ≤ 50% below: this threshold passes ~63% of thirds (the real cut: 8/12 = 67%).
- * A fixed rule, so the hub can tell the user exactly what a third place needs.
+ * Third place in the group goes through with BEST_THIRD.points or more, and never with fewer
+ * (in the 2026 format eight of twelve thirds go through; a third on 4+ points always does).
+ * One plain rule, so the hub can tell the user exactly what a third place needs.
  */
-export const BEST_THIRD = { points: 4, goalDifference: -2 };
-/**
- * The other eleven groups are not played, so where the cut falls for a third on 3 points varies
- * a little from run to run, as it does between real tournaments: the goal difference needed is
- * −3, −2, −1 or 0 (15 / 35 / 30 / 20%), fixed by the run's seed (`thirdCutFor`). The player
- * only learns it when the group is over; 4 points always go through.
- */
-const THIRD_CUTS = [-3, -2, -2, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, -3, -3];
-export const thirdCutFor = rngSeed =>
-  THIRD_CUTS[mixSeed((rngSeed ^ 0x3c6ef372) >>> 0) % THIRD_CUTS.length];
-/** Does a group-table row in third place go through (BEST_THIRD; `cut` = this run's GD cut)? */
-export const thirdQualifies = (row, cut = BEST_THIRD.goalDifference) =>
-  row.points >= BEST_THIRD.points || (row.points === BEST_THIRD.points - 1 && row.gd >= cut);
+export const BEST_THIRD = { points: 4 };
+/** Does a group-table row in third place go through? Four points or more, nothing less. */
+export const thirdQualifies = row => row.points >= BEST_THIRD.points;
 /** Whether a row of the final group table goes through: top two, or a qualifying third. */
-const advances = (row, index, cut) => index < 2 || (index === 2 && thirdQualifies(row, cut));
+const advances = (row, index) => index < 2 || (index === 2 && thirdQualifies(row));
 // Format 3: the third-place play-off (nine opponents) and three difficulties. Older runs
 // (format 2: no play-off; format 1: seven rounds) do not restore.
 export const CUP_FORMAT = 3;
@@ -382,8 +369,7 @@ export class CupRun {
       if (md === 2) {
         const table = standings(teams, this.group.fixtures, this.group.lots),
           position = table.findIndex(r => r.key === USER);
-        if (!advances(table[position], position, thirdCutFor(this.rngSeed)))
-          this.status = 'eliminated';
+        if (!advances(table[position], position)) this.status = 'eliminated';
       }
     } else if (info.id === 'final') this.status = won ? 'champion' : 'eliminated';
     // The play-off ends the run either way (third or fourth); a lost semi-final leads to it.
@@ -572,8 +558,7 @@ export class CupRun {
         // qualifies: goes through as the table stands (top two, or a third on BEST_THIRD).
         table: table.map((r, i) => ({
           ...r,
-          // A third on 3 points is only settled when the group is over (the cut varies).
-          qualifies: advances(r, i, this.matches.length >= 3 ? thirdCutFor(this.rngSeed) : 99),
+          qualifies: advances(r, i),
           name: r.key === USER ? this.user.name : this.opponents.find(o => o.key === r.key).name,
           user: r.key === USER,
         })),

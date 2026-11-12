@@ -295,9 +295,7 @@ export function fixtureOdds(userEffective, opponentEffective) {
 }
 
 /** The best-thirds rule in words, from BEST_THIRD (hub draw banner, stakes, group table). */
-export const THIRD_PLACE_RULE = `Third place goes through with ${BEST_THIRD.points} points. With ${
-  BEST_THIRD.points - 1
-} it comes down to goal difference against the other groups' third-placed teams.`;
+export const THIRD_PLACE_RULE = `Third place goes through with ${BEST_THIRD.points} points or more.`;
 
 const OUTCOMES = [
   ['W', [1, 0]],
@@ -308,8 +306,8 @@ const OUTCOMES = [
  * What the last group match means, by points: for each user result 'W' | 'D' | 'L' →
  * 'through' (top two, or a third place on 4+ points, whatever happens elsewhere), 'out' (below
  * the cut whatever happens), or 'depends' (on the other match or goal difference). A third
- * place goes through on BEST_THIRD (core/competition/cup.js): 4 points, or 3 and a goal
- * difference of −2 or better. null before matchday 3.
+ * place goes through on BEST_THIRD (core/competition/cup.js): 4 points or more, never
+ * fewer. null before matchday 3.
  * { md: 3, other: { home, away }, W, D, L, third: bool (some result hangs on third place) }.
  */
 export function groupStakes(snapshot) {
@@ -329,15 +327,7 @@ export function groupStakes(snapshot) {
   const out = { md: 3, other: { home: name(other.home), away: name(other.away) }, third: false };
   // Whether finishing in a position on `me` points goes through: true, false or null (on GD).
   const goesThrough = (position, me) =>
-    position <= 2
-      ? true
-      : position >= 4
-        ? false
-        : me >= BEST_THIRD.points
-          ? true
-          : me === BEST_THIRD.points - 1
-            ? null
-            : false;
+    position <= 2 ? true : position >= 4 ? false : me >= BEST_THIRD.points ? true : false;
   for (const [outcome, [u, r]] of OUTCOMES) {
     const verdicts = OUTCOMES.map(([, [h, a]]) => {
       const p = new Map(points);
@@ -352,7 +342,7 @@ export function groupStakes(snapshot) {
       const fates = [];
       for (let pos = above + 1; pos <= above + level + 1; pos++) {
         fates.push(goesThrough(pos, me));
-        if (pos === 3 && me >= BEST_THIRD.points - 1) out.third = true;
+        if (pos === 3 && me >= BEST_THIRD.points) out.third = true;
       }
       return fates.every(f => f === true)
         ? 'through'

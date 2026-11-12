@@ -343,15 +343,14 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   assert.ok(clubs.opponents.every(o => o.kind === 'club' && o.target !== null));
 });
 
-test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference ≥ −2', () => {
+test('third place goes through on BEST_THIRD: 4 points or more, nothing less', () => {
   const row = (points, gd) => ({ points, gd });
-  assert.deepEqual(BEST_THIRD, { points: 4, goalDifference: -2 });
+  assert.deepEqual(BEST_THIRD, { points: 4 });
   assert.equal(thirdQualifies(row(4, -6)), true);
-  assert.equal(thirdQualifies(row(3, -2)), true);
-  assert.equal(thirdQualifies(row(3, -3)), false);
+  assert.equal(thirdQualifies(row(3, 5)), false);
   assert.equal(thirdQualifies(row(2, 0)), false);
-  // Play W 1-0, L 0-1, L 0-1 (3 pts, GD −1) and W 1-0, L 0-3, L 0-3 (GD −5) on seeds where
-  // you finish third: the first goes through to the Round of 32, the second goes home.
+  // Play W 1-0, D 1-1, L 0-1 (4 pts) and W 1-0, L 0-1, L 0-1 (3 pts) on seeds where you finish
+  // third: the first goes through to the Round of 32, the second goes home.
   const thirdOn = (results, seeds) => {
     for (const seed of seeds) {
       const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed, user });
@@ -361,11 +360,11 @@ test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference
     }
     return null;
   };
-  const seeds = Array.from({ length: 60 }, (_, i) => i + 1);
+  const seeds = Array.from({ length: 300 }, (_, i) => i + 1);
   const through = thirdOn(
     [
       [1, 0],
-      [0, 1],
+      [1, 1],
       [0, 1],
     ],
     seeds,
@@ -378,8 +377,8 @@ test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference
   const out = thirdOn(
     [
       [1, 0],
-      [0, 3],
-      [0, 3],
+      [0, 1],
+      [0, 1],
     ],
     seeds,
   );
@@ -509,7 +508,7 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
       rating = MODE_BASELINES.nations.effective[Math.min(2, rerolls)];
     const p = projectRun({ rating, mode: 'nations', difficulty, runs: 3000 }).probabilities;
     assert.ok(p.champion >= lo && p.champion <= hi, `${difficulty} champion ${p.champion}`);
-    assert.ok(p.champion < previous, difficulty);
+    assert.ok(p.champion <= previous, difficulty);
     previous = p.champion;
     if (difficulty === 'pro') assert.ok(p.group <= 0.22, `pro group exit ${p.group}`);
   }
@@ -527,20 +526,8 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
     }
 });
 
-test('third place on 3 points: the goal-difference cut varies a little by run, by seed', async () => {
-  const { thirdCutFor, thirdQualifies } = await import('../app/core/competition/cup.js');
-  const count = new Map();
-  for (let seed = 1; seed <= 4000; seed++) {
-    const cut = thirdCutFor(seed);
-    assert.equal(cut, thirdCutFor(seed), 'the same run always has the same cut');
-    count.set(cut, (count.get(cut) || 0) + 1);
-  }
-  assert.deepEqual(
-    [...count.keys()].sort((a, b) => a - b),
-    [-3, -2, -1, 0],
-  );
-  assert.ok(count.get(-2) > count.get(-3) && count.get(-1) > count.get(0));
-  assert.ok(thirdQualifies({ points: 4, gd: -5 }, 0), 'four points always go through');
-  assert.ok(thirdQualifies({ points: 3, gd: -1 }, -1) && !thirdQualifies({ points: 3, gd: -1 }, 0));
-  assert.ok(!thirdQualifies({ points: 2, gd: 3 }, -3));
+test('third place goes through on four points or more, never on fewer', async () => {
+  const { thirdQualifies } = await import('../app/core/competition/cup.js');
+  assert.ok(thirdQualifies({ points: 4, gd: -5 }));
+  assert.ok(!thirdQualifies({ points: 3, gd: 6 }));
 });

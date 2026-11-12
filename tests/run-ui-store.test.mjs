@@ -515,7 +515,7 @@ test('group stakes on the last matchday read the points honestly', () => {
   assert.equal(runStore.groupStakes(safe).W, 'through');
   assert.equal(runStore.groupStakes(safe).L, 'through', 'six points: third at worst');
   assert.equal(runStore.groupStakes({ ...safe, round: 1 }), null);
-  // You 0 pts, A 6, B 3, C 3: a win gives 3 pts — top two or a third on goal difference.
+  // You 0 pts, A 6, B 3, C 3: a win gives 3 pts — third at best, and a third needs 4.
   const third = snapshot([
     fx(1, 'user', 'a', [0, 1]),
     fx(1, 'b', 'c', [1, 0]),
@@ -525,7 +525,7 @@ test('group stakes on the last matchday read the points honestly', () => {
     fx(3, 'a', 'b', null),
   ]);
   const stakes = runStore.groupStakes(third);
-  assert.deepEqual([stakes.W, stakes.D, stakes.L, stakes.third], ['depends', 'out', 'out', true]);
+  assert.deepEqual([stakes.W, stakes.D, stakes.L, stakes.third], ['out', 'out', 'out', false]);
   assert.equal(runStore.groupStakes(safe).third, false);
 });
 

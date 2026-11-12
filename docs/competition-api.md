@@ -53,11 +53,9 @@ teams only (no World XI / All-Stars in a run or the Daily):
   84.6, SF 85.6, final 86.5, play-off 84.9. Outside a Nations draft there is no field: Legendary
   uses its `CUP_TUNING` row.
 
-**Best thirds** (`BEST_THIRD`, `thirdQualifies(row)`): third place goes through with 4 points, or
-3 points and a goal difference at or above the run's cut: −3, −2, −1 or 0 (15 / 35 / 30 / 20%, fixed by the seed, `thirdCutFor`; the other groups are not played, so the cut varies a little as it does between real tournaments, and the player learns it when the group ends). A fixed, explainable rule standing in for the
-ranking of twelve thirds: over many simulated sets of twelve groups (fast model), every third
-on 4+ points makes the real cut, one on 3 points makes it 97% of the time at GD ≥ 0, ~90% at
-−1, ~70% at −2 and at most ~50% below; the rule passes ~63% of thirds (the real cut is 8/12).
+**Best thirds** (`BEST_THIRD`, `thirdQualifies(row)`): third place goes through with 4 points or
+more and never with fewer (over many simulated sets of twelve groups every third on 4+ points
+makes the real cut of 8/12).
 Snapshot table rows carry `qualifies` (as the table stands); the hub shows the rule under the
 group table and in the last-matchday stakes. Since the rule came in (with the Round of 32),
 fewer runs end in the group (World Class 13.7% → 4.7%, Legendary 23% → 10%), and the extra
