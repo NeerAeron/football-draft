@@ -1,7 +1,7 @@
 # World Cup Draft
 
-A browser football (soccer) game. Spin for nations, leagues or clubs, draft an XI from 15,378
-real EA SPORTS FC 26 player profiles, then take it through a World Cup in a continuous,
+A browser football (soccer) game. Spin for nations, leagues or clubs, draft an XI from 15,788
+real EA SPORTS FC 27 player profiles, then take it through a World Cup in a continuous,
 physics-based 2D 11v11 match simulation.
 
 It is a static site: HTML, CSS and native ES modules with no build step, no server, no accounts.
@@ -49,8 +49,8 @@ Everything you do is saved in your own browser.
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
-| **Nations** | one of 61 football nations, all equally likely | its best 23 available call-ups |
-| **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
+| **Nations** | one of 63 football nations, all equally likely | its best 23 available call-ups |
+| **Leagues** | one of 41 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
 Three difficulties — Pro, World Class and Legendary — set your re-rolls (2, 1, 1) and how
@@ -138,10 +138,12 @@ docs/                 API contracts, UI guides, calibration notes, development h
 
 ## Data pipeline
 
-The player catalog is compiled, never hand-edited. Source: rovnez, "FC 26 (FIFA 26) player
-data" on Kaggle, file `FC26_20250921.csv` (18,405 rows, CC BY 4.0, SHA-256
-`4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2`). An identical public copy:
-<https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv>.
+The player catalog is compiled, never hand-edited. Source: EA SPORTS FC 27, EA's own ratings feed
+as of 12 September 2026 (19,789 rows; the game uses the 17,849 men), from the public copy at
+<https://raw.githubusercontent.com/LakshmiKanth11/EA_FC_ANALYSIS/c0b2542d9fcae72d2c538a472a30ee57c4e7c75e/EA_FC_PLAYERS_DATASET_AND_%20DASHBOARD/data/players.csv>
+(SHA-256 `18ed434e5bb90f9afa72363d14438005c785eb4b8872a64c89c75bb38e14e911`; published on Kaggle as
+"EA SPORTS FC 27 Player Ratings" by mikedpad). The feed names clubs and leagues without ids;
+`npm run data:reconcile` ties them to the reviewed reference (`data/source-map.json`).
 
 Legends and prime versions come from a second pinned source: `male_players (legacy).csv` of the
 Hugging Face dataset [jsulz/FIFA23](https://huggingface.co/datasets/jsulz/FIFA23) (MIT; career-mode
@@ -151,20 +153,22 @@ players of FIFA 15–23 from sofifa.com, the same columns; revision
 
 ```sh
 npm run data:fetch   # downloads both pinned CSVs into data/raw/ and checks their SHA-256
+npm run data:reconcile  # a new snapshot only: its club, league and nation names -> the reference
 npm run data:build   # compiles app/data/catalog.v3.json, app/data/legends.v1.json, the flags
                      # and data/build/*.json (provenance)
 ```
 
 The build is deterministic, so a rerun is byte-identical. The catalog holds every player of every
-league we have reviewed club metadata for (15,378 players, 546 clubs, 152 nations), including
-national-team players without a club, plus precomputed badges, club ratings and club best XIs.
+club we have reviewed metadata for (15,788 players, 553 clubs in 41 leagues, 163 nations),
+including 831 players rated 65+ whose clubs the game does not carry (nation pools only), plus
+precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 185 legends — best past versions the game shows at 85+: 80 players who are
-not in the catalog and 105 catalog players who were better then — and the prime versions of
-2,579 catalog players (shown 2+ above today, or 88+), compiled by the same compiler. A draft
-offers only players shown at 65 or more (9,986 of the 15,378); teams field their real players.
+draft starts) holds 189 legends — best past versions the game shows at 85+: 97 players who are
+not in the catalog and 92 catalog players who were better then — and the prime versions of
+2,362 catalog players (shown 2+ above today, or 88+), compiled by the same compiler. A draft
+offers only players shown at 65 or more (10,968 of the 15,788); teams field their real players.
 
 ## Deploy
 
@@ -178,9 +182,10 @@ tests and browser smoke test on every push and pull request.
 
 ## Credits and licences
 
-- **Player data:** "FC 26 (FIFA 26) player data" by rovnez, licensed
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); upstream data from SoFIFA /
-  EA SPORTS FC. Player ratings are converted, not invented (see the compiler).
+- **Player data:** EA SPORTS FC 27 player ratings as published by EA (12 September 2026), from
+  the copy in [EA_FC_ANALYSIS](https://github.com/LakshmiKanth11/EA_FC_ANALYSIS) by Lakshmi
+  Kanth (no licence stated there); player data belongs to Electronic Arts. Player ratings are
+  converted, not invented (see the compiler).
 - **Legends and prime versions:** the [FIFA23 dataset](https://huggingface.co/datasets/jsulz/FIFA23)
   by jsulz on Hugging Face (`male_players (legacy).csv`, FIFA 15–23 career-mode players), MIT
   licence; upstream data from SoFIFA / EA SPORTS FIFA.

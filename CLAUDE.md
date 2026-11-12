@@ -1,6 +1,6 @@
 # World Cup Draft — agent guide
 
-Browser football (soccer) game, **World Cup Draft**: draft an XI from real EA FC 26 players, then
+Browser football (soccer) game, **World Cup Draft**: draft an XI from real EA FC 27 players, then
 play it through a continuous 2D 11v11 physics simulation in a World Cup Run (Nations draft only), the Daily Challenge, a Quick Match,
 local Versus or an Exhibition. Static site, **no build step**: `app/` is served as-is (native ES
 modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dependencies
@@ -22,7 +22,8 @@ modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dep
 | `npm run sim:fingerprint` | deterministic results/hashes of 12 full matches + timings | ~6 s |
 | `npm run format` / `npm run lint` | Prettier write / ESLint (`--max-warnings 0`) | — |
 | `npm run verify` | everything incl. full tests + browser smoke (before pushing) | ~4 min |
-| `npm run data:fetch` / `npm run data:build` | pinned source CSV / rebuild the catalog (see below) | — |
+| `npm run data:fetch` / `npm run data:build` | pinned source CSVs / rebuild the catalog and legends (see below) | ~30 s |
+| `npm run data:reconcile` | tie a new source snapshot's club, league and nation names to the reference (`data/source-map.json`) | ~1 s |
 | `node tools/og/render.mjs` | re-render the link-preview card and app icons | — |
 | `npm run preload` | regenerate the preload block of `app/index.html` after adding/removing an import or stylesheet of the first screen (a test fails until you do) | — |
 | `node tools/calibration/blunders.mjs` | count frustrating plays over 24 club fixtures (`--compare`, `--list <type>`) | ~15 s |
@@ -62,12 +63,14 @@ app/                     served statically (deploy = publish this folder); runti
   assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
+                         source-map.json (the source's club/league/nation names → the reference),
                          captains.json (reviewed Captain list with sources), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
 scripts/                 catalog compiler (compile-league-catalog.mjs + compile-players.mjs),
                          compile-legends.mjs (Legends and Prime versions from the legacy CSV)
-scripts/data/            data:fetch / data:build pipeline; catalog-file.mjs = loadRuntimeCatalog() for Node
+scripts/data/            data:fetch / data:reconcile / data:build pipeline (ea-source.mjs adapts the
+                         source rows); catalog-file.mjs = loadRuntimeCatalog() for Node
 scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
 tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
@@ -99,8 +102,9 @@ through `loadCatalog()` (`app/services/catalog.js`, browser) or `loadRuntimeCata
 (`scripts/data/catalog-file.mjs`, Node) — never fetch the JSON directly; screens that draft,
 build a run or list opponents use `loadWarmCatalog()` (`ui/lib/catalog-warm.js`: the same
 catalog, with core's rating caches filled in short slices first). The decoded catalog has
-`players`, `leagues`, `teams`, `nations` and the Maps `byId`, `byNation`, `byLeague`, `byClub`;
-club-less national-team players have `source.club === null` and appear only in nation pools.
+`players`, `leagues`, `teams`, `nations` and the Maps `byId`, `byNation`, `byLeague`, `byClub`
+(the last three are built on first use); players whose club has no reviewed entry have
+`source.club === null` and appear only in nation pools.
 
 ### Module map (`app/core/` unless noted)
 
@@ -231,20 +235,38 @@ tolerant of missing or broken data.
 
 ## Data pipeline
 
-Source: rovnez, "FC 26 (FIFA 26) player data", `FC26_20250921.csv` (18,405 rows, CC BY 4.0,
-SHA-256 `4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2`). An identical public
-copy: `https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv`.
+Source (current players): EA SPORTS FC 27, EA's own ratings feed as of 12 September 2026
+(`FC27_20260912.csv`: 19,789 rows × 60 columns, men and women; the game uses the 17,849 men).
+Published as "EA SPORTS FC 27 Player Ratings" (mikedpad, Kaggle); pinned to the public copy
+`https://raw.githubusercontent.com/LakshmiKanth11/EA_FC_ANALYSIS/c0b2542d9fcae72d2c538a472a30ee57c4e7c75e/EA_FC_PLAYERS_DATASET_AND_%20DASHBOARD/data/players.csv`
+(SHA-256 `18ed434e5bb90f9afa72363d14438005c785eb4b8872a64c89c75bb38e14e911`; that repository states no
+licence — player data belongs to Electronic Arts). `player_id` is EA's id, the same one the
+past editions and `profileId` use.
+
+The feed names clubs, leagues and nations but has no ids, so `scripts/data/ea-source.mjs`
+turns its rows into the compiler's columns through `data/source-map.json` (league name →
+reference league, `"league | club"` → reference team id, nationality → the catalog's nation
+name). **`npm run data:reconcile`** (`scripts/data/reconcile.mjs`) maintains that map for a new
+snapshot in one pass: a club is recognised by the name the feed gave it last time, else by the
+players it shares with the catalog in `app/data` (same EA id → the club he had), else by name
+inside its league; leagues and nations follow their clubs and players. Decisions already in the
+map are kept, so hand corrections survive. `--add-clubs` adds a reference entry for a club of an
+available league the reference lacks (promoted sides): EA team id from older snapshots
+(`--ids <sofifa-style.csv>…`, else a local id from 900001) and, with `--enrich` (network), its
+Opta score and ESPN colours — review the diff and `data/build/reconcile-report.json` before
+building. New snapshot: pin it in `scripts/data/paths.mjs`, `data:fetch`, `data:reconcile`
+(review), `data:build`, gallery fixture, tests, `MODE_BASELINES`.
 
 Second source (Legends, Prime versions): jsulz/FIFA23 on Hugging Face, `male_players
 (legacy).csv` (FIFA 15–23 career mode from sofifa.com, same 110 columns, MIT, revision
 `0b74dbfc434808cf5573f0f11f4c977185bd0e0c`, SHA-256
 `13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`; pinned in
-`scripts/data/paths.mjs`). `player_id` is the same sofifa id as the catalog's `profileId`.
+`scripts/data/paths.mjs`). `player_id` is the same EA id as the catalog's `profileId`.
 
 ```sh
 npm run data:fetch   # both pinned CSVs -> data/raw/ (SHA-256 checked; no-op when present)
 npm run data:build   # -> app/data/catalog.v3.json, app/data/legends.v1.json, app/assets/flags/,
-                     #    data/build/players-fc26.json + legends.json (~30 s: the 91 MB CSV)
+                     #    data/build/players.json + legends.json (~30 s: 42,000 past versions are rated)
 ```
 
 `app/data/legends.v1.json` (`core/players/legends-codec.js`, columnar; fetched only by
@@ -268,9 +290,12 @@ Builds are deterministic (byte-identical reruns). Format v3 is columnar
 best XIs per formation, stamped with the config/FORMATIONS they were derived from (player tiers,
 team tiers, ratings, `ai.minimumFit`). If you change rating, tier, minimum-fit, badge or
 formation defaults, rebuild the data (the data tests check the stamps). Selection: every player
-of every usable league plus club-less national-team players (`data/catalog-reference.json` →
-`selection`); every club player's club must have a reviewed entry there. Never invent ratings or
-club metadata. After catalog changes, regenerate the gallery fixture
+of every reviewed club of an available league, plus the players rated
+`selection.clublessMinimumOverall` (65, the draft's pick minimum) or more whose club has no
+reviewed entry in `data/catalog-reference.json` — they get no club or league (nation pools
+only). A draft offers only players shown at `draft.pickMinimum` (65) or more; teams field their
+real squads. Never invent ratings or club metadata: a club without a sourced colour has none
+(it wears the neutral kit). After catalog changes, regenerate the gallery fixture
 (`node app/ui/gallery/make-fixture.mjs`) and re-measure `MODE_BASELINES`
 (`tools/calibration/draft-baselines.mjs`) if the draft pools moved.
 
