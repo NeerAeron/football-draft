@@ -7,6 +7,8 @@ import { shootingAbility } from '../players/ratings.js';
 import { GOAL, hypot } from './constants.js';
 
 const SLANT_LIMIT = 4; // the most a tight angle multiplies a shot's scatter
+// Scatter per point of match level (match.level, tuning.gameplay.levelScatter).
+const LEVEL_SCATTER = 0.04;
 
 export class ShootingMethods {
   shotWeights(p, d, aerialHeight = 0, penalty = false) {
@@ -91,6 +93,7 @@ export class ShootingMethods {
         (1 + (1 - spatial.openness) * 0.4) *
         clamp(1 / Math.sqrt(spatial.quality), 0.9, 1.2) *
         slant *
+        Math.exp(LEVEL_SCATTER * (this.level ?? 0) * this.tuning.gameplay.levelScatter) *
         // Mentality: a side that commits bodies forward finds (and leaves) more room to shoot.
         (1 / clamp(1 + this.shootingRoom(p.team), 0.5, 2));
     const ty = aimY + this.noise() * spread,

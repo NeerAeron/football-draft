@@ -66,8 +66,8 @@ test('halftime freezes the simulation, recovers about fifteen points once, and r
   );
 });
 
-test('goal kicks and corners allow physical repositioning before the ball returns to play', () => {
-  for (const type of ['Goal kick', 'Corner', 'Throw-in']) {
+test('corners and throw-ins allow physical repositioning before the ball returns to play', () => {
+  for (const type of ['Corner', 'Throw-in']) {
     const m = new Match(12),
       p = m.players[2];
     p.x = 65;
@@ -86,6 +86,19 @@ test('goal kicks and corners allow physical repositioning before the ball return
       Math.hypot(p.x - target.x, p.y - target.y) < Math.hypot(old.x - target.x, old.y - target.y),
     );
   }
+});
+
+test('a goal kick is a cut: everybody is in his place when it is awarded', () => {
+  const m = new Match(12),
+    p = m.players[2];
+  p.x = 65;
+  p.y = 20;
+  m.startRestart('Goal kick', 0, 5.5, 34);
+  assert.ok(m.restart.timer >= 1);
+  for (const q of m.activePlayers)
+    if (q.role !== 'GK') assert.deepEqual({ x: q.x, y: q.y }, { x: q.tx, y: q.ty });
+  assert.ok(m.rel(p.x, 0) < 40, 'the defender is back in his line');
+  assert.ok(m.rel(m.players[11].tx, 1) < 15, 'opposing keeper stays near own goal');
 });
 
 test('the whistle lets a final shot and goal celebration settle', () => {

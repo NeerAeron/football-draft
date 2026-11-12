@@ -52,9 +52,16 @@ test('eras are World Cup cycles: eight of them, 1997–2026, static', () => {
       [2014, 'Brazil 14', 2011, 2014],
       [2018, 'Russia 18', 2015, 2018],
       [2022, 'Qatar 22', 2019, 2022],
-      [2026, '2026', 2023, 2026],
+      [2026, 'USA/Canada/Mexico 26', 2023, 2026],
     ],
   );
+  // Every era is named by its hosts; the short label (reels, chips) abbreviates only 2026's
+  // and never runs past 15 characters.
+  for (const e of ERAS) {
+    assert.ok(e.short.length <= 15, e.short);
+    assert.equal(e.short === e.label, e.id !== 2026, e.label);
+  }
+  assert.equal(eraById(2026).short, 'USA/CAN/MEX 26');
   assert.equal(CURRENT_ERA, 2026);
   assert.equal(ERA_SQUAD, 26);
   for (let year = 1997; year <= 2026; year++) assert.ok(eraOfYear(year), String(year));
@@ -70,7 +77,10 @@ test('the eras file is built for this catalog, round-trips and stays small', () 
   assert.equal(file.version, 1);
   assert.equal(file.catalog.ids, catalogIds(catalog));
   assert.deepEqual(file.precomputed, { badges: badgeStamp() });
-  assert.deepEqual(file.eras, ERAS);
+  assert.deepEqual(
+    file.eras.map(({ keeperLevel, ...era }) => era),
+    ERAS,
+  );
   assert.deepEqual(
     file.sources.modern.map(m => [m.edition, m.sha256]),
     MODERN_SOURCES.map(m => [m.edition, m.sha256]),
@@ -78,7 +88,7 @@ test('the eras file is built for this catalog, round-trips and stays small', () 
   assert.equal(JSON.stringify(encodeEras(data)) + '\n', text);
   // One lazily fetched file for all eras (a draft needs them all): about 2.4 MB, 0.7 MB on
   // the wire.
-  assert.ok(text.length < 2_700_000, 'raw: ' + text.length);
+  assert.ok(text.length < 2_750_000, 'raw: ' + text.length);
   const gzip = gzipSync(Buffer.from(text), { level: 9 }).length;
   assert.ok(gzip < 780_000, 'gzip: ' + gzip);
   // Without eras attached every accessor answers "nothing".
@@ -90,7 +100,7 @@ test('the eras file is built for this catalog, round-trips and stays small', () 
   assert.equal(attachEras(catalog, data), catalog); // idempotent
 });
 
-test('every era has 20–70 nations that can field a pool, strongest first', () => {
+test('every era has 20–70 nations that can field a pool — with or without a keeper — strongest first', () => {
   const list = eraList(catalog);
   assert.deepEqual(
     list.map(e => e.id),
@@ -98,10 +108,30 @@ test('every era has 20–70 nations that can field a pool, strongest first', () 
   );
   const counts = list.map(e => e.nations.length);
   // The early titles know fewer nations: France 98 is the thinnest, and stands on its own.
-  assert.deepEqual(counts, [27, 52, 61, 65, 70, 70, 70, 70]);
+  assert.deepEqual(counts, [27, 54, 62, 70, 70, 70, 70, 70]);
+  // A goalkeeper is not required: ten pools have none, and `keepers` says so.
+  assert.deepEqual(
+    list.map(e => e.nations.filter(n => n.keepers === 0).map(n => n.name)),
+    [
+      [],
+      ['Ghana', 'China PR'],
+      ['Guinea'],
+      ['Mali', 'Peru', 'Algeria', 'Honduras', 'Congo DR'],
+      ['Honduras'],
+      [],
+      ['Gabon'],
+      ['Egypt'],
+    ],
+  );
   const codes = new Map(catalog.nations.map(n => [n.name, n.code]));
   for (const era of list) {
     assert.equal(eraNations(catalog, era.id), era.nations);
+    // What a pool without a keeper is rated with in goal: the weakest first-choice keeper of
+    // the era's pools.
+    const firsts = era.nations
+      .filter(n => n.keepers)
+      .map(n => shown(pool(era.id, n.name).find(p => p.primaryPosition === 'GK')));
+    assert.ok(era.keeperLevel <= Math.min(...firsts) && era.keeperLevel >= 50, era.label);
     for (let i = 1; i < era.nations.length; i++)
       assert.ok(era.nations[i - 1].strength >= era.nations[i].strength);
     for (const n of era.nations) {
@@ -110,23 +140,19 @@ test('every era has 20–70 nations that can field a pool, strongest first', () 
       assert.ok(n.flag.endsWith(`${n.code}.svg`));
       assert.equal(n.size, players.length);
       assert.equal(n.keepers, players.filter(p => p.primaryPosition === 'GK').length);
-      // The spin rule: a team with a bench — a keeper, five defenders, five midfielders, two
-      // forwards among at least 18 — and never more than a World Cup squad.
+      // The spin rule: a team with a bench — five defenders, five midfielders, two forwards
+      // among at least 18 — and never more than a World Cup squad. No keeper needed.
       assert.ok(n.size >= 18 && n.size <= ERA_SQUAD, `${era.label} ${n.name}: ${n.size}`);
-      assert.ok(n.keepers >= 1 && n.keepers <= 3, `${era.label} ${n.name}`);
+      assert.ok(n.keepers >= 0 && n.keepers <= 3, `${era.label} ${n.name}`);
       const lines = { DEF: 0, MID: 0, ATT: 0, GK: 0 };
       for (const p of players) lines[LINE_OF[p.primaryPosition]]++;
       assert.ok(lines.DEF >= 4 && lines.MID >= 4 && lines.ATT >= 1, `${era.label} ${n.name}`);
-      // Strength: the mean shown rating of the best XI (best keeper + ten best outfielders).
-      const eleven = [
-        players.find(p => p.primaryPosition === 'GK'),
-        ...players.filter(p => p.primaryPosition !== 'GK').slice(0, 10),
-      ];
-      assert.equal(
-        n.strength,
-        Math.round((eleven.reduce((sum, p) => sum + shown(p), 0) / 11) * 10) / 10,
-        `${era.label} ${n.name}`,
-      );
+      // Strength: the mean shown rating of the best XI (best keeper + ten best outfielders;
+      // without a keeper, the era's keeper level in goal).
+      const keeper = players.find(p => p.primaryPosition === 'GK'),
+        ten = players.filter(p => p.primaryPosition !== 'GK').slice(0, 10),
+        sum = (keeper ? shown(keeper) : era.keeperLevel) + ten.reduce((s, p) => s + shown(p), 0);
+      assert.equal(n.strength, Math.round((sum / 11) * 10) / 10, `${era.label} ${n.name}`);
       assert.ok(Object.isFrozen(players) && pool(era.id, n.name) === players);
     }
   }

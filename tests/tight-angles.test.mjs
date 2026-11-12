@@ -21,8 +21,8 @@ function shooterAt(seed, x, y) {
 const crossingY = m => m.ball.y + (m.ball.vy / m.ball.vx) * (105 - m.ball.x);
 
 test('the same shot is far less accurate from a tight angle than from in front', () => {
-  // 12 m from the middle of the goal: straight on, and about 70° off the centre line
-  const spots = { front: [93, 34], side: [105 - 12 * Math.cos(1.22), 34 - 12 * Math.sin(1.22)] },
+  // 12 m from the middle of the goal: straight on, and about 75° off the centre line
+  const spots = { front: [93, 34], side: [105 - 12 * Math.cos(1.31), 34 - 12 * Math.sin(1.31)] },
     onTarget = { front: 0, side: 0 },
     n = 240;
   for (const [name, [x, y]] of Object.entries(spots))

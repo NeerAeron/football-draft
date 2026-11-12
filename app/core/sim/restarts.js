@@ -87,15 +87,6 @@ export class RestartMethods {
         p.tx = this.abs(Math.min(base * 0.67, 49), p.team);
         p.ty = this.direction(p.team) > 0 ? by : H - by;
       }
-      if (type === 'Goal kick' && p.id !== taker.id && p.role !== 'GK') {
-        const [base, by] = this.formation(p),
-          own = p.team === team;
-        p.tx = this.abs(
-          own ? (base < 30 ? 18 : base < 58 ? 37 : 62) : base < 30 ? 36 : base < 58 ? 54 : 77,
-          p.team,
-        );
-        p.ty = this.direction(p.team) > 0 ? by : H - by;
-      }
       if (type !== 'Penalty' && p.team !== team && dist(p, b) < 9.15) {
         const angle = Math.atan2(p.y - y, p.x - x);
         p.tx = clamp(x + Math.cos(angle) * 9.4, 1, 104);
@@ -109,6 +100,7 @@ export class RestartMethods {
       }
     }
     if (type === 'Corner') this.setupCorner(team, taker, y);
+    if (type === 'Goal kick') this.setupGoalKick(team, taker);
     if (type === 'Throw-in') this.setupThrowIn(team, taker, x, y);
     taker.tx = x - this.direction(team) * 0.6;
     taker.ty = clamp(y, 1, 67);
@@ -205,6 +197,61 @@ export class RestartMethods {
       }
     }
     return safest ?? opts[0];
+  }
+  // Goal kick: a cut in the action, like a corner — both sides are set when it is awarded (they
+  // used to get 1.7 s to walk away from wherever the attack had ended, so the kick was played
+  // short into a crowd on the edge of the box and lost there). The side defending it either
+  // drops into a mid-block (its front line 44 m from the goal line) or, when it presses high
+  // or is chasing the game, comes up to the edge of the box. The kicking side answers: against
+  // a mid-block it splits its centre-backs beside the box and builds up short; against the
+  // press — or when it is the one chasing — everybody pushes up and the keeper goes long, to
+  // its best header of the ball with the midfield around him for the second ball
+  // (goalKickOption decides at the kick; `restart.routine` is the plan).
+  setupGoalKick(team, taker) {
+    const other = 1 - team,
+      pressing = this.teams[other].tactics.press >= 4 || this.lean(other) > 0,
+      routine = pressing || this.lean(team) > 0 ? 'long' : 'short',
+      long = routine === 'long';
+    for (const p of this.activePlayers) {
+      if (p.id === taker.id || p.role === 'GK') continue;
+      const [base, by] = this.formation(p),
+        y = this.direction(p.team) > 0 ? by : H - by,
+        off = y - 34,
+        wide = Math.abs(off) >= 14;
+      let x, ty;
+      if (p.team === team) {
+        if (base < 30) {
+          // Back line: centre-backs either side of the box (the middle one of three stays
+          // in front of it), full-backs wide and higher.
+          x = long ? (wide ? 33 : 29) : wide ? 22 : Math.abs(off) < 3 ? 21 : 11;
+          ty =
+            long || Math.abs(off) < 3
+              ? y
+              : wide
+                ? 34 + Math.sign(off) * 24
+                : 34 + Math.sign(off) * 16;
+        } else if (base < 58) {
+          x = long ? 48 + (base - 30) * 0.3 : 30 + (base - 30) * 0.6;
+          ty = long ? 34 + off * 0.8 : y;
+        } else {
+          x = long ? 64 + (base - 58) * 0.1 : 62;
+          ty = long ? 34 + off * 0.7 : y;
+        }
+        x = this.abs(x, team);
+      } else {
+        // Measured from the kicking side's goal line; the defenders stay goal-side of the
+        // forwards they mark.
+        x = base >= 58 ? (pressing ? 23 : 44) : base >= 30 ? (pressing ? 40 : 56) : 70;
+        x = this.abs(x, team);
+        ty = 34 + off * (base < 30 ? 0.75 : 0.85);
+      }
+      p.x = p.tx = x;
+      p.y = p.ty = clamp(ty, 2, 66);
+      p.vx = p.vy = 0;
+      p.facing = Math.atan2(34 - p.y, this.abs(5.5, team) - p.x) + (p.team === team ? Math.PI : 0);
+      p.trail = [];
+    }
+    this.restart.routine = routine;
   }
   // Corner routine: near-post flick-on, far-post header or a ball to the
   // edge. The best headers take the box spots (the best of all attacks the

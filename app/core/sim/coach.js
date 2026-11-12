@@ -9,6 +9,8 @@ import { CONFIG } from '../config/config.js';
 export function gameStateMentality(m, team) {
   const lead = m.score[team] - m.score[1 - team],
     minute = m.time / 60;
+  // Two goals up, at any time: the game is managed, not chased further.
+  if (lead >= 2) return 'hold';
   if (m.half > 2 || minute >= 70) {
     if (lead < 0) return 'push';
     if (lead > 0 && (m.half > 2 || minute >= 75)) return 'hold';

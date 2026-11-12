@@ -11,7 +11,9 @@
 //   attributeKeys[K], tendencyKeys[T], dictionaries { positions[], badges[] }
 //   precomputed { badges }                config stamp of the normalised badges
 //   nations[]                             nation names (catalog spelling)
-//   eras[]                                { id, label, from, to } (years of the ratings)
+//   eras[]                                { id, label, short, from, to (years of the ratings),
+//                                         keeperLevel (the rating a pool without a keeper is
+//                                         given in goal for its strength) }
 //   cards { count, sourceId[] (EA's player id: the person), edition[] (98, 99, 0–26), year[],
 //           name[], fullName[], club[] (catalog team id, 0 = none), nation[], current[] (1 =
 //           the person is in the catalog: `eraOf`), position, secondary[], foot, weakFoot[],
@@ -68,7 +70,14 @@ export function encodeEras(data) {
     dictionaries: { positions: [...keys.positions], badges: [...keys.badges] },
     precomputed: { ...data.precomputed },
     nations,
-    eras: data.eras.map(({ id, label, from, to }) => ({ id, label, from, to })),
+    eras: data.eras.map(({ id, label, short, from, to, keeperLevel }) => ({
+      id,
+      label,
+      short,
+      from,
+      to,
+      keeperLevel,
+    })),
     cards: encodeTable(data.cards, keys, 'era', {
       columns: () => ({ name: [], fullName: [], club: [], nation: [], current: [] }),
       push(out, p) {

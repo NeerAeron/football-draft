@@ -68,6 +68,7 @@ export const TITLES = {
 export const ERA_KEEPERS = 3;
 export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nation has them
 // A nation can be spun in an era when its pool can field a team with a bench and a keeper.
+// (No goalkeeper needed: `keepers` tells the draft which pools have one.)
 export const ERA_SPIN = { players: 18, DEF: 5, MID: 5, ATT: 2 };
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 export const ERA_MINIMUM = 20; // an era with fewer nations is not an era: the build fails
@@ -88,7 +89,7 @@ const ERA_LINE = {
 export const ERA_SELECTION = {
   pool: `A nation's best ${ERA_SQUAD} players of the era, each at his best version inside its years (highest overall; ties: the later year); ${ERA_KEEPERS} goalkeepers and at least ${ERA_LINES.DEF} defenders, ${ERA_LINES.MID} midfielders and ${ERA_LINES.ATT} forwards where the nation has them; no minimum rating`,
   today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
-  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players with a goalkeeper, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders and ${ERA_SPIN.ATT} forwards; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI) when more qualify`,
+  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
   best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
   squad: ERA_SQUAD,
   spin: ERA_SPIN,
@@ -754,22 +755,30 @@ export function compileLegends(
       count = line => members.filter(c => c.line === line).length,
       keeper = members.find(c => c.line === 'GK'),
       outfield = members.filter(c => c.line !== 'GK').slice(0, 10);
+    // A goalkeeper is not required: the draft's own guards see to it that one can be drafted.
     if (
       members.length < ERA_SPIN.players ||
-      !keeper ||
       count('DEF') < ERA_SPIN.DEF ||
       count('MID') < ERA_SPIN.MID ||
       count('ATT') < ERA_SPIN.ATT
     )
       continue;
-    const eleven = [keeper, ...outfield];
-    squads.push({
-      era,
-      nation,
-      members,
-      strength:
-        Math.round((eleven.reduce((sum, c) => sum + c.rating, 0) / eleven.length) * 10) / 10,
-    });
+    squads.push({ era, nation, members, keeper, outfield });
+  }
+  // Strength = the mean overall of the pool's best XI: its best keeper and ten best
+  // outfielders. A pool without a keeper is rated with the weakest first-choice keeper any
+  // qualifying nation of that era has (`keeperLevel`): the least a drafted keeper would be.
+  const keeperLevels = new Map();
+  for (const era of ERAS) {
+    const firsts = squads.filter(sq => sq.era === era.id && sq.keeper).map(sq => sq.keeper.rating);
+    if (!firsts.length) throw Error(`${era.label}: no pool has a goalkeeper`);
+    keeperLevels.set(era.id, Math.min(...firsts));
+  }
+  for (const sq of squads) {
+    const sum =
+      (sq.keeper ? sq.keeper.rating : keeperLevels.get(sq.era)) +
+      sq.outfield.reduce((total, c) => total + c.rating, 0);
+    sq.strength = Math.round((sum / (sq.outfield.length + 1)) * 10) / 10;
   }
   const eraCards = new Map(), // profileId → runtime card
     cardOf = new Map(); // candidate version → profileId (a card's, or the catalog player's)
@@ -810,6 +819,8 @@ export function compileLegends(
       era: era.id,
       label: era.label,
       nations: spun.length,
+      withoutKeeper: spun.filter(sq => !sq.keeper).map(sq => sq.nation),
+      keeperLevel: keeperLevels.get(era.id),
       qualified: all.length,
       left: all.slice(ERA_NATIONS).map(sq => sq.nation),
     });
@@ -841,7 +852,14 @@ export function compileLegends(
         a.edition - b.edition,
     );
   const eras = {
-    eras: ERAS.map(({ id: eraId, label, from, to }) => ({ id: eraId, label, from, to })),
+    eras: ERAS.map(({ id: eraId, label, short, from, to }) => ({
+      id: eraId,
+      label,
+      short,
+      from,
+      to,
+      keeperLevel: keeperLevels.get(eraId),
+    })),
     cards: cardList,
     pools: eraPools.map(({ era, nation, strength, members }) => ({
       era,

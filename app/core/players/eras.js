@@ -13,18 +13,22 @@ import { overallRating } from './ratings.js';
 import { normalizeBadges } from './badges.js';
 import { badgeStamp } from './catalog-derived.js';
 
-/** World Cup cycles, oldest first: an era holds the ratings years that end with its tournament. */
+/**
+ * World Cup cycles, oldest first: an era holds the ratings years that end with its tournament
+ * and is named by its hosts. `label` is the full name (headers, sentences); `short` is the one
+ * for a reel, a chip or a row (at most 15 characters: only the 2026 hosts are abbreviated).
+ */
 export const ERAS = Object.freeze(
   [
-    [1998, 'France 98', 1997, 1998],
-    [2002, 'Korea/Japan 02', 1999, 2002],
-    [2006, 'Germany 06', 2003, 2006],
-    [2010, 'South Africa 10', 2007, 2010],
-    [2014, 'Brazil 14', 2011, 2014],
-    [2018, 'Russia 18', 2015, 2018],
-    [2022, 'Qatar 22', 2019, 2022],
-    [2026, '2026', 2023, 2026],
-  ].map(([id, label, from, to]) => Object.freeze({ id, label, from, to })),
+    [1998, 'France 98', 'France 98', 1997, 1998],
+    [2002, 'Korea/Japan 02', 'Korea/Japan 02', 1999, 2002],
+    [2006, 'Germany 06', 'Germany 06', 2003, 2006],
+    [2010, 'South Africa 10', 'South Africa 10', 2007, 2010],
+    [2014, 'Brazil 14', 'Brazil 14', 2011, 2014],
+    [2018, 'Russia 18', 'Russia 18', 2015, 2018],
+    [2022, 'Qatar 22', 'Qatar 22', 2019, 2022],
+    [2026, 'USA/Canada/Mexico 26', 'USA/CAN/MEX 26', 2023, 2026],
+  ].map(([id, label, short, from, to]) => Object.freeze({ id, label, short, from, to })),
 );
 /** Today's era: the one the catalog's players belong to. */
 export const CURRENT_ERA = ERAS.at(-1).id;
@@ -128,7 +132,14 @@ export function* attachErasSteps(catalog, data, chunk = 200) {
   for (const list of nations.values())
     list.sort((a, b) => b.strength - a.strength || (a.name < b.name ? -1 : 1));
   catalog.eras = {
-    list: ERAS.map(e => Object.freeze({ ...e, nations: Object.freeze(nations.get(e.id)) })),
+    list: ERAS.map(e =>
+      Object.freeze({
+        ...e,
+        // What a pool without a goalkeeper is rated with in goal (see `strength`).
+        keeperLevel: data.eras.find(d => d.id === e.id)?.keeperLevel ?? null,
+        nations: Object.freeze(nations.get(e.id)),
+      }),
+    ),
     byId,
     pools,
     persons,
@@ -140,7 +151,10 @@ export function* attachErasSteps(catalog, data, chunk = 200) {
 }
 
 const NONE = Object.freeze([]);
-/** Every era with its spinnable nations (strongest first): [{ id, label, from, to, nations }]. */
+/**
+ * Every era with its spinnable nations (strongest first): [{ id, label, short, from, to,
+ * keeperLevel, nations }]. A nation's pool may have no goalkeeper (`keepers: 0`).
+ */
 export const eraList = catalog => catalog?.eras?.list ?? NONE;
 /** The spinnable nations of an era: [{ name, code, flag, strength, size, keepers }]. */
 export const eraNations = (catalog, eraId) =>

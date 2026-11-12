@@ -23,6 +23,108 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 9: about three goals a match in every mode
+
+Owner's note: "try to get average goals in every mode to roughly 3". Measured in the game's
+180 s match with the sides each mode really produces (a typically drafted XI — Legend spin and
+Prime boosts in World Cup drafts — against the run's or the ladder's opponents, the AI coach at
+the difficulty's level; Exhibition: two of the 60 strongest clubs / 40 strongest nations;
+club fixtures: `tools/calibration/lib/fixtures.mjs`, any club, mean overall 71). Goals in
+regular time; ± 0.10 of noise per row (200–290 matches each).
+
+| mode (mean ratings) | goals before → after | shots | goals per shot | draws |
+| --- | --- | --- | --- | --- |
+| World Cup run, Pro (85 v 77) | 3.63 → 3.00 | 11.6 → 11.5 | 31% → 26% | 12% → 24% |
+| World Cup run, World Class (85 v 79) | 3.42 → 3.00 | 11.6 → 11.7 | 29% → 26% | 17% → 19% |
+| World Cup run, Legendary (85 v 82) | 3.32 → 3.01 | 11.5 → 12.0 | 29% → 25% | 20% → 26% |
+| Daily (85 v 77) | 3.70 → 3.26 | 11.6 → 11.5 | 32% → 28% | 15% → 15% |
+| Quick Match, nations (84 v 88) | 3.57 → 2.92 | 12.3 → 12.5 | 29% → 23% | 26% → 25% |
+| Quick Match, leagues (84 v 88) | 3.58 → 3.14 | 12.1 → 12.2 | 30% → 26% | 19% → 23% |
+| Quick Match, clubs (79 v 83) | 3.14 → 3.10 | 11.4 → 11.2 | 28% → 28% | 19% → 27% |
+| Exhibition, clubs (83 v 83) | 2.85 → 2.85 | 10.6 → 11.1 | 27% → 26% | 22% → 24% |
+| Exhibition, nations (83 v 83) | 3.19 → 3.06 | 10.9 → 11.0 | 29% → 28% | 21% → 25% |
+| club fixtures (71 v 71) | 2.03 → 2.78 | 8.6 → 9.0 | 24% → 31% | 35% → 27% |
+| fast rating model, gap 0 · gap 6 | 3.42 · 3.59 → 2.66 · 2.79 | | | 22% → 26% (gap 0) |
+
+Extra time stays proportional without a setting of its own: 0.83 goals in the 140 extra times
+of the cup rows (a third of the match at 0.88 of its rate would be 0.88). The user's win rate
+in his run matches: Pro 77% → 68%, World Class 68% → 68%, Legendary 61% → 61% (`CUP_TUNING`
+untouched; the lead retunes difficulty).
+
+**Why star XIs scored so much more.** A Poisson regression of a side's goals on the mean
+rating of the two sides and the gap between them, over those 2,310 matches: **+3.3% per point
+of level** (ten points: ×1.39) and ±6.4% per point of gap. The level is two things: shots
+(+2.2% a point: better passing gets more attacks to a shot) and the share on target (+2.5% a
+point: 46% at 71, 65–70% at 85 — a shot's scatter is `0.7 + (1 − skill) × 7.5`, twice as wide
+for a 60 finisher as for an 85 one), against which better keepers only give back 1.3% a
+point. Nothing else answers finishing: defenders are measured against attackers in every duel,
+shooters against nobody. And a mismatch scored most of all (the favourite's rate rises faster
+than the underdog's falls, the favourite's edge on top). The game-state mentality (after 70')
+and the favourite's edge move the totals by a few percent only.
+
+**What changed.** The match has a level, read once at kick-off like the edge (`match.level`,
+`kickoffLevel`): the mean overall of the 22 in points above 78, plus `gameplay.levelGap` (0.8)
+points for every point between the two sides, between −14 and +14. Per point of level a shot
+scatters 6% more (`levelScatter` 1.5 × 0.04) and a save is 0.4% likelier (`levelSaves` 1 ×
+0.004) — for both sides alike, so who is better, and by how much, counts as before: the
+regression after the change gives +0.3% per point of level and the same ±6% per point of gap.
+A side two goals up manages the game (`gameStateMentality`: Hold at any minute), and the level
+is set with `gameplay.shotScatter` 1.08 → 0.92 and `saveAbility` 1.02 → 0.97. Shots on target
+are now 53–60% in every mode (they were 46–70%), saves 50–62% of them. `levelScatter` /
+`levelSaves` / `levelGap` 0 switch each part off (`--tuning`).
+
+Tight angles did not come back (192 club fixtures, before → after): shots seeing under 12° of
+goal inside 20 m scored 0 of 12 → 0 of 20; 60°+ off the centre line from 5–16.5 m 5 of 29 → 4
+of 28. What the low-rated club fixtures gained is conversion, not volume: central shots from
+5–16.5 m 43% → 55%, shots from 22–30 m 8% → 13%, goals with xG under 0.19 0.38 → 0.66 a match
+(20% → 23% of the goals) — matches between 71-rated sides are outside what the modes produce,
+and the price of the same three goals from nine shots. Not done: more shots for modest sides
+instead (it needs better build-up from them, which is what their ratings say they lack).
+
+**Fast rating model** (`competition/model.js`): refitted with the tool it names
+(`cup-calibration.mjs gaps` 480 + 144 matches, `fit`): goals 1.71 → 1.33 a side, slope kept at
+0.0525 (fit with a constant for the user's side: 1.32 / 0.0550 / 0.14 — the user's XI is worth
+about 2.5 rating points more than its rating, not in the model). Title odds of the fast model,
+`runs --runs 400`, `CUP_TUNING` unchanged (±2 points of noise): Pro 18.3% → 18.5%, World Class
+11.3% → 9.3%, Legendary 4.3% → 5.0%; out in the group 5.0 / 8.8 / 18.5% → 5.0 / 11.0 / 20.0%.
+
+## Phase 9: goal kicks
+
+Owner's note: "opponents seem to mess up goal kicks too much". Followed every goal kick of 240
+club fixtures (`tools/calibration/lib/fixtures.mjs`) and of 200 matches between the 40 strongest
+nation XIs, 180 s. A goal kick is **given away** when it goes straight out of play, its first
+touch is an opponent's within 45 m of the kicking side's goal line, or the man it went to is
+robbed within 40 m of his goal and 3.5 s of the kick (`blunders.mjs`, `goal-kick-given-away`).
+
+| | clubs before | after | nations before | after |
+| --- | --- | --- | --- | --- |
+| goal kicks a match | 3.5 | 3.5 | 2.4 | 2.6 |
+| straight out of play | 5.4% | 0.2% | 8.2% | 0.2% |
+| straight to an opponent within 45 m | 1.1% | 0.7% | 2.0% | 0.8% |
+| the receiver robbed within 40 m, 3.5 s | 5.1% | 3.2% | 5.7% | 2.5% |
+| **given away** (per match) | 11.6% (0.40) | 4.2% (0.15) | 16.0% (0.39) | 3.5% (0.09) |
+| given away and a shot against within 10 s | 5.6% | 2.7% | 8.8% | 2.0% |
+| long kicks (42 m+) · won by the opponent beyond 45 m | 1% · 0.6% | 11% · 5.5% | 5% · 0% | 31% · 15% |
+
+What was wrong (both sides alike, team 0 and the AI-coached team 1 within a point of each
+other): nobody was ever set. The kick was taken 1.7 s after the ball went out, with twenty
+players still around the box the attack had ended in, so the keeper passed short into a crowd
+— or, after waiting 2.5 s for an outlet, hoofed a 35 m ball at a full-back on the touchline (a
+third of those went straight out). And the centre-back he found played his first touch forward
+into the midfield's press. What changed (docs/engine-events.md, _Goal kicks_): the goal kick
+is a cut, like the corner — both sides are placed when it is awarded, the defending side in a
+mid-block or, with `press` 4+ or on Push, up at the box; the kicking side builds up short only
+when the ball is really on (nobody within 13 m of the receiver) and otherwise goes long to its
+best header beyond halfway with the midfield around him; the man the keeper gives it to takes
+his time for two seconds. A long kick is a 50–60% ball, and losing it costs a header on
+halfway, which is the point. With the scoring changes above in, over the run's own matches
+(World Cup run, Pro, 275–290 matches): given away 22.2% → 5.0% of goal kicks (straight out 13.1% →
+0.3%), a shot against within 10 s of one 12.0% → 3.6%. `blunders.mjs --compare`, 24 fixtures,
+the whole phase: goal kicks given away 0.46 → 0.21 a match (0.44 → 0.18 over 96), unpressed
+giveaways 0.42 → 0.25, open shots in the box against a set defence 0.50 → 0.29, soft goals
+0.71 → 0.96 (see above); long goal kicks won by the opponent no longer count as a
+`restart-giveaway` (goal kicks have their own finding).
+
 ## Phase 8: the whistle waits for the attack
 
 Owner's note: "sometimes the game ends on an attack, so let attacks finish, and corners".
@@ -394,7 +496,7 @@ open danger-zone shots 0.31 → 0.25, goals 2.15 → 2.42; the paired 128-match 
 goals 2.50 → 2.58 and evens the halves (shots 2nd/1st 0.86 → 1.00).
 
 **Known gaps:** a free kick near the box is a pass or a shot, never a delivery with a set-up
-like a corner's; players are placed (not walked) into kick-off, penalty and goal-kick
+like a corner's; players are placed (not walked) into kick-off, penalty and (since Phase 9) goal-kick
 positions (the match view cuts there).
 
 ## Before / after (Phase 3: goals and drama)
