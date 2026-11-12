@@ -34,7 +34,8 @@ const MATCH_SECONDS = 180; // the game's one match length (core/sim/constants.js
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
 
 async function setup() {
-  const { loadRuntimeCatalog } = await imp('scripts/data/catalog-file.mjs');
+  const { loadRuntimeCatalog, readLegends } = await imp('scripts/data/catalog-file.mjs');
+  const { attachLegends } = await imp('app/core/players/legends.js');
   const session = await imp('app/core/draft/session.js');
   const opponents = await imp('app/core/draft/opponents.js');
   const cup = await imp('app/core/competition/cup.js');
@@ -55,7 +56,8 @@ async function setup() {
   const { CONFIG } = await imp('app/core/config/config.js');
   const { lcg } = await imp('app/core/util/rng.js');
   return {
-    catalog: loadRuntimeCatalog(),
+    // With the legends file: the Legend spin and Prime boosts are part of a World Cup draft.
+    catalog: attachLegends(loadRuntimeCatalog(), readLegends()),
     ...session,
     ...opponents,
     ...cup,
@@ -76,6 +78,8 @@ function draftXI(env, seed, difficulty) {
     rerolls: env.CONFIG.draft.rerolls[difficulty],
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
     budget: BUDGET, // --budget: the user drafts in Budget mode (tier caps)
+    legendSpin: true,
+    primes: env.CONFIG.draft.primes[difficulty] || null,
   });
   while (!s.complete) {
     s.spin();
@@ -83,6 +87,15 @@ function draftXI(env, seed, difficulty) {
     const move = s.suggestPick(),
       r = s.pick(move.profileId, move.slot);
     if (!r.ok) throw Error(r.reason);
+  }
+  // Prime boosts, used sensibly: each on the player who gains most in his slot.
+  for (;;) {
+    const options = s
+      .primeOptions(0)
+      .filter(o => o.allowed && o.to.rating > o.from.rating)
+      .sort((a, b) => b.to.rating - b.from.rating - (a.to.rating - a.from.rating));
+    if (!options.length) break;
+    s.prime(options[0].slot, 0);
   }
   return s.matchSide(0);
 }

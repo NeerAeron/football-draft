@@ -535,7 +535,8 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
     if (difficulty === 'pro') assert.ok(p.group <= 0.22, `pro group exit ${p.group}`);
   }
   // The final is the strongest opponent of a run, and a recognisable side for the level.
-  const finalFloor = { pro: 85, worldclass: 86 };
+  // (Floors follow the drafted-XI baseline: 82 effective on the 93-nation reel.)
+  const finalFloor = { pro: 83, worldclass: 84 };
   for (const [difficulty, floor] of Object.entries(finalFloor))
     for (const seed of [3, 4]) {
       const run = createCupRun(catalog, { mode: 'nations', difficulty, seed, user });

@@ -264,3 +264,11 @@ World Class offsets then went +0.5 on every round (fast model: 10.6% → 8.2% no
 Budget; expect about 11% and 3.7% in the engine). Legendary is the real 48-nation field and is not
 tuned. The engine gives the drafted XI more than the fast model does (it beats its rating by
 about 0.8 points), so the model's own numbers read lower: 20.7 / 8.2 / 4.4% and 10.5 / 3.0 / 1.9%.
+
+## Title odds with the 93-nation reel, legends, Prime boosts and captains
+
+Nations baseline re-measured (effective 81.1 / 81.64 / 82.2 with 0 / 1 / 2 re-rolls, legend and
+primes included). Real engine, 200 runs per level, before Pro and World Class went up half a
+point per round: Pro 28.5%, World Class 14.5%, Legendary 5.0% (real field, drawn per run).
+Fast model after the half point (1,000 runs): see `cup-calibration.mjs runs`; Budget mode
+(`CUP_BUDGET=1`) reads about a quarter lower than normal on Pro and World Class.
