@@ -149,14 +149,29 @@ openPrematch({
   "+1.5 nation mate", "+1 club mate", "+2.5 nation + club mate"), and at the end his rating
   at his best open slot when that is not his own position (`rowFit`: "81 at CM", amber when
   he loses rating there; nothing when he plays his own position at full rating), or why he
-  cannot be picked (`Taken`, `No slot`, `Star full`). A Superstar's or a Star's row has a thin
+  cannot be picked (`Taken`, `No slot`, `Star full`). **Nothing important is ever cut**
+  (`PlayerRow`): the second line spans the whole row under the name; its tags — the Budget
+  cost, the boost, and "Prime 82 +7" (`primeNote`: a Prime boost is on offer, what it makes
+  him and what it adds) — never shrink and wrap to another line when a 390 px row is too
+  narrow; only the club text gives way, with an ellipsis. `tests/browser/flows.mjs` checks
+  that no tag is cut. A Superstar's or a Star's row has a thin
   outline in the tier's colour (so have their cards and pitch tokens; lower tiers are plain).
 * **The player's card**: selecting a player shows his `PlayerCard` with the six stats (Pace,
   Shooting, Passing, Dribbling, Defending, Physical; GK first for keepers) — in the sheet
   on phones (132 px wide, beside the fit and the effects of the pick, so the pitch and the
-  Draft button stay in reach) and in the dock on desktop.
-* **Fit**: selecting lights the pitch: `★ Best` (Auto), `✓` natural, amber `natural → in-slot` for
-  drops up to 7, a muted in-slot rating for poor fits (still selectable), closed slots dimmed.
+  Draft button stay in reach) and in the dock on desktop. **Everything about him is in the
+  sheet** (and the dock), whatever his row had room for: positions, his tier by name
+  ("Starter"; not with hidden ratings), "Legend ’18" for a legend (`data-testid=
+  "pick-standing"`), club and league, the slot and his overall there ("At DM 76",
+  `data-testid="pick-slot"`), the team OVR after the pick, the mates lines, the Captain line,
+  the Prime boost on offer ("Prime ’19 88 +6", `data-testid="prime-effect"`) and the Budget
+  slot.
+* **Fit**: selecting lights the pitch, and **every open slot shows his overall there** — the
+  number in the slot (`.pitch-slot__rating`, from `slotHighlights` → `{ role, rating }`), so RB
+  75 and DM 76 compare at a glance; the tag above it says the role: `★ DM` (Auto: volt, the
+  largest number), `✓ LB` natural, amber for drops up to 7, muted for poor fits (still
+  selectable); closed slots are dimmed. With hidden ratings there are no numbers and the tags
+  read as before (`★ Best`, `✓ LB`, `Poor`).
   Tap a lit slot to choose it, tap it again (or **Draft …**) to lock; **Auto** returns to
   `autoSlot`. The sheet/dock preview the team OVR after the pick and say his boost in words
   (`mateLines`: "Nation mate of Mbappé: +1.5 each", "Club mate of Hakimi: +1", "Both: +2.5",
@@ -184,9 +199,13 @@ openPrematch({
   chance vs the other drafter.
 * **Legend spin** (World Cup Run drafts, `snap.legendRound`): the first spin's stage is gold
   (`.stage.is-legend`, "Legend spin", the button says "Legend spin", the pool "Pick a legend")
-  and shows **no odds** (no ⓘ, no dialog: the reel's weighting is silent). At most ten legends
-  are listed. A legend's — and a prime version's — card, row and pitch token carry the year of
-  that version ("’18" = FIFA 19: `view.era`, `editionLabel`; an edition name is never shown).
+  and shows **no odds** (no ⓘ, no dialog: the reel's weighting is silent). One line says where
+  the legends come from: "Best versions, 2014–2022" (`legendYearsLine(snap.legendYears)`,
+  `data-testid="legend-years"`, from the data). At most ten legends are listed, nobody under 85.
+  A legend's — and a prime version's — card, row and pitch token carry the year of that version
+  ("’18": `view.era`, `editionLabel(player)` — the year stored with the version; an edition
+  name is never shown). A legend can be a current player's best past version (Messi ’19): he is
+  then gone from the ordinary pools, and has no Prime boost.
 * **Prime boost** (`snap.primes`, `prime-sheet.js`): the `PrimeButton` ("Prime boost 2") sits
   under the meters and in the completion sheet's footer — boosts not used by "On to the World
   Cup" are gone. It opens one sheet (`PrimeSheet`) listing the XI: players with a prime version
@@ -199,19 +218,24 @@ openPrematch({
   Auto-pick / Continue ignore taps for 400 ms after a sheet is closed (`hush()` in `draft.js`):
   those buttons sit exactly under the sheet's button, and a second tap used to re-roll the spin
   or start the World Cup. Players with a prime available carry
-  a gold dot on the pitch and "Prime 94 · ’19" in their pool row while boosts are left.
+  a gold dot on the pitch and "Prime 94 +8" in their pool row while boosts are left.
 * **Captain**: the "C" (`CaptainMark`) on his row, card and pitch token (the armband: the
   highest-rated Captain of the XI), the green chips include his +1, and the pick preview says
   "Captain: +1 to every player" when he would be the XI's first.
 * Test hooks: `data-testid` `spin`, `reroll`, `auto-pick`, `spin-result`, `pool`,
   `confirm-pick`, `auto-slot`, `draft-done`, `draft-continue`, `opponent-name`, `pass-spin`,
-  `team-boosts`, `mates-effect`, `budget-effect`, `captain-effect`, `pick-card`, `final-boosts`,
-  `prime-open`, `prime-option`, `prime-confirm`;
+  `team-boosts`, `mates-effect`, `budget-effect`, `captain-effect`, `prime-effect`, `pick-card`,
+  `pick-slot`, `pick-standing`, `legend-years`, `final-boosts`, `prime-open`, `prime-option`,
+  `prime-done`, `prime-confirm`;
   `data-screen="draft"` + `data-phase="spin|spinning|pick|complete"`.
 
 Browser flows (`tests/browser/flows.mjs`): `setup`, `draft-nations` (the Legend spin: gold stage,
-years, no odds, the legends file fetched; 11 picks, select → Auto → confirm; the card's six
-stats; a Prime boost on the completion sheet; the run keeps the legend and the prime), `draft-budget` (setup switch, tier tags, a full tier closes rows, run
+years on the rows and the years line, nobody under 85, no odds, the legends file fetched; the
+sheet's tier and year, his overall in every open slot; 11 picks, select → Auto → confirm; no
+pool row cuts a tag; the card's six stats; a Prime boost on the completion sheet that stays
+open, shows the boost and swallows a second tap; the run keeps the legend and the prime),
+`draft-back` (Play again → the device's back shows the setup, the back arrow goes Home, the
+draft is kept and resumed), `draft-budget` (setup switch, tier tags, a full tier closes rows, run
 `meta.budget`), `draft-clubs` (re-roll, odds, filters, auto-pick), `draft-versus` (coin toss, four
 alternating picks), `prematch` (quick draft → opponent reveal → swap, tactic, formation picker
 with team OVRs →
