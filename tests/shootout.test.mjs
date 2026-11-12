@@ -157,3 +157,38 @@ test('shootout replays: recorded frames carry the kicks and the result', () => {
   assert.ok(target.shootout.kicks.length >= 3 && target.shootout.kicks.length <= 4);
   assert.equal(target.direction(kick.team), 1);
 });
+
+test('a shootout kick reads like a penalty: set up at once, keeper central, a run-up, a dive', () => {
+  const m = levelAtFullTime(41);
+  m.finishPeriod();
+  const k = m.shootoutState.kick,
+    kicker = m.players[k.kickerId],
+    keeper = m.players[k.keeperId];
+  // Everyone is in place from the first frame: nobody is in the box but the two of them.
+  for (const p of m.activePlayers) {
+    if (p.id === kicker.id || p.id === keeper.id) continue;
+    if (p.role === 'GK')
+      assert.ok(p.x > 100 && Math.abs(p.y - 34) > 7, 'waiting keeper beside the goal');
+    else assert.ok(Math.abs(p.x - 52.5) < 3, 'both teams on halfway');
+  }
+  assert.ok(keeper.x > 104 && keeper.y === 34);
+  const start = kicker.x;
+  assert.ok(start < 91);
+  let moved = 0;
+  while (m.shootoutState.kick.phase === 'setup') {
+    m.step(1 / 60);
+    if (m.shootoutState.kick.phase !== 'setup') break;
+    assert.ok(Math.abs(keeper.y - 34) < 1e-9, 'on his line, in the middle, until the kick');
+    moved = Math.max(moved, kicker.x - start);
+  }
+  assert.ok(moved > 1, 'he runs at the ball');
+  assert.ok(keeper.penaltyDive, 'the keeper commits at the kick');
+  const target = keeper.penaltyDive.y;
+  while (m.shootout.kicks.length === 0) m.step(1 / 60);
+  // He stays where the dive left him while the verdict is shown.
+  for (let i = 0; i < 30; i++) m.step(1 / 60);
+  assert.equal(m.shootoutState.kick.phase, 'pause');
+  assert.ok(Math.abs(keeper.y - target) < 0.6);
+  // A scored kick ends in the net, not on the line.
+  if (m.shootout.kicks[0].scored) assert.ok(m.ball.x > 105.5);
+});

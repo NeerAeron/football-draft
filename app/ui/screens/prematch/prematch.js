@@ -166,9 +166,6 @@ function Tactics({ side, index }) {
       block
       class="tactics__mentality"
     />
-    <p class="tactics__hint">
-      Push: more chances at both ends. Hold: fewer at both ends. Auto reads the score for you.
-    </p>
   </section>`;
 }
 

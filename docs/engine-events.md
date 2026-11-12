@@ -89,7 +89,7 @@ plus **`chem`**: links/chemistry bonus, a number clamped to 0–2 (default 0), a
 | `activePlayers` | players still on the pitch |
 | `ball` | `x, y, z` (m), `vx, vy, vz`, `owner` (player id or `null`), `kind`: `'dribble' | 'held' | 'pass' | 'shot' | 'loose'` |
 | `effects` | short-lived visual cues `{ type, x, y, life, maxLife, team, label?, strength? }`: `whistle`, `goal`, `shot`, `tackle`, `feint`, `catch`, `parry` (label `PARRIED` / `TIPPED OVER`), `header` (`WON IN THE AIR`), `delivery` |
-| `players[i].animation` | `{ type, start, duration, … }`: `pass`, `shot`, `feint`, `beaten`, `stumble`, `tackle`, `dive` (with `stretch` 0–1 for a keeper's dive) |
+| `players[i].animation` | `{ type, start, duration, … }`: `pass`, `shot`, `feint`, `beaten`, `stumble`, `tackle`, `dive` (with `stretch` 0–1 for a keeper's dive; `hold: true` for a penalty dive — he stays stretched out where he landed) |
 | `goalHistory` | goal events in order (oldest first) |
 | `halftime` | `{ score, energyBefore, energyAfter }` after the break |
 | `momentum` | rolling momentum series, see below |
@@ -115,7 +115,7 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `kickoff` | — |
 | `restart` | `restart`: the restart type (corners, goal kicks, throw-ins, indirect free kicks). For a corner, `m.restart` also has `routine` (`'near post' | 'far post' | 'edge'`), `target` (player id) and `aim` (`{ x, y }`) while it is set up |
 | `shot` | `playerId`, `assistId` (key pass, or `null`), `shotType` (`Placed finish`, `Driven shot`, `Power shot`, `Curler`, `Knuckleball`, `Header`, `Volley`, `Penalty`), `xg` (0–1), `bigChance`, `oneOnOne`, `situation`, `setPiece`, `direct` (direct free kick), `penalty`, `distance` (m), `box`, `zone`, `foot`, `origin` (`{ x, y, attackX, box, zone }`), `chance` (estimated on-target probability), `outcome`: `'in flight'` → `'goal' | 'saved' | 'blocked' | 'post' | 'off target'`, `resolvedAt` |
-| `save` | `playerId` (keeper), `shooterId`, `shotEventId`, `xg`, `bigChance`, `saveType`: `'catch' | 'parry' | 'parry into danger' | 'tip over'`, `difficulty` (0 routine … 1 spectacular: 1 − the save probability from the dive model — stretch, power, height), `chance` (save probability) |
+| `save` | `playerId` (keeper), `shooterId`, `shotEventId`, `xg`, `bigChance`, `saveType`: `'catch' | 'parry' | 'parry into danger' | 'tip over'`, `difficulty` (0 routine … 1 spectacular: 1 − the save probability from the dive model — stretch, power, height), `chance` (save probability). The ball does what the type says: a catch is held, a tip over clears the bar and goes behind for a corner (the lift is computed from the distance left to the line), a parry goes wide/behind outside the post or back into play — a saved ball never crosses the line under the bar (tests/set-pieces-and-keepers.test.mjs). `'parry into danger'` = an attacker is first to the rebound; a goal from it is a new shot |
 | `block` | `playerId` (blocker), `shooterId`, `shotEventId`, `xg`, `bigChance`; a blocked cross, or a delivery a pressed defender stabs away in his own box (text "… deflects it."), has `cross: true` and no shot fields |
 | `post` | woodwork: `playerId` (shooter), `shotEventId`, `xg`, `bigChance`, `frame: 'post' | 'bar'` |
 | `near-miss` | just wide / over: `playerId`, `shotEventId`, `xg`, `bigChance`, `miss: 'wide' | 'over'`, `by` (metres, < 0.6) |
@@ -128,6 +128,7 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `penalty` | penalty awarded (a foul in the box): same fields as `foul` |
 | `offside` | `playerId`, `line` |
 | `yellow`, `red` | `playerId`, `reason`, `secondYellow` |
+| `reshape` | after a red card, when the side closed the hole: `playerIds` (who moved) and `roles` (their new positions). See _Ten men_ |
 | `added` | `minutes` |
 | `half` | half-time |
 | `full` | full time (also: match abandoned). In a knockout that goes to penalties, `shootout: true` (the match is not `finished` yet) |
@@ -136,15 +137,44 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `shootout` | one kick, at its outcome: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive`, `kickedAt` (elapsed of the strike) |
 | `shootout-end` | `winner` (team), `shootoutScore` |
 
+### Penalties (in the match)
+
+A foul in the box → `penalty` event, then `restart.type === 'Penalty'` for about 2.6 s. The set-up
+is immediate (`setupPenalty`, the UI cuts to it): the keeper on his line in the middle of the goal,
+the taker 3.4 m behind the ball, everyone else outside the box and the arc and behind the ball
+(spread along the edge, two of the taker's defenders and one opposing forward up the pitch). The
+taker runs up in the last 0.8 s and strikes; at the strike the keeper commits
+(`startPenaltyDive`: left 45% / right 45% / stays 10%, independent of the taker's side) and
+`players[keeper].penaltyDive` (`{ at, until, x0, y0, x, y }`) moves him ~2 m in a third of a second
+(`movement.js stepDive`). The save model then works from where the dive put him: only a keeper who
+went the right way can reach it. Play is live after the kick (rebounds count). Measured over
+1,600 fixtures (347 penalties): 76% scored, 18% saved, 5% off target or woodwork (before: 82% /
+3% / 16%) — a shootout (every taker, not only the best) is 74% / 17% / 10%.
+
+### Ten men
+
+A red card never leaves a hole: `coverDismissal` (fouls.js) swaps formation slots at once, for
+either side. A lost defender is replaced by the midfielder who knows the position best
+(`positionFamiliarity`) and a forward drops into the midfield; a lost midfielder costs a forward
+(the second striker, else an attacking midfielder or winger); a lost lone striker is replaced by
+another attacker; one of two strikers costs nothing. A dismissed keeper's stand-in
+(`emergencyKeeper`) has his old position covered the same way. Slots are swapped with the player
+who left, so later formation changes keep the shape; `reset()` restores them. No RNG.
+
 **`situation`** (how the attack began, `SHOT_SITUATIONS`): `'open play'`, `'counter'` (ball won
 in own half, shot within 15 s), `'regain'` (ball won high, rel. x ≥ 62 m, shot within 10 s),
 `'set piece'` (within 8–12 s of a corner / free kick / throw-in by the same possession;
 `setPiece: 'corner' | 'free kick' | 'throw-in'`), `'penalty'`.
 
-**`xg`** is shot quality only (geometry: distance + goal angle; header factor; blockers in the
-shooter–posts triangle; pressure; one-on-one; a keeper off the shot line), fitted to public
-open-play conversion by location. Penalty = 0.76. `bigChance`: `xg ≥ 0.3`, a one-on-one with
-`xg ≥ 0.2`, or a penalty. Finishing quality shows up as goals minus xG.
+**`xg`** is the engine's own expected goals: a logistic fit of how often this engine's shots go
+in (`shotXg` in insights.js: distance — flat beyond 28 m — and goal angle; header; blockers in
+the shooter–posts triangle; pressure; a keeper off the shot line), not public real-football
+conversion: the game's shots score about a quarter of the time, so a real-world xG read a third
+of the goals. Summed xG ≈ goals over many matches (docs/calibration.md, Phase 6). Roughly 0.8
+from 3 m, 0.45 from the penalty spot, 0.25 from the edge of the box, 0.07 from 30 m; penalty =
+0.76 (`PENALTY_XG`, the measured conversion). Shot quality only: finishing skill shows up as
+goals minus xG. Display only — nothing in the simulation reads it. `bigChance`: `xg ≥ 0.6`, a
+one-on-one with `xg ≥ 0.5`, or a penalty (about one shot in twenty; they go in ~63%).
 
 **`story`** tags on goals: `opener`, `equaliser`, `go-ahead`, `comeback` (go-ahead goal by a side
 that trailed earlier), `brace`, `hat-trick`, `haul` (4+), `late` (80'+), `stoppage` (added time);
@@ -155,7 +185,7 @@ at full time the winning side's last go-ahead goal gains `winner`, plus `late wi
 `m.momentum = { step: 60, samples: [{ time, half, values: [home, away] }], current: [home, away] }`.
 One sample per match minute (`time` is the match clock at the sample; first-half stoppage
 samples come before the second half's). Each value is 0–1: that side's recent pressure (time on
-the ball in the final third plus 2.5 × xG of its shots in the minute, exponentially smoothed).
+the ball in the final third plus 0.7 × xG of its shots in the minute, exponentially smoothed).
 Draw `home − away` for a momentum bar. Cheap: updated in `step()`, no allocation except one
 sample object per match minute.
 
@@ -166,8 +196,12 @@ extra time when `competition.extraTime === true`) goes to a shootout: `mode` bec
 `'shootout'`, then `finished` once a winner is known. Kicks alternate, five each then sudden
 death; takers are ordered by penalties + composure (keeper last); each kick is simulated
 physically (keeper dive, ball flight; no follow-ups), so live play and replays show it. All kicks
-are taken at the x = 105 goal (`m.direction()` follows the kicking side). Each kick takes about
-3 s: set-up (`phase` stays `'Penalty shootout'`), strike, a 1 s pause; after the decisive kick
+are taken at the x = 105 goal (`m.direction()` follows the kicking side). Each kick is set up at
+once (no walking between kicks: the kicker 3.4 m behind the ball, the keeper on his line in the
+middle, the other keeper beside the goal, both teams lined up on halfway) and takes about
+3.5 s: 0.9 s over the ball, a 0.8 s run-up, the strike with the keeper's dive (as in a match
+penalty, above), a 1.15 s pause on the verdict with the keeper where he landed and a scored ball
+in the net (`phase` stays `'Penalty shootout'`); after the decisive kick
 `winner` is set at once and the match finishes ~1.6 s later with a `shootout-end` event. Kicks
 never count as match shots or xG. The first kicker is a seeded coin toss.
 
@@ -189,6 +223,6 @@ m.shootout = {
 | `RECORD_STEP` | frames are stored every 3 steps (20 per second) |
 | `snapshot(m)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout` |
 | `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved), `momentum` (samples up to the frame) and `shootout`. Returns the 1-based clip number. |
-| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal is included; other moments are ranked by `highlightScore`. |
+| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. |
 | `highlightScore(event)` | Interest of a non-goal moment: xG and big chances for shots, near misses and woodwork, save difficulty, red cards and penalties, delivery/take-on strength. `0` = never a highlight. |
 | `performanceRating(player, match)` | 3–10 match rating |

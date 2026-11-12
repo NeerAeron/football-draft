@@ -238,7 +238,7 @@ const matchFlows = [
     async run({ page, shot, step, base, viewport }) {
       await page.goto(`${base}${MATCH}&view=key`);
       await kickOff(page, step, shot);
-      await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
+      await step('first clip plays', () => visible(page, '[data-testid="clip-minute"]', 30000));
       await step('the reel advances on its own', async () => {
         const clock = () => page.getAttribute('.match-bug', 'aria-label');
         const before = await clock();
@@ -328,7 +328,7 @@ const matchFlows = [
         } catch {}
       });
       await page.goto(`${base}${MATCH}&view=key&auto=1`);
-      await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
+      await step('first clip plays', () => visible(page, '[data-testid="clip-minute"]', 30000));
       await step('the action camera zooms the clip', () =>
         visible(page, '.match-stage__scene.is-zoomed', 15000),
       );

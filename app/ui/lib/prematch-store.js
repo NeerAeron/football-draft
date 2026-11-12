@@ -27,11 +27,12 @@ export const PREMATCH_KEY = 'football-draft-prematch';
 export const VIEW_KEY = 'football-draft-match-view';
 const FORMAT = 1;
 const KINDS = ['user', 'ai', 'p2'];
+// Just the four options: no helper lines under them anywhere.
 export const MENTALITIES = [
-  { value: 'auto', label: 'Auto', hint: 'Read the game' },
-  { value: 'push', label: 'Push', hint: 'Go for it' },
-  { value: 'balanced', label: 'Balanced', hint: 'Stay in shape' },
-  { value: 'hold', label: 'Hold', hint: 'Sit deeper' },
+  { value: 'auto', label: 'Auto' },
+  { value: 'push', label: 'Push' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'hold', label: 'Hold' },
 ];
 export const TACTIC_DEFAULTS = {
   style: 'balanced',

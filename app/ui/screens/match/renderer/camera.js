@@ -130,7 +130,12 @@ export class ActionCamera {
               : -1,
         gx = dir > 0 ? W : 0,
         d = Math.abs(gx - restart.x);
-      if (d < 42) {
+      if (restart.type === 'Penalty') {
+        // The duel: the taker, the spot and the keeper on his line, closer than open play.
+        fx = restart.x + (gx - restart.x) * 0.45;
+        fy = H / 2;
+        z = Math.min(2.4, this.fit(d + 14, 32));
+      } else if (d < 42) {
         fx = restart.x + (gx - restart.x) * 0.5;
         fy = restart.y + (H / 2 - restart.y) * 0.5;
         z = Math.min(z, this.fit(d + 16, Math.abs(H / 2 - restart.y) + 22));

@@ -44,7 +44,9 @@ export class KeeperMethods {
     const high = clamp((b.z - 1.8) / 0.65, 0, 1),
       miss = hypot(lateral, Math.max(0, b.z - 1.8) * 1.1),
       arrival = b.age + Math.max(0, along) / speed,
-      reach = this.keeperReach(g, arrival);
+      // A penalty is a guess: he has already thrown himself (penaltyDive moved him), so what
+      // is left is his arm span from where the dive has taken him.
+      reach = b.penaltyKick ? 1.3 + g.skill('goalkeeping') * 0.004 : this.keeperReach(g, arrival);
     if (miss > reach) return false;
     if (b.saver === g.id) return false;
     b.saver = g.id;
@@ -63,22 +65,31 @@ export class KeeperMethods {
         : clamp((time - 0.15) / 0.3, 0, 1) * (b.shotType === 'Header' ? 0.4 : 1);
     const quality = this.keeperQuality(g),
       sure = quality - 0.03 * (1 - set) + Math.max(0, 0.975 - quality) * 0.8 * set;
-    const prob = clamp(
-      sure * (1 - (0.6 * stretch * stretch + 0.22 * power * stretch) * (1.6 - 0.9 * set)) +
-        // The format's save adjustment weighs most on reflex saves: a short match needs its
-        // box chances to count, not soft goals from distance.
-        this.profile.saveBoost * (1 - 0.6 * set) +
-        (b.penaltyKick ? -0.3 : 0) +
-        (record ? 0 : 0.15) +
-        (g.has('gkoneonone') &&
-        b.shotOrigin &&
-        hypot(g.x - b.shotOrigin.x, g.y - b.shotOrigin.y) < 16
-          ? 0.04
-          : 0),
-      0.04,
-      record ? 0.97 : 0.995,
+    const prob = b.penaltyKick
+      ? // Right way and near it: he usually keeps it out; at full stretch, or struck hard
+        // into the corner, rarely. (Guessing wrong never gets here: out of reach.)
+        clamp(0.6 + (gk - 80) * 0.004 - 0.5 * stretch * stretch - 0.12 * power * stretch, 0.05, 0.9)
+      : clamp(
+          sure * (1 - (0.6 * stretch * stretch + 0.22 * power * stretch) * (1.6 - 0.9 * set)) +
+            // The format's save adjustment weighs most on reflex saves: a short match needs its
+            // box chances to count, not soft goals from distance.
+            this.profile.saveBoost * (1 - 0.6 * set) +
+            (record ? 0 : 0.15) +
+            (g.has('gkoneonone') &&
+            b.shotOrigin &&
+            hypot(g.x - b.shotOrigin.x, g.y - b.shotOrigin.y) < 16
+              ? 0.04
+              : 0),
+          0.04,
+          record ? 0.97 : 0.995,
+        );
+    // A shot under the bar is the hardest to keep out: he has to get a hand up to it and
+    // turn it over (it used to be "tipped over" into his own net as often as not).
+    const save = clamp(
+      prob * (record && !b.penaltyKick ? 1 - 0.7 * high : 1) * this.tuning.gameplay.saveAbility,
+      0.01,
+      0.995,
     );
-    const save = clamp(prob * this.tuning.gameplay.saveAbility, 0.01, 0.995);
     g.action = 'Diving';
     g.animation = {
       type: 'dive',
@@ -144,10 +155,14 @@ export class KeeperMethods {
       side = Math.abs(b.y - 34) > 0.3 ? Math.sign(b.y - 34) : b.vy >= 0 ? 1 : -1;
     let type;
     if (high > 0.35 && Math.abs(b.y - 34) < GOAL / 2 + 0.3) {
+      // Over the bar, whatever is left of the way to the line: the lift is worked out from
+      // the time the ball needs to get there, so a tip-over can never drop under the bar.
       type = 'tip over';
-      b.z = Math.max(b.z, 2.3);
-      b.vz = 2.2 + this.rand() * 1.5;
-      b.vx = -out * (3 + this.rand() * 2);
+      b.z = Math.max(b.z, 2.5);
+      const pace = 6 + this.rand() * 3,
+        time = depth / pace;
+      b.vz = clamp((0.35 + this.rand() * 0.5 + 4.905 * time * time) / time, 2.2, 7);
+      b.vx = -out * pace;
       b.vy *= 0.3;
     } else if (
       this.rand() < clamp(0.42 + (gk - 70) * 0.012 + stretch * 0.3 - power * 0.1, 0.2, 0.9)

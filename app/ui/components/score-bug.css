@@ -142,3 +142,21 @@
     display: none;
   }
 }
+
+/* Players sent off: a red card by the team name, one per dismissal (as on a broadcast). */
+.scorebug__reds {
+  display: inline-flex;
+  gap: 2px;
+  flex: none;
+}
+.scorebug__red {
+  width: 7px;
+  height: 10px;
+  border-radius: 1.5px;
+  background: var(--coral-400);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
+}
+.scorebug--lg .scorebug__red {
+  width: 9px;
+  height: 13px;
+}

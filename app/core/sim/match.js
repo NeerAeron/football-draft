@@ -339,6 +339,9 @@ export class Match {
       p.sentOff = false;
       p.emergencyKeeper = false;
       p.dismissedRole = null;
+      // A dismissal reshuffled formation slots (fouls.js coverDismissal): put them back.
+      if (p.shiftedFrom != null) p.slot = p.shiftedFrom;
+      p.shiftedFrom = null;
       p.beatChain = [];
       p.lastReceipt = null;
       p.energy = 1;

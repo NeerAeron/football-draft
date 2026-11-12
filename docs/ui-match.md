@@ -171,8 +171,21 @@ structured-cloned and rehydrated). Recorded frames are trimmed to the highlight 
 | `commentary.js`, `report.js`, `demo.js` | pure helpers (Node-tested): event lines, result summary, analysis chips, share line, demo request |
 | `prematch.js`, `live.js`, `hud.js`, `tactics.js`, `result.js` | Preact views |
 
+**Key Moments never give the story away.** The stage chip shows the match minute of the clip,
+large (`[data-testid="clip-minute"]`, it pops in with each clip) — never "clip 3 of 7", a count
+of what is left or a reel progress bar. A goal that turns out to be the winner is not called one
+while the reel plays: commentary lines never say "winner", and the goal banner's story tag skips
+the `winner` / `late winner` tags (`storyTag(story, final)`; the engine only knows them at full
+time, but a recorded reel carries the finished match's events).
+
+**Cards.** A side with a player sent off shows a red card by its name in the score bug (one per
+dismissal, `ScoreBug` `home.reds` / `away.reds`, from `stats[t].redCards`; also in the result
+header). Every red card is a Key Moments clip (`selectHighlights`), with the RED CARD caption on
+the pitch; the side reshapes at once (docs/engine-events.md, _Ten men_).
+
 Controls: Space play/pause, ←/→ (or ↓/↑) speed 1×/2×/4×, N next moment (Full) / next clip (Key
-Moments), C camera. Mentality (Auto / Hold / Balanced / Push) is live in Full and at half-time
+Moments), C camera. Mentality is just the four options — Auto / Push / Balanced / Hold, no helper
+text under them anywhere (pre-match, half-time, live controls). It is live in Full and at half-time
 in Key Moments: Auto is the default (`tactics.mentality === 'auto'`), the control marks the
 mentality in effect (`match.mentality(team)` → HUD `effective`), and picking one of the other
 three overrides it until Auto is picked again. The tactics sheet follows `tacticAccess`
@@ -209,8 +222,9 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
   pitch), easing out for long passes, shots (the goal stays in frame) and set pieces, and wide
   for kick-offs and goal kicks; the ball can never leave the frame. Key Moments default to the
   action camera, Full to the whole pitch; the toggle in the controls (C) stores the choice per
-  view. Goal replays are always the close-up. The shootout close-up goes through the same
-  camera. Reduced motion: no camera at all (the toggle is hidden; the shootout view is set
+  view. Goal replays are always the close-up. The shootout close-up (`SHOOTOUT_CAMERA`: the
+  goal, the six-yard box and the spot fill the stage, so the keeper's dive is readable on a
+  phone) goes through the same camera. Reduced motion: no camera at all (the toggle is hidden; the shootout view is set
   without easing).
 - **Cuts.** When a restart repositions four or more players at once (corners, kick-offs,
   penalties) or places the ball outside the zoomed view, the controller shows a cut — a short
@@ -220,6 +234,9 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
   OVER, FOUL, OFFSIDE, cards, PENALTY; SCORED / SAVED / MISSED in a shootout). The controller
   adds captions from events: OFF THE POST! / OFF THE BAR!, JUST WIDE! / JUST OVER!, GREAT SAVE!
   (save `difficulty` ≥ 0.3) / WHAT A SAVE! (≥ 0.6), CHANCE MISSED! (a big chance off target).
+  A keeper's `dive` animation is drawn as a save: the token stretches into an ellipse along the
+  dive and lunges towards the ball (a penalty dive, which the engine moves for real, stays
+  stretched out where he landed).
   A take-on shows afterimages and a swoosh on the dribbler and leaves the beaten defender
   faded and spinning. Hard shots, saves that mattered and the woodwork get a hit-stop (55–110
   ms of frozen picture — the simulation is stepped exactly as before, just later) and a short

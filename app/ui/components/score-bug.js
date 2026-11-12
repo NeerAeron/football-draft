@@ -1,6 +1,7 @@
 /**
  * ScoreBug — broadcast-style score strip.
- *   home, away  { name, short?: 'BRA', code?: flag code, flagSrc?, colors?: [p, s], score }
+ *   home, away  { name, short?: 'BRA', code?: flag code, flagSrc?, colors?: [p, s], score,
+ *                 reds?: number of players sent off (a red card by the name, as on TV) }
  *               (a flag when code/flagSrc is given, otherwise a club Crest in its colours)
  *   clock       "67'" or '67:12' (string);  period  '1H' | '2H' | 'HT' | 'FT' | 'ET' | 'PENS'
  *   live        red pulsing dot
@@ -37,6 +38,15 @@ function Side({ team = {}, side, size }) {
       <span class="scorebug__short">${short}</span>
       ${size === 'lg' && html`<span class="scorebug__full">${team.name}</span>`}
     </span>
+    ${
+      team.reds > 0 &&
+      html`<span class="scorebug__reds" data-testid="scorebug-reds">
+        ${Array.from(
+          { length: Math.min(team.reds, 3) },
+          (_, i) => html`<span class="scorebug__red" key=${i}></span>`,
+        )}
+      </span>`
+    }
   </div>`;
 }
 
@@ -50,7 +60,8 @@ export function ScoreBug({
   size = 'md',
   class: className,
 }) {
-  const label = `${home.name} ${home.score ?? 0}, ${away.name} ${away.score ?? 0}${
+  const sentOff = t => (t.reds > 0 ? ` (${t.reds} sent off)` : '');
+  const label = `${home.name}${sentOff(home)} ${home.score ?? 0}, ${away.name}${sentOff(away)} ${away.score ?? 0}${
     clock ? `, ${clock}` : ''
   }${period ? `, ${period}` : ''}${pens ? `, penalties ${pens[0]}–${pens[1]}` : ''}`;
   return html`<div

@@ -23,13 +23,39 @@ const LATE = 80 * 60;
 const MOMENTUM_STEP = 60; // match-clock seconds per sample
 const NEAR_MISS = 0.6; // metres outside a post or over the bar
 
-// Geometric shot quality, fitted to public open-play conversion by location
-// (StatsBomb zone rates in goal-zones.js): ~0.80 from 3 m, ~0.43 from 6 m,
-// ~0.17 from the penalty spot, ~0.09 from the box edge, ~0.04 from 25 m.
+// Expected goals of THIS engine, not of real football: the game's shots go in far more often
+// than a real one's (a show of long shots and finishes in a 3-minute match), so an xG fitted
+// to public data read about a third of the goals actually scored. This is a logistic fit of
+// the engine's own conversion over 13,635 non-penalty shots (1,600 club fixtures at 180 s;
+// docs/calibration.md, "xG"): summed xG is within 2% of the goals, and it is calibrated in
+// every distance band. Roughly: 0.8 from 3 m, 0.6 from 6 m, 0.45 from the penalty spot,
+// 0.25 from the edge of the box, 0.12 from 25 m, 0.07 from 30 m.
 // Shot quality, not shooter quality: finishing skill shows as goals minus xG.
-export function geometricXg(distance, angle) {
-  return sigmoid(-2.34 + 2.2 * angle - 0.06 * distance);
+// `angle` is the angle the goal subtends from the ball (goalGeometry), `exposed` 0–1 how far
+// the keeper is off the line between ball and goal.
+export function shotXg(distance, angle, header = false, blockers = 0, pressure = 0, exposed = 0) {
+  return clamp(
+    sigmoid(
+      1.28 -
+        // Beyond 28 m the takers are the specialists: it does not get worse with distance.
+        0.141 * Math.min(distance, 28) +
+        0.6 * angle -
+        (header ? 0.44 : 0) -
+        0.216 * Math.min(blockers, 3) -
+        0.15 * pressure +
+        1.35 * exposed,
+    ),
+    0.02,
+    0.92,
+  );
 }
+/** Geometry only (an unpressed shot at a keeper on his line). */
+export const geometricXg = (distance, angle) => shotXg(distance, angle);
+// A penalty: the engine's measured conversion (365 penalties: 75%).
+export const PENALTY_XG = 0.76;
+// Big chance: about the best twentieth of the engine's shots (they go in ~63% of the time).
+const BIG_CHANCE = 0.6,
+  BIG_ONE_ON_ONE = 0.5;
 
 export class InsightMethods {
   resetInsights() {
@@ -66,7 +92,7 @@ export class InsightMethods {
   // the shooter-posts triangle; one-on-one means none of them and only light
   // pressure inside 20 m; a keeper away from the shot line opens the goal.
   shotQuality(p, header = false, penalty = false) {
-    if (penalty) return { xg: 0.76, bigChance: true, oneOnOne: false, distance: 11 };
+    if (penalty) return { xg: PENALTY_XG, bigChance: true, oneOnOne: false, distance: 11 };
     const spatial = this.location(p),
       goalX = this.abs(105, p.team),
       rx = this.rel(p.x, p.team);
@@ -85,22 +111,17 @@ export class InsightMethods {
       distance = spatial.distance;
     const oneOnOne =
       blockers === 0 && pressure < 0.35 && distance < 16 && Math.abs(p.y - 34) < 12 && !header;
-    let xg =
-      geometricXg(distance, spatial.angle) *
-      (header ? 0.55 : 1) *
-      0.78 ** Math.min(blockers, 3) *
-      (1 / (1 + pressure * 0.5)) *
-      (oneOnOne ? 2.2 : 1);
-    const g = this.keeper(1 - p.team);
-    if (g && distance < 24) {
-      // A keeper well off the line between the ball and goal leaves it open.
-      const exposed = clamp((segment(g, p, { x: goalX, y: 34 }).d - 2) / 4, 0, 1);
-      xg *= 1 + exposed * 1.6;
-    } else if (!g) xg *= 1.8;
-    xg = clamp(xg, 0.01, 0.95);
+    // A keeper well off the line between the ball and goal (or no keeper) leaves it open.
+    const g = this.keeper(1 - p.team),
+      exposed = !g
+        ? 1
+        : distance < 24
+          ? clamp((segment(g, p, { x: goalX, y: 34 }).d - 2) / 4, 0, 1)
+          : 0;
+    const xg = shotXg(distance, spatial.angle, header, blockers, pressure, exposed);
     return {
       xg,
-      bigChance: xg >= 0.3 || (oneOnOne && xg >= 0.2),
+      bigChance: xg >= BIG_CHANCE || (oneOnOne && xg >= BIG_ONE_ON_ONE),
       oneOnOne,
       distance,
     };
@@ -144,7 +165,7 @@ export class InsightMethods {
       decisive.story.push('late winner');
   }
   // Rolling momentum: per match minute, each side's share of time on the
-  // ball in the final third plus 2.5 x its xG, smoothed (EMA) into 0..1.
+  // ball in the final third plus 0.7 x its xG, smoothed (EMA) into 0..1.
   trackMomentum(dt) {
     const b = this.ball,
       acc = this.momentumAcc;
@@ -168,7 +189,7 @@ export class InsightMethods {
     this.momentumNext += MOMENTUM_STEP;
   }
   addMomentumShot(team, xg) {
-    this.momentumAcc[team] += xg * 2.5;
+    this.momentumAcc[team] += xg * 0.7;
   }
   // A shot crossing the goal line just wide of a post or over the bar.
   nearMiss(crossY, crossZ) {
