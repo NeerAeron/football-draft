@@ -209,8 +209,8 @@ position }` on pool entries and slot players who have one (a legend version has 
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,300
-cards, 2.4 MB, 0.70 MB gzip / 0.56 MB brotli), attached to the catalog like the legends.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,274
+cards, 2.4 MB, 0.70 MB gzip / 0.55 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
 `node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
@@ -312,8 +312,8 @@ fails otherwise). As built:
 
 | era | nations | pools under 26 | fewer than 3 keepers | strongest | weakest |
 | --- | --- | --- | --- | --- | --- |
-| France 98 | 27 | 8 (18–25) | 6 | England 82.6 | Hungary 71.1 |
-| Korea/Japan 02 | 53 | 6 | 15 | Brazil 86.8 | Lithuania 70.5 |
+| France 98 | 27 | 8 (18–25) | 6 | England 82.7 | Hungary 70.9 |
+| Korea/Japan 02 | 52 | 6 | 13 | Brazil 86.9 | Canada 72.5 |
 | Germany 06 | 61 | 3 | 12 | Brazil 89.7 | China PR 71.0 |
 | South Africa 10 | 65 | 7 | 16 | Brazil 88.5 | New Zealand 66.5 |
 | Brazil 14 | 70 of 81 | 1 | 13 | Spain 89.3 | Gabon 71.3 |
@@ -325,15 +325,15 @@ Things a draft should know about the data:
 
 - **The early eras are lower at the top.** FIFA 98–2003 have coarse scales (8–16 levels): a
   card of those years is rated by what the titles within three years say about the player
-  together with the title's average, so it stays nearer the average — Zidane ’98 is 88,
-  Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
+  together with the title's average, so it stays nearer the average — Zidane ’98 and
+  Ronaldo ’98 are 88, Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
   described 2003–04 versions) is where those players reach 90+. A reel that weighs by
   `strength` will favour later eras unless it weighs inside an era.
 - **France 98 is thin**: 27 nations, no Brazil-size depth outside Europe and Argentina/Brazil
-  (FIFA 98/99 use their own player ids: a player counts only when FIFA 2000–03 know him by
-  name and team). Japan, Mexico, the United States or Nigeria of 1998 are not spinnable.
+  (FIFA 98/99 use their own player ids and mostly surnames: a player counts only when
+  FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch). Japan, Mexico, the United States or Nigeria of 1998 are not spinnable.
 - A pool can have 1 or 2 keepers (never 0), and as few as 18 players.
-- 7,232 people are in a pool; 3,405 of them in two or more eras (Messi in six). 594 best
+- 7,207 people are in a pool; 3,406 of them in two or more eras (Messi in six). 585 best
   versions are kept outside the pools for the Prime.
 - Era cards and `catalog.legends` are separate objects for the same men (a legend's id ends
   in `:legend`, an era card's in `:era`): do not mix the two systems in one XI without

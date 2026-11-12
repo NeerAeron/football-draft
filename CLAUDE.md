@@ -315,7 +315,7 @@ surname, known-as name) the first workbook (`legends-98-14.xlsx`, the top 1,000 
 SHA-256 `b49592c7…5de2a`) had for FIFA 2003–14, so the best known are "Z. Zidane" and not
 "Zinedine Zidane"; everyone else's whole name is shown as initial + rest.
 FIFA 2000–14 use EA's player ids (EA reused some: rows of one id whose years of birth are
-more than a year apart are two men), FIFA 98/99 their own (joined by name and team); team ids
+more than a year apart are two men), FIFA 98/99 their own (joined by name and club, or by name, national team and part of the pitch); team ids
 come with the shirt numbers from FIFA 2003 on; FIFA 09–14 store an overall, the older titles do
 not; FIFA 98–2003 have coarse scales (8–16 levels) and 8–17 skills, often surnames only.
 `scripts/data/legacy-titles.mjs` decodes it (positions, feet, which skill stands for a missing
@@ -381,7 +381,7 @@ weak foot for the early titles). It is stamped with the catalog build (`catalog.
 and the badge configuration, so rebuild both files together.
 
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
-player table; 12,305 cards, 2.4 MB / 0.70 MB gzip; fetched by `services/eras.js` with a draft)
+player table; 12,274 cards, 2.4 MB / 0.70 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
 `scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
 2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
@@ -389,9 +389,9 @@ version inside the era (the same overalls and cards as above; 3 keepers and at l
 defenders, 7 midfielders, 4 forwards where the nation has them; no minimum rating). A catalog
 player is in the 2026 pool as he is unless an FC 24–26 version shows more. A nation can be spun
 in an era when its pool has 18 players with a keeper, 5 defenders, 5 midfielders and 2
-forwards; the 70 strongest when more qualify (27 / 53 / 61 / 65 / 70 / 70 / 70 / 70 nations;
+forwards; the 70 strongest when more qualify (27 / 52 / 61 / 65 / 70 / 70 / 70 / 70 nations;
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
-file (594 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
+file (585 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
 independent; both are stamped with the catalog build. **Captains** come from the reviewed
 list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
 

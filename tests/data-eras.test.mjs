@@ -98,7 +98,7 @@ test('every era has 20–70 nations that can field a pool, strongest first', () 
   );
   const counts = list.map(e => e.nations.length);
   // The early titles know fewer nations: France 98 is the thinnest, and stands on its own.
-  assert.deepEqual(counts, [27, 53, 61, 65, 70, 70, 70, 70]);
+  assert.deepEqual(counts, [27, 52, 61, 65, 70, 70, 70, 70]);
   const codes = new Map(catalog.nations.map(n => [n.name, n.code]));
   for (const era of list) {
     assert.equal(eraNations(catalog, era.id), era.nations);

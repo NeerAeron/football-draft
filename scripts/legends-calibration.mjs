@@ -300,17 +300,26 @@ export function linkPersons(titles) {
   const locals = [];
   for (const [id, rows] of byId.local)
     for (const part of groups(rows)) {
+      // A namesake is a candidate when he shares a club with the FIFA 98/99 player, or a
+      // national team and the part of the pitch he plays in (the names are surnames: a Brazil
+      // striker "Lucio" is not the centre-back Lúcio). Of several, the one with the club.
       const candidates = new Set(),
+        clubMates = new Set(),
         named = new Set();
       for (const p of part)
         for (const k of nameKeys(p))
           for (const q of byName.get(k) || []) {
             named.add(q);
-            if (q.rows.some(r => r.edition <= 3 && shareNation(p, r))) candidates.add(q);
+            const early = q.rows.filter(r => r.edition <= 3);
+            if (early.some(r => shareClub(p, r))) {
+              clubMates.add(q);
+              candidates.add(q);
+            } else if (early.some(r => shareNation(p, r) && zone(r) === zone(p))) candidates.add(q);
           }
-      const local = { id: part[0].edition * LOCAL_ID + id, rows: part, named: named.size };
-      if (candidates.size === 1) {
-        const [q] = candidates;
+      const local = { id: part[0].edition * LOCAL_ID + id, rows: part, named: named.size },
+        chosen = candidates.size > 1 && clubMates.size === 1 ? clubMates : candidates;
+      if (chosen.size === 1) {
+        const [q] = chosen;
         if (!claims.has(q)) claims.set(q, []);
         claims.get(q).push(local);
       } else locals.push(local);
@@ -332,6 +341,9 @@ export function linkPersons(titles) {
   }
   return { persons, dropped, merged };
 }
+// Keeper, defender or further up: as much of a position as two titles five years apart agree on.
+const zone = p =>
+  p.positions[0] === 'GK' ? 'GK' : ['CB', 'LB', 'RB'].includes(p.positions[0]) ? 'DEF' : 'UP';
 // A team in common, clubs or national teams (the early titles list both).
 function shareNation(p, q) {
   const a = p.teams.map(teamWords),
