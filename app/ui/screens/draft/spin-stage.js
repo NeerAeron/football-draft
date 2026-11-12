@@ -21,6 +21,7 @@ import {
   reelItems,
   spinHeadline,
   oddsSummary,
+  legendYearsLine,
 } from './draft-model.js';
 
 // Long enough to build a beat of suspense, short enough for eleven of them in a row.
@@ -141,7 +142,7 @@ function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
   </div>`;
 }
 
-function IdlePanel({ category, complete, turnName, legend }) {
+function IdlePanel({ category, complete, turnName, legend, years }) {
   if (complete)
     return html`<div class="stage-idle is-complete">
       <span class="stage-idle__icon" aria-hidden="true"
@@ -159,7 +160,7 @@ function IdlePanel({ category, complete, turnName, legend }) {
       </span>
       <span class="stage-idle__text">
         <b>Spin for a legend</b>
-        <span>Your first pick is a great of the past.</span>
+        <span data-testid="legend-years">${legendYearsLine(years)}</span>
       </span>
     </div>`;
   return html`<div class="stage-idle">
@@ -289,7 +290,17 @@ export function SpinStage({
               complete=${snap.complete}
               turnName=${turnName}
               legend=${legend}
+              years=${snap.legendYears}
             />`
+    }
+    ${
+      // The Legend spin says where its legends come from: one line, no odds.
+      legend &&
+      spin &&
+      snap.legendYears &&
+      html`<p class="stage__years" data-testid="legend-years">
+        ${legendYearsLine(snap.legendYears)}
+      </p>`
     }
     ${actions && html`<div class="stage__actions">${actions}</div>`}
     ${

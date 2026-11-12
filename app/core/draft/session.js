@@ -16,6 +16,7 @@ import {
   roleRating,
   roleFit,
   naturalRating,
+  selectable,
   isKeeper,
   LINE_OF,
 } from './pools.js';
@@ -143,6 +144,8 @@ export class DraftSession {
     // slots (`bands`, null when off).
     this.tiers = budgetBands(this.rules.budget);
     this.bands = this.options.budget ? this.tiers : null;
+    // Only players shown at this rating or more are offered (0: a draft saved before the rule).
+    this.pickMinimum = this.rules.pickMinimum ?? 0;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
     this.primesPerSide =
       this.options.primes === true
@@ -213,11 +216,22 @@ export class DraftSession {
     return this.options.legendSpin && this.round(side) === 0;
   }
   // ---- availability and the dead-end guard ---------------------------------------------
+  /** Drafted already — he, or another version of him (his prime or legend version). */
+  #taken(p) {
+    return this.used.has(p.profileId) || this.used.has(baseProfileId(p));
+  }
+  /**
+   * This draft may offer him: selectable (rules.pickMinimum), not drafted, not excluded. Every
+   * pool and every guard of a spin goes through here, so nobody under the minimum is ever
+   * listed and a spin never lands where only such players are left.
+   */
   available(p) {
     const s = p.source || {};
     return (
-      !this.used.has(p.profileId) &&
+      selectable(p, this.pickMinimum) &&
+      !this.#taken(p) &&
       !this.excluded.players.has(p.profileId) &&
+      !this.excluded.players.has(baseProfileId(p)) &&
       !this.excluded.nations.has(s.nationality) &&
       !this.excluded.clubs.has(String(s.clubId))
     );
@@ -505,7 +519,7 @@ export class DraftSession {
         ? 'Not this side’s turn'
         : !this.current
           ? 'Spin first'
-          : this.used.has(p.profileId)
+          : this.#taken(p)
             ? 'Already drafted'
             : !this.#inPool(p)
               ? 'Not in this pool'
@@ -574,6 +588,8 @@ export class DraftSession {
     if (!option.allowed) return { ok: false, reason: option.reason };
     this.picks[side][slot] = p.profileId;
     this.used.add(p.profileId);
+    // A catalog player's legend version: his current version is taken with it.
+    this.used.add(baseProfileId(p));
     const spin = this.current;
     this.history.push({
       side,
@@ -693,7 +709,7 @@ export class DraftSession {
         ovr,
         rating: Math.round(roleRating(prime, role)),
         edition: prime.edition,
-        year: editionYear(prime.edition),
+        year: editionYear(prime),
         position: prime.primaryPosition,
         tier: tierOfRating(ovr, this.tiers),
       },
@@ -755,14 +771,14 @@ export class DraftSession {
       legend: !!p.legend,
       prime: !!p.prime,
       edition: p.edition ?? null,
-      // The year of a legend's or prime version's edition (FIFA 19 came out in 2018).
-      year: editionYear(p.edition),
+      // The year of a legend's or prime version's ratings (FIFA 19 came out in 2018).
+      year: editionYear(p),
       // His stored prime version (drafts with Prime boosts): what a boost would make him.
       primeVersion: prime && {
         profileId: prime.profileId,
         ovr: Math.round(naturalRating(prime)),
         edition: prime.edition,
-        year: editionYear(prime.edition),
+        year: editionYear(prime),
         position: prime.primaryPosition,
       },
     };
@@ -924,6 +940,8 @@ export class DraftSession {
       uniqueNations: this.options.uniqueNations,
       budget: this.options.budget,
       legendSpin: this.options.legendSpin,
+      // [first, last] year of the legends' versions (the Legend spin's one line), or null.
+      legendYears: this.options.legendSpin ? (this.#legends?.years ?? null) : null,
       // The spin to make (or the current one) is the side's Legend spin.
       legendRound: this.current ? !!this.current.legend : !this.complete && this.legendRound(side),
       primes: this.primesPerSide

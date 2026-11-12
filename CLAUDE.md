@@ -123,12 +123,13 @@ club-less national-team players have `source.club === null` and appear only in n
   `indexCatalog`), `catalog-derived.js` (precomputed badges/club data, `reconcileCatalog`),
   `legends-codec.js` + `legends.js` (Legends and Prime versions: `attachLegends` puts them on
   `catalog.legends` — never in `catalog.players`; `legendPlayer`, `primeVersion`,
-  `baseProfileId`, `editionLabel`: the UI shows the year, edition − 1, never the edition).
+  `baseProfileId`, `editionLabel`: the UI shows the year of that version's ratings — stored
+  with it, never the edition; a legend can be a catalog player's best past version, `legendOf`).
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
   draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
   `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; removed ids read as Pro via `difficultyOf`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
-  `bestEleven`, cached role ratings, `catalogStamp`; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel; `legendIndex` for the Legend spin), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
+  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel; `legendIndex` for the Legend spin), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
@@ -248,10 +249,16 @@ npm run data:build   # -> app/data/catalog.v3.json, app/data/legends.v1.json, ap
 
 `app/data/legends.v1.json` (`core/players/legends-codec.js`, columnar; fetched only by
 `services/legends.js` when a World Cup draft or run opens — never on Home) is compiled by
-`scripts/compile-legends.mjs` through `compilePlayer`: **legends** = players not in the catalog
-whose best version (highest overall, ties → latest edition) is rated 85+, with the club of that
-edition when the catalog has it; **prime versions** = catalog players whose best past overall is
-3+ above today's, or 88+ and higher. FIFA 15/16 have no composure: taken from the player's
+`scripts/compile-legends.mjs` through `compilePlayer`. Every threshold is in the rating the
+game shows on a card (`overallRating` at the primary position), never EA's overall: a player's
+**best version** is his highest shown rating (ties → EA overall, then the latest edition);
+**legends** = best versions shown 85+, of players not in the catalog and of catalog players
+whose card today shows less (`legendOf`; no rule about how far apart), with the club of that
+edition when the catalog has it; **prime versions** = catalog players whose best version shows
+2+ more than today, or 88+ and more. One person, one place in an XI: `baseProfileId` maps a
+legend or prime version to the catalog player. Each stores `year`, the year of its ratings
+snapshot (`fifa_update_date`; the build fails without one) — what `editionYear` /
+`editionLabel` show. FIFA 15/16 have no composure: taken from the player's
 nearest later edition, else his reactions. It is stamped with the catalog build (`catalog.ids`)
 and the badge configuration, so rebuild both files together. **Captains** come from the reviewed
 list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).

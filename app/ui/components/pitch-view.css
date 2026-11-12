@@ -242,6 +242,23 @@ button.pitch-slot {
   color: rgb(236 255 240 / 0.9);
   pointer-events: none;
 }
+/* The selected player's overall in an open slot: the number to compare positions by. */
+.pitch-slot__rating {
+  font-family: inherit;
+  font-size: calc(var(--token) * 0.42);
+  letter-spacing: 0;
+  color: #fff;
+}
+.pitch-slot.is-fit-best .pitch-slot__rating {
+  color: var(--volt-400);
+  font-size: calc(var(--token) * 0.48);
+}
+.pitch-slot.is-fit-penalty .pitch-slot__rating {
+  color: var(--amber-400);
+}
+.pitch-slot.is-fit-neutral .pitch-slot__rating {
+  color: rgb(236 255 240 / 0.6);
+}
 .pitch-slot__ovr {
   position: absolute;
   left: 50%;

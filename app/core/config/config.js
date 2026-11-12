@@ -5,6 +5,11 @@ export const DEFAULT_CONFIG = {
   draft: {
     // A league needs this many players to be drawn (league and club drafts).
     minimumLeaguePlayers: 5,
+    // Drafts offer only players the game shows at this rating or more at their own position
+    // (the rounded number on the card): in every draft pool, every guard that asks "can this
+    // spin still fill an open slot", and the Daily's perfect XI. Teams are not drafts: the XIs
+    // of opponents, clubs and nations keep their real players whatever they are rated.
+    pickMinimum: 65,
     // Nations: a nation is playable — on the reel, met as an opponent — when it can field an
     // XI (>= minimumPlayers, >= minimumGoalkeepers and a best XI with nobody under the
     // engine's minimum fit, ai.minimumFit). `fieldSize` / `potSize` are only the real World Cup
@@ -85,10 +90,11 @@ export const DEFAULT_CONFIG = {
       club: 1,
       captain: 1,
     },
-    // The Legend spin (World Cup drafts: the first spin). A legend is a past player whose best
-    // version EA rated `minimum` or more (the data ships exactly those); the reel holds the
-    // nations with a legend EA rated `reelStar` or better; a landing shows the nation's `shown`
-    // highest-rated legends. A nation's weight on the reel grows gently with how many legends
+    // The Legend spin (World Cup drafts: the first spin). A legend is a best past version the
+    // game shows at `minimum` or more — the rating on his card, not EA's — of a player of the
+    // past or of a current player who was better then (the data ships exactly those); the reel
+    // holds the nations with a legend shown at `reelStar` or better; a landing shows the
+    // nation's `shown` highest-rated legends. A nation's weight on the reel grows gently with how many legends
     // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
     legends: {
       minimum: 85,
@@ -864,6 +870,7 @@ const DRAFT_FIELDS = {
   'draft.nations.reelStar': ['Reel nation without an XI: best player at least', 60, 99, 1],
   'draft.nations.reelPlayers': ['Reel nation without an XI: minimum players', 1, 30, 1],
   'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
+  'draft.pickMinimum': ['Draft: a player can be picked from this rating', 0, 85, 1],
   'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
   'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
   'draft.nations.squadGoalkeepers': ['Call-ups: goalkeepers', 1, 5, 1],
@@ -879,8 +886,8 @@ const DRAFT_FIELDS = {
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
-  'draft.legends.minimum': ['Legend: best version rated at least', 80, 95, 1],
-  'draft.legends.reelStar': ['Legend spin: a nation needs a legend rated at least', 80, 95, 1],
+  'draft.legends.minimum': ['Legend: best version shown at least', 80, 95, 1],
+  'draft.legends.reelStar': ['Legend spin: a nation needs a legend shown at least', 80, 95, 1],
   'draft.legends.shown': ['Legend spin: legends shown', 1, 23, 1],
   'draft.legends.weightPerLegend': ['Legend spin: reel weight per legend', 0, 1, 0.05],
   'draft.legends.weightCap': ['Legend spin: legends that count for the weight', 1, 50, 1],

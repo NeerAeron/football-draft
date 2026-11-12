@@ -50,27 +50,32 @@
   opacity: 0.45;
 }
 .prow__grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas:
+    'rank flag name pos ovr stats fit'
+    'rank flag meta meta meta meta meta';
   align-items: center;
-  gap: 10px;
   width: 100%;
   min-width: 0;
   padding-block: 8px;
 }
 .prow__rank {
+  grid-area: rank;
   width: 18px;
-  flex: none;
+  margin-right: 10px;
   color: var(--text-3);
   font-size: 15px;
   text-align: right;
 }
-.prow__who {
+.prow__flag {
+  grid-area: flag;
   display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 .prow__name {
+  grid-area: name;
+  min-width: 0;
+  margin-left: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -78,16 +83,33 @@
   font-weight: var(--weight-semibold);
   line-height: 1.25;
 }
+/* The second line: tags first (never cut, they wrap), then the club text (ellipsis). */
 .prow__meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px 6px;
+  min-width: 0;
+  margin-left: 10px;
   color: var(--text-3);
   font-size: var(--text-xs);
+  line-height: 1.4;
+}
+.prow__meta > * {
+  flex: none;
+  white-space: nowrap;
+}
+.prow__meta > .prow__sub {
+  flex: 1 1 6ch;
+  min-width: 6ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .prow__pos {
-  flex: none;
+  grid-area: pos;
   width: 30px;
+  margin-left: 10px;
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: var(--weight-bold);
@@ -96,17 +118,19 @@
   text-align: center;
 }
 .prow__ovr {
-  flex: none;
+  grid-area: ovr;
   width: 32px;
+  margin-left: 10px;
   font-size: 26px;
   font-weight: var(--weight-heavy);
   line-height: 1;
   text-align: center;
 }
 .prow__stats {
+  grid-area: stats;
   display: none;
-  flex: none;
   gap: 10px;
+  margin-left: 10px;
 }
 .prow__stat {
   display: flex;
@@ -128,10 +152,11 @@
   color: var(--text-3);
 }
 .prow__fit {
+  grid-area: fit;
   display: flex;
   justify-content: flex-end;
-  flex: none;
   min-width: 0;
+  margin-left: 10px;
 }
 .prow__fit:empty {
   display: none;
@@ -142,8 +167,12 @@
   }
 }
 @container (max-width: 340px) {
-  .prow__grid {
-    gap: 8px;
+  .prow__name,
+  .prow__meta,
+  .prow__pos,
+  .prow__ovr,
+  .prow__fit {
+    margin-left: 8px;
   }
   .prow__pos {
     width: 26px;
@@ -154,7 +183,6 @@
 /* Cost tag (Budget mode): the rating band the player uses up, before the club line. */
 .prow__cost {
   display: inline-block;
-  margin-right: 6px;
   padding: 0 5px;
   border-radius: 4px;
   background: var(--surface-3, rgb(255 255 255 / 0.08));
@@ -214,5 +242,5 @@
 }
 .prow__prime {
   color: var(--gold-300);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-bold);
 }

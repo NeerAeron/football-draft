@@ -20,9 +20,11 @@ Everything you do is saved in your own browser.
    **+1**, with both **+2.5** (shown as a green chip on the pitch; the pool says who would
    get one).
    A **Captain** (a "C" on his card) gives every player of your XI **+1** more.
-   In a World Cup Run the first spin is the **Legend spin** — a great of the past (Neymar ’19,
-   Bale ’16, Buffon ’17…) joins your XI — and you have **Prime boosts** (2 on Pro, 1 above):
-   each turns a drafted player into his best past version (Messi 86 → 93).
+   In a World Cup Run the first spin is the **Legend spin** — a best version of 2014–2022,
+   rated 85 or more: a great of the past (Neymar ’19, Bale ’16, Buffon ’17…) or a current
+   player at his peak (Messi ’19, De Bruyne ’20) — and you have **Prime boosts** (2 on Pro, 1
+   above): each turns a drafted player into his best past version. A player is in your XI
+   once: his legend version and his card of today never both.
    **Budget mode** is the hard way: only 2 **Superstars** (rated 88+), 2 **Stars** (84–87) and
    3 **Starters** (80–83) — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
@@ -47,7 +49,7 @@ Everything you do is saved in your own browser.
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
-| **Nations** | one of 64 football nations, all equally likely | its best 23 available call-ups |
+| **Nations** | one of 61 football nations, all equally likely | its best 23 available call-ups |
 | **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
@@ -159,8 +161,10 @@ national-team players without a club, plus precomputed badges, club ratings and 
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 90 legends — past players who are not in the catalog, at their best version
-rated 85+ — and the prime versions of 1,963 catalog players, compiled by the same compiler.
+draft starts) holds 185 legends — best past versions the game shows at 85+: 80 players who are
+not in the catalog and 105 catalog players who were better then — and the prime versions of
+2,579 catalog players (shown 2+ above today, or 88+), compiled by the same compiler. A draft
+offers only players shown at 65 or more (9,986 of the 15,378); teams field their real players.
 
 ## Deploy
 

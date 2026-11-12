@@ -19,13 +19,7 @@ import { toRuntimeCatalog } from './runtime-catalog.mjs';
 import { writeFlags } from './flags.mjs';
 import { encodeLegends, catalogIds } from '../../app/core/players/legends-codec.js';
 import { badgeStamp } from '../../app/core/players/catalog-derived.js';
-import {
-  compileLegends,
-  LEGACY,
-  LEGEND_MINIMUM,
-  PRIME_GAP,
-  PRIME_MINIMUM,
-} from '../compile-legends.mjs';
+import { compileLegends, LEGACY, SELECTION } from '../compile-legends.mjs';
 import { PATHS, SOURCE, LEGACY_SOURCE } from './paths.mjs';
 
 async function readSource(path, source) {
@@ -67,14 +61,7 @@ export async function compileLegendsFile(compiled, runtime, currentRows) {
     },
     selection: {
       sourceRows: rows.length,
-      bestVersion: 'Highest overall; ties: the latest edition',
-      legends: `Players who are not in the catalog, best overall ${LEGEND_MINIMUM}+, of a catalog nation; the club of that edition when it is in the catalog`,
-      primes: `Catalog players whose best past overall is ${PRIME_GAP}+ above the current one, or ${PRIME_MINIMUM}+ and higher than now (and whose shown rating rises)`,
-      composure:
-        'FIFA 15/16 have no composure: taken from the nearest later edition, else reactions',
-      legendMinimum: LEGEND_MINIMUM,
-      primeGap: PRIME_GAP,
-      primeMinimum: PRIME_MINIMUM,
+      ...SELECTION,
     },
     catalog: {
       players: runtime.players.length,

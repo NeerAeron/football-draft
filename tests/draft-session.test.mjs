@@ -10,8 +10,18 @@ import {
   DRAFT_MODES,
   NATURAL_FIT,
 } from '../app/core/draft/session.js';
-import { catalogIndex, callUps, bestEleven, LINE_OF, isKeeper } from '../app/core/draft/pools.js';
-import { CONFIG } from '../app/core/config/config.js';
+import {
+  catalogIndex,
+  draftRules,
+  callUps,
+  bestEleven,
+  selectable,
+  naturalRating,
+  LINE_OF,
+  isKeeper,
+} from '../app/core/draft/pools.js';
+import { buildOpponent, opponentCandidates } from '../app/core/draft/opponents.js';
+import { CONFIG, DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { overallRating, positionFamiliarity } from '../app/core/players/ratings.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { lcg } from '../app/core/util/rng.js';
@@ -20,6 +30,9 @@ import { Match } from '../app/core/sim/engine.js';
 const catalog = loadRuntimeCatalog();
 const index = catalogIndex(catalog);
 const byId = new Map(catalog.players.map(p => [p.profileId, p]));
+const shown = p => Math.round(naturalRating(p));
+// Chi-square limit at p = 0.001 for any degrees of freedom (Wilson–Hilferty).
+const chiLimit = dof => dof * (1 - 2 / (9 * dof) + 3.09 * Math.sqrt(2 / (9 * dof))) ** 3;
 
 // Draft policies: (session) => { profileId, slot }.
 const positional = s => s.suggestPick();
@@ -132,15 +145,26 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
   assert.equal(spin.reels[0].options.length, index.spinField.length);
   assert.equal(index.playable.length, CONFIG.draft.nations.playableSize);
   assert.equal(index.playable.length, 56);
-  assert.equal(index.spinField.length, 64);
+  // Star nations: not playable, a star shown at reelStar or more, and reelPlayers players a
+  // draft may offer (draft.pickMinimum) — exactly those, whatever the catalog holds.
+  const rule = CONFIG.draft.nations,
+    stars = index.spinField.filter(n => !n.playable),
+    pickable = n => n.players.filter(p => shown(p) >= CONFIG.draft.pickMinimum).length;
+  assert.equal(index.spinField.length, index.playable.length + stars.length);
   assert.deepEqual(
-    index.spinField
-      .filter(n => !n.playable)
+    stars.map(n => n.name).sort(),
+    [...index.nations.values()]
+      .filter(
+        n =>
+          !n.playable &&
+          pickable(n) >= rule.reelPlayers &&
+          n.players.some(p => shown(p) >= rule.reelStar),
+      )
       .map(n => n.name)
       .sort(),
-    ['Algeria', 'Armenia', 'Burkina Faso', 'Egypt', 'Gabon', 'Jamaica', 'New Zealand', 'Tunisia'],
   );
-  for (const name of ['Egypt', 'Wales', 'Guinea', 'Algeria'])
+  assert.ok(stars.length >= 3 && stars.some(n => n.name === 'Algeria'));
+  for (const name of ['Wales', 'Guinea', 'Algeria'])
     assert.ok(
       index.spinField.some(n => n.name === name && n.pot === 5),
       name,
@@ -189,20 +213,22 @@ test('call-ups refill from the next best player and skip drafted ones', () => {
 });
 
 test('honest weights: landing frequencies match the shown reel probabilities', () => {
-  // Nations: uniform over the 64 nations of the reel (chi-square, 63 dof, p = 0.001 -> 103.4).
+  // Nations: uniform over the nations of the reel (chi-square at p = 0.001).
   const counts = new Map(),
-    n = 2400;
+    n = 2400,
+    reel = index.spinField.length,
+    each = Math.round(1000 / reel) / 1000;
   for (let seed = 1; seed <= n; seed++) {
     const spin = createDraftSession(catalog, { mode: 'nations', seed }).spin();
-    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.016));
+    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === each));
     counts.set(spin.option.id, (counts.get(spin.option.id) || 0) + 1);
   }
-  const expected = n / 64,
+  const expected = n / reel,
     chi = index.spinField.reduce(
       (s, x) => s + ((counts.get(x.id) || 0) - expected) ** 2 / expected,
       0,
     );
-  assert.ok(chi < 103.4, 'nation chi-square ' + chi.toFixed(1));
+  assert.ok(chi < chiLimit(reel - 1), 'nation chi-square ' + chi.toFixed(1));
   // Leagues: tier frequencies follow the flat weights A4/B2/C1/D.5/F.25 (4 dof -> 18.5).
   const weight = { A: 4, B: 2, C: 1, D: 0.5, F: 0.25 },
     total = index.leagues.reduce((s, l) => s + weight[l.tier], 0),
@@ -301,6 +327,131 @@ test('re-rolls: count by difficulty, per side, never repeat a seen option', () =
   assert.ok(pvp.reroll());
 });
 
+test('drafts offer only players shown 65+; teams keep their real players', () => {
+  const min = DEFAULT_CONFIG.draft.pickMinimum;
+  assert.equal(min, 65);
+  assert.equal(draftRules().pickMinimum, min);
+  assert.equal(selectable({ legend: true }, min), true); // legends and primes are not asked
+  const low = catalog.players.filter(p => shown(p) < min);
+  assert.ok(low.length > 1000 && low.length < catalog.players.length / 2);
+  assert.ok(low.every(p => !selectable(p, min)) && low.every(p => selectable(p, 0)));
+  // Every mode, Budget mode too, with re-rolls and awkward policies: no row under the
+  // minimum, never a dead end, and a pick of such a player is refused.
+  const formations = Object.keys(FORMATIONS);
+  let spins = 0;
+  for (const mode of ['nations', 'leagues', 'clubs'])
+    for (let seed = 1; seed <= 36; seed++) {
+      const s = createDraftSession(catalog, {
+        mode,
+        seed,
+        rerolls: 3,
+        budget: seed % 3 === 0,
+        sides: seed % 4 === 0 ? 2 : 1,
+        formation: formations[seed % formations.length],
+      });
+      assert.equal(s.pickMinimum, min);
+      const policy = [positional, keeperLast, randomPolicy(lcg(seed))][seed % 3];
+      const check = () => {
+        const pool = s.snapshot().pool;
+        spins++;
+        assert.ok(pool.length > 0);
+        assert.ok(
+          pool.every(e => e.ovr >= min),
+          `${mode} ${seed}: a row under ${min}`,
+        );
+        assert.ok(
+          pool.some(e => e.available),
+          `${mode} ${seed}: nothing to pick`,
+        );
+        // The reel: an option can come up only if a player the draft may offer fills an open
+        // slot class (the keeper slot: a 65+ keeper).
+        const reel = s.current.reels.at(-1),
+          open = s.openClasses();
+        for (const o of reel.options) {
+          if (!o.weight) continue;
+          const group =
+            reel.category === 'nation'
+              ? index.nations.get(o.id)
+              : reel.category === 'league'
+                ? index.leagueById.get(o.id)
+                : index.clubs.get(o.id);
+          assert.ok(
+            group.players.some(
+              p => shown(p) >= min && s.available(p) && (isKeeper(p) ? open.gk : open.out),
+            ),
+            `${mode} ${seed}: ${o.name}`,
+          );
+        }
+      };
+      while (!s.complete) {
+        s.spin();
+        check();
+        while (!s.rerollBlocked() && (s.round() + seed) % 4 === 0) {
+          s.reroll();
+          check();
+        }
+        const move = policy(s);
+        assert.equal(s.pick(move.profileId, move.slot).ok, true);
+      }
+      for (const p of s.picks.flat().map(id => byId.get(id))) assert.ok(shown(p) >= min);
+    }
+  assert.ok(spins > 1200);
+  // A player under the minimum is not in his nation's pool and cannot be picked.
+  const nation = index.spinField.find(
+      n => n.players.some(p => shown(p) < min) && n.players.filter(p => shown(p) >= min).length,
+    ),
+    weak = nation.players.find(p => shown(p) < min),
+    forced = createDraftSession(catalog, {
+      seed: 3,
+      schedule: { rounds: [{ spin: nation.id, alternate: null }] },
+    });
+  assert.equal(forced.spin().option.id, nation.id);
+  assert.equal(forced.available(weak), false);
+  assert.ok(!forced.poolPlayers().includes(weak));
+  assert.deepEqual(forced.pick(weak.profileId), { ok: false, reason: 'Not in this pool' });
+  // Club spins need a squad to choose from: every spinnable club has eleven such players.
+  for (const l of index.leagues)
+    for (const c of l.spinnableClubs)
+      assert.ok(
+        c.players.filter(p => shown(p) >= min).length >= CONFIG.draft.clubs.minimumPlayers,
+        c.name,
+      );
+  // Teams are not drafts. Which nations are playable, their order and strength, the clubs and
+  // every opponent's XI are what they are without the rule — players under 65 included.
+  const free = catalogIndex(catalog, { ...draftRules(), pickMinimum: 0 });
+  assert.deepEqual(
+    index.playable.map(n => [n.name, n.strength]),
+    free.playable.map(n => [n.name, n.strength]),
+  );
+  assert.deepEqual(
+    index.field.map(n => n.name),
+    free.field.map(n => n.name),
+  );
+  assert.equal(index.clubs.size, free.clubs.size);
+  assert.ok(free.spinField.length >= index.spinField.length);
+  const candidates = opponentCandidates(catalog),
+    weakest = candidates.filter(c => c.kind === 'club').sort((a, b) => a.rating - b.rating)[0],
+    side = buildOpponent(catalog, weakest);
+  assert.ok(
+    side.players.some(p => shown(p) < min),
+    `${weakest.name} fields its real players`,
+  );
+  // A draft saved before the rule has none in its rules: it loads and offers everyone.
+  const old = createDraftSession(catalog, {
+    seed: 3,
+    schedule: { rounds: [{ spin: nation.id, alternate: null }] },
+  });
+  old.spin();
+  const data = JSON.parse(JSON.stringify(old.serialize()));
+  assert.equal(data.rules.pickMinimum, min);
+  delete data.rules.pickMinimum;
+  const restored = restoreDraftSession(catalog, data);
+  assert.equal(restored.pickMinimum, 0);
+  assert.equal(restored.available(weak), true);
+  assert.ok(restored.snapshot().pool.length >= old.snapshot().pool.length);
+  assert.equal(restored.pick(restored.suggestPick().profileId).ok, true);
+});
+
 test('PvP: a seeded coin toss picks the first drafter, then turns alternate', () => {
   const firsts = new Set();
   for (let seed = 1; seed <= 12; seed++) {
@@ -354,11 +505,17 @@ test('placement options show the rating after familiarity and why a slot is clos
 
 test('auto placement prefers a natural slot over a higher out-of-position rating', () => {
   // Real players always rate highest in a natural position (familiarity scales the rating),
-  // so relabel a top striker as a centre-back: his ST rating now beats his CB rating.
+  // so relabel a top striker as a centre-back: his ST rating now beats his CB rating. (One
+  // who still shows 65+ as a centre-back: a draft offers nobody under that.)
   const relabel = p => ({ ...p, primaryPosition: 'CB', secondaryPositions: [] }),
     margin = p => overallRating(relabel(p), false, 'ST') - overallRating(relabel(p), false, 'CB'),
     striker = catalog.players
-      .filter(p => p.primaryPosition === 'ST' && overallRating(p, true, 'ST') >= 82)
+      .filter(
+        p =>
+          p.primaryPosition === 'ST' &&
+          overallRating(p, true, 'ST') >= 82 &&
+          overallRating(relabel(p), true, 'CB') >= CONFIG.draft.pickMinimum,
+      )
       .sort((a, b) => margin(b) - margin(a))[0],
     fake = relabel(striker),
     modified = { ...catalog, players: catalog.players.map(p => (p === striker ? fake : p)) };

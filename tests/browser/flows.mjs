@@ -642,6 +642,13 @@ export const flows = [
             throw new Error('legend rows without a year: ' + eras.join(' '));
           const text = await page.textContent('[data-screen="draft"]');
           if (/FIFA \d\d/.test(text)) throw new Error('an edition name is on screen');
+          // One line says which years the legends come from.
+          const years = await page.textContent('.stage [data-testid="legend-years"]');
+          if (!/^\s*Best versions, 20\d\d–20\d\d\s*$/.test(years))
+            throw new Error('no years line on the Legend stage: ' + years);
+          // Nobody under 85 is offered.
+          const ovrs = await page.locator('[data-testid="pool"] .prow__ovr').allTextContents();
+          if (!ovrs.every(t => Number(t) >= 85)) throw new Error('a legend under 85: ' + ovrs);
           // The file is fetched for the draft only.
           const fetched = await page.evaluate(() =>
             performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1.json')),
@@ -668,6 +675,26 @@ export const flows = [
           .first()
           .textContent();
         if (!/^’\d\d$/.test(era)) throw new Error('no year on the legend card');
+        const standing = await page
+          .locator('[data-testid="pick-standing"]:visible')
+          .first()
+          .textContent();
+        if (!/(Superstar|Star)\s*·\s*Legend ’\d\d/.test(standing))
+          throw new Error('the sheet does not say his tier and year: ' + standing);
+      });
+      await step('every open slot shows his overall there; the best one is marked', async () => {
+        const pitch = page.locator('.pitch--interactive:visible').first();
+        const open = await pitch.locator('.pitch-slot.is-empty:not(.is-fit-blocked)').count();
+        const numbers = await pitch.locator('.pitch-slot__rating').allTextContents();
+        if (numbers.length !== open || !numbers.every(t => /^\d\d$/.test(t)))
+          throw new Error(`${numbers.length} ratings on ${open} open slots: ${numbers}`);
+        const best = await pitch
+          .locator('.pitch-slot.is-fit-best .pitch-slot__rating')
+          .first()
+          .textContent();
+        if (Number(best) < 85) throw new Error('the best slot shows ' + best);
+        const line = await page.locator('[data-testid="pick-slot"]:visible').first().textContent();
+        if (!line.includes(best)) throw new Error(`the sheet says "${line}", not ${best}`);
       });
       await shot('legend-pick');
       await step('pick 1 (other slot, then Auto)', async () => {
@@ -681,6 +708,8 @@ export const flows = [
       await step('the second spin is an ordinary nation spin', async () => {
         if (await page.locator('.stage.is-legend').count())
           throw new Error('the Legend stage stays after the legend pick');
+        if (await page.locator('[data-testid="legend-years"]').count())
+          throw new Error('the years line stays after the legend pick');
         await visible(page, '[data-testid="prime-open"]');
       });
       await shot('after-first-pick');
@@ -690,6 +719,26 @@ export const flows = [
           await picksMade(page, pick);
         });
         if (pick === 5) await shot('mid-draft', viewport === 'mobile' ? { fullPage: true } : {});
+        if (pick === 4 || pick === 8)
+          await step('pool rows cut no tag: boost and Prime are whole', async () => {
+            const spin = page.locator('[data-testid="spin"]');
+            if (await spin.isVisible().catch(() => false))
+              await spin.click({ timeout: 6000 }).catch(() => {});
+            await page.waitForSelector('[data-testid="pool"] button.prow', { timeout: 10000 });
+            const cut = await page.evaluate(() => {
+              const bad = [];
+              for (const row of document.querySelectorAll('[data-testid="pool"] .prow')) {
+                const box = row.getBoundingClientRect();
+                for (const tag of row.querySelectorAll('.prow__cost, .prow__boost, .prow__prime')) {
+                  const r = tag.getBoundingClientRect();
+                  if (tag.scrollWidth > tag.clientWidth + 1 || r.right > box.right - 4 || !r.width)
+                    bad.push(row.getAttribute('aria-label'));
+                }
+              }
+              return bad;
+            });
+            if (cut.length) throw new Error('rows with a cut tag: ' + cut.slice(0, 3).join(' | '));
+          });
       }
       await step('completion sheet', () => visible(page, 'dialog.complete-sheet[open]'));
       await shot('complete');
@@ -732,6 +781,24 @@ export const flows = [
         if (picks.filter(id => /:legend$/.test(id)).length !== 1)
           throw new Error('no legend in the XI');
       });
+      await step(
+        'the sheet stays open and shows the boost; a second tap does nothing',
+        async () => {
+          await visible(page, 'dialog.draft-prime[open] [data-testid="prime-done"]');
+          const button = page.locator('[data-testid="prime-confirm"]');
+          if (!/Done/.test(await button.textContent())) throw new Error('the button is not Done');
+          // An impatient second tap must not fall through to "On to the World Cup".
+          await button.click();
+          await page.waitForTimeout(100);
+          if ((await page.evaluate(() => location.hash)) !== '#/draft')
+            throw new Error('the second tap left the draft');
+          await shot('prime-done');
+          await page.waitForTimeout(500);
+          if (await page.locator('dialog.draft-prime[open]').count()) await button.click();
+          await page.waitForSelector('dialog.draft-prime[open]', { state: 'detached' });
+          await page.waitForTimeout(450);
+        },
+      );
       await shot('primed');
       await step('continue to the run with the legend and the prime', async () => {
         await page.click('[data-testid="draft-continue"]');
@@ -743,6 +810,47 @@ export const flows = [
         });
       });
       await shot('run');
+    },
+  },
+  {
+    name: 'draft-back',
+    async run({ page, step, base }) {
+      await seed(page, ONBOARDED);
+      const saved = () =>
+        page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-draft') || 'null');
+          return d && `${d.context.seed}:${d.session.state.current?.option.id}`;
+        });
+      let draft = null;
+      await step('"Play again" (?go=1) starts a draft at once', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await visible(page, '[data-screen="draft"][data-phase]');
+        draft = await saved();
+        if (!draft) throw new Error('no draft was saved');
+      });
+      await step('the device back button shows the setup: ?go=1 is spent', async () => {
+        await page.goBack();
+        await visible(page, '[data-screen="setup"] .setup-resume');
+        await page.waitForTimeout(300);
+        if ((await saved()) !== draft) throw new Error('going back started another draft');
+        await page.goForward();
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+      });
+      await step('the back arrow leaves for Home and keeps the draft', async () => {
+        await page.click('.topbar__back');
+        await visible(page, '[data-screen="home"] [data-testid="resume-draft"]');
+        await page.waitForTimeout(300);
+        if (!/^(#\/)?$/.test(await page.evaluate(() => location.hash)))
+          throw new Error('not on Home');
+        if ((await saved()) !== draft) throw new Error('the draft changed: it was started again');
+      });
+      await step('Resume shows the same spin', async () => {
+        await page.click('[data-testid="resume-draft"]');
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+        if ((await saved()) !== draft) throw new Error('the draft changed on resume');
+      });
     },
   },
   {

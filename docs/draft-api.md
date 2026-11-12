@@ -22,9 +22,9 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 
 | Mode (`mode`) | One spin lands on | Pool | Odds (shown on the reel) |
 | --- | --- | --- | --- |
-| `nations` (default) | a nation of the reel: every playable nation (56) and 8 star nations, 64 in all | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR (fewer when the nation has fewer); refills as players are taken | uniform 1/64 |
+| `nations` (default) | a nation of the reel: every playable nation (56) and 5 star nations, 61 in all | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR (fewer when the nation has fewer); refills as players are taken | uniform 1/61 |
 | `leagues` | a league (40 usable) | the whole league | flat by tier A 4 · B 2 · C 1 · D 0.5 · F 0.25 |
-| `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
+| `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players a draft may offer: 468 of the 546 clubs) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubAndCountry` | alternately a nation (picks 1, 3, 5…) and a league (2, 4, 6…) | as above | as above |
 
 Every pick is one spin. Re-rolls per drafter by `difficulty` (`DIFFICULTIES`: `pro`, `worldclass`,
@@ -32,8 +32,23 @@ Every pick is one spin. Re-rolls per drafter by `difficulty` (`DIFFICULTIES`: `p
 `semipro`) in a saved draft or a link plays as Pro (`difficultyOf`). A re-roll spins again without the options seen
 this round. No reveal pacing. **Dead-end guard**: an option whose pool cannot fill
 any open slot class (the GK slot vs outfield slots) gets weight 0 — so a keeper is always
-available when only the GK slot is left. All numbers live in `CONFIG.draft` (`nations`,
+available when only the GK slot is left. All numbers live in `CONFIG.draft` (`pickMinimum`, `nations`,
 `leagueTierWeights`, `clubs`, `rerolls`, `ladder`, `links`, `budget`); a session snapshots them at creation.
+
+**Only players shown 65+ are offered** (`draft.pickMinimum`, `selectable(p, minimum)` in
+`pools.js`): a player is in a draft's pools only when the rating on his card — his natural
+rating, rounded — is 65 or more. One rule, in `DraftSession.available()`: nation call-ups,
+league and club pools, the Budget extras, `suggestPick` / Auto-pick and every guard go through
+it, so a spin lands only where a 65+ player can fill an open slot class (only the keeper slot
+left: a 65+ keeper) and no row under 65 is ever listed; the Daily's perfect XI is built from the
+same pools. Legends, prime versions and Budget tiers are not asked. **Teams are not drafts**:
+opponents' XIs (nations, clubs, bosses), club squads and ratings, a nation's strength,
+`playable` / `field`, the ladder and Exhibition sides keep their real players whatever they are
+rated. Today 9,986 of the 15,378 players are selectable (924 of 1,725 keepers); the smallest
+nation pools are Burkina Faso 14 and New Zealand 15 (playable: Georgia 21, Guinea 22 — no
+keeper of 65+, so it never lands for the keeper slot), the smallest club pools 11. A draft
+saved before the rule has no `pickMinimum` in its rules: it loads and offers everyone. The UI
+says nothing about it.
 
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
@@ -46,8 +61,9 @@ strongest first: France … Finland, Iceland). Every playable nation is on the r
 as an opponent (the Pro / World Class ladder, Quick Match, Exhibition). The reel
 (`index.spinField`, one pool, all equally likely) adds the **star nations**: nations that are not
 playable (no XI, or an XI outside the 56) but have a player shown at `nations.reelStar` (80) or
-more and `reelPlayers` (9) players — Algeria, Tunisia, Jamaica, Burkina Faso, Egypt, New Zealand,
-Gabon, Armenia (five of them have no keeper in the data): spun, never met. 64 nations in all.
+more and `reelPlayers` (9) players a draft may offer (shown 65+) — Algeria, Tunisia, Jamaica,
+Burkina Faso, New Zealand (two of them have no keeper in the data): spun, never met. 61 nations
+in all (Egypt, Armenia and Gabon have a star but fewer than nine 65+ players).
 `index.field` is the strongest `fieldSize` (48) playable nations in pots of 12: the Daily's
 schedule uses it, and it is the fallback of Legendary's draw, which qualifies its own 48 for
 every run (`docs/competition-api.md`). A nation with one keeper whose keeper you drafted cannot
@@ -55,39 +71,60 @@ field an XI any more: the ladder draws another opponent, the World Cup draw the 
 
 **The Legend spin** (session option `legendSpin`; the game: World Cup Run drafts, normal and
 Budget — not Quick Match, Versus or the Daily). The side's first spin lands on a nation with a
-great legend and offers that nation's legends; the other ten spins are ordinary. Legends are
-the players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
-past players who are not in the catalog, at their best FIFA 15–23 version, EA rating
-`legends.minimum` (85) or more — 90 players of 25 nations. Rules in `CONFIG.draft.legends`:
+legend and offers that nation's legends; the other ten spins are ordinary. Legends are the
+players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
+**best past versions (FIFA 15–23) the game shows at `legends.minimum` (85) or more** — the
+rating on the card, its own rating model, never EA's overall. Two kinds, 185 in all:
 
-- the reel (`legendIndex(catalog).reel`) holds the 25 nations with a legend EA rated `reelStar`
-  (85) or more;
+- 80 **players of the past**, who are not in the catalog (Neymar ’19, Hazard ’19, Bale ’16);
+- 105 **current players at their best** (`legendOf` = the catalog player's `profileId`): a
+  catalog player's best version when it shows 85+ and more than his card today, however far
+  apart the two are (Messi ’19 95 for 87 today; van Dijk ’22 91 for 90). A player whose card
+  today is his best is just a normal pick.
+
+A player's best version is his highest shown rating (ties: the higher EA overall, then the
+latest edition). **One person, one place in an XI**: `baseProfileId(p)` is the catalog id of a
+legend or prime version, and the session treats the versions as one player — drafting his
+legend version takes his current version out of every pool, the reel guard, placement and the
+opponents' XIs (the run excludes `baseProfileId` of your players), and a current version that
+is taken or excluded takes the legend version off the Legend spin (a nation whose only legend
+he is leaves the reel). A legend version offers no Prime boost: it is his best already.
+Rules in `CONFIG.draft.legends`:
+
+- the reel (`legendIndex(catalog).reel`) holds the 37 nations with a legend shown at `reelStar`
+  (85) or more; the index filters by the shown rating itself, so nobody under `minimum` is ever
+  offered, whatever the file holds;
 - a nation's weight is `1 + weightPerLegend (0.15) × min(its legends, weightCap (20))`: 1.15 for
-  one legend, 4 for twenty or more (Brazil, 17 legends, 9.2%; Spain 7.3%, France 6.1%, Italy
-  5.7%, Argentina and Germany 5.3%, Belgium 4.9%; Colombia, Croatia, England, Greece, Netherlands
-  and Portugal, two legends, 3.4% each; the twelve nations with one legend 3.0% each). The spin
-  carries the honest `weight` / `probability` like every reel; the
-  UI shows no odds for this one;
+  one legend, 4 for twenty or more (Spain 23 and Brazil 20 legends, 6.2% each; Germany 19, 6.0%;
+  France 16, 5.3%; England 12, 4.4%; Portugal 11, 4.1%; Argentina, Belgium and Italy 10, 3.9%;
+  the eight nations with two legends 2.0% each, the fourteen with one 1.8% each). The spin
+  carries the honest `weight` / `probability` like every reel; the UI shows no odds for this
+  one;
 - the pool is the nation's `shown` (10) highest-rated legends (the rating on the card, then the
-  name) — one legend for twelve of the nations; if none of them could be placed (slot class,
+  name) — one legend for fourteen of the nations; if none of them could be placed (slot class,
   Budget tier), the best that can are shown instead. Never a dead end: a nation without a
   legend who is free, fits an open slot class and (Budget mode) a tier with a slot left has
   weight 0, so in local Versus a one-legend nation leaves the second side's reel once its legend
   is taken. Re-rolls, exclusions, `uniqueNations` (the legend's nation counts) and Budget mode
   (a legend costs the tier of his rating) work as for any spin;
 - `spin.legend`, `snapshot().legendRound`, `history[].legend` mark it; a pool entry / slot player
-  has `legend: true`, `edition` (15–23) and `year` (the edition minus one: FIFA 19 came out in
-  2018 — the UI shows "’18", never the edition).
+  has `legend: true`, `edition` (15–23) and `year` — **the year of that version's ratings
+  snapshot**, stored with the player by the compiler from the source row's date
+  (`fifa_update_date`): release ratings are dated the autumn before the edition's number (FIFA
+  19: 2018 — every version in the data is one), the last ratings of a cycle the year of the
+  number. `editionYear(p)` / `editionLabel(p)` read it; the UI shows "’18", never the edition;
+- `snapshot().legendYears` is `[first, last]` year of the legends' versions (`[2014, 2022]`;
+  `legendIndex().years`): the Legend spin's one line, "Best versions, 2014–2022".
 
-A legend is a club mate through the club of that edition when the catalog has it (89 of 90)
-and a nation mate like anyone; he is never a Captain. The game rates a legend with its own
-rating model, like every player, so the number on his card is often 1–3 below EA's (Kroos EA 90,
-shown 87): 16 legends show 88+, 51 show 85–87, 18 show 83–84, 5 show under 83.
+A legend is a club mate through the club of that edition when the catalog has it (all 185
+today) and a nation mate like anyone; he is never a Captain — a current Captain's legend
+version neither. 45 legends show 88+, 140 show 85–87; 25 are keepers.
 
 **Prime boosts** (session option `primes: true` = `CONFIG.draft.primes` by difficulty — Pro 2,
 World Class 1, Legendary 1 — or a number; the game: World Cup Run drafts). A boost turns a
-drafted player into his **prime version** (`catalog.legends.primes`: 1,963 catalog players whose
-best past EA rating is 3+ above the current one, or 88+ and higher): the attributes, positions,
+drafted player into his **prime version** (`catalog.legends.primes`: 2,579 catalog players whose
+best version shows 2+ more than their card today, or 88+ and more — the same best version a
+current player's legend is): the attributes, positions,
 badges and rating of that edition, the same name, nation, club and Captain tag (so mates and
 the armband do not change), `profileId` `ea:<id>:fc<edition>:prime`, `primeOf` = his catalog id.
 
@@ -97,13 +134,17 @@ draft.primeOptions(0);       // [{ slot, profileId, name, from: { ovr, rating },
 draft.prime(slot, 0);        // { ok: true, side, slot, profileId, primeOf, rating } | { ok: false, reason }
 ```
 
-`rating` is the rating in that slot. Usable at any time after he is drafted, until the draft is
+`rating` is the rating in that slot — a prime version may play another position, so `to.rating`
+can be no higher than `from.rating` while `to.ovr` is (Mkhitaryan at CM: 83 → 78, his ’17
+version is an RM 85); the option is still allowed (the pre-match can move him) and the UI says
+it. A typical drafted XI has 1.8–1.9 players with a prime version (1.3–1.4 under the old rule:
+EA overall 3+ above, 1,963 stored); 60% of XIs have two or more (40%). Usable at any time after he is drafted, until the draft is
 handed on (the run is created from `matchSide`); not reversible in core (the UI confirms).
 Budget mode never refuses it and it uses no slot: a primed player keeps the tier slot of the
 version that was drafted. His current version stays taken (`available` false) and opponents
 never field it (`baseProfileId`). `snapshot()`: `primes: { perSide, left }`, `teams[i].primesLeft`,
 `slots[i].prime` (the option, or null), and `primeVersion: { profileId, ovr, edition, year,
-position }` on pool entries and slot players who have one.
+position }` on pool entries and slot players who have one (a legend version has none).
 
 ## Flow
 
@@ -157,7 +198,7 @@ Plain JSON, cached until the state changes (treat as read-only):
 ```js
 {
   mode, modeLabel, difficulty, sides, hideRatings, uniqueNations, budget, daily,
-  legendSpin, legendRound, primes,    // see "The Legend spin" and "Prime boosts" above
+  legendSpin, legendRound, legendYears, primes, // see "The Legend spin" and "Prime boosts" above
   phase: 'spin' | 'pick' | 'complete', complete, first, turn,
   pickIndex, totalPicks, round,       // picks made overall / needed; the side's round 0–10
   category,                           // what the next/current spin draws: nation | league | club
@@ -194,7 +235,7 @@ Plain JSON, cached until the state changes (treat as read-only):
 `placementOptions(id)` returns 11 entries `{ slot, role, rating, natural, delta, familiarity,
 allowed, reason }`. `rating` is the OVR in that slot after familiarity (what the slot shows:
 "79 → 75" = `natural → rating`, `delta = rating − natural`). `reason` when not allowed:
-`'Spin first'`, `'Already drafted'`, `'Not in this pool'`, `'Slot filled'`,
+`'Spin first'`, `'Already drafted'` (he, or another version of him), `'Not in this pool'`, `'Slot filled'`,
 `'Goalkeepers only'`, `'Outfield players only'`, `'Not this side’s turn'`, `'No Star slot left'` (Budget mode),
 `'The draft is complete'`. Light up `allowed` slots; mark `familiarity < NATURAL_FIT` (0.95)
 as out of position.
@@ -258,6 +299,13 @@ re-rolls = World Class and Legendary / Pro), effective = OVR + chem:
 `MODE_BASELINES` is older than all of this (the 48-nation reel, no Captain, no legends: Nations
 83.61 with one re-roll) and is due a re-measure: the reel of every playable nation alone costs
 about 2 OVR.
+
+The table above is from before the legends of current players, the +2 prime rule and the 65+
+pick minimum. With them (`draft-baselines.mjs --legend --primes default --budget "off;default"`,
+200 drafts, 1 / 2 re-rolls; before → after): normal effective 84.57 → 84.75 / 84.94 → 85.06,
+Budget 82.73 → 82.86 / 82.97 → 83.12; the legend plays at 87.7 → 88.7; players with a prime
+version per XI 1.36 → 1.85 (Budget 1.29 → 1.88); Prime boosts used 0.73 → 0.89 / 1.09 → 1.45. `MODE_BASELINES` and
+`CUP_TUNING` were not touched.
 
 ## Match setup
 

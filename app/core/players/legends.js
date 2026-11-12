@@ -5,15 +5,18 @@
 // prime version. Pure: no DOM, no fetch.
 //
 //   catalog.legends = {
-//     players: [legend],                 // best first (source overall), then id
+//     players: [legend],                 // best first (the rating shown), then id
 //     primes: Map(profileId of the catalog player → his prime version),
 //     byId: Map(profileId → legend | prime version),
 //   }
-// A legend is shaped like a catalog player plus `legend: true` and `edition` (15–23); his
-// `source` has today's nation name and, when his club of that edition is in the catalog, that
-// club (so he is a club mate). A prime version is the catalog player with the attributes,
-// positions, badges and rating of that edition: `prime: true`, `edition`, `primeOf` (the
-// catalog player's profileId). He keeps the name, nation, club and the Captain tag.
+// A legend is shaped like a catalog player plus `legend: true`, `edition` (15–23) and `year`
+// (the year of that version's ratings); his `source` has today's nation name and, when his
+// club of that edition is in the catalog, that club (so he is a club mate). A legend can be the
+// best past version of a player who IS in the catalog: `legendOf` is that player's profileId,
+// and the two are one person (baseProfileId) — an XI holds him once. A prime version is the
+// catalog player with the attributes, positions, badges and rating of that edition: `prime:
+// true`, `edition`, `year`, `primeOf` (the catalog player's profileId). He keeps the name,
+// nation, club and the Captain tag.
 import { normalizeBadges } from './badges.js';
 import { badgeStamp } from './catalog-derived.js';
 
@@ -29,6 +32,8 @@ export function attachLegends(catalog, data) {
       ...p,
       captain: false,
       legend: true,
+      // Built against another catalog: he is not in this one, so he is nobody's other version.
+      ...(p.legendOf != null && !current.has(p.legendOf) ? { legendOf: undefined } : {}),
       source: {
         club: team ? team.name : null,
         clubId: team ? team.id : null,
@@ -65,13 +70,26 @@ export const legendPlayer = (catalog, id) => catalog?.legends?.byId.get(String(i
 /** The prime version stored for a catalog player, or null. */
 export const primeVersion = (catalog, p) =>
   (p && !p.prime && !p.legend && catalog?.legends?.primes.get(p.profileId)) || null;
-/** The id a player is known by in the catalog: a prime version counts as the current player. */
-export const baseProfileId = p => p.primeOf ?? p.profileId;
 /**
- * The year of an edition: a FIFA edition comes out in the autumn before its number (FIFA 19 in
- * September 2018), so legends and prime versions are labelled by the year before.
+ * The id a player is known by in the catalog: a prime version and a catalog player's legend
+ * version count as the current player (an XI holds a person once; opponents never field him).
  */
-export const editionYear = edition => (edition ? 1999 + edition : null);
-/** "’18" for edition 19 (FIFA 19): what the game shows, never the edition. */
-export const editionLabel = edition =>
-  edition ? `’${String(editionYear(edition) % 100).padStart(2, '0')}` : '';
+export const baseProfileId = p => p.primeOf ?? p.legendOf ?? p.profileId;
+/**
+ * The year of a legend or prime version: the year of the ratings snapshot it was compiled from
+ * (`year`, stored by the compiler from the source row's date). Takes a player, a version
+ * summary ({ year, edition }) or a bare edition number. Without a stored year the release
+ * snapshot is assumed: a FIFA edition comes out in the autumn before its number (FIFA 19 in
+ * September 2018).
+ */
+export function editionYear(version) {
+  if (version == null) return null;
+  if (typeof version === 'object')
+    return version.year ?? (version.edition ? 1999 + version.edition : null);
+  return version ? 1999 + version : null;
+}
+/** "’18" for a version of 2018 (FIFA 19): what the game shows, never the edition. */
+export function editionLabel(version) {
+  const year = editionYear(version);
+  return year ? `’${String(year % 100).padStart(2, '0')}` : '';
+}
