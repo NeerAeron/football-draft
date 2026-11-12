@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
-import { createDraftSession } from '../app/core/draft/session.js';
+import { createDraftSession, NATURAL_FIT } from '../app/core/draft/session.js';
 import {
   filterPool,
   poolCounts,
@@ -106,7 +106,10 @@ test('rowFit and slotHighlights show natural fit, small drops, poor fits and clo
   assert.equal(Object.keys(hl).length, 11);
   assert.equal(hl[0].state, 'blocked', 'an outfielder cannot play in goal');
   assert.ok(['best', 'penalty', 'neutral'].includes(hl[auto.slot].state));
-  for (const o of options.filter(o => o.allowed && o.natural - o.rating > POOR_FIT_DROP))
+  // (A slot he is natural in stays 'ok' even when the role's weights cost him more.)
+  for (const o of options.filter(
+    o => o.allowed && o.familiarity < NATURAL_FIT && o.natural - o.rating > POOR_FIT_DROP,
+  ))
     assert.equal(hl[o.slot].state, 'neutral');
   // Every open slot carries his overall there (the number the pitch writes into the slot),
   // closed slots none.

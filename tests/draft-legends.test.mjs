@@ -203,7 +203,8 @@ test('the Legend spin can be re-rolled, respects exclusions and Budget mode, and
     const d = worldCup(seed, { excludePlayers: top });
     if (d.spin().option.id !== 'Brazil') continue;
     const pool = d.snapshot().pool.map(e => e.profileId);
-    assert.deepEqual([...pool].sort(), [...rest].sort());
+    // …the best of them, as many as the reel shows.
+    assert.deepEqual([...pool].sort(), rest.slice(0, DEFAULT_CONFIG.draft.legends.shown).sort());
     found = true;
     break;
   }

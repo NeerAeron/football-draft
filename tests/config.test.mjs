@@ -58,9 +58,9 @@ test('configuration round-trips all fields and rejects invalid tiers, odds and r
     globalThis.localStorage = previous;
   }
 });
-test('club strength is the median of the best ten retained players, with seventeen default S clubs', () => {
+test('club strength is the median of the best ten retained players, with eighteen default S clubs', () => {
   const clubs = clubSquads(catalog);
-  assert.equal(clubs.filter(c => c.tier === 'S').length, 17);
+  assert.equal(clubs.filter(c => c.tier === 'S').length, 18);
   const club = clubs.find(c => c.players.length > 20),
     ratings = club.players
       .map(p => overallRating(p, false, p.primaryPosition))

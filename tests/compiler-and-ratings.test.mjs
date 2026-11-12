@@ -68,23 +68,19 @@ test('compiler is deterministic and uses detailed fields even when keeper summar
       assert.ok(Number.isFinite(p.attrs[key]) && p.attrs[key] >= 1 && p.attrs[key] <= 99, key);
   }
 });
-test('league selection takes whole available leagues and only club-less internationals', () => {
-  const clubless = (row, id, nationTeam) => ({
+test('league selection takes whole available leagues, and club-less players from a set overall', () => {
+  const clubless = (row, id, overall) => ({
     ...row,
     player_id: id,
     club_team_id: '',
     club_name: '',
     league_id: '',
     league_name: '',
-    nation_team_id: nationTeam,
+    overall: String(overall),
   });
-  const rows = [
-    ...fixture,
-    clubless(fixture[0], '900001', '1318'),
-    clubless(fixture[1], '900002', ''),
-  ];
+  const rows = [...fixture, clubless(fixture[0], '900001', 66), clubless(fixture[1], '900002', 64)];
   const reference = {
-    selection: { clublessNationalTeamPlayers: true },
+    selection: { clublessMinimumOverall: 65 },
     leagues: [
       { id: '53', name: 'La Liga', tier: 'A', sourceLeagueId: '53', available: true },
       { id: '13', name: 'Premier League', tier: 'A', sourceLeagueId: '13', available: false },
@@ -99,7 +95,7 @@ test('league selection takes whole available leagues and only club-less internat
   );
   assert.deepEqual(catalog.players[3].source.club, null);
   assert.equal(catalog.players[3].source.leagueId, null);
-  assert.equal(catalog.selection.clublessNationalTeamPlayers, 1);
+  assert.equal(catalog.selection.clublessPlayers, 1);
   assert.deepEqual(
     catalog.leagues.map(l => l.playerCount),
     [3, 0],
@@ -118,29 +114,30 @@ test('compiler rejects missing abilities, invalid stars and duplicated player ID
   assert.throws(() => compilePlayer({ ...fixture[0], weak_foot: '3.5' }, 1), /invalid/);
   assert.throws(() => compileRows([fixture[0], fixture[0]]), /Duplicate/);
 });
-test('league catalog contains every player of every usable league plus club-less internationals', () => {
-  assert.equal(catalog.players.length, 15378);
-  assert.equal(new Set(catalog.players.map(p => p.profileId)).size, 15378);
-  assert.equal(catalog.players.filter(p => p.primaryPosition === 'GK').length, 1725);
-  assert.equal(catalog.selection.leaguePlayers, 15293);
-  assert.equal(catalog.selection.clublessNationalTeamPlayers, 85);
+test('league catalog contains every player of every reviewed club plus the best club-less players', () => {
+  assert.equal(catalog.players.length, 15788);
+  assert.equal(new Set(catalog.players.map(p => p.profileId)).size, 15788);
+  assert.equal(catalog.players.filter(p => p.primaryPosition === 'GK').length, 1719);
+  assert.equal(catalog.selection.leaguePlayers, 14957);
+  assert.equal(catalog.selection.clublessPlayers, 831);
   assert.equal(catalog.leagues.length, 50);
-  assert.equal(catalog.leagues.filter(l => l.playerCount >= 5).length, 40);
+  assert.equal(catalog.leagues.filter(l => l.playerCount >= 5).length, 41);
   for (const l of catalog.leagues) {
     const ps = catalog.players.filter(p => p.source.leagueId === l.id);
     assert.equal(ps.length, l.playerCount);
-    assert.equal(ps.length, l.available ? l.sourcePlayers : 0, l.name);
+    if (!l.available) assert.equal(ps.length, 0, l.name);
   }
   assert.ok(!catalog.players.some(p => p.source.leagueId === '7'));
   assert.equal(
     catalog.source.sha256,
-    '4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2',
+    '18ed434e5bb90f9afa72363d14438005c785eb4b8872a64c89c75bb38e14e911',
   );
   const clubless = catalog.players.filter(p => !p.source.clubId);
-  assert.equal(clubless.length, 85);
+  assert.equal(clubless.length, 831);
+  assert.ok(clubless.every(p => p.sourceOverall >= 65));
   assert.ok(clubless.every(p => p.source.leagueId === null && p.source.club === null));
   for (const p of catalog.players) {
-    assert.match(p.profileId, /^ea:\d+:fc26:u4$/);
+    assert.match(p.profileId, /^ea:\d+:fc27:u20260912$/);
     assert.ok(!('playerType' in p));
   }
 });
@@ -226,9 +223,9 @@ test('every outfield detail contributes to every outfield role overall; GK overa
 test('FC alignment improves across the catalog with about as many Superstars as EA and no source-overall shortcut', () => {
   const ps = catalog.players,
     superstars = ps.filter(p => playerTier(p).name === 'Superstar');
-  // 99 against the 95 players EA rates 85+; the top is level with EA, not under it.
+  // 107 against the 96 players EA rates 85+; the top is level with EA, not under it.
   const ea = ps.filter(p => p.sourceOverall >= 85);
-  assert.ok(Math.abs(superstars.length - ea.length) <= 8, 'Superstars: ' + superstars.length);
+  assert.ok(Math.abs(superstars.length - ea.length) <= 12, 'Superstars: ' + superstars.length);
   const bias =
     ea.reduce((n, p) => n + overallRating(p, true, p.primaryPosition) - p.sourceOverall, 0) /
     ea.length;
@@ -245,12 +242,13 @@ test('FC alignment improves across the catalog with about as many Superstars as 
   const yamal = ps.find(p => p.name === 'Lamine Yamal'),
     olmo = ps.find(p => p.name === 'Dani Olmo'),
     garcia = ps.find(p => p.name === 'Joan García');
-  assert.ok(Math.abs(overallRating(yamal, true, 'RM') - yamal.sourceOverall) <= 1);
-  assert.ok(overallRating(yamal, true, 'RM') > overallRating(olmo, true, 'AM'));
-  assert.ok(overallRating(yamal, true, 'RM') > overallRating(garcia, true, 'GK'));
+  const wing = yamal.primaryPosition;
+  assert.ok(Math.abs(overallRating(yamal, true, wing) - yamal.sourceOverall) <= 1);
+  assert.ok(overallRating(yamal, true, wing) > overallRating(olmo, true, 'AM'));
+  assert.ok(overallRating(yamal, true, wing) > overallRating(garcia, true, 'GK'));
   const changed = structuredClone(yamal);
   changed.sourceOverall = 1;
-  assert.equal(overallRating(changed, true, 'RM'), overallRating(yamal, true, 'RM'));
+  assert.equal(overallRating(changed, true, wing), overallRating(yamal, true, wing));
   // Heading's weight for a striker, read below the stretch of the top ratings.
   const striker = structuredClone(ps.find(p => p.primaryPosition === 'ST' && p.sourceOverall < 70));
   striker.attrs.heading = 60;

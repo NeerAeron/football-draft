@@ -153,7 +153,7 @@ test('prime versions: a catalog player at his best past version, shown +2 or 88+
   }
   const messi = catalog.players.find(p => p.name === 'L. Messi'),
     prime = primeVersion(catalog, messi);
-  assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [86, 94, 20]);
+  assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [89, 94, 20]);
   assert.equal(prime.captain, true); // the armband goes with him
   assert.equal(editionLabel(prime), '’19'); // FIFA 20's release ratings: 2019
   assert.equal(editionYear(prime), 2019);
@@ -179,8 +179,8 @@ test(
     const { compileSource, compileLegendsFile } = await import('../scripts/data/build.mjs');
     const { toRuntimeCatalog } = await import('../scripts/data/runtime-catalog.mjs');
     const { codes } = JSON.parse(readFileSync(PATHS.nationCodes, 'utf8'));
-    const { compiled, rows } = await compileSource(),
-      built = await compileLegendsFile(compiled, toRuntimeCatalog(compiled, codes), rows);
+    const { compiled } = await compileSource(),
+      built = await compileLegendsFile(compiled, toRuntimeCatalog(compiled, codes));
     assert.equal(built.text, text);
   },
 );

@@ -91,13 +91,12 @@ function runtimePlayer(p, extra) {
 /**
  * @param legacyRows parsed rows of the legacy CSV (every edition of every player)
  * @param catalog the compiled current catalog (compileLeagueCatalog output)
- * @param currentRows parsed rows of the current CSV (nationality ids → today's nation names)
  * @param hash SHA-256 of the legacy CSV
  * @returns {{ legends, primes, stats }} runtime players, each with `edition` and `year`; a
  *   catalog player's legend carries `legendOf`, a prime `primeOf` (the current player's
  *   profileId) and no name, club or nation (those are the current player's)
  */
-export function compileLegends(legacyRows, catalog, currentRows, hash = null) {
+export function compileLegends(legacyRows, catalog, hash = null) {
   const versions = new Map(), // player id → [{ row, index }] in source order
     composure = new Map(); // player id → [[edition, composure]] of the editions that have one
   legacyRows.forEach((row, index) => {
@@ -109,10 +108,22 @@ export function compileLegends(legacyRows, catalog, currentRows, hash = null) {
       composure.get(id).push([int(row, 'fifa_version'), row.mentality_composure]);
     }
   });
-  // Nation names as today's catalog spells them (Türkiye, Czechia…), by sofifa nationality id.
-  const nationNames = new Map(currentRows.map(r => [r.nationality_id, r.nationality_name]));
   const teams = new Map(catalog.teams.map(t => [String(t.id), t])),
     current = new Map(catalog.players.map(p => [String(p.sourcePlayerId), p]));
+  // Nation names as today's catalog spells them (Türkiye, Czechia…): the nation most catalog
+  // players of a past nationality id have today (the current source carries no ids).
+  const nationVotes = new Map();
+  for (const [id, list] of versions) {
+    const now = current.get(id);
+    if (!now) continue;
+    const key = list.at(-1).row.nationality_id;
+    if (!nationVotes.has(key)) nationVotes.set(key, new Map());
+    const votes = nationVotes.get(key);
+    votes.set(now.source.nationality, (votes.get(now.source.nationality) || 0) + 1);
+  }
+  const nationNames = new Map(
+    [...nationVotes].map(([key, votes]) => [key, [...votes].sort((a, b) => b[1] - a[1])[0][0]]),
+  );
   // A legend needs a nation of the catalog (its flag ships, its players can be his mates).
   const nations = new Set(catalog.players.map(p => p.source.nationality));
   const stats = {

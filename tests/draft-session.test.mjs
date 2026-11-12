@@ -163,8 +163,8 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
       .map(n => n.name)
       .sort(),
   );
-  assert.ok(stars.length >= 3 && stars.some(n => n.name === 'Algeria'));
-  for (const name of ['Wales', 'Guinea', 'Algeria'])
+  assert.ok(stars.length >= 3 && stars.some(n => n.name === 'Egypt'));
+  for (const name of ['Egypt', 'Costa Rica', 'New Zealand'])
     assert.ok(
       index.spinField.some(n => n.name === name && n.pot === 5),
       name,
@@ -530,7 +530,7 @@ test('auto placement prefers a natural slot over a higher out-of-position rating
     options = s.placementOptions(fake.profileId).filter(o => o.allowed),
     st = options.find(o => o.role === 'ST');
   // A natural slot: his own position or a neighbouring one (CB, or a full-back).
-  assert.ok(['CB', 'LB', 'RB'].includes(auto.role), auto.role);
+  assert.ok(['CB', 'LB', 'RB', 'DM'].includes(auto.role), auto.role);
   assert.ok(auto.natural && auto.familiarity >= NATURAL_FIT);
   assert.ok(st.rating > auto.rating && st.familiarity < NATURAL_FIT, JSON.stringify(st));
   // The pool shows his best rating anywhere (out of position); Auto still goes natural.

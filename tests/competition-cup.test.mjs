@@ -148,7 +148,8 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
       .filter(c => c.kind === 'nation')
       .map(c => c.effective),
   );
-  assert.ok(Math.min(...targets) > floor - 1.5, 'the weakest target is near the weakest nation');
+  // (Pro's first group target sits under that floor: the match is against the weakest nation.)
+  assert.ok(Math.min(...targets) > floor - 3, 'the weakest target is near the weakest nation');
   run.opponents.forEach((o, i) => {
     if (i >= 3) assert.equal(o.target, targets[i]);
     assert.ok(Math.abs(o.nominal - Math.max(o.target, floor)) <= 1.5, o.name);

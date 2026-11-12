@@ -22,15 +22,15 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
 
 /**
  * Typical drafted XI per mode: solo, positional policy (best slot rating), smart re-roll below
- * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 300 drafts per cell (240 for Club & Country),
- * v3 catalog (15,378 players). `effective[r]` = OVR + chem (the mates boosts) with r
- * re-rolls (0, 1, 2).
+ * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 200 drafts per cell, the FC 27 catalog
+ * (15,788 players, picks from 65). `ovr`/`sd`/`chem` with one re-roll; `effective[r]` = OVR +
+ * chem (the mates boosts) with r re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {
-  nations: { ovr: 83.72, sd: 1.16, chem: 0.88, effective: [84.07, 84.6, 84.95] },
-  leagues: { ovr: 82.33, sd: 1.93, chem: 1.45, effective: [82.97, 83.78, 84.44] },
-  clubs: { ovr: 78.49, sd: 1.93, chem: 0.7, effective: [78.64, 79.18, 79.59] },
-  clubAndCountry: { ovr: 82.3, sd: 1.46, chem: 0.41, effective: [82.17, 82.71, 83.24] },
+  nations: { ovr: 83.15, sd: 1.14, chem: 0.89, effective: [83.58, 84.04, 84.18] },
+  leagues: { ovr: 82.72, sd: 1.87, chem: 1.21, effective: [83.08, 83.93, 84.57] },
+  clubs: { ovr: 78.82, sd: 1.77, chem: 0.57, effective: [78.92, 79.4, 79.76] },
+  clubAndCountry: { ovr: 83.02, sd: 1.52, chem: 0.91, effective: [83.38, 83.93, 84.38] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
 const KINDS_BY_MODE = {
