@@ -29,6 +29,8 @@ import {
 } from './match-store.js';
 import { nationKit, nationTrigram } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
+import { createStore } from './create-store.js';
+import { randomSeed } from './random.js';
 
 export const PREMATCH_KEY = 'football-draft-prematch';
 export const VIEW_KEY = 'football-draft-match-view';
@@ -60,26 +62,6 @@ const DEFAULT_KITS = [
   ['#d9f580', '#16213a'],
   ['#baaff0', '#16213a'],
 ];
-
-// ---------- observable ----------
-
-function observable(initial) {
-  let state = initial;
-  const listeners = new Set();
-  return {
-    get: () => state,
-    set(next) {
-      const value = typeof next === 'function' ? next(state) : next;
-      if (Object.is(value, state)) return;
-      state = value;
-      for (const listener of [...listeners]) listener(state);
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
 
 // ---------- normalising ----------
 
@@ -154,13 +136,6 @@ export function normalizePrematch(input = {}) {
   };
 }
 
-function randomSeed() {
-  const buf = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0;
-  return buf[0] >>> 0;
-}
-
 function load() {
   const saved = readJSON(PREMATCH_KEY, null);
   if (!saved || saved.format !== FORMAT) return null;
@@ -172,7 +147,7 @@ function load() {
 }
 
 /** The pending pre-match (or null), persisted under 'football-draft-prematch'. */
-export const prematchStore = observable(load());
+export const prematchStore = createStore(load(), { merge: false });
 prematchStore.subscribe(state => {
   if (state) writeJSON(PREMATCH_KEY, state);
   else removeKey(PREMATCH_KEY);

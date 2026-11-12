@@ -155,7 +155,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   (`createSimClient`: Instant results and Key Moments halves in a module Worker, main-thread
   fallback) + `sim-worker.js` (the worker; `runSimJob`, `hydrateMatch`), `sound.js` (Web Audio
   cues, `MatchSoundEvents`, `selectionSound`), `playback.js` (`PlaybackClock`).
-- **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`), `router.js`
+- **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`; `create-store.js` is the store without the hook, used by the framework-free hand-off stores), `random.js` (`randomSeed`/`randomId`: the UI's only randomness), `router.js`
   (hash router), `prefs.js`, `audio.js`, `motion.js`, `draft-store.js` (draft hand-off),
   `prematch-store.js` (pre-match edits → kick-off), `match-store.js` (match requests/results),
   `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: medals per difficulty, the Budget cabinet, the

@@ -13,11 +13,9 @@ import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
 import { roundShort } from '../../lib/run-store.js';
 import { simulateRemaining, fastSimEnabled } from './auto-sim.js';
-import { scoreText } from './run-parts.js';
+import { scoreText, elsewhereOf } from './run-parts.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const elsewhereOf = (snapshot, md) =>
-  snapshot.group.fixtures.find(f => f.md === md && f.home !== 'user' && f.away !== 'user');
 const shortName = name => String(name || '').replace(/^(?:\p{L}\.\s*)+/u, '');
 /** "Kane 23', Saka 67'" for one side of a result. */
 export const scorersOf = (result, side = 0) =>

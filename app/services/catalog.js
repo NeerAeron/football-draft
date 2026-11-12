@@ -6,7 +6,7 @@ import { reconcileCatalog } from '../core/players/catalog-derived.js';
 
 export const CATALOG_URL = './data/catalog.v3.json';
 const SLICE_MS = 8;
-const nextTask = () =>
+export const nextTask = () =>
   globalThis.scheduler?.yield
     ? globalThis.scheduler.yield()
     : new Promise(resolve => setTimeout(resolve, 0));

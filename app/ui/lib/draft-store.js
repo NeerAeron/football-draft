@@ -1,6 +1,6 @@
 // Draft hand-off store: the one draft session of the new UI (setup → #/draft → what comes
-// next). Framework-free (no Preact, no router import) so Node tests can drive it; the tiny
-// observable has the same get/set/subscribe shape as lib/store.js, so useStore() works on it.
+// next). Framework-free (no Preact, no router import) so Node tests can drive it; its state
+// is a lib/create-store.js store, so useStore() works on it.
 // Full documentation: docs/ui-draft.md.
 //
 //   import { startDraft, completedDraft, clearDraft } from '../../lib/draft-store.js';
@@ -36,6 +36,8 @@ import { sideColors, teamCode, nationTrigram } from './kits.js';
 import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 import { lockDailyDraft } from './run-store.js';
+import { createStore } from './create-store.js';
+import { randomSeed } from './random.js';
 
 export { DRAFT_KEY, readSavedDraft };
 export const DRAFT_KINDS = ['run', 'quick', 'versus', 'daily'];
@@ -60,14 +62,6 @@ export const KIT_COLORS = [
   { id: 'white', name: 'White', colors: ['#f3f6fd', '#16213a'] },
 ];
 const kitColors = id => (KIT_COLORS.find(k => k.id === id) || KIT_COLORS[0]).colors;
-
-/** A presentation-side seed (crypto). Never used inside core — the session mixes it itself. */
-export function randomSeed() {
-  const buf = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0;
-  return buf[0] >>> 0;
-}
 
 /** '123' → 123, 'abc' → FNV-1a of 'abc' (seedNumber), numbers as uint32; null when empty. */
 export function parseSeed(value) {
@@ -155,30 +149,7 @@ export function sessionOptions(ctx) {
 /** The draft rules a context plays with (DEFAULT_CONFIG for daily/challenge links). */
 export const contextRules = ctx => (ctx?.useDefaultRules ? DEFAULT_CONFIG.draft : CONFIG.draft);
 
-// ---------- observable state ----------
-
-function observable(initial) {
-  let state = initial;
-  const listeners = new Set();
-  return {
-    get: () => state,
-    set(next) {
-      const value =
-        typeof next === 'function'
-          ? next(state)
-          : next && typeof next === 'object' && state && typeof state === 'object'
-            ? { ...state, ...next }
-            : next;
-      if (Object.is(value, state)) return;
-      state = value;
-      for (const listener of [...listeners]) listener(state);
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
+// ---------- state ----------
 
 const IDLE = {
   status: 'idle', // 'idle' | 'loading' | 'ready' | 'empty' | 'error'
@@ -194,7 +165,7 @@ const IDLE = {
  * Draft state for the screens: { status, context, snap, animate, lastPick, error, version }.
  * `useStore(draftStore, s => s.snap)` re-renders after every action.
  */
-export const draftStore = observable({ ...IDLE });
+export const draftStore = createStore({ ...IDLE });
 
 let session = null;
 let context = null;

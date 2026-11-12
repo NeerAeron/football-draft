@@ -57,6 +57,7 @@ import {
   opponentTeam,
   teamOf,
   wonResult,
+  elsewhereOf,
 } from './run-parts.js';
 import { RunEnd } from './run-end.js';
 import { xiViews, nationList, modeLabel, levelLabel } from './team-view.js';
@@ -87,9 +88,6 @@ function matchInProgress(pending) {
 }
 const positions = snapshot =>
   Object.fromEntries(snapshot.group.table.map(r => [r.key, r.position]));
-/** The other group fixture of a matchday (AI v AI). */
-const elsewhereOf = (snapshot, md) =>
-  snapshot.group.fixtures.find(f => f.md === md && f.home !== 'user' && f.away !== 'user');
 const scorerLine = (entry, side = 0) =>
   (entry?.goals || [])
     .filter(g => g.team === side)

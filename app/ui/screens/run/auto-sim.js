@@ -31,6 +31,9 @@ export function minuteLabel(time, half) {
     : `${Math.min(end / 60, Math.floor(time / 60) + 1)}'`;
 }
 
+// A MessageChannel task, not services/catalog.js nextTask: where scheduler.yield() is missing
+// that one falls back to setTimeout, whose 4 ms clamp between slices would slow every sim, and
+// importing it would pull the catalog loader into the auto-sim worker.
 const yieldToUi = () =>
   new Promise(resolve => {
     if (typeof MessageChannel === 'function') {

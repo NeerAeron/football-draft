@@ -29,6 +29,7 @@ import {
   readSavedRun,
 } from './saved.js';
 import { recordRun } from './records.js';
+import { randomId } from './random.js';
 import { teamCode, buildMatchConfig } from './match-store.js';
 import { engineCompetition } from './prematch-store.js';
 import { sideColors, nationTrigram } from './kits.js';
@@ -158,12 +159,6 @@ export const userTeamName = name => (!name || name === 'You' ? 'Your XI' : name)
 export const fixtureId = (meta, round) => `run:${meta?.id || 'run'}:${round}`;
 
 // ---- run creation & persistence --------------------------------------------------------------
-const randomId = () => {
-  const buf = new Uint32Array(2);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0;
-  return buf[0].toString(36) + buf[1].toString(36).slice(0, 3);
-};
 
 /**
  * Start a World Cup Run from a completed draft ({ session, context } from draft-store).

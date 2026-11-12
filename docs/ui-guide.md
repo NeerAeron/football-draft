@@ -26,6 +26,8 @@ ui/
   lib/                    framework-free helpers (no JSX, no DOM except motion/audio/router)
     html.js               html`` (htm bound to Preact), cx(), nextId()
     store.js              createStore, useStore, shallowEqual
+    create-store.js       the store without the hook (framework-free modules and Node tests import it here)
+    random.js             randomSeed, randomId — UI-side randomness only, never in core
     router.js             hash router: startRouter, useRoute, href, navigate, back, leave, rewrite
     screen-loader.js      lazy screen modules: loadScreen, preloadRoutes
     prefs.js              UI preferences (motion, hideRatings, onboarded, draftType)
