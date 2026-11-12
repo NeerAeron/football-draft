@@ -204,6 +204,111 @@ never field it (`baseProfileId`). `snapshot()`: `primes: { perSide, left }`, `te
 `slots[i].prime` (the option, or null), and `primeVersion: { profileId, ovr, edition, year,
 position }` on pool entries and slot players who have one (a legend version has none).
 
+## Eras (`app/core/players/eras.js`) — the data of the two-spinner draft
+
+A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
+best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
+`core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
+never on Home), attached to the catalog like the legends. Everything below is synchronous and
+pure once attached.
+
+```js
+import {
+  ERAS, eraById, eraOfYear, attachEras,
+  eraList, eraNations, eraPool, eraPlayer, eraOf,
+  personId, personVersions, bestVersion,
+} from '../players/eras.js';
+import { baseProfileId } from '../players/legends.js';
+```
+
+**Eras** are World Cup cycles, named by their tournament; `year` is the year of a card's
+ratings (a title's launch ratings: the year before its number).
+
+| `id` | `label` | `from`–`to` | titles |
+| --- | --- | --- | --- |
+| 1998 | France 98 | 1997–1998 | FIFA 98, 99 |
+| 2002 | Korea/Japan 02 | 1999–2002 | FIFA 2000–2003 |
+| 2006 | Germany 06 | 2003–2006 | FIFA 2004–07 |
+| 2010 | South Africa 10 | 2007–2010 | FIFA 08–11 |
+| 2014 | Brazil 14 | 2011–2014 | FIFA 12–15 |
+| 2018 | Russia 18 | 2015–2018 | FIFA 16–19 |
+| 2022 | Qatar 22 | 2019–2022 | FIFA 20–23 |
+| 2026 | 2026 | 2023–2026 | FC 24, 25, 26 and today's catalog (FC 27) |
+
+- `ERAS` — the table above, oldest first: `[{ id, label, from, to }]` (static: no data needed).
+  `eraById(id)`, `eraOfYear(year)` → the era object or `null`.
+- `attachEras(catalog, data)` → the catalog, with `catalog.eras` set (idempotent). `data` is
+  `decodeEras(file)`. A file built for another catalog build still attaches: cards of people
+  the catalog does not know are simply nobody's other version.
+- `eraList(catalog)` → `[{ id, label, from, to, nations: [{ name, code, flag, strength, size,
+  keepers }] }]`, oldest era first, an era's nations strongest first. **Only spinnable nations
+  are listed** (20–70 per era, see below). `name` is the catalog's nation name (`code`/`flag`
+  as in `catalog.nations`; a nation today's catalog does not have — none at the moment — would
+  have `code: null`). `strength` = the mean shown rating of the pool's best XI (best keeper +
+  the ten best outfielders, one decimal): the number to weigh or order a reel by. `size` =
+  players in the pool (≤ 26), `keepers` = how many are goalkeepers.
+- `eraNations(catalog, eraId)` → that era's `nations` array (`[]` for an unknown era).
+- `eraPool(catalog, eraId, nation)` → the pool: an array of ≤ 26 players, best first (shown
+  rating, then the later year, then the id), **the same array every call** (do not mutate);
+  `[]` when the nation is not spinnable in that era. No minimum rating. Balance where the data
+  has the players: 3 keepers, at least 7 defenders, 7 midfielders and 4 forwards (lines as
+  `LINE_OF` in `draft/pools.js`), the rest by rating.
+- `eraPlayer(catalog, profileId)` → an era card by id (also the cards kept only as someone's
+  best version), or `null`.
+- `eraOf(player)` → the era id a player was drafted from: `player.era`, 2026 for a catalog
+  player.
+
+**An era card** is shaped like a catalog player (so `overallRating`, `playerTier`, Links,
+`buildSide`, the engine and the UI take it as it is):
+
+```js
+{
+  profileId: 'ea:1397:fc3:era',   // 'ea:<EA id>:fc<edition>:era'; unique; edition 98, 99, 0–26
+  era: 2002, year: 2002, edition: 3,
+  name, fullName, primaryPosition, secondaryPositions, attrs, foot, weakFoot, tendencies, tags,
+  sourceOverall,                  // the overall of that version on the common scale
+  captain: false,
+  person: 'ea:1397',              // one person, whatever the card (see below)
+  eraOf: 'ea:…:fc27:u…' | undefined, // the catalog player's profileId when he is in the catalog
+  source: { club, clubId, leagueId, nationality }, // the club of that version when the catalog
+                                  // has it (EA team id) — else null; nationality = catalog name
+  inference: { badges },
+}
+```
+
+**The 2026 era** is today's catalog plus the FC 24–26 versions of the same people: a player's
+2026 card is his best of the four titles (ties: the latest). When that is today's card, the
+pool holds **the catalog player object itself** (`catalog.byId` identity: no `era`, no `year`);
+otherwise an era card with `eraOf` = his catalog profileId. People who left the game after FC
+24–26 have era cards only.
+
+**One person is one person.** `personId(player)` → a stable key (`'ea:<EA id>'`) for any
+player object — catalog player, era card, legend, prime version: the same man has the same key
+in every era and in the catalog (two EA ids of one man are merged by the compiler). An XI
+holds a person once: compare `personId`. `baseProfileId(player)` (from `legends.js`) still
+gives the catalog player's profileId for a prime, a legend version **and an era card of a
+catalog player** (`eraOf`), so existing "is he already picked / excluded" code keeps working
+for people in the catalog; for people outside it use `personId`.
+`personVersions(catalog, player)` → his cards in era order (`[]` if he has none; for a catalog
+player the list ends with the catalog object when it is his 2026 card).
+
+**Prime** = a drafted player's best version across all titles, any gain:
+`bestVersion(catalog, player)` → the era card of the same person that shows the most (ties:
+the latest year), or `null` when no card of his shows more than `player` does. It works for
+every drafted player — "Brazil 2002 Ronaldinho" → Ronaldinho ’05; a catalog player → his best
+past card. The card may come from an era in which he is not in his nation's 26 (it is kept in
+the file for this). Swap it in place of the drafted player: same person, its own positions,
+attributes, badges, club and year (`editionLabel(card)` → "’05").
+
+**Which nations can be spun in an era** (decided by the compiler, recorded in the file's
+`selection`): a nation whose pool has at least 18 players with a goalkeeper, at least 5
+defenders, 5 midfielders and 2 forwards; if more than 70 qualify, the 70 strongest; an era
+needs at least 20. Counts per era are in `docs/draft-api.md`'s table below once measured and
+in `data/build/eras.json` (provenance, gitignored).
+
+`catalog.legends` (Legend spin) and its primes keep working unchanged until the draft stops
+using them; the era file does not depend on the legends file.
+
 ## Flow
 
 ```js
