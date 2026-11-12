@@ -624,16 +624,13 @@ export const flows = [
         await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
         await visible(page, '[data-testid="confirm-pick"]');
       });
-      await step('expand his six stats', async () => {
-        const panel = page.locator('[data-testid="player-attributes"]:visible').first();
-        await panel.locator('summary').click();
-        const bars = await panel.locator('.statbar').count();
-        if (bars !== 6) throw new Error(`${bars} stats shown, expected the card's six`);
+      await step('his card shows the six stats', async () => {
+        const card = page.locator('[data-testid="pick-card"]:visible').first();
+        const stats = await card.locator('.pcard__stat').count();
+        if (stats !== 6) throw new Error(`${stats} stats on the card, expected six`);
+        if (await page.locator('[data-testid="player-attributes"]').count())
+          throw new Error('the Stats dropdown is back');
       });
-      await shot('attributes');
-      await step('close the attributes', () =>
-        page.locator('[data-testid="player-attributes"]:visible summary').first().click(),
-      );
       await shot('selected');
       await step('pick 1 (other slot, then Auto)', async () => {
         await page.click(
@@ -670,7 +667,7 @@ export const flows = [
         if (await toggle.isChecked()) throw new Error('Budget mode is on by default');
         await toggle.check();
         const text = await page.textContent('[data-screen="setup"]');
-        if (!/1 player rated 88\+, 2 at 84–87 and 3 at 80–83/.test(text))
+        if (!/1 Superstar \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)/.test(text))
           throw new Error('the Budget switch does not say its caps');
       });
       await page.evaluate(() => document.fonts.ready);
@@ -691,7 +688,7 @@ export const flows = [
         const on = await page.locator('.draft-budget__pips i.is-on').count();
         if (on !== 0) throw new Error(`${on} budget slots used before the first pick`);
         const tags = await page.locator('[data-testid="pool"] .prow__cost').count();
-        if (!tags) throw new Error('pool rows do not show their band');
+        if (!tags) throw new Error('pool rows do not show their tier');
       });
       await page.evaluate(() => document.fonts.ready);
       await shot('first-spin');
@@ -714,7 +711,8 @@ export const flows = [
           await visible(page, '[data-testid="pool"] button.prow:not([disabled])');
           // Closed rows sit under the players he can still pick: show the whole pool.
           const more = page.locator('[data-testid="pool"] .pool__more button');
-          if (!closed && (await more.count())) await more.click();
+          // (The list also loads its next page by itself near the end: the button may be gone.)
+          if (!closed && (await more.count())) await more.click({ timeout: 2000 }).catch(() => {});
           const full = page.locator('[data-testid="pool"] .prow.is-disabled:has-text("full")');
           if (!closed && (await full.count())) {
             closed = true;
@@ -880,6 +878,16 @@ export const flows = [
               .join('|') !== prev,
           before,
         );
+      });
+      await step('the formation picker shows the team OVR of every formation', async () => {
+        const options = await page.$$eval('[data-testid="formation-select"] option', els =>
+          els.map(e => e.textContent.trim()),
+        );
+        const bad = options.filter(text => !/ · \d\d\.\d( ★)?$/.test(text));
+        if (options.length < 20 || bad.length)
+          throw new Error(`formation options without a team OVR: ${bad.join(' | ')}`);
+        if (!options.some(text => text.endsWith('★')))
+          throw new Error('no formation is marked as the best');
       });
       await step('change a tactic', async () => {
         await page.click('.tactics__mentality label:has-text("Push")');

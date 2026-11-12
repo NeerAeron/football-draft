@@ -257,3 +257,47 @@ test('reslot keeps eleven players, the keeper in goal and maximises slot ratings
   assert.ok(strength.rating > 60 && strength.rating < 99);
   assert.ok(strength.effective >= strength.rating);
 });
+
+test('a formation change fields the best lineup; the picker knows each formation’s team OVR', async () => {
+  const { createDraftSession } = await import('../app/core/draft/session.js');
+  const { FORMATIONS } = await import('../app/core/players/formations.js');
+  const { roleRating, isKeeper } = await import('../app/core/draft/pools.js');
+  const rand = (await import('../app/core/util/rng.js')).lcg(7);
+  for (const seed of [5, 21]) {
+    const s = createDraftSession(catalog, { mode: 'nations', seed });
+    while (!s.complete) {
+      s.spin();
+      const move = s.suggestPick();
+      s.pick(move.profileId, move.slot);
+    }
+    const xi = s.matchSide(0).players;
+    const ratings = prematch.formationRatings(xi);
+    assert.deepEqual(Object.keys(ratings), Object.keys(FORMATIONS));
+    for (const formation of Object.keys(FORMATIONS)) {
+      const best = prematch.reslot(xi, formation),
+        rows = FORMATIONS[formation],
+        gk = rows.findIndex(r => r[2] === 'GK'),
+        outfield = rows.map((r, i) => i).filter(i => i !== gk),
+        total = list => list.reduce((sum, p, i) => sum + roleRating(p, rows[i][2]), 0);
+      // What the picker shows is the team OVR the change then gives.
+      assert.equal(ratings[formation], prematch.lineupStrength(best, formation).rating);
+      assert.ok(isKeeper(best[gk]));
+      assert.deepEqual(
+        best.map(p => [p.slot, p.role]),
+        rows.map((r, i) => [i, r[2]]),
+      );
+      // No other lineup beats it: 300 random swaps (two or three players).
+      const top = total(best),
+        any = () => outfield[Math.floor(rand() * outfield.length)];
+      for (let n = 0; n < 300; n++) {
+        const other = [...best],
+          a = any(),
+          b = any(),
+          c = any();
+        [other[a], other[b]] = [other[b], other[a]];
+        if (n % 2) [other[a], other[c]] = [other[c], other[a]];
+        assert.ok(total(other) <= top + 1e-9, `${formation}: a better lineup exists`);
+      }
+    }
+  }
+});
