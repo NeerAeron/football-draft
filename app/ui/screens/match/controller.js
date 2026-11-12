@@ -207,8 +207,13 @@ export class MatchController {
   // ---------- setup ----------
 
   makeMatch(view) {
-    const m = new Match(this.request.seed, viewDuration(view, this.request));
-    m.importConfig(structuredClone(this.request.config));
+    const m = new Match(this.request.seed, viewDuration(view, this.request)),
+      config = structuredClone(this.request.config);
+    // An exhibition is two sides the player picked: nobody is "the player's side" there, so
+    // the favourite's edge (tuning.userEdge) stays off although the AI coaches side 1.
+    if (this.request.meta?.context === 'exhibition')
+      config.competition = { ...config.competition, edge: false };
+    m.importConfig(config);
     m.pauseAtHalf = true;
     return m;
   }

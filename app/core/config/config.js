@@ -218,6 +218,16 @@ export const DEFAULT_CONFIG = {
     crossWillingness: 1.5,
     keeperRange: 1,
   },
+  // The player's side as favourite. Against the AI (competition.mode 'ai'), when the player's
+  // XI (team 0) has the higher overall, its shots are saved a little less and the shots it
+  // faces a little more: `perPoint` of the save chance per point of overall it is ahead, at
+  // most `cap` (a 5-point favourite: about +3% on its conversion, -3% on the opponent's).
+  // Never for the weaker side, never in Versus or Exhibition. Read once, at kick-off
+  // (match.edge); the fast rating model (competition/model.js) does not include it.
+  userEdge: {
+    perPoint: 0.006,
+    cap: 0.05,
+  },
   // What a mentality changes, as differences from Balanced (which is all zeros). Push raises
   // the chance of a goal at both ends, Hold lowers it at both ends (docs/calibration.md).
   mentality: {
@@ -759,6 +769,8 @@ export function configField(path) {
   return CONFIG_FIELDS.find(f => f.path === path) || null;
 }
 const labels = {
+  perPoint: "Player's side as favourite: save-chance edge per point of overall",
+  cap: "Player's side as favourite: largest edge",
   topFrom: 'Overall: stretch ratings above',
   topLift: 'Overall: extra per point above that',
   controlQuality: 'Ball-control stat influence',
@@ -826,6 +838,8 @@ const labels = {
   deepUrge: 'Deep build-up urgency',
 };
 const ranges = {
+  perPoint: [0, 0.05, 0.001],
+  cap: [0, 0.25, 0.005],
   yellowSeverity: [0, 3, 0.01],
   redSeverity: [0, 3, 0.01],
   bookedFoulRisk: [0, 1, 0.01],

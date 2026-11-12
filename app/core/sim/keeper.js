@@ -92,8 +92,15 @@ export class KeeperMethods {
       covered = prob + (1 - prob) * 0.85 * clamp((0.5 - face) / 0.3, 0, 1);
     // A shot under the bar is the hardest to keep out: he has to get a hand up to it and
     // turn it over (it used to be "tipped over" into his own net as often as not).
+    // The player's side as favourite (match.edge, set at kick-off): its keeper a little
+    // surer, the keeper facing it a little less.
+    const edge = this.edge,
+      favour = edge ? 1 + edge[g.team] - edge[1 - g.team] : 1;
     const save = clamp(
-      covered * (record && !b.penaltyKick ? 1 - 0.7 * high : 1) * this.tuning.gameplay.saveAbility,
+      covered *
+        (record && !b.penaltyKick ? 1 - 0.7 * high : 1) *
+        this.tuning.gameplay.saveAbility *
+        favour,
       0.01,
       0.995,
     );

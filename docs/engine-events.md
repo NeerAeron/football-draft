@@ -26,8 +26,20 @@ import { matchClock } from './core/sim/periods.js';
 | `m.winner()` | `0` / `1` once decided (score, shootout, or the opponent of an abandoned side), `null` for a draw or while running. |
 
 `config.competition`: `{ mode: 'sandbox' | 'ai' | 'pvp', difficulty, knockout?: boolean,
-extraTime?: boolean }`. `mode: 'ai'` lets `coach.js` run team 1's tactics. `knockout: true`
-decides a level match by a penalty shootout (see below).
+extraTime?: boolean, edge?: false }`. `mode: 'ai'` lets `coach.js` run team 1's tactics.
+`knockout: true` decides a level match by a penalty shootout (see below).
+
+**The player's side as favourite** (`tuning.userEdge`, `m.edge`). In `mode: 'ai'` team 0 is
+the player's side. When its XI has the higher overall at kick-off (mean `overallRating` of the
+eleven in their roles, without chemistry), `m.edge[0]` = lead × `perPoint` (0.006), at most
+`cap` (0.05); otherwise `[0, 0]` — never for the weaker side, never for team 1, never in
+`'pvp'` or `'sandbox'`, and not when `competition.edge === false` (the match screen sets that
+for an Exhibition, where both sides are the player's pick). Its one effect is in `keeperSave`:
+every save chance is multiplied by `1 + edge[keeper's team] − edge[other team]`, so a 5-point
+favourite's keeper is 3% surer and the keeper facing it 3% less sure — about +3% / −3% on the
+two sides' conversion. `m.edge` is `null` until the first step, is worked out once there and
+then travels with the match (worker halves, half-time): no RNG, nothing re-read later. The fast
+rating model (`competition/model.js`) does not include it.
 
 ### Tactics (`team.tactics`)
 

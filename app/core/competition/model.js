@@ -15,7 +15,8 @@
 // coach's level moves the user's edge by at most ±1 rating point, with no trend.
 // `goals` was 1.84 in that fit; it is scaled by the 7% the engine's scoring came down with the
 // tight-angle fix and `saveAbility` 1.02 (288 club fixtures: 2.42 → 2.25 goals a match) — not
-// refitted, and the win/draw/loss table above is the old fit's.
+// refitted, and the win/draw/loss table above is the old fit's. The engine's small edge for
+// the player's side as favourite (tuning.userEdge) is not in this model.
 // Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
 // rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 

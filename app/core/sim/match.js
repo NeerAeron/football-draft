@@ -10,7 +10,7 @@ import { makeIdentity } from './player-model.js';
 import { STYLES, DEFAULT_TAGS } from '../players/traits.js';
 import { normalizeBadges } from '../players/badges.js';
 import { stoppageMinutes, PERIOD_START, PERIOD_SHARE } from './periods.js';
-import { normalizeAttributes } from '../players/ratings.js';
+import { normalizeAttributes, overallRating } from '../players/ratings.js';
 import {
   W,
   H,
@@ -389,6 +389,7 @@ export class Match {
     this.shootout = null;
     this.shootoutState = null;
     this.penaltyEnd = null;
+    this.edge = null; // [team 0, team 1]: set at kick-off (kickoffEdge)
     this.resetInsights();
   }
   addEvent(text, team, type = 'play', extra = {}) {
@@ -769,8 +770,27 @@ export class Match {
       endStepCache();
     }
   }
+  // The player's side as favourite (tuning.userEdge): against the AI, an XI with the higher
+  // overall gets a slightly better save balance at both ends, in proportion to its lead.
+  // Worked out once, from the line-ups at kick-off; later changes (tactics, a red card, tired
+  // legs) do not move it. `competition.edge: false` switches it off (Exhibition).
+  kickoffEdge() {
+    const rule = this.tuning.userEdge,
+      edge = [0, 0];
+    if (this.competition?.mode !== 'ai' || this.competition.edge === false || !rule) return edge;
+    const overall = [0, 0],
+      count = [0, 0];
+    for (const p of this.players) {
+      overall[p.team] += overallRating(p, false);
+      count[p.team]++;
+    }
+    const lead = overall[0] / (count[0] || 1) - overall[1] / (count[1] || 1);
+    if (lead > 0) edge[0] = Math.min(lead * rule.perPoint, rule.cap);
+    return edge;
+  }
   stepInner(dt) {
     if (this.finished) return;
+    if (this.edge === null) this.edge = this.kickoffEdge();
     if (this.mode === 'halftime') {
       if (!this.pauseAtHalf) this.resumeHalf();
       return;
