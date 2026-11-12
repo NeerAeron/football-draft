@@ -1,42 +1,95 @@
 import { Match, Player, clamp, MATCH_SECONDS } from './engine.js';
 import { freshStats } from './constants.js';
 export const RECORD_STEP = 3; // 20 stored frames/s; interpolate display, retain 60 Hz physics.
-export function snapshot(m) {
-  const positions = new Float32Array(22 * 9);
-  m.players.forEach((p, i) =>
-    positions.set(
-      [p.x, p.y, p.vx, p.vy, p.tx, p.ty, p.facing, p.energy, p.lastShotSpeed || 0],
-      i * 9,
-    ),
-  );
+// Shallow equality of two flat records (a stats row, a restart, an animation).
+function sameRecord(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  for (let i = 0; i < keys.length; i++) if (a[keys[i]] !== b[keys[i]]) return false;
+  return true;
+}
+const sameList = (a, b) => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+};
+/**
+ * One recorded frame. `previous` (the frame before it, optional) lets the parts that did not
+ * change — most players' states, a side's stats, the restart — be shared with it instead of
+ * copied: a Key Moments half is then a third of the size to hand from the worker to the page
+ * (structured clone writes a shared object once), and the Full-mode ring makes less garbage.
+ * Frames are never written to after they are made.
+ */
+export function snapshot(m, previous = null) {
+  const positions = new Float32Array(22 * 9),
+    players = m.players,
+    states = new Array(players.length),
+    before = previous?.states;
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i],
+      j = i * 9,
+      old = before?.[i];
+    positions[j] = p.x;
+    positions[j + 1] = p.y;
+    positions[j + 2] = p.vx;
+    positions[j + 3] = p.vy;
+    positions[j + 4] = p.tx;
+    positions[j + 5] = p.ty;
+    positions[j + 6] = p.facing;
+    positions[j + 7] = p.energy;
+    positions[j + 8] = p.lastShotSpeed || 0;
+    states[i] =
+      old &&
+      old.action === p.action &&
+      old.intent === p.intent &&
+      old.possessionAt === p.possessionAt &&
+      old.lastShotChance === p.lastShotChance &&
+      old.lastShotType === p.lastShotType &&
+      old.yellowCards === p.yellowCards &&
+      old.sentOff === p.sentOff &&
+      old.emergencyKeeper === p.emergencyKeeper &&
+      old.role === p.role &&
+      old.slot === p.slot &&
+      sameRecord(old.animation, p.animation)
+        ? old
+        : {
+            action: p.action,
+            intent: p.intent,
+            possessionAt: p.possessionAt,
+            animation: p.animation ? { ...p.animation } : null,
+            lastShotChance: p.lastShotChance,
+            lastShotType: p.lastShotType,
+            yellowCards: p.yellowCards,
+            sentOff: p.sentOff,
+            emergencyKeeper: p.emergencyKeeper,
+            role: p.role,
+            slot: p.slot,
+          };
+  }
   return {
     elapsed: m.elapsed,
     time: m.time,
     half: m.half,
     periodStart: m.periodStart,
-    addedMinutes: [...m.addedMinutes],
-    score: [...m.score],
-    stats: m.stats.map(s => ({ ...s })),
+    addedMinutes:
+      previous && sameList(previous.addedMinutes, m.addedMinutes)
+        ? previous.addedMinutes
+        : [...m.addedMinutes],
+    score: previous && sameList(previous.score, m.score) ? previous.score : [...m.score],
+    stats: m.stats.map((s, t) =>
+      previous && sameRecord(previous.stats[t], s) ? previous.stats[t] : { ...s },
+    ),
     positions,
-    states: m.players.map(p => ({
-      action: p.action,
-      intent: p.intent,
-      possessionAt: p.possessionAt,
-      animation: p.animation ? { ...p.animation } : null,
-      lastShotChance: p.lastShotChance,
-      lastShotType: p.lastShotType,
-      yellowCards: p.yellowCards,
-      sentOff: p.sentOff,
-      emergencyKeeper: p.emergencyKeeper,
-      role: p.role,
-      slot: p.slot,
-    })),
+    states,
     abandonedTeam: m.abandonedTeam,
     ball: { ...m.ball },
     effects: m.effects.map(e => ({ ...e })),
     mode: m.mode,
     phase: m.phase,
-    restart: { ...m.restart },
+    restart:
+      previous && sameRecord(previous.restart, m.restart) ? previous.restart : { ...m.restart },
     momentumSamples: m.momentum?.samples.length ?? 0,
     penaltyEnd: m.penaltyEnd ?? null,
     shootout: m.shootout
@@ -180,14 +233,15 @@ export async function simulateComplete(
         m.mode !== 'shootout' &&
         (ticks % RECORD_STEP === 0 || (before !== m.mode && m.mode === 'halftime'))
       )
-        frames.push(snapshot(m));
+        frames.push(snapshot(m, frames.at(-1)));
     }
     if (cancelled()) return null;
     onProgress(clamp(m.elapsed / m.expectedDuration(), 0, 1));
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   // A shootout is not recorded (nobody replays it): those frames end at the final whistle.
-  if (record && !m.shootout && frames.at(-1)?.elapsed !== m.elapsed) frames.push(snapshot(m));
+  if (record && !m.shootout && frames.at(-1)?.elapsed !== m.elapsed)
+    frames.push(snapshot(m, frames.at(-1)));
   return { result: m, frames, clips: record ? selectHighlights(m.events, m.elapsed, 60) : [] };
 }
 // A structured clone of a Match (plain data) → a working Match with the same state.
@@ -226,13 +280,14 @@ export async function simulateHalf(source, onProgress = () => {}, cancelled = ()
     for (let i = 0; i < 600 && !m.finished && m.mode !== 'halftime'; i++) {
       m.step(1 / 60);
       ticks++;
-      if (ticks % RECORD_STEP === 0 && m.mode !== 'shootout') frames.push(snapshot(m));
+      if (ticks % RECORD_STEP === 0 && m.mode !== 'shootout')
+        frames.push(snapshot(m, frames.at(-1)));
     }
     if (cancelled()) return null;
     onProgress(clamp((m.elapsed - start) / (m.periodDeadline() - start), 0, 1));
     await new Promise(resolve => setTimeout(resolve, 0));
   }
-  if (!m.shootout && frames.at(-1).elapsed !== m.elapsed) frames.push(snapshot(m));
+  if (!m.shootout && frames.at(-1).elapsed !== m.elapsed) frames.push(snapshot(m, frames.at(-1)));
   const events = m.events
     .filter(e => e.half === half)
     .map(e => ({ ...e, elapsed: e.elapsed - start }));
@@ -253,54 +308,81 @@ function frameIndex(frames, time) {
   }
   return lo;
 }
+// The frame each display match shows. A reel is played at 60 fps from 20 recorded frames a
+// second, so two calls in three find the same frame: its discrete state (score, stats, player
+// states, effects, the ball's fields, the trail) is then already on the display match and
+// only the interpolated parts are written again.
+const shown = new WeakMap();
 export function applyReplayFrame(target, recording, viewTime) {
   const clip =
     recording.clips.find(c => viewTime < c.offset + c.end - c.start) || recording.clips.at(-1);
-  const sourceTime = clamp(clip.start + viewTime - clip.offset, clip.start, clip.end),
-    index = frameIndex(recording.frames, sourceTime),
-    a = recording.frames[index],
-    b = recording.frames[Math.min(index + 1, recording.frames.length - 1)],
+  const frames = recording.frames,
+    sourceTime = clamp(clip.start + viewTime - clip.offset, clip.start, clip.end),
+    index = frameIndex(frames, sourceTime),
+    a = frames[index],
+    b = frames[Math.min(index + 1, frames.length - 1)],
     mix = clamp((sourceTime - a.elapsed) / (b.elapsed - a.elapsed || 0.05), 0, 1);
   const aTime = a.time ?? (a.elapsed / target.duration) * 5400,
     bTime = b.time ?? (b.elapsed / target.duration) * 5400;
+  let seen = shown.get(target);
+  if (!seen) shown.set(target, (seen = { frame: null, frames: null }));
+  const fresh = seen.frame !== a || seen.frames !== frames;
+  seen.frame = a;
+  seen.frames = frames;
   target.elapsed = sourceTime;
   target.time = aTime + (a.half === b.half ? (bTime - aTime) * mix : 0);
-  target.half = a.half;
-  target.periodStart = a.periodStart ?? 0;
-  if (a.addedMinutes) target.addedMinutes = [...a.addedMinutes];
-  target.score = [...a.score];
-  target.stats = a.stats.map(s => ({ ...s }));
-  target.ball = { ...a.ball };
-  target.effects = a.effects.map(e => ({ ...e }));
-  target.mode = a.mode;
-  target.abandonedTeam = a.abandonedTeam ?? null;
-  target.penaltyEnd = a.penaltyEnd ?? null;
-  target.shootout = a.shootout ?? null;
-  target.phase = a.phase;
-  target.restart = a.restart;
-  target.players.forEach((p, i) => {
-    const j = i * 9,
-      teleport =
-        Math.hypot(a.positions[j] - b.positions[j], a.positions[j + 1] - b.positions[j + 1]) > 4;
-    ['x', 'y', 'vx', 'vy', 'tx', 'ty', 'facing', 'energy', 'lastShotSpeed'].forEach((key, k) => {
-      const delta = b.positions[j + k] - a.positions[j + k];
-      p[key] =
-        a.positions[j + k] +
-        (k === 6 ? Math.atan2(Math.sin(delta), Math.cos(delta)) : delta) * (teleport ? 0 : mix);
-    });
-    Object.assign(p, a.states[i]);
-  });
-  target.rebuildActive();
-  if (a.ball.kind === b.ball.kind && Math.hypot(a.ball.x - b.ball.x, a.ball.y - b.ball.y) < 6) {
-    for (const key of ['x', 'y', 'z'])
-      target.ball[key] = a.ball[key] + (b.ball[key] - a.ball[key]) * mix;
+  if (fresh) {
+    target.half = a.half;
+    target.periodStart = a.periodStart ?? 0;
+    if (a.addedMinutes) target.addedMinutes = [...a.addedMinutes];
+    target.score = [...a.score];
+    target.stats = a.stats.map(s => ({ ...s }));
+    target.ball = { ...a.ball };
+    target.effects = a.effects.map(e => ({ ...e }));
+    target.mode = a.mode;
+    target.abandonedTeam = a.abandonedTeam ?? null;
+    target.penaltyEnd = a.penaltyEnd ?? null;
+    target.shootout = a.shootout ?? null;
+    target.phase = a.phase;
+    target.restart = a.restart;
+  }
+  const pa = a.positions,
+    pb = b.positions,
+    players = target.players;
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i],
+      j = i * 9,
+      jx = pa[j] - pb[j],
+      jy = pa[j + 1] - pb[j + 1],
+      // A player who moved more than 4 m between two frames was repositioned: no sliding
+      k = jx * jx + jy * jy > 16 ? 0 : mix,
+      turn = pb[j + 6] - pa[j + 6];
+    p.x = pa[j] + (pb[j] - pa[j]) * k;
+    p.y = pa[j + 1] + (pb[j + 1] - pa[j + 1]) * k;
+    p.vx = pa[j + 2] + (pb[j + 2] - pa[j + 2]) * k;
+    p.vy = pa[j + 3] + (pb[j + 3] - pa[j + 3]) * k;
+    p.tx = pa[j + 4] + (pb[j + 4] - pa[j + 4]) * k;
+    p.ty = pa[j + 5] + (pb[j + 5] - pa[j + 5]) * k;
+    p.facing = pa[j + 6] + Math.atan2(Math.sin(turn), Math.cos(turn)) * k;
+    p.energy = pa[j + 7] + (pb[j + 7] - pa[j + 7]) * k;
+    p.lastShotSpeed = pa[j + 8] + (pb[j + 8] - pa[j + 8]) * k;
+    if (fresh) Object.assign(p, a.states[i]);
+  }
+  if (fresh) target.rebuildActive();
+  const ball = target.ball,
+    ax = a.ball.x - b.ball.x,
+    ay = a.ball.y - b.ball.y;
+  if (a.ball.kind === b.ball.kind && ax * ax + ay * ay < 36) {
+    ball.x = a.ball.x + (b.ball.x - a.ball.x) * mix;
+    ball.y = a.ball.y + (b.ball.y - a.ball.y) * mix;
+    ball.z = a.ball.z + (b.ball.z - a.ball.z) * mix;
   } else if (a.ball.owner === null && b.score[0] + b.score[1] > a.score[0] + a.score[1]) {
     // A goal between these frames (the next one has the ball back on the centre spot): it
     // runs on into the net instead of stopping a metre short of the line.
     const dt = sourceTime - a.elapsed;
-    target.ball.x = clamp(a.ball.x + a.ball.vx * dt, -1.6, 106.6);
-    target.ball.y = a.ball.y + a.ball.vy * dt;
-    target.ball.z = Math.max(0, a.ball.z + a.ball.vz * dt);
+    ball.x = clamp(a.ball.x + a.ball.vx * dt, -1.6, 106.6);
+    ball.y = a.ball.y + a.ball.vy * dt;
+    ball.z = Math.max(0, a.ball.z + a.ball.vz * dt);
   }
   target.events = recording.result.events
     .filter(e => e.elapsed <= sourceTime)
@@ -317,10 +399,12 @@ export function applyReplayFrame(target, recording, viewTime) {
         current: momentum.samples[count - 1]?.values ?? [0, 0],
       };
   }
-  target.ballTrail = [];
-  for (let n = Math.max(0, index - 7); n <= index; n++) {
-    const ball = recording.frames[n].ball;
-    target.ballTrail.push({ x: ball.x, y: ball.y, z: ball.z, kind: ball.kind, age: ball.age });
+  if (fresh) {
+    target.ballTrail = [];
+    for (let n = Math.max(0, index - 7); n <= index; n++) {
+      const at = frames[n].ball;
+      target.ballTrail.push({ x: at.x, y: at.y, z: at.z, kind: at.kind, age: at.age });
+    }
   }
   return recording.clips.indexOf(clip) + 1;
 }

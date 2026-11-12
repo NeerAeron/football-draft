@@ -829,16 +829,15 @@ export class MatchController {
   }
 
   /** New events of the primary presentation → commentary, moments, score, goal overlay. */
-  processEvents(m, { live = true } = {}) {
-    const fresh = [];
-    for (const e of m.events) {
-      if (e.id <= this.lastEventId) break;
-      fresh.push(e);
-    }
-    if (fresh.length) this.lastEventId = fresh[0].id;
+  processEvents(m, live = true) {
+    // Runs every frame (every step in Full): no arrays or option objects here
+    const events = m.events;
+    let fresh = 0;
+    while (fresh < events.length && events[fresh].id > this.lastEventId) fresh++;
+    if (fresh) this.lastEventId = events[0].id;
     let goal = null;
-    for (let i = fresh.length - 1; i >= 0; i--) {
-      const e = fresh[i];
+    for (let i = fresh - 1; i >= 0; i--) {
+      const e = events[i];
       if (e.type === 'shot' && (e.outcome === 'in flight' || e.outcome == null)) {
         this.pendingShots.set(e.id, e.elapsed);
         if (live && m.elapsed - e.elapsed < 0.2) this.impact('shot', m.ball.strength ?? 0.4);
@@ -848,7 +847,8 @@ export class MatchController {
       if (g) goal = g;
     }
     if (this.pendingShots.size) {
-      for (const e of m.events.slice(0, 40)) {
+      for (let i = 0; i < events.length && i < 40; i++) {
+        const e = events[i];
         if (!this.pendingShots.has(e.id) || e.outcome === 'in flight') continue;
         this.pendingShots.delete(e.id);
         this.handleEvent(e, m, live);
@@ -1023,7 +1023,7 @@ export class MatchController {
 
   /** Process everything up to now without ticker/overlays (cuts, half-time, instant). */
   catchUp(m) {
-    this.processEvents(m, { live: false });
+    this.processEvents(m, false);
     for (const id of this.pendingShots.keys()) {
       const e = m.events.find(x => x.id === id);
       if (e) this.handleEvent(e, m, false);
@@ -1325,7 +1325,7 @@ export class MatchController {
     m.step(1 / 60);
     this.steps++;
     if (this.steps % RECORD_STEP === 0 && m.mode !== 'shootout') {
-      this.ring.push(snapshot(m));
+      this.ring.push(snapshot(m, this.ring.at(-1)));
       if (this.ring.length > RING_SIZE) this.ring.splice(0, this.ring.length - RING_SIZE);
     }
     return m.finished || m.mode === 'halftime' || m.mode === 'shootout';
