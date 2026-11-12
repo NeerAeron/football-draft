@@ -42,10 +42,10 @@ test('the legends file is the pinned source compiled for this catalog, and round
   assert.ok(text.length < 400_000, 'a lazily fetched file stays small: ' + text.length);
 });
 
-test('legends are players outside the catalog: valid, best version 83+, catalog nations', () => {
+test('legends are players outside the catalog: valid, best version 85+, catalog nations', () => {
   assert.equal(legends.length, data.legends.length);
-  assert.equal(file.selection.legendMinimum, 83);
-  assert.ok(legends.length > 150 && legends.length < 300);
+  assert.equal(file.selection.legendMinimum, 85);
+  assert.equal(legends.length, 90);
   const current = new Set(catalog.players.map(p => p.profileId.split(':')[1])),
     badges = new Set(BADGES.map(b => b.id)),
     nations = new Set(catalog.nations.map(n => n.name)),

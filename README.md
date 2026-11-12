@@ -47,7 +47,7 @@ Everything you do is saved in your own browser.
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
-| **Nations** | one of 93 football nations, all equally likely | its best 23 available call-ups |
+| **Nations** | one of 64 football nations, all equally likely | its best 23 available call-ups |
 | **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
@@ -159,8 +159,8 @@ national-team players without a club, plus precomputed badges, club ratings and 
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 213 legends — past players who are not in the catalog, at their best version
-rated 83+ — and the prime versions of 1,962 catalog players, compiled by the same compiler.
+draft starts) holds 90 legends — past players who are not in the catalog, at their best version
+rated 85+ — and the prime versions of 1,963 catalog players, compiled by the same compiler.
 
 ## Deploy
 

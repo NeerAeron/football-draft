@@ -75,6 +75,28 @@ the momentum weight (0.7 × xG), the slow-down before a big shot (≥ 0.5) and t
 `blunders.mjs` (28 m+ under 0.08; a goal under 0.19), which are therefore not comparable with
 an `--engine` from before this phase.
 
+## Ratings against EA's overall (the top stretched)
+
+The weighted attributes compressed the very top: a player EA rates 89 came out at 87, so the
+game showed 18 players at 88+ where EA has 27. `calibratedRoleAbility` now adds
+`ratings.topLift` (0.1) for every point above `ratings.topFrom` (78), and the role offsets
+moved (CB 0.25 → 0.5, LB/RB 1.5 → 2, DM 1 → 1.25, CM 0.25 → 0.5). Keepers are not stretched:
+a keeper's overall is his goalkeeping attribute, which is EA's overall already. Rounded rating
+at the primary position against `sourceOverall`, all 15,378 catalog players:
+
+| players EA rates | n | mean ours − EA, before → now | mean absolute difference |
+| --- | --- | --- | --- |
+| 85+ | 95 | −0.91 → −0.08 | 0.93 → 0.34 |
+| 85+, outfield only | 81 | −1.06 → −0.10 | |
+| 80+ | 488 | −0.39 → +0.15 | 0.56 → 0.43 |
+| 75+ | 1,780 | −0.18 → +0.10 | 0.47 → 0.41 |
+| everyone | 15,378 | −0.02 → +0.16 | 0.49 → 0.46 |
+
+Players shown at 88+ (the draft's Superstars): 18 → 28 (EA 27); 85+: 75 → 99 (EA 95); 84–87
+(Stars) 123, 80–83 (Starters) 374. Club ratings rose with their best players: 17 clubs are tier
+S (82+) where 12 were. The catalog was rebuilt (badges, club ratings and club XIs are stamped
+with `CONFIG.ratings`).
+
 ## Phase 5: mentality, rating gaps, out-of-position ratings
 
 **Mentality means one thing.** Push raises the chance of a goal at both ends, Hold lowers it at

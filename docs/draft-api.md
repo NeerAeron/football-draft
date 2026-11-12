@@ -22,7 +22,7 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 
 | Mode (`mode`) | One spin lands on | Pool | Odds (shown on the reel) |
 | --- | --- | --- | --- |
-| `nations` (default) | a nation of the reel: every playable nation (80) and 13 star nations, 93 in all | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR (fewer when the nation has fewer); refills as players are taken | uniform 1/93 |
+| `nations` (default) | a nation of the reel: every playable nation (56) and 8 star nations, 64 in all | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR (fewer when the nation has fewer); refills as players are taken | uniform 1/64 |
 | `leagues` | a league (40 usable) | the whole league | flat by tier A 4 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubAndCountry` | alternately a nation (picks 1, 3, 5…) and a league (2, 4, 6…) | as above | as above |
@@ -38,15 +38,16 @@ available when only the GK slot is left. All numbers live in `CONFIG.draft` (`na
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
 
-**Playable nations and the reel.** A nation is **playable** when it can field an XI: at least
+**Playable nations and the reel.** A nation can field an XI with at least
 `nations.minimumPlayers` (11) players, `minimumGoalkeepers` (1) and a best XI with a real keeper
-and nobody under the engine's minimum fit (`ai.minimumFit`, no fallback) — 80 nations
-(`index.playable`, strongest first). Every playable nation is on the reel and can be met as an
-opponent (the Pro / World Class ladder, Quick Match, Exhibition). The reel (`index.spinField`, one
-pool, all equally likely) adds the **star nations**: nations that cannot field an XI but have a
-player rated `nations.reelStar` (75) and `reelPlayers` (9) players — Algeria, Tunisia, Gambia,
-Guinea-Bissau, Egypt, Togo, Gabon, Armenia, Syria, Zimbabwe, Equatorial Guinea, Dominican
-Republic, Mauritania (most have no keeper in the data): spun, never met. 93 nations in all.
+and nobody under the engine's minimum fit (`ai.minimumFit`, no fallback) — 80 nations can. The
+strongest `nations.playableSize` (56) of them, by that XI, are **playable** (`index.playable`,
+strongest first: France … Finland, Iceland). Every playable nation is on the reel and can be met
+as an opponent (the Pro / World Class ladder, Quick Match, Exhibition). The reel
+(`index.spinField`, one pool, all equally likely) adds the **star nations**: nations that are not
+playable (no XI, or an XI outside the 56) but have a player shown at `nations.reelStar` (80) or
+more and `reelPlayers` (9) players — Algeria, Tunisia, Jamaica, Burkina Faso, Egypt, New Zealand,
+Gabon, Armenia (five of them have no keeper in the data): spun, never met. 64 nations in all.
 `index.field` is the strongest `fieldSize` (48) playable nations in pots of 12: the Daily's
 schedule uses it, and it is the fallback of Legendary's draw, which qualifies its own 48 for
 every run (`docs/competition-api.md`). A nation with one keeper whose keeper you drafted cannot
@@ -57,32 +58,35 @@ Budget — not Quick Match, Versus or the Daily). The side's first spin lands on
 great legend and offers that nation's legends; the other ten spins are ordinary. Legends are
 the players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
 past players who are not in the catalog, at their best FIFA 15–23 version, EA rating
-`legends.minimum` (83) or more — 213 players of 40 nations. Rules in `CONFIG.draft.legends`:
+`legends.minimum` (85) or more — 90 players of 25 nations. Rules in `CONFIG.draft.legends`:
 
 - the reel (`legendIndex(catalog).reel`) holds the 25 nations with a legend EA rated `reelStar`
   (85) or more;
 - a nation's weight is `1 + weightPerLegend (0.15) × min(its legends, weightCap (20))`: 1.15 for
-  one legend, 4 for twenty or more (Brazil and Spain 8.1% each, France 7.8%, Italy 7.5%, Germany
-  7.2%, Argentina 6.0%, England 4.8%, Portugal 4.4%, Belgium and Netherlands 4.1%, Colombia 3.2%,
-  Croatia and Wales 2.9%, Côte d'Ivoire, Greece and Slovenia 2.6%, the nine nations with one
-  legend 2.3% each). The spin carries the honest `weight` / `probability` like every reel; the
+  one legend, 4 for twenty or more (Brazil, 17 legends, 9.2%; Spain 7.3%, France 6.1%, Italy
+  5.7%, Argentina and Germany 5.3%, Belgium 4.9%; Colombia, Croatia, England, Greece, Netherlands
+  and Portugal, two legends, 3.4% each; the twelve nations with one legend 3.0% each). The spin
+  carries the honest `weight` / `probability` like every reel; the
   UI shows no odds for this one;
 - the pool is the nation's `shown` (10) highest-rated legends (the rating on the card, then the
-  name); if none of them could be placed (slot class, Budget tier), the best that can are shown
-  instead. Re-rolls, exclusions, `uniqueNations` (the legend's nation counts) and Budget mode
+  name) — one legend for twelve of the nations; if none of them could be placed (slot class,
+  Budget tier), the best that can are shown instead. Never a dead end: a nation without a
+  legend who is free, fits an open slot class and (Budget mode) a tier with a slot left has
+  weight 0, so in local Versus a one-legend nation leaves the second side's reel once its legend
+  is taken. Re-rolls, exclusions, `uniqueNations` (the legend's nation counts) and Budget mode
   (a legend costs the tier of his rating) work as for any spin;
 - `spin.legend`, `snapshot().legendRound`, `history[].legend` mark it; a pool entry / slot player
   has `legend: true`, `edition` (15–23) and `year` (the edition minus one: FIFA 19 came out in
   2018 — the UI shows "’18", never the edition).
 
-A legend is a club mate through the club of that edition when the catalog has it (202 of 213)
+A legend is a club mate through the club of that edition when the catalog has it (89 of 90)
 and a nation mate like anyone; he is never a Captain. The game rates a legend with its own
-rating model, like every player, so the number on his card is often 1–4 below EA's (Kroos EA 90,
-shown 86): 9 legends show 88+, 43 show 85–87, 87 show 83–84, 74 show under 83.
+rating model, like every player, so the number on his card is often 1–3 below EA's (Kroos EA 90,
+shown 87): 16 legends show 88+, 51 show 85–87, 18 show 83–84, 5 show under 83.
 
 **Prime boosts** (session option `primes: true` = `CONFIG.draft.primes` by difficulty — Pro 2,
 World Class 1, Legendary 1 — or a number; the game: World Cup Run drafts). A boost turns a
-drafted player into his **prime version** (`catalog.legends.primes`: 1,962 catalog players whose
+drafted player into his **prime version** (`catalog.legends.primes`: 1,963 catalog players whose
 best past EA rating is 3+ above the current one, or 88+ and higher): the attributes, positions,
 badges and rating of that edition, the same name, nation, club and Captain tag (so mates and
 the armband do not change), `profileId` `ea:<id>:fc<edition>:prime`, `primeOf` = his catalog id.

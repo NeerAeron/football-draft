@@ -279,8 +279,8 @@ function* buildIndex(catalog, rules) {
   }
   for (const { nation, xi } of eligible) nation.strength = xi.rating;
   eligible.sort((a, b) => b.xi.rating - a.xi.rating || a.nation.name.localeCompare(b.nation.name));
-  // Playable: every nation that can field such an XI, strongest first — on the reel and met as
-  // an opponent. The field is its strongest `fieldSize`, in pots: only the real-World-Cup draw
+  // Playable: the strongest `playableSize` nations that can field such an XI, strongest first
+  // — on the reel and met as an opponent. The field is its strongest `fieldSize`, in pots: only the real-World-Cup draw
   // (competition/cup.js worldCupDraw) and the Daily's schedule need exactly that many.
   const playable = eligible.slice(0, n.playableSize ?? Infinity).map(({ nation }) => nation),
     outside = Math.floor(Math.min(playable.length, n.fieldSize) / n.potSize) + 1;
@@ -289,7 +289,7 @@ function* buildIndex(catalog, rules) {
     nation.pot = i < n.fieldSize ? Math.floor(i / n.potSize) + 1 : outside;
   });
   const field = playable.slice(0, n.fieldSize);
-  // Star nations: they cannot field an XI but have a star. Spun in drafts, never met. (Rules
+  // Star nations: not playable (no XI, or an XI outside the playable ones) but with a star. Spun in drafts, never met. (Rules
   // saved before the rename called the two numbers wildcardStar / wildcardPlayers.)
   const isPlayable = new Set(playable),
     reelStar = n.reelStar ?? n.wildcardStar,

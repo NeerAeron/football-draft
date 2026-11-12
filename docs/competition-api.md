@@ -39,7 +39,7 @@ teams only (no World XI / All-Stars in a run or the Daily):
 * **Legendary is the real field** in a Nations draft (`FIELD_LEVEL`; the UI does not say so):
   `worldCupDraw(catalog, { random, rules })` draws and plays a whole World Cup from the run's
   seed. Every run first **qualifies its own 48** of the playable nations (`catalogIndex(catalog)
-  .playable`, 80): the strongest `nations.fieldCore` (30) are always in, the other 18 seats are
+  .playable`, 56): the strongest `nations.fieldCore` (30) are always in, the other 18 seats are
   drawn without replacement from the rest with odds that halve every `nations.fieldHalving`
   (1.5) rating points below the 30th nation — so a lower-rated nation sometimes makes it, like
   real qualification. The 48 are potted by strength (the draw returns `pots`), twelve groups with
