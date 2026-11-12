@@ -28,7 +28,8 @@ Everything you do is saved in your own browser.
    **Budget mode** is the hard way: only 2 **Superstars** (rated 88+), 2 **Stars** (84–87) and
    3 **Starters** (80–83) — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
-   Cup Run the first match is played in the formation you drafted in). Watch
+   Cup Run the group stage is played in the formation you drafted in, and what you set up
+   stays for the next matches). Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
    minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
    are the same match: one seed, one result, however you watch it. The action camera follows the
