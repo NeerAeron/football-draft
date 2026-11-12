@@ -295,9 +295,9 @@ export function fixtureOdds(userEffective, opponentEffective) {
 }
 
 /** The best-thirds rule in words, from BEST_THIRD (hub draw banner, stakes, group table). */
-export const THIRD_PLACE_RULE = `Third place goes through with ${BEST_THIRD.points} points, or ${
+export const THIRD_PLACE_RULE = `Third place goes through with ${BEST_THIRD.points} points. With ${
   BEST_THIRD.points - 1
-} and a goal difference of ${String(BEST_THIRD.goalDifference).replace('-', '−')} or better.`;
+} it comes down to goal difference against the other groups' third-placed teams.`;
 
 const OUTCOMES = [
   ['W', [1, 0]],

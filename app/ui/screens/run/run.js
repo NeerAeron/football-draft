@@ -431,6 +431,12 @@ function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
       <span style=${{ width: `${Math.round(sim.progress * 100)}%` }}></span>
     </div>
     <${ResultsTicker} items=${sim.items} snapshot=${snapshot} />
+    ${
+      sim.milestone &&
+      html`<p class="sim__milestone" data-testid="sim-milestone" aria-hidden="true">
+        <${Icon} name="circle-check" size=${20} /> ${sim.milestone}
+      </p>`
+    }
     <p class="visually-hidden" aria-live="polite">${sim.announce}</p>
     <div class="sim__actions">
       ${

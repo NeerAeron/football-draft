@@ -526,3 +526,21 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
       );
     }
 });
+
+test('third place on 3 points: the goal-difference cut varies a little by run, by seed', async () => {
+  const { thirdCutFor, thirdQualifies } = await import('../app/core/competition/cup.js');
+  const count = new Map();
+  for (let seed = 1; seed <= 4000; seed++) {
+    const cut = thirdCutFor(seed);
+    assert.equal(cut, thirdCutFor(seed), 'the same run always has the same cut');
+    count.set(cut, (count.get(cut) || 0) + 1);
+  }
+  assert.deepEqual(
+    [...count.keys()].sort((a, b) => a - b),
+    [-3, -2, -1, 0],
+  );
+  assert.ok(count.get(-2) > count.get(-3) && count.get(-1) > count.get(0));
+  assert.ok(thirdQualifies({ points: 4, gd: -5 }, 0), 'four points always go through');
+  assert.ok(thirdQualifies({ points: 3, gd: -1 }, -1) && !thirdQualifies({ points: 3, gd: -1 }, 0));
+  assert.ok(!thirdQualifies({ points: 2, gd: 3 }, -3));
+});

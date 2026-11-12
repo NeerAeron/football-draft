@@ -1467,3 +1467,45 @@
 .run-head__target {
   margin-top: var(--space-1);
 }
+
+/* A stage cleared while the whole cup is simulated: a short pop-up over the ticker. */
+.sim {
+  position: relative;
+}
+.sim__milestone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--volt-400);
+  color: var(--on-volt);
+  font-family: var(--font-display);
+  font-size: var(--display-xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: var(--glow-volt), var(--shadow-lg);
+  transform: translate(-50%, -50%);
+  animation: sim-milestone 1.7s var(--ease-out) both;
+}
+@keyframes sim-milestone {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.9);
+  }
+  12%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(1);
+  }
+}
