@@ -410,7 +410,7 @@ function FixtureCard({ snapshot, meta, onPlay, onSim, onResume, busy, inProgress
   </section>`;
 }
 
-function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
+function SimPanel({ snapshot, sim, single, onSkip, onStop, onProceed }) {
   const done = sim.items.filter(i => i.status === 'done').length;
   return html`<section
     class="sim card card--hero card--pad-md"
@@ -432,12 +432,20 @@ function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
       <span style=${{ width: `${Math.round(sim.progress * 100)}%` }}></span>
     </div>
     <${ResultsTicker} items=${sim.items} snapshot=${snapshot} />
-    ${
-      sim.milestone &&
-      html`<p class="sim__milestone" data-testid="sim-milestone" aria-hidden="true">
-        <${Icon} name="circle-check" size=${20} /> ${sim.milestone}
-      </p>`
-    }
+    <${Modal}
+      open=${!!sim.milestone}
+      onClose=${onProceed}
+      title=${sim.milestone || ''}
+      size="sm"
+      class="sim__milestone"
+      data-testid="sim-milestone"
+      footer=${html`<${Button} variant="ghost" onClick=${onStop} data-testid="sim-stop"
+          >Stop simming<//
+        >
+        <${Button} variant="primary" onClick=${onProceed} data-testid="sim-keep">Keep simming<//>`}
+    >
+      <${Icon} name="circle-check" size=${36} class="sim__milestone-icon" />
+    <//>
     <p class="visually-hidden" aria-live="polite">${sim.announce}</p>
     <div class="sim__actions">
       ${
@@ -735,6 +743,7 @@ export default function RunScreen() {
                 single=${state.single}
                 onSkip=${ticker.skip}
                 onStop=${ticker.stop}
+                onProceed=${ticker.proceed}
               />`
             : html`
                 ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} hideRatings=${meta.hideRatings} />`}

@@ -27,10 +27,12 @@ export const scorersOf = (result, side = 0) =>
 export function useSimTicker() {
   const [state, setState] = useState(null);
   const flags = useRef({ skip: false, stop: false, abort: false });
+  const proceed = useRef(null);
   useEffect(
     () => () => {
       flags.current.stop = true;
       flags.current.abort = true;
+      proceed.current?.();
     },
     [],
   );
@@ -124,10 +126,13 @@ export function useSimTicker() {
                   : id === 'sf' && won
                     ? 'Into the final'
                     : null;
-          if (milestone) {
+          // A stage cleared: the sim waits on a pop-up until the player taps on (keep simming)
+          // or stops. Skipping (or reduced motion) passes straight through.
+          if (milestone && !flags.current.skip) {
             push({ milestone, announce: `${milestone}.` });
-            if (!flags.current.skip) playCue('pick-star');
-            await pause(1700);
+            playCue('pick-star');
+            await new Promise(resolve => (proceed.current = resolve));
+            proceed.current = null;
             push({ milestone: null });
           } else if (m.round >= 3 && snapshot.status === 'playing') await pause(600);
         }
@@ -152,6 +157,11 @@ export function useSimTicker() {
     stop() {
       flags.current.stop = true;
       setState(s => s && { ...s, stop: true });
+      proceed.current?.();
+    },
+    /** Close a stage pop-up and carry on simulating. */
+    proceed() {
+      proceed.current?.();
     },
     clear: () => setState(null),
   };
