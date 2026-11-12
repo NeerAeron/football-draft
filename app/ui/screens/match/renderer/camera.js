@@ -16,6 +16,7 @@ const W = 105,
 export const CAMERA_ZOOM = Object.freeze({ follow: 1.5, replay: 1.7 });
 
 const WIDE_RESTARTS = new Set(['Kickoff', 'Goal', 'Second half', 'Extra time', 'Goal kick']);
+const PENALTY_SPOT = 11; // metres from the goal line
 const POS_TIME = 0.42, // seconds to close most of a gap (critically damped)
   ZOOM_TIME = 0.75,
   MAX_PUSH = 80; // m/s the "keep the ball in frame" guard may move the camera
@@ -104,12 +105,26 @@ export class ActionCamera {
     this.tz = 1;
   }
 
+  /**
+   * A penalty, from the set-up until the kick is decided: the taker, the spot and the keeper
+   * on his line, closer than open play. One framing for the whole duel — the camera does not
+   * ease out again when the ball is struck.
+   */
+  aimPenalty(gx) {
+    const spot = gx > W / 2 ? gx - PENALTY_SPOT : gx + PENALTY_SPOT;
+    this.tx = spot + (gx - spot) * 0.45;
+    this.ty = H / 2;
+    this.tz = Math.max(1, Math.min(2.8, this.fit(PENALTY_SPOT + 14, 28)));
+  }
+
   /** Where a follow camera wants to be for this match state. */
   aimFollow(m, base) {
     const b = m.ball;
     if (!b || m.finished || m.mode === 'halftime' || m.mode === 'fulltime') return this.aimWide();
     const restart = m.mode === 'restart' ? m.restart : null;
     if (restart && WIDE_RESTARTS.has(restart.type)) return this.aimWide();
+    if (restart && restart.type === 'Penalty') return this.aimPenalty(restart.x > W / 2 ? W : 0);
+    if (b.penaltyKick && b.kind === 'shot') return this.aimPenalty(b.vx > 0 ? W : 0);
     let fx = b.x,
       fy = b.y,
       z = base;
@@ -123,12 +138,7 @@ export class ActionCamera {
               : -1,
         gx = dir > 0 ? W : 0,
         d = Math.abs(gx - restart.x);
-      if (restart.type === 'Penalty') {
-        // The duel: the taker, the spot and the keeper on his line, closer than open play.
-        fx = restart.x + (gx - restart.x) * 0.45;
-        fy = H / 2;
-        z = Math.min(2.4, this.fit(d + 14, 32));
-      } else if (d < 42) {
+      if (d < 42) {
         fx = restart.x + (gx - restart.x) * 0.5;
         fy = restart.y + (H / 2 - restart.y) * 0.5;
         z = Math.min(z, this.fit(d + 16, Math.abs(H / 2 - restart.y) + 22));

@@ -294,6 +294,13 @@ export function applyReplayFrame(target, recording, viewTime) {
   if (a.ball.kind === b.ball.kind && Math.hypot(a.ball.x - b.ball.x, a.ball.y - b.ball.y) < 6) {
     for (const key of ['x', 'y', 'z'])
       target.ball[key] = a.ball[key] + (b.ball[key] - a.ball[key]) * mix;
+  } else if (a.ball.owner === null && b.score[0] + b.score[1] > a.score[0] + a.score[1]) {
+    // A goal between these frames (the next one has the ball back on the centre spot): it
+    // runs on into the net instead of stopping a metre short of the line.
+    const dt = sourceTime - a.elapsed;
+    target.ball.x = clamp(a.ball.x + a.ball.vx * dt, -1.6, 106.6);
+    target.ball.y = a.ball.y + a.ball.vy * dt;
+    target.ball.z = Math.max(0, a.ball.z + a.ball.vz * dt);
   }
   target.events = recording.result.events
     .filter(e => e.elapsed <= sourceTime)

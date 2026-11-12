@@ -229,8 +229,13 @@ export function draw(ctx, view, state) {
     }
   }
   const bz = Math.max(0, ball.z || 0);
+  // A ball in the net is drawn where it lies: lifted up the screen, a goal at the lower end
+  // of a portrait pitch looked as if it had stopped short of the line.
+  const past = ball.x > 105 ? ball.x - 105 : ball.x < 0 ? -ball.x : 0,
+    netted = past > 0 && bz < 2.44 && Math.abs(ball.y - 34) < 3.66,
+    lift = netted ? bz * Math.max(0, 1 - past * 2) : bz;
   fx.ballX = bx;
-  fx.ballY = by - bz * 0.6 * t.s;
+  fx.ballY = by - lift * 0.6 * t.s;
   fx.ballR = br * (1 + Math.min(bz, 6) * 0.07);
   // A struck ball stretches along its path: speed you can see
   const bvx = ball.vx || 0,
@@ -718,13 +723,21 @@ function effectColor(e, state) {
 function drawEffects(ctx, t, m, state, dpr, width, r, over) {
   const effects = m.effects;
   if (!effects || !effects.length) return;
+  // A penalty is set up at once (a cut): the whistle's captions (PENALTY, a card) belong to
+  // the spot now, on its goal side — nobody is left where the foul was.
+  const spot = m.mode === 'restart' && m.restart && m.restart.type === 'Penalty' ? m.restart : null,
+    goalX = spot ? (spot.x > 52.5 ? 105 : 0) : 0,
+    below = spot ? t.b * goalX + t.d * spot.y > t.b * spot.x + t.d * spot.y + 1 : false;
   for (let i = 0; i < effects.length; i++) {
     const e = effects[i],
       type = e.type,
       life = e.maxLife ? clamp(e.life / e.maxLife, 0, 1) : 0,
       k = 1 - life,
-      x = t.a * e.x + t.c * e.y + t.e,
-      y = t.b * e.x + t.d * e.y + t.f;
+      moved = spot !== null && type === 'whistle',
+      ex = moved ? spot.x : e.x,
+      ey = moved ? spot.y : e.y,
+      x = t.a * ex + t.c * ey + t.e,
+      y = t.b * ex + t.d * ey + t.f;
     ctx.globalAlpha = clamp(e.life * 3, 0, 1);
     if (!over) {
       if (type === 'goal') {
@@ -791,7 +804,7 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
       ctx.lineCap = 'butt';
       ctx.globalAlpha = clamp(e.life * 3, 0, 1);
     }
-    if (type === 'shot' || save || type === 'whistle') {
+    if (type === 'shot' || save || (type === 'whistle' && !moved)) {
       const color = type === 'whistle' ? 'rgba(255,255,255,0.7)' : effectColor(e, state);
       ctx.beginPath();
       ctx.arc(x, y, ((save ? 1.5 : 1.3) + k * (save ? 2.6 : 2.4)) * t.s, 0, TAU);
@@ -808,7 +821,12 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
         ctx.globalAlpha = clamp(e.life * 3, 0, 1);
       }
     }
-    if (e.label && (LABELLED_EFFECTS.has(type) || (type === 'feint' && e.label === 'SLALOM'))) {
+    if (
+      e.label &&
+      (LABELLED_EFFECTS.has(type) || (type === 'feint' && e.label === 'SLALOM')) &&
+      // A penalty was announced when it was given: no second caption over the ball as it is hit
+      e.shotType !== 'Penalty'
+    ) {
       const text = upper(e.label),
         card = type === 'whistle' && (text === 'YELLOW CARD' || text === 'RED CARD'),
         // Saves, cards and penalties are the moments: a size up, with a quick pop on entry
@@ -820,7 +838,9 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
         w = textWidth(ctx, font, text) + pad * 2 + (card ? cardW + 5 * dpr : 0),
         h = (big ? 21 : 17) * dpr,
         lx = clamp(x, w / 2 + 2 * dpr, width - w / 2 - 2 * dpr),
-        ly = Math.max(h, y - r - (1.6 + k * 0.8) * t.s - h / 2 - 4 * dpr);
+        // A card goes a line further out than the FOUL / PENALTY it came with
+        rise = r + (1.6 + k * 0.8) * t.s + h / 2 + 4 * dpr + (card ? h + 3 * dpr : 0),
+        ly = moved && below ? y + rise : Math.max(h, y - rise);
       if (pop !== 1) {
         ctx.translate(lx, ly);
         ctx.scale(pop, pop);

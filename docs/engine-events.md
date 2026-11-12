@@ -143,7 +143,7 @@ A foul in the box → `penalty` event, then `restart.type === 'Penalty'` for abo
 is immediate (`setupPenalty`, the UI cuts to it): the keeper on his line in the middle of the goal,
 the taker 3.4 m behind the ball, everyone else outside the box and the arc and behind the ball
 (spread along the edge, two of the taker's defenders and one opposing forward up the pitch). The
-taker runs up in the last 0.8 s and strikes; at the strike the keeper commits
+taker runs up in the last second, through the ball (he arrives as he strikes it); at the strike the keeper commits
 (`startPenaltyDive`: left 45% / right 45% / stays 10%, independent of the taker's side) and
 `players[keeper].penaltyDive` (`{ at, until, x0, y0, x, y }`) moves him ~2 m in a third of a second
 (`movement.js stepDive`). The save model then works from where the dive put him: only a keeper who
@@ -224,7 +224,7 @@ m.shootout = {
 | `simulateHalf(match, onProgress, cancelled)` | Records one half of a live match → `{ result, frames, clips, viewDuration: 30, viewOffset }` |
 | `RECORD_STEP` | frames are stored every 3 steps (20 per second) |
 | `snapshot(m)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout` |
-| `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved), `momentum` (samples up to the frame) and `shootout`. Returns the 1-based clip number. |
+| `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved) and `momentum` (samples up to the frame). Between the last frame before a goal and the next (ball back on the centre spot) the ball runs on along its path, into the net. Returns the 1-based clip number. |
 | `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. A penalty shootout is never in a reel: clips end at the `shootout-start` event, and `simulateHalf` / `simulateComplete` record no frames after it (`result.shootout` has the kicks). |
 | `highlightScore(event)` | Interest of a non-goal moment: xG and big chances for shots, near misses and woodwork, save difficulty, red cards and penalties, delivery/take-on strength. `0` = never a highlight. |
 | `performanceRating(player, match)` | 3–10 match rating |

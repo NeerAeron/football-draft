@@ -234,7 +234,9 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
 - **Camera** (`ActionCamera`): `'wide'` is the whole pitch; `'follow'` tracks the ball at
   1.5× (1.7× in goal replays, wider at 2× / 4× speed, tighter on stages much wider than the
   pitch), easing out for long passes, shots (the goal stays in frame) and set pieces, and wide
-  for kick-offs and goal kicks; the ball can never leave the frame. Key Moments default to the
+  for kick-offs and goal kicks; the ball can never leave the frame. A penalty has one framing
+  from the set-up until the kick is decided (`aimPenalty`: the run-up, the spot and the goal,
+  closer than open play — it does not ease out when the ball is struck). Key Moments default to the
   action camera, Full to the whole pitch; the toggle in the controls (C) stores the choice per
   view. Goal replays are always the close-up. Reduced motion: no camera at all (the toggle is
   hidden).
@@ -243,7 +245,11 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
   fade (`.stage-cut`) and a camera snap — instead of tokens sliding across the pitch. Clip
   changes and replays cut the same way.
 - **Moments.** Engine effects are drawn with their labels (shot type, SAVED / PARRIED / TIPPED
-  OVER, FOUL, OFFSIDE, cards, PENALTY). The controller
+  OVER, FOUL, OFFSIDE, cards, PENALTY; a card sits a line above the FOUL / PENALTY it came with). While a
+  penalty is set up its captions are drawn over the spot, on the goal side, without the
+  whistle's ring (the players have left the place of the foul), and the strike itself gets no
+  second PENALTY caption over the ball. A ball in the net is drawn where it lies, not lifted
+  by its height. The controller
   adds captions from events: OFF THE POST! / OFF THE BAR!, JUST WIDE! / JUST OVER!, GREAT SAVE!
   (save `difficulty` ≥ 0.3) / WHAT A SAVE! (≥ 0.6), CHANCE MISSED! (a big chance off target).
   A keeper's `dive` animation is drawn as a save: the token stretches into an ellipse along the
