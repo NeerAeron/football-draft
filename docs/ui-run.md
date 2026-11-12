@@ -61,6 +61,13 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    and records it; live clock + score per match, the other group result after each matchday,
    Skip (no pauses) and Stop (after the current match). Knockout opponents stay hidden until
    their tie starts.
+   **Replacing a run in progress.** A new World Cup draft asks first, wherever it starts —
+   the setup's Start (Home's two buttons lead there), "Play again" (`?go=1`), a challenge
+   link's Accept: `useReplaceRun()` (`screens/run/replace-run.js`) shows one small dialog
+   ("Start a new World Cup? Your run in progress will be lost." — Keep run / Start new) when
+   `runInProgress()` (a resumable, unfinished run). "Start new" forgets the run (`clearRun`)
+   and starts the draft; "Keep run" does nothing. A finished run is replaced without a
+   question, and the hub's own "Abandon this run" keeps its dialog.
 5. **End.** The headline is where the run finished — World Champions (gold cup + confetti),
    Runners-up (silver medal), Third place (bronze), Fourth place, or "Out in the …" — with the
    record W–D–L, Player of the Tournament, Held you back, XI, share text + image, Challenge a
@@ -159,6 +166,8 @@ challenge: { token, by }, returnTo })`; "Review the settings first" opens
   Budget, the ultimate, migration), the play-off summary, stakes, links, daily record + streak,
   the Daily's lock from the first pick, share image layout.
 - `tests/browser/flows.mjs` — `run` (the four ways to play), `run-end` (every finish, seeded),
+  `run-lineup` (a new formation and mentality after the group stage, kept for the next match),
+  `run-replace` (the question before a run in progress is replaced, from every entry),
   `home-cabinet` (empty, partly filled, migrated, complete), `daily`, `exhibition`,
   `challenge-link` (seeded, fast sims). Drafts finish on the real board via `#/draft?auto=1` + the completion sheet's
   Continue; matches kick off from the real pre-match (`[data-testid="kick-off"]`), and

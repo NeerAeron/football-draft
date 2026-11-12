@@ -1315,6 +1315,89 @@ export const flows = [
     },
   },
   {
+    // A new World Cup draft asks before it replaces a run in progress — from the setup's
+    // Start, "Play again" (?go=1), Budget mode and a challenge link alike; a finished run is
+    // replaced without a question.
+    name: 'run-replace',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      await savedRun(page, { difficulty: 'pro', results: [[2, 0]] });
+      const run = () => page.evaluate(() => localStorage.getItem('football-draft-run-state'));
+      const dialog = 'dialog.replace-run[open]';
+      const asked = async how => {
+        await visible(page, `${dialog} [data-testid="replace-run"]`);
+        if (!(await run())) throw new Error(`${how}: the run was dropped before the answer`);
+      };
+      const kept = async how => {
+        await page.click(`${dialog} [data-testid="keep-run"]`);
+        await page.waitForSelector(dialog, { state: 'detached', timeout: 5000 }).catch(() => {});
+        if (await page.locator(dialog).count()) throw new Error(`${how}: the dialog stayed open`);
+        await page.waitForTimeout(200);
+        if (!(await run())) throw new Error(`${how}: "Keep run" lost the run`);
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-draft')))
+          throw new Error(`${how}: a draft started anyway`);
+      };
+      await step('Start on the setup asks first', async () => {
+        await page.goto(base);
+        await page.click('[data-testid="start-run"]');
+        await visible(page, '[data-screen="setup"][data-mode="run"]');
+        await page.locator('[data-testid="start-draft"]:visible').click();
+        await asked('setup');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('ask');
+      await step('"Keep run" changes nothing', () => kept('setup'));
+      await step('Budget mode asks the same', async () => {
+        await page.goto(base);
+        await page.click('[data-testid="start-budget"]');
+        await visible(page, '[data-screen="setup"] [data-testid="setup-budget"]');
+        await page.locator('[data-testid="start-draft"]:visible').click();
+        await asked('budget');
+        await kept('budget');
+      });
+      await step('"Play again" (?go=1) asks instead of starting', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await asked('go=1');
+        await kept('go=1');
+        if (!(await page.evaluate(() => location.hash.startsWith('#/play/run'))))
+          throw new Error('left the setup');
+      });
+      await step('a challenge link asks, and "Start new" replaces the run', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await page.click('[data-testid="accept-challenge"]');
+        await asked('challenge');
+        await kept('challenge');
+        await page.click('[data-testid="accept-challenge"]');
+        await asked('challenge');
+        await page.click(`${dialog} [data-testid="replace-run"]`);
+        await visible(page, '[data-screen="draft"][data-phase]');
+        if (await run()) throw new Error('the old run is still saved');
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-run')))
+          throw new Error('Home would still show the old run');
+      });
+      await step('a finished run is replaced without a question', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => localStorage.removeItem('football-draft-draft'));
+        await savedRun(page, {
+          difficulty: 'pro',
+          results: [
+            [0, 1],
+            [0, 1],
+            [0, 1],
+          ],
+        });
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await visible(page, '[data-screen="draft"][data-phase]');
+        if (await page.locator(dialog).count()) throw new Error('asked about a finished run');
+      });
+    },
+  },
+  {
     // The line-up of a run: after the group stage the formation can change, and what is set
     // up before a match (formation, mentality) is kept for the next ones and for auto-sims.
     name: 'run-lineup',

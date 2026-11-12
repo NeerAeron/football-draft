@@ -20,7 +20,14 @@ import { encodeChallenge, decodeChallenge } from '../../core/competition/share.j
 import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/competition/daily.js';
 import { seedNumber, difficultyOf } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
-import { RUN_KEY, DAILY_KEY, STAGES, PLAYOFF_STAGE, RUN_SUMMARY_FORMAT } from './saved.js';
+import {
+  RUN_KEY,
+  DAILY_KEY,
+  STAGES,
+  PLAYOFF_STAGE,
+  RUN_SUMMARY_FORMAT,
+  readSavedRun,
+} from './saved.js';
 import { recordRun } from './records.js';
 import { teamCode, buildMatchConfig } from './match-store.js';
 import { engineCompetition } from './prematch-store.js';
@@ -299,6 +306,14 @@ export function loadRun(catalog) {
 export function clearRun() {
   removeKey(RUN_STATE_KEY);
   removeKey(RUN_KEY);
+}
+/**
+ * A World Cup run is being played (saved, resumable, not over): what a new World Cup draft
+ * would replace — the screens ask first (screens/run/replace-run.js).
+ */
+export function runInProgress() {
+  const summary = readSavedRun();
+  return !!summary && !summary.complete && readRunState() !== null;
 }
 
 // ---- match log (scorers per round, for the hub and the end screen) ------------------------------

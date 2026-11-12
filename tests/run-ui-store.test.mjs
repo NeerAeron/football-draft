@@ -357,6 +357,31 @@ test('trophy cabinet: older formats migrate (titles become golds, removed levels
   assert.equal(records.readRecords().levels[1].gold, 1);
 });
 
+test('a run in progress is what a new World Cup draft would replace', () => {
+  assert.equal(runStore.runInProgress(), false, 'nothing saved');
+  const { run, meta } = runStore.createRunFromDraft(catalog, { session: draft, context: {} });
+  runStore.saveRun(run, meta);
+  assert.equal(runStore.runInProgress(), true, 'before the first match');
+  run.recordResult({ goalsFor: 1, goalsAgainst: 0 });
+  runStore.saveRun(run, meta);
+  assert.equal(runStore.runInProgress(), true);
+  // The summary alone (its state lost or unreadable) is nothing to lose: the hub shows no run.
+  const state = store.get(runStore.RUN_STATE_KEY);
+  store.set(runStore.RUN_STATE_KEY, '{broken');
+  assert.equal(runStore.runInProgress(), false);
+  store.delete(runStore.RUN_STATE_KEY);
+  assert.equal(runStore.runInProgress(), false);
+  store.set(runStore.RUN_STATE_KEY, state);
+  store.delete(saved.RUN_KEY);
+  assert.equal(runStore.runInProgress(), false);
+  // A finished run is replaced without a question.
+  while (!run.complete) run.recordResult({ goalsFor: 0, goalsAgainst: 2 });
+  runStore.saveRun(run, meta);
+  assert.equal(runStore.runInProgress(), false);
+  runStore.clearRun();
+  assert.equal(runStore.runInProgress(), false);
+});
+
 test('a corrupt or foreign saved run is ignored', () => {
   store.set(runStore.RUN_STATE_KEY, JSON.stringify({ format: 1, run: { type: 'cup-run' } }));
   assert.equal(runStore.loadRun(catalog), null);

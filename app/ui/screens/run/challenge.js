@@ -15,6 +15,7 @@ import { EmptyState } from '../../components/empty-state.js';
 import { startDraft } from '../../lib/draft-store.js';
 import { readChallengeQuery, typeOf, todayDailyId } from '../../lib/run-store.js';
 import { modeLabel, levelLabel } from './team-view.js';
+import { useReplaceRun } from './replace-run.js';
 
 const KIND = {
   cup: { title: 'World Cup Run', draft: 'run', mode: 'run', returnTo: '/run' },
@@ -25,6 +26,7 @@ const KIND = {
 export default function ChallengeScreen({ query }) {
   const { challenge: c, score } = readChallengeQuery(query);
   const [busy, setBusy] = useState(false);
+  const replace = useReplaceRun();
   useEffect(() => {
     loadWarmCatalog().catch(() => {}); // warm up for the draft
   }, []);
@@ -143,7 +145,7 @@ export default function ChallengeScreen({ query }) {
         size="xl"
         block
         iconEnd="arrow-right"
-        onClick=${accept}
+        onClick=${() => (kind.draft === 'run' ? replace.ask(accept) : accept())}
         loading=${busy}
         data-testid="accept-challenge"
         >Accept challenge<//
@@ -156,6 +158,7 @@ export default function ChallengeScreen({ query }) {
         Not now
       </button>
     </p>
+    ${replace.dialog}
   </div>`;
 }
 
