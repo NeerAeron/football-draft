@@ -30,7 +30,8 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
      'run:<runId>:<round>', seed: run.matchSeed(round), sides, view: 'key' | 'full',
      competition: { mode: 'ai', difficulty, knockout }, meta: { context: 'run', title,
      returnTo: '/run', fixture: id } })`: the pre-match opens with that view selected (it can
-     still be changed there). The pending fixture `{ id, round, seed }` is saved first. In the
+     still be changed there). A knockout fixture (`knockout: true`) plays extra time before
+     penalties: `buildMatchConfig` adds it, for the watched match and the auto-sim alike. The pending fixture `{ id, round, seed }` is saved first. In the
      first match (round 0) the user side carries `formationLocked: true`: the formation chosen
      before the draft cannot change before kick-off or during the match (`changeFormation`
      refuses it; the request's `meta.formationLocked` lists the side); from the second match on
@@ -41,6 +42,11 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    A match in progress adds "Resume match" above them.
 3. **Return.** `readMatchResult(id)` (fallback: the stored result with the same seed and
    `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` → save.
+   A tie that went to extra time carries `extraTime: true` (so does `runSide(result)` for
+   auto-sims): the score is the one after 120 minutes, the outcome a win or a defeat unless
+   penalties decided it, and the screens write it `2–1 (aet)` (`scoreText`; the banner's
+   eyebrow reads "After extra time", the W/L chip's title "Won after extra time"). The ticker's
+   clock runs on to 105' and 120'.
    The hub shows a "Full time" banner, the other group match ticking in, table moves. A lost
    semi-final does not end the run: the next fixture is the third-place play-off (the path's
    last node reads "3rd").
