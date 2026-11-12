@@ -23,7 +23,8 @@ import {
 import { quickOpponent, difficultyLabel } from '../../lib/draft-store.js';
 import { linkLines } from './draft-model.js';
 import { BudgetStrip } from './team-panel.js';
-import { fmt1 } from '../../lib/format.js';
+import { PrimeButton } from './prime-sheet.js';
+import { fmt1, boost as fmtBoost } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
 const pct = p => `${Math.round(p * 100)}%`;
@@ -72,7 +73,7 @@ function XiSummary({ team, players, hideRatings, small }) {
       >
       <span
         ><small>Boosts</small
-        ><b class="num is-boost" data-testid="final-boosts">+${team.links.total}</b></span
+        ><b class="num is-boost" data-testid="final-boosts">${fmtBoost(team.links.total)}</b></span
       >
       <span
         ><small>Mates</small><b class="num">${team.links.linked}<i>/11</i></b></span
@@ -152,7 +153,16 @@ function OpponentReveal({ opponent, mine, hideRatings }) {
  * CompleteSheet props: open, onClose, snap, context, teamPlayers (views per side),
  * onContinue(async), busy.
  */
-export function CompleteSheet({ open, onClose, snap, context, teamPlayers, onContinue, busy }) {
+export function CompleteSheet({
+  open,
+  onClose,
+  snap,
+  context,
+  teamPlayers,
+  onContinue,
+  busy,
+  onPrime,
+}) {
   const [step, setStep] = useState('xi');
   const [revealed, setRevealed] = useState(!context.options.hideRatings);
   const [burst, setBurst] = useState(0);
@@ -187,6 +197,12 @@ export function CompleteSheet({ open, onClose, snap, context, teamPlayers, onCon
     title=${title}
     class="complete-sheet"
     footer=${html`
+      ${
+        // Last chance: boosts not used here are gone once the World Cup starts.
+        step === 'xi' &&
+        mine.primesLeft > 0 &&
+        html`<${PrimeButton} team=${mine} primes=${snap.primes} onOpen=${onPrime} />`
+      }
       ${
         context.options.hideRatings &&
         !revealed &&

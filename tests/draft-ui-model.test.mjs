@@ -11,6 +11,7 @@ import {
   poolFilters,
   rowFit,
   rowCost,
+  rowBoost,
   mateLines,
   rowStats,
   slotHighlights,
@@ -75,8 +76,23 @@ test('hidden ratings: no rating sort is offered and the order does not follow OV
 test('rowFit and slotHighlights show natural fit, small drops, poor fits and closed slots', () => {
   const d = leagueDraft();
   const entry = d.snapshot().pool.find(e => e.available && e.position !== 'GK');
-  const fit = rowFit(entry);
-  assert.ok(['ok', 'penalty'].includes(fit.state));
+  // A row says only what it does not show already: nothing at his own position and rating,
+  // "81 at CM" at another one (amber when he loses rating there).
+  const base = { ...entry, position: 'CM', ovr: 84 },
+    at = (role, rating, familiarity = 0.99) => ({
+      ...base,
+      best: { slot: 3, role, rating, familiarity, delta: rating - 84 },
+    });
+  assert.equal(rowFit(at('CM', 84, 1)), null);
+  assert.deepEqual(rowFit(at('DM', 81)), { state: 'penalty', at: 'DM', from: 84, to: 81 });
+  assert.deepEqual(rowFit(at('AM', 84)), { state: 'neutral', at: 'AM', from: 84, to: 84 });
+  assert.equal(rowFit(at('DM', 81), null, true).state, 'neutral', 'no hint of the numbers');
+  assert.equal(rowFit(at('CB', 70, 0.9), null, true).state, 'penalty');
+  for (const e of d.snapshot().pool.filter(e => e.available)) {
+    const fit = rowFit(e);
+    assert.equal(fit === null, e.best.role === e.position && e.best.rating >= e.ovr);
+    if (fit) assert.deepEqual([fit.at, fit.to], [e.best.role, e.best.rating]);
+  }
   assert.deepEqual(rowFit({ ...entry, available: false, reason: 'Already drafted' }), {
     state: 'blocked',
     label: 'Taken',
@@ -92,6 +108,45 @@ test('rowFit and slotHighlights show natural fit, small drops, poor fits and clo
   const hidden = slotHighlights(options, auto, { hideRatings: true });
   for (const h of Object.values(hidden))
     if (h.state === 'neutral') assert.equal(h.label, 'Poor', 'no rating leaks when hidden');
+});
+
+test('pool rows say the boost a player would get in the XI', () => {
+  const d = createDraftSession(catalog, { mode: 'nations', seed: 4 });
+  d.spin();
+  const [first] = d.snapshot().pool.filter(e => e.available && e.position !== 'GK');
+  assert.ok(
+    d.snapshot().pool.every(e => e.boost === null && rowBoost(e) === null),
+    'nobody in the XI yet',
+  );
+  d.pick(first.profileId);
+  // Give the XI a second look at the same nation: every compatriot is a nation mate (+1.5),
+  // a club mate of the first pick among them gets both (+2.5).
+  const session = createDraftSession(catalog, { mode: 'leagues', seed: 3 });
+  const seen = { nation: 0, club: 0, both: 0 };
+  while (!session.complete) {
+    session.spin();
+    const xi = session.lineup(0).filter(Boolean);
+    for (const e of session.snapshot().pool) {
+      const p = session.player(e.profileId),
+        nation = xi.some(q => q.source.nationality === p.source.nationality),
+        club = xi.some(q => q.source.clubId === p.source.clubId),
+        value = (nation ? 1.5 : 0) + (club ? 1 : 0);
+      assert.equal(e.boost?.value ?? 0, value);
+      const row = rowBoost(e);
+      if (!e.available || !value) assert.equal(row, null);
+      else {
+        assert.equal(row.label, value === 2.5 ? '+2.5' : value === 1.5 ? '+1.5' : '+1');
+        assert.equal(
+          row.text,
+          nation && club ? 'nation + club mate' : nation ? 'nation mate' : 'club mate',
+        );
+        seen[nation && club ? 'both' : nation ? 'nation' : 'club']++;
+      }
+    }
+    const move = session.suggestPick();
+    session.pick(move.profileId, move.slot);
+  }
+  assert.ok(seen.nation && seen.club && seen.both, JSON.stringify(seen));
 });
 
 test('rows show the three stats that matter for the position', () => {
@@ -136,7 +191,7 @@ test('oddsSummary reports uniform nation odds and tiered league odds honestly', 
   const nations = createDraftSession(catalog, { mode: 'nations', seed: 2 });
   const [n] = oddsSummary(nations.spin());
   assert.equal(n.uniform, true);
-  assert.equal(n.eligible, 48);
+  assert.equal(n.eligible, 93);
   const clubs = createDraftSession(catalog, { mode: 'clubs', seed: 2 });
   const [league, club] = oddsSummary(clubs.spin());
   assert.equal(league.uniform, false);
@@ -219,12 +274,16 @@ test('pickPreview says who the mates are and what everyone gets', () => {
   );
   const preview = pickPreview(d, 0, second.profileId, slot);
   const nation = preview.mates.find(m => m.kind === 'nation');
-  assert.deepEqual([nation.boost, nation.shared, nation.names.length], [2, true, 1]);
-  assert.equal(preview.boost, 2 * preview.mates.length);
-  assert.equal(preview.gain, 2 * preview.boost + (preview.captain ? 2 * preview.captain.boost : 0));
+  assert.deepEqual([nation.boost, nation.shared, nation.names.length], [1.5, true, 1]);
+  assert.equal(
+    preview.boost,
+    preview.mates.reduce((sum, m) => sum + m.boost, 0),
+  );
+  assert.equal(preview.gain, 2 * preview.boost);
+  assert.equal(preview.captain, null); // no Captain in this pick
   assert.deepEqual(preview.lifts, []);
   const lines = mateLines(preview);
-  assert.match(lines[0].text, /^Nation mate of .+: \+2 each$/);
+  assert.match(lines[0].text, /^Nation mate of .+: \+1\.5 each$/);
   // Wording for the other cases.
   const text = p =>
     mateLines(p)
@@ -232,27 +291,36 @@ test('pickPreview says who the mates are and what everyone gets', () => {
       .join(' | ');
   assert.equal(
     text({
-      boost: 4,
+      boost: 2.5,
       mates: [
-        { kind: 'nation', names: ['Mbappé'], boost: 2, shared: true },
-        { kind: 'club', names: ['Hakimi', 'Dembélé', 'Vitinha'], boost: 2, shared: false },
+        { kind: 'nation', names: ['Mbappé'], boost: 1.5, shared: true },
+        { kind: 'club', names: ['Hakimi', 'Dembélé', 'Vitinha'], boost: 1, shared: false },
       ],
-      lifts: [{ name: 'Vitinha', to: 4 }],
+      lifts: [{ name: 'Vitinha', to: 2.5 }],
     }),
-    'Nation mate of Mbappé: +2 each | Club mate of Hakimi, Dembélé +1: +2 | Both: +4 | Also lifts Vitinha to +4',
+    'Nation mate of Mbappé: +1.5 each | Club mate of Hakimi, Dembélé +1: +1 | Both: +2.5 | Also lifts Vitinha to +2.5',
   );
   assert.equal(
     text({
-      boost: 2,
-      mates: [{ kind: 'club', names: ['Rice', 'Saka'], boost: 2, shared: false }],
+      boost: 1,
+      mates: [{ kind: 'club', names: ['Rice', 'Saka'], boost: 1, shared: false }],
       lifts: [],
     }),
-    'Club mate of Rice and Saka: +2',
+    'Club mate of Rice and Saka: +1',
   );
 });
 
-test('Budget mode: rows show their band, closed rows say which band is full, the preview what it uses', () => {
-  const d = createDraftSession(catalog, { mode: 'nations', seed: 11, budget: true, rerolls: 0 });
+test('Budget mode: rows show their tier, closed rows say which tier is full, the preview what it uses', () => {
+  let checked = 0,
+    d;
+  for (const seed of [11, 12, 13, 14, 15, 16]) {
+    d = createDraftSession(catalog, { mode: 'nations', seed, budget: true, rerolls: 0 });
+    checked += budgetRows(d);
+  }
+  assert.ok(checked > 0);
+  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
+});
+function budgetRows(d) {
   let checked = 0;
   while (!d.complete) {
     d.spin();
@@ -260,6 +328,7 @@ test('Budget mode: rows show their band, closed rows say which band is full, the
       budget = snap.teams[0].budget;
     for (const e of snap.pool) {
       const cost = rowCost(e, budget);
+      if (e.band) assert.match(cost.label, /^(Superstar|Star|Starter)$/);
       if (e.band)
         assert.deepEqual(
           [cost.label, cost.tone],
@@ -287,20 +356,17 @@ test('Budget mode: rows show their band, closed rows say which band is full, the
     else assert.deepEqual(preview.budget, { free: true, label: 'Under 80' });
     d.pick(e.profileId, auto.slot);
   }
-  assert.ok(checked > 0);
-  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
-});
+  return checked;
+}
 
 test('Budget mode travels from the setup to the session and the run, World Cup only', async () => {
   const { normalizeContext, sessionOptions } = await import('../app/ui/lib/draft-store.js');
-  const run = setupDefaults('run', { saved: { budget: true } });
+  // Chosen on Home (its own button → ?budget=1); never remembered.
+  const run = setupDefaults('run', { query: { budget: '1' } });
   assert.equal(run.budget, true);
   assert.equal(setupDefaults('run', {}).budget, false);
-  assert.equal(setupDefaults('quick', { saved: { budget: true } }).budget, false);
-  assert.equal(
-    setupDefaults('run', { saved: { budget: true }, query: { seed: '5' } }).budget,
-    false,
-  );
+  assert.equal(setupDefaults('run', { saved: { budget: true } }).budget, false);
+  assert.equal(setupDefaults('quick', { query: { budget: '1' } }).budget, false);
   const ctx = setupContext('run', run);
   assert.equal(ctx.options.budget, true);
   assert.ok(!('budget' in setupContext('run', { ...run, budget: false }).options));
@@ -312,7 +378,7 @@ test('Budget mode travels from the setup to the session and the run, World Cup o
   assert.equal(sessionOptions(normalizeContext({ kind: 'daily' })).budget, false);
   assert.match(
     budgetCopy(),
-    /^Harder: your XI may hold only 1 player rated 88\+, 2 at 84–87 and 3 at 80–83\. Everyone else must be under 80\.$/,
+    /^Harder: your XI may hold only 2 Superstars \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)\. Everyone else must be under 80\.$/,
   );
 });
 
@@ -383,8 +449,9 @@ test('difficulty levels explain opponents and re-rolls', () => {
   assert.equal(setupContext('run', setupDefaults('run')).rerolls, undefined);
 });
 
-test('the armband and the boost chips on the pitch follow the core rule', async () => {
-  const { captainSlot, mateBoosts, playerView } = await import('../app/ui/lib/player-view.js');
+test('the boost chips on the pitch follow the core rule; the Captain wears the armband', async () => {
+  const view = await import('../app/ui/lib/player-view.js');
+  const { mateBoosts, playerView } = view;
   const raw = (nationality, clubId, leagueId, captain = false) => ({
     profileId: nationality + clubId,
     name: 'X',
@@ -400,14 +467,21 @@ test('the armband and the boost chips on the pitch follow the core rule', async 
     raw('C', 3, 2),
     raw('D', 9, 9),
   ].map(p => p && playerView(p));
-  assert.deepEqual(mateBoosts(views), [2, 0, 4, 2, 0, 0]);
+  assert.deepEqual(mateBoosts(views), [1.5, 0, 2.5, 1, 0, 0]);
+  // A Captain gives every player +1 on top and wears the armband.
   views[5] = playerView(raw('D', 9, 9, true));
-  assert.deepEqual(mateBoosts(views), [3, 0, 5, 3, 1, 1]);
+  assert.deepEqual(mateBoosts(views), [2.5, 0, 3.5, 2, 1, 1]);
+  assert.equal(views[5].captain, true);
+  assert.equal(view.captainSlot(views), 5);
+  assert.equal(view.captainSlot(views.slice(0, 5)), null);
+  // A legend or a prime version carries the year of that version (FIFA 19 → ’18).
+  assert.equal(views[0].era, '');
+  const legend = playerView({ ...raw('E', 1, 1), legend: true, edition: 19 });
+  assert.deepEqual([legend.legend, legend.prime, legend.era], [true, false, '’18']);
   assert.deepEqual(mateBoosts([{ name: 'no source' }, null]), [0, 0]);
-  const { teamLinks } = await import('../app/core/draft/links.js');
-  const p = (rating, captain) => ({ sourceOverall: rating, captain, source: {} });
-  const xi = [p(80, false), null, p(84, true), p(86, true), p(86, true)];
-  assert.equal(captainSlot(xi), 3);
-  assert.equal(teamLinks(xi).captain, 3);
-  assert.equal(captainSlot([p(90, false)]), null);
+  const { boost } = await import('../app/ui/lib/format.js');
+  assert.deepEqual(
+    [1, 1.5, 2.5, 14, 5.5, null].map(v => boost(v)),
+    ['+1', '+1.5', '+2.5', '+14', '+5.5', '–'],
+  );
 });

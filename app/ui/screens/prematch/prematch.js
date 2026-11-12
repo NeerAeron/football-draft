@@ -19,6 +19,7 @@ import {
   prematchStore,
   swapPlayers,
   changeFormation,
+  formationRatings,
   setSideTactic,
   setMatchView,
   kickOff,
@@ -41,7 +42,7 @@ import {
 } from '../../components/index.js';
 import { useMedia } from '../draft/use-media.js';
 import { POOR_FIT_DROP, linkLines } from '../draft/draft-model.js';
-import { fmt1 } from '../../lib/format.js';
+import { fmt1, boost as fmtBoost } from '../../lib/format.js';
 
 const VIEWS = [
   { value: 'key', label: 'Key Moments', hint: '≈1 min' },
@@ -52,6 +53,11 @@ const FORMATION_OPTIONS = Object.keys(FORMATIONS).map(f => ({
   value: f,
   label: formationLabel(f),
 }));
+/** A picker line: '4-3-3 · 84.2' (★ on the formation with the best team OVR). */
+const formationOption = (o, ratings, best) =>
+  ratings
+    ? `${o.label} · ${fmt1(ratings[o.value])}${ratings[o.value] === best ? ' ★' : ''}`
+    : o.label;
 const pct = p => `${Math.round(p * 100)}%`;
 
 /** Fit tags while a slot is picked (where would he play?) or, at rest, out-of-position players. */
@@ -160,9 +166,6 @@ function Tactics({ side, index }) {
       block
       class="tactics__mentality"
     />
-    <p class="tactics__hint">
-      Push: more chances at both ends. Hold: fewer at both ends. Auto reads the score for you.
-    </p>
   </section>`;
 }
 
@@ -219,6 +222,16 @@ function Opponent({ side, players, hideRatings }) {
 function Lineup({ side, index, players, title, hideRatings }) {
   const [picked, setPicked] = useState(null);
   const strength = useMemo(() => lineupStrength(side.players, side.formation), [side]);
+  // The team OVR each formation would give (its best lineup), for the picker.
+  const ratings = useMemo(
+    () =>
+      hideRatings || side.formationLocked
+        ? null
+        : // The formation in play shows the lineup as it stands (the number in the header).
+          { ...formationRatings(side.players), [side.formation]: strength.rating },
+    [side.players, side.formation, strength, hideRatings, side.formationLocked],
+  );
+  const best = ratings ? Math.max(...Object.values(ratings)) : null;
   const highlights = useMemo(
     () => lineupHighlights(side, picked, hideRatings),
     [side, picked, hideRatings],
@@ -246,7 +259,12 @@ function Lineup({ side, index, players, title, hideRatings }) {
           onChange=${e => changeFormation(index, e.currentTarget.value)}
           data-testid="formation-select"
         >
-          ${FORMATION_OPTIONS.map(o => html`<option key=${o.value} value=${o.value}>${o.label}</option>`)}
+          ${FORMATION_OPTIONS.map(
+            o =>
+              html`<option key=${o.value} value=${o.value}>
+                ${formationOption(o, ratings, best)}
+              </option>`,
+          )}
         </select>
       </label>
     </div>
@@ -277,7 +295,7 @@ function Lineup({ side, index, players, title, hideRatings }) {
     />
     <p class="lineup__links">
       <${Icon} name="link" size=${14} />
-      Boosts <b class="num">+${strength.links.total}</b>
+      Boosts <b class="num">${fmtBoost(strength.links.total)}</b>
     </p>
   </section>`;
 }

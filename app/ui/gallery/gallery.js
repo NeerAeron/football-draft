@@ -104,7 +104,7 @@ function Tokens() {
         )}
       </div>
     <//>
-    <${Demo} label="Tier foils (OVR 85+ / 80–84 / 74–79 / 68–73 / below)" wide>
+    <${Demo} label="Tier foils (OVR 88+ / 84–87 / 80–83 / 74–79 / below)" wide>
       <div class="g-swatches">
         ${FOILS.map(
           t =>
@@ -358,7 +358,11 @@ function Cards2() {
     <//>
     <${Demo} label="Sizes S / M / L" wide>
       <div class="g-cards g-cards--bottom">
-        <${PlayerCard} player=${HAALAND} size="s" />
+        <${PlayerCard} player=${{ ...HAALAND, captain: true }} size="s" />
+        <${PlayerCard}
+          player=${{ ...HAALAND, legend: true, era: '’18', name: 'Legend ’18' }}
+          size="s"
+        />
         <${PlayerCard} player=${HAALAND} size="m" />
         <${PlayerCard} player=${HAALAND} size="l" />
       </div>
@@ -408,6 +412,8 @@ function Rows() {
     <${Demo} label="FitTag states">
       ${FITS.map(f => html`<${FitTag} key=${f.state} fit=${f} />`)}
       <${FitTag} fit=${{ state: 'penalty', from: 79, to: 75 }} hideRatings />
+      <${FitTag} fit=${{ state: 'penalty', at: 'CM', from: 84, to: 81 }} />
+      <${FitTag} fit=${{ state: 'neutral', at: 'RW', from: 84, to: 84 }} />
     <//>
     <div class="g-split">
       <${Demo} label="Pool list (tap to select)" wide>
@@ -417,7 +423,9 @@ function Rows() {
               html`<li key=${p.id}>
                 <${PlayerRow}
                   player=${p}
-                  fit=${FITS[i]}
+                  fit=${i === 2 ? { state: 'penalty', at: 'DM', from: p.ovr, to: p.ovr - 2 } : FITS[i]}
+                  boost=${[{ label: '+1.5', text: 'nation mate' }, null, { label: '+2.5', text: 'nation + club mate' }, { label: '+1', text: 'club mate' }][i]}
+                  cost=${i === 3 ? { label: 'Starter', tone: 'starter' } : null}
                   selected=${selected === i}
                   disabled=${i === 4}
                   onClick=${() => setSelected(i)}

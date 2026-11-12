@@ -6,6 +6,7 @@
 //   fmt1(82.24)   '82.2'      fmt2(0.456)  '0.46'     int(1234.4) '1,234'
 //   signed1(1.2)  '+1.2'      signed1(-1)  '−1.0'     pct(0.734)  '73%'
 //   fmt1(null)    '–'         (pass a fallback as the 2nd argument)
+//   boost(1.5)    '+1.5'      boost(1)     '+1'       boost(2.5)  '+2.5'   (mates boosts)
 
 const DASH = '–';
 const MINUS = '−';
@@ -28,6 +29,12 @@ export function int(v, fallback = DASH) {
 /** Signed with one decimal and a real minus sign: +1.2 / −0.8 (0 → '+0.0'). */
 export const signed1 = (v, fallback = DASH) =>
   finite(v) ? (Number(v) < 0 ? MINUS : '+') + Math.abs(Number(v)).toFixed(1) : fallback;
+
+/** A mates boost or a sum of them: a decimal only when there is one (+1, +1.5, +14). */
+export const boost = (v, fallback = DASH) =>
+  finite(v)
+    ? '+' + (Number.isInteger(Number(v)) ? String(Number(v)) : Number(v).toFixed(1))
+    : fallback;
 
 /** Share 0…1 → whole percent: 73%. */
 export const pct = (p, fallback = DASH) =>

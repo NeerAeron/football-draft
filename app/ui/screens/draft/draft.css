@@ -763,6 +763,19 @@
   gap: var(--space-3);
   align-items: start;
 }
+/* The selected player's card with his six stats: compact, so the pitch and the Draft button
+   stay in reach (the card's inner measures follow its font-size). */
+.pick-card {
+  --pc-w: 132px;
+  aspect-ratio: auto;
+  font-size: 9.5px;
+  margin: 3px;
+}
+.dock .pick-card {
+  --pc-w: 124px;
+  font-size: 9px;
+  align-self: center;
+}
 .pick__info {
   display: grid;
   gap: var(--space-1);
@@ -832,12 +845,30 @@
 .pick-effects__budget {
   color: var(--text-2);
 }
-.dock .pick-effects {
-  grid-auto-flow: column;
-  gap: var(--space-3);
+/* The dock: his card on the left, name + slot and the effects of the pick beside it, the
+   actions on the right. */
+.dock {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'card who actions'
+    'card effects actions';
+  align-items: center;
 }
-.dock .pick-effects__mates {
-  max-width: 30ch;
+.dock .pick-card {
+  grid-area: card;
+}
+.dock__who {
+  grid-area: who;
+  align-self: end;
+}
+.dock .pick-effects {
+  grid-area: effects;
+  align-self: start;
+}
+.dock__actions {
+  grid-area: actions;
+  align-self: end;
 }
 
 /* ---------- completion ---------- */
@@ -1183,77 +1214,7 @@
   gap: var(--space-4);
 }
 
-/* ---------- All attributes (pick sheet + dock) ---------- */
-.attrs {
-  width: 100%;
-  border-radius: var(--radius-md);
-  background: var(--surface-1);
-  border: 1px solid var(--line-1);
-}
-.attrs__summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--touch);
-  padding: 0 var(--space-3);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-  list-style: none;
-}
-.attrs__summary::-webkit-details-marker {
-  display: none;
-}
-.attrs__summary > span {
-  flex: 1;
-}
-.attrs__chevron {
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.attrs[open] .attrs__chevron {
-  transform: rotate(180deg);
-}
-.attrs__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: var(--space-2) var(--space-5);
-  padding: 0 var(--space-3) var(--space-3);
-}
-.attrs__group {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.attrs__head {
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
-  color: var(--text-1);
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: var(--weight-heavy);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.attrs__group {
-  align-content: start;
-}
-.attrs .statbar {
-  grid-template-columns: 7.2em minmax(0, 1fr) 2ch;
-  font-size: var(--text-xs);
-}
-.attrs .statbar__label {
-  color: var(--text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pick-effects__captain {
-  align-items: center;
-}
-
-/* ---------- Budget mode: the rating bands as slots filling up ---------- */
+/* ---------- Budget mode: the capped tiers as slots filling up ---------- */
 .draft-budget {
   display: flex;
   flex-wrap: wrap;
@@ -1286,18 +1247,28 @@
   color: var(--band);
   font-size: var(--text-sm);
 }
-.draft-budget__band.is-band1 {
-  --band: var(--gold-400);
+.draft-budget__band.is-superstar {
+  --band: var(--tier-superstar);
 }
-.draft-budget__band.is-band2 {
-  --band: var(--volt-400);
+.draft-budget__band.is-star {
+  --band: var(--tier-star);
 }
-.draft-budget__band.is-band3 {
-  --band: var(--sky-400);
+.draft-budget__band.is-starter {
+  --band: var(--tier-starter);
 }
 .draft-budget__band.is-free {
   margin-left: auto;
   color: var(--text-3);
+}
+/* Phones: the three tiers and the free note on one line. */
+@media (max-width: 479px) {
+  .draft-budget {
+    gap: 6px var(--space-2);
+    padding-inline: var(--space-2);
+  }
+  .draft-budget__title {
+    display: none;
+  }
 }
 .draft-budget__pips {
   display: inline-flex;
@@ -1339,4 +1310,149 @@
 }
 .xi-summary__stats b.is-boost {
   color: var(--green-300);
+}
+
+/* ---------- Legend spin: the first spin of a World Cup draft, in gold ---------- */
+.stage.is-legend {
+  border-color: color-mix(in srgb, var(--gold-400) 65%, transparent);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(245 200 76 / 0.2), transparent 62%),
+    linear-gradient(180deg, rgb(245 200 76 / 0.07), transparent 55%), var(--surface-1);
+  box-shadow:
+    0 0 0 1px rgb(245 200 76 / 0.18),
+    0 10px 34px rgb(245 200 76 / 0.14);
+}
+.stage.is-legend .stage__cat,
+.stage.is-legend .reveal__cat,
+.stage.is-legend .stage-reels__label {
+  color: var(--gold-300);
+}
+.stage.is-legend .stage-idle__window {
+  border-color: color-mix(in srgb, var(--gold-400) 70%, transparent);
+  background: radial-gradient(circle, rgb(245 200 76 / 0.22), transparent 70%);
+  color: var(--gold-300);
+}
+.stage.is-legend .reveal__title {
+  background: linear-gradient(100deg, #fff3c4, var(--gold-400) 55%, #fff3c4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.stage.is-legend .reel {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--gold-400) 70%, transparent);
+}
+
+/* ---------- Prime boost: the board's button and the sheet ---------- */
+.draft-prime-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--gold-400) 55%, transparent);
+  border-radius: var(--radius-md);
+  background: rgb(245 200 76 / 0.08);
+  color: var(--gold-300);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+.draft-prime-btn b {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
+  color: var(--on-gold);
+  text-align: center;
+}
+.draft-prime-btn.is-ready {
+  box-shadow: 0 0 14px rgb(245 200 76 / 0.22);
+}
+.draft-prime-btn.is-spent {
+  border-color: var(--line-1);
+  background: none;
+  color: var(--text-3);
+}
+.draft-prime-btn.is-spent b {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+.draft-prime__lead {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+.draft-prime__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.draft-prime__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: 6px var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-1);
+  text-align: left;
+}
+.draft-prime__row:disabled {
+  opacity: 0.42;
+}
+.draft-prime__row.is-on {
+  border-color: color-mix(in srgb, var(--gold-400) 50%, transparent);
+  background: rgb(245 200 76 / 0.07);
+  cursor: pointer;
+}
+.draft-prime__row.is-selected {
+  border-color: var(--gold-300);
+  box-shadow: 0 0 0 2px rgb(245 200 76 / 0.45);
+}
+.draft-prime__who {
+  display: grid;
+  min-width: 0;
+}
+.draft-prime__name {
+  font-weight: var(--weight-semibold);
+}
+.draft-prime__meta {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.draft-prime__row.is-on .draft-prime__meta {
+  color: var(--gold-300);
+}
+.draft-prime__bump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-md);
+  color: var(--text-2);
+}
+.draft-prime__bump b {
+  color: var(--text-1);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+}
+.draft-prime__bump i {
+  min-width: 34px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--green-400);
+  color: #04130a;
+  font-style: normal;
+  font-weight: var(--weight-heavy);
+  text-align: center;
+}
+.pick-effects__captain {
+  align-items: center;
+  gap: var(--space-2);
 }

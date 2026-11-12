@@ -120,3 +120,68 @@ test('restarts: the taker plays the best ball that is on, and a throw is short',
     assert.ok(Math.hypot(p.tx - 60, p.ty - 0.2) < 11, 'within a short throw');
   }
 });
+
+test('a tip over goes over the bar from anywhere in front of the line: never into the net', () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const m = new Match(seed, 180);
+    m.mode = 'play';
+    const g = m.players[11],
+      depth = 0.3 + (seed % 12) * 0.5; // 0.3 … 5.8 m off his line
+    g.x = 105 - depth;
+    g.y = 34 + ((seed % 5) - 2) * 0.8;
+    Object.assign(m.ball, {
+      x: g.x - 0.3,
+      y: g.y + 0.4,
+      z: 2.1 + (seed % 4) * 0.12,
+      vx: 24,
+      vy: ((seed % 3) - 1) * 2,
+      vz: 1,
+      owner: null,
+      kind: 'shot',
+      shotTeam: 0,
+      lastTouch: 0,
+    });
+    assert.equal(m.deflectSave(g, 1, 0.8, 0.7, 80), 'tip over');
+    let crossed = false;
+    for (let i = 0; i < 240 && m.mode === 'play'; i++) {
+      m.ball.age += 1 / 60;
+      m.moveBall(1 / 60);
+      m.checkBounds();
+      assert.deepEqual(m.score, [0, 0], `seed ${seed}: tipped over, not in`);
+      if (m.mode !== 'play') crossed = true;
+    }
+    assert.ok(crossed, 'it goes behind');
+    assert.equal(m.restart.type, 'Corner');
+    assert.equal(m.restart.team, 0);
+  }
+});
+
+test("a parry never carries the ball into the keeper's own net", () => {
+  for (let seed = 1; seed <= 60; seed++) {
+    const m = new Match(seed, 180);
+    m.mode = 'play';
+    const g = m.players[11];
+    g.x = 105 - 0.4 - (seed % 6) * 0.6;
+    g.y = 34 + ((seed % 7) - 3) * 0.9;
+    Object.assign(m.ball, {
+      x: g.x - 0.2,
+      y: g.y + ((seed % 3) - 1) * 0.5,
+      z: 0.6,
+      vx: 22,
+      vy: ((seed % 5) - 2) * 3,
+      vz: 0,
+      owner: null,
+      kind: 'shot',
+      shotTeam: 0,
+      lastTouch: 0,
+    });
+    for (const p of m.players) if (p.id !== g.id) p.stun = 5; // nobody else touches it
+    assert.match(m.deflectSave(g, 0, 0.5, 0.5, 80), /^parry/);
+    for (let i = 0; i < 180 && m.mode === 'play'; i++) {
+      m.ball.age += 1 / 60;
+      m.moveBall(1 / 60);
+      m.checkBounds();
+    }
+    assert.deepEqual(m.score, [0, 0], `seed ${seed}`);
+  }
+});

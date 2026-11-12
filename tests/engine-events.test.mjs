@@ -73,9 +73,12 @@ test('event contract over a full match: shots, saves, goals and momentum carry t
 });
 
 test('xG is geometric: closer, more central and less crowded shots are better chances', () => {
-  assert.ok(geometricXg(3, 1.77) > 0.7);
-  assert.ok(geometricXg(11, 0.64) > 0.12 && geometricXg(11, 0.64) < 0.25);
-  assert.ok(geometricXg(25, 0.29) < 0.06);
+  // The engine's own conversion (docs/calibration.md, xG): tap-ins high, 30 m low.
+  assert.ok(geometricXg(3, 1.77) > 0.75);
+  assert.ok(geometricXg(11, 0.64) > 0.38 && geometricXg(11, 0.64) < 0.55);
+  assert.ok(geometricXg(16.5, 0.43) > 0.2 && geometricXg(16.5, 0.43) < 0.35);
+  assert.ok(geometricXg(30, 0.24) < 0.1 && geometricXg(30, 0.24) > 0.03);
+  assert.ok(geometricXg(40, 0.18) <= geometricXg(30, 0.24));
   const m = new Match(5),
     s = m.players[9];
   for (const p of m.players) {
@@ -89,7 +92,7 @@ test('xG is geometric: closer, more central and less crowded shots are better ch
   const alone = m.shotQuality(s);
   assert.equal(alone.oneOnOne, true);
   assert.equal(alone.bigChance, true);
-  assert.ok(alone.xg > 0.3);
+  assert.ok(alone.xg > 0.5);
   assert.ok(m.shotQuality(s, true).xg < alone.xg);
   for (const [i, y] of [32.5, 34, 35.5].entries()) {
     m.players[13 + i].x = 99;
@@ -97,7 +100,7 @@ test('xG is geometric: closer, more central and less crowded shots are better ch
   }
   const crowded = m.shotQuality(s);
   assert.equal(crowded.oneOnOne, false);
-  assert.ok(crowded.xg < alone.xg * 0.6);
+  assert.ok(crowded.xg < alone.xg * 0.8);
   assert.equal(m.shotQuality(s, false, true).xg, 0.76);
 });
 

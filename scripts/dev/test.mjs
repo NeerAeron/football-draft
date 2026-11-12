@@ -26,6 +26,8 @@ const SLOW = [
   'formation variations have eleven usable roles',
   'same seed and inputs produce the same match state',
   'event contract over a full match',
+  // Recompiles the 91 MB legacy CSV (~20 s; only where data/raw has the pinned files).
+  'the pinned CSVs give this exact file',
 ];
 
 const argv = process.argv.slice(2);

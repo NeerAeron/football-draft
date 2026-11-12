@@ -17,8 +17,30 @@ const URGENT = new Set([
 ]);
 
 export class MovementMethods {
+  // A keeper's penalty dive (shooting.js startPenaltyDive): a committed lunge along a fixed
+  // path, far quicker than a player accelerates on his feet. He stays where he lands until
+  // the dive is over. Returns false once it is.
+  stepDive(p, dt) {
+    const d = p.penaltyDive;
+    if (this.elapsed >= d.until) {
+      p.penaltyDive = null;
+      return false;
+    }
+    const k = clamp((this.elapsed - d.at) / 0.34, 0, 1),
+      ease = k * (2 - k),
+      x = d.x0 + (d.x - d.x0) * ease,
+      y = d.y0 + (d.y - d.y0) * ease;
+    p.vx = k < 1 ? (x - p.x) / dt : 0;
+    p.vy = k < 1 ? (y - p.y) / dt : 0;
+    p.x = x;
+    p.y = y;
+    p.tx = d.x;
+    p.ty = d.y;
+    return true;
+  }
   move(p, dt, restart = false) {
     if (p.sentOff) return;
+    if (p.penaltyDive != null && this.stepDive(p, dt)) return;
     let dx = p.tx - p.x,
       dy = p.ty - p.y;
     // Separation from nearby players. Runs 22 x 22 times per step: reject on x

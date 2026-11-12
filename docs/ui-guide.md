@@ -32,10 +32,11 @@ ui/
     motion.js             isReducedMotion(), useReducedMotion()
     audio.js              soundStore, toggleSound, setVolume, playCue (wraps services/sound.js)
     player-view.js        PlayerView shape, playerView(), makePlayerView(catalog), summaryStats()
-    tiers.js color.js     tierOf/resolveTier; teamStyle/readableOn/contrastRatio
+    tiers.js color.js     tierOf/resolveTier/isTopTier (Superstar 88+ · Star 84+ · Starter 80+ ·
+                          Normal 74+ · Bench); teamStyle/readableOn/contrastRatio
     kits.js               nation home kits (NATION_KITS, nationKit, sideColors, kitColors) — use
                           them wherever a national side is shown; never a generic default colour
-    format.js             fmt1/fmt2/int/signed1/pct — the ONLY number formatting for display
+    format.js             fmt1/fmt2/int/signed1/pct/boost — the ONLY number formatting for display
                           ('.' decimals, ',' thousands; never toLocaleString for numbers)
     saved.js storage.js   saved run/daily/draft readers; safe localStorage helpers
     catalog-warm.js       loadWarmCatalog()/warmCatalog()/warmOpponents(): fill core's rating cache
@@ -196,7 +197,7 @@ html`<${PlayerCard} player=${toView(p)} />`;
 ```
 
 Pass `ovr`/`tier` you computed for the context (e.g. `overallRating(p, true, slotRole)`), and
-`tier: playerTier(p).name` when config thresholds matter. `hideRatings` on every player component
+`tier` (a draft pool entry's `tier`) when a session plays with other thresholds. `hideRatings` on every player component
 implements "Ball Knower". Club-less players have no `club`/`league`.
 
 ## 8. Components (props are documented at the top of each file)
@@ -212,9 +213,10 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `Flag` | `code`, `name`, `shape` circle·rect, `size`, `src`, `decorative` (falls back to initials) |
 | `Crest` / `LeagueLogo` | `name`, `colors`, `shape` disc·shield, `size` / `src`, `name`, `tier` |
 | `PlayerCard` | `player`, `size` s·m·l, `tier`, `selected`, `disabled`, `hideRatings`, `onClick`, `children` (footer) |
-| `PlayerRow` | `player`, `fit`, `cost { label, tone }` (Budget band tag), `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
-| `FitTag` | `fit { state: best·ok·penalty·swap·blocked·neutral, label, from, to }` |
-| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `boosts` (array · `false`; default: mates + Captain from the players), `names` |
+| `CaptainMark` | the "C" armband mark (`size` sm \| md); rows, cards and pitch tokens show it for `player.captain`, and the year tag ("’18") for a legend or prime version (`player.era`) |
+| `PlayerRow` | `player`, `fit`, `cost { label, tone }` (Budget tier tag), `boost { label, text }` ("+1.5 nation mate"), `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
+| `FitTag` | `fit { state: best·ok·penalty·swap·blocked·neutral, label, from, to, at }` (`at` + `to`: "81 at CM") |
+| `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `boosts` (array · `false`; default: the mates boosts of the players), `names` |
 | `Meter` / `StatBar` / `StatTile` | `label value max tone(auto) size valueText delta compare hint` |
 | `Reel` | `items`, `landIndex` (decided first!), `spinKey`, `onLand`, `onTick`, `skip`, `duration`, `size` |
 | `Modal` / `Sheet` | `open`, `onClose`, `title` (required), `eyebrow`, `description`, `footer`, `size`, `dismissible` |
@@ -233,7 +235,7 @@ in `styles/app.css` and in `components/index.js`, a gallery section, and a row h
 **PitchView fit flow (draft):** when a player is selected, compute per-slot fit in `core/` and pass
 `highlights`: `best` (auto-place target), `ok` (natural), `penalty { from, to }` (OVR after
 familiarity, shown "79 → 75"), `swap` (occupied), `blocked` (not selectable). Mates lines and boost chips come from the
-chemistry rules (`strength` 3 nation mates · gold, 2 club mates · volt, 1 a faint dashed line; the green `+2` / `+4` chips are worked out from the players' `source`/`captain` unless `boosts` is passed).
+chemistry rules (`strength` 3 nation mates · gold, 2 club mates · volt, 1 a faint dashed line; the green `+1` / `+1.5` / `+2.5` chips are worked out from the players' `source` unless `boosts` is passed).
 
 ## 9. Tokens (`styles/tokens.css`)
 
@@ -244,7 +246,8 @@ Use custom properties only — no raw hex, px font sizes or durations in screen 
   `--sky-*`; semantic `--accent --positive --negative --warning --info --focus-ring`; pitch
   `--pitch-*`, `--pitch-stripe-a/b`, `--pitch-line`.
 - **Tiers:** `--tier-{superstar|star|starter|normal|bench|hidden}` (solid), `-frame` (foil
-  gradient), `-fill`, `-sheen`. Text helpers `.tier-text-<id>`; medals `--medal-{gold,silver,bronze}`, Budget trophies `--budget`.
+  gradient), `-fill`, `-sheen`. Superstars and Stars also get a thin outline in the tier's
+  colour wherever they are listed or shown (rows, cards, pitch tokens); lower tiers are plain. Text helpers `.tier-text-<id>`; medals `--medal-{gold,silver,bronze}`, Budget trophies `--budget`.
 - **Team colours:** `style=${teamStyle(colors)}` sets `--team --team-2 --team-ink` (contrast-safe,
   lifted when too dark for navy).
 - **Type:** `--font-display` (Barlow Condensed: headings, numerals, CTAs lg/xl) and `--font-ui`

@@ -16,12 +16,16 @@
 //   stats?: [{ key: 'PAC', label: 'Pace', value: 89 }, …],  // six summary stats, FC order
 //   badges?: [{ id: 'finisher', label: 'Clinical Finish' }],
 //   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
-//   captain?: true,              // Captain tag (an armband mark; boosts his XI)
 //   source?: { nationality, clubId, … },  // what makes mates (core/draft/links.js)
+//   captain?: true,              // Captain tag (an armband mark; +1 for his whole XI)
+//   legend?: true, prime?: true, // a Legend / a prime version (core/players/legends.js)
+//   era?: '’18',                 // the year of a legend's or prime version's edition
+//   primeNote?: 'Prime 94 · ’19' // draft only: a Prime boost would make him this
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
 import { BADGES } from '../../core/players/traits.js';
-import { teamLinks } from '../../core/draft/links.js';
+import { teamLinks, captainSlot } from '../../core/draft/links.js';
+import { editionLabel } from '../../core/players/legends.js';
 
 const GROUP = Object.fromEntries(RATING_GROUPS.map(g => [g.id, g]));
 const OUTFIELD = [
@@ -75,23 +79,13 @@ export function keyStatsFirst(stats = [], position) {
   return [...first, ...stats.filter(s => !keys.includes(s.key))];
 }
 
-/**
- * The slot of the XI's captain: of the Captain-tagged players the highest source rating, the
- * first slot on a tie — the same rule as core/draft/links.js, which gives the team its boost.
- */
-export function captainSlot(players) {
-  let best = -1;
-  players.forEach((p, i) => {
-    if (p?.captain && (best < 0 || (p.sourceOverall ?? 0) > (players[best].sourceOverall ?? 0)))
-      best = i;
-  });
-  return best < 0 ? null : best;
-}
+/** The slot of the XI's captain (the armband), or null — core/draft/links.js captainSlot. */
+export { captainSlot };
 
 /**
  * The boost of every player of an XI (views or catalog players, null = open slot): mates
- * (nation mate +2, club mate +2, both +4) plus the Captain's +1 — core/draft/links.js. 0 when a view
- * carries no `source`.
+ * (nation mate +1.5, club mate +1, both +2.5) plus the Captain's +1 — core/draft/links.js. 0
+ * when a view carries no `source`.
  */
 export function mateBoosts(players, rules) {
   return teamLinks(players, rules).players.map(e => (e ? e.chem : 0));
@@ -121,9 +115,12 @@ export function playerView(p, { team, league, nation } = {}) {
     league: league ? { name: league.name, logo: league.logo, tier: league.tier } : undefined,
     stats: summaryStats(p.attrs, position),
     attrs: p.attrs, // every attribute (the draft's "All attributes" panel)
-    captain: !!p.captain, // Captain tag: a boost for his whole XI (draft/links.js)
     source: p.source, // nation / club: who his mates are (draft/links.js)
+    captain: !!p.captain, // Captain tag: +1 for his whole XI (draft/links.js)
     sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
+    legend: !!p.legend,
+    prime: !!p.prime,
+    era: editionLabel(p.edition), // '’18' for a legend or a prime version, else ''
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };
 }

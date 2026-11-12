@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { ChipGroup, PlayerRow, Icon, Button, EmptyState } from '../../components/index.js';
-import { poolFilters, filterPool, poolCounts, rowFit, rowCost } from './draft-model.js';
+import { poolFilters, filterPool, poolCounts, rowFit, rowCost, rowBoost } from './draft-model.js';
 
 const PAGE = 30;
 
@@ -95,8 +95,9 @@ export function PoolPanel({
                 html`<li key=${e.profileId}>
                   <${PlayerRow}
                     player=${toView(e)}
-                    fit=${rowFit(e, budget)}
+                    fit=${rowFit(e, budget, hideRatings)}
                     cost=${rowCost(e, budget)}
+                    boost=${rowBoost(e)}
                     hideRatings=${hideRatings}
                     selected=${selectedId === e.profileId}
                     disabled=${!e.available}

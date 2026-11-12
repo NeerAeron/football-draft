@@ -337,3 +337,35 @@
 .pcard.is-disabled:hover {
   transform: none;
 }
+
+/* The top two tiers stand out a little wherever a card is shown: a thin outline in the tier's
+   colour around the foil frame (lower tiers stay plain). */
+.pcard--tier-superstar:not(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, var(--tier-superstar) 70%, transparent);
+  outline-offset: 2px;
+}
+.pcard--tier-star:not(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, var(--tier-star) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* A legend or a prime version: the year of that version under the position, a gold edge. */
+.pcard__era {
+  margin-top: 0.25em;
+  padding: 0 0.35em;
+  border-radius: 4px;
+  background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
+  color: var(--on-gold);
+  font-size: 1.05em;
+  font-weight: var(--weight-heavy);
+  line-height: 1.3;
+}
+.pcard__rating .captain-mark {
+  margin-top: 0.3em;
+}
+.pcard--legend,
+.pcard--prime {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--gold-400) 75%, transparent),
+    0 6px 22px rgb(245 200 76 / 0.22);
+}

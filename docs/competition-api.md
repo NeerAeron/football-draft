@@ -38,7 +38,11 @@ teams only (no World XI / All-Stars in a run or the Daily):
   semi-final strength.
 * **Legendary is the real field** in a Nations draft (`FIELD_LEVEL`; the UI does not say so):
   `worldCupDraw(catalog, { random, rules })` draws and plays a whole World Cup from the run's
-  seed. The 48-nation field in its four pots (`catalogIndex(catalog).field`), twelve groups with
+  seed. Every run first **qualifies its own 48** of the playable nations (`catalogIndex(catalog)
+  .playable`, 80): the strongest `nations.fieldCore` (30) are always in, the other 18 seats are
+  drawn without replacement from the rest with odds that halve every `nations.fieldHalving`
+  (1.5) rating points below the 30th nation — so a lower-rated nation sometimes makes it, like
+  real qualification. The 48 are potted by strength (the draw returns `pots`), twelve groups with
   one team per pot, the user in a pot-1 seat (the weakest pot-1 nation stays at home). The user's
   group opponents are that group's three teams (their real pots 2, 3, 4). The eleven other
   groups and every tie without the user are played by the fast model (`simulateResult`); the
@@ -50,14 +54,16 @@ teams only (no World XI / All-Stars in a run or the Daily):
   bracket (no opponent ever repeats), and the 31 other places go to the 22 top-two finishers of
   the other groups and the nine best of their eleven thirds. Typical effective ratings met
   (`FIELD_TYPICAL`, `projectRun`'s targets): group 77.2 / 79.1 / 81.3, R32 80.3, R16 83.5, QF
-  84.6, SF 85.6, final 86.5, play-off 84.9. Outside a Nations draft there is no field: Legendary
+  84.6, SF 85.6, final 86.5, play-off 84.9 (measured before the qualification draw and the
+  Captain boost; `cup-calibration.mjs runs --runs 2000 --only legendary` now gives 76.0 / 79.2 /
+  81.2, R32 80.2, R16 83.3, QF 84.2, SF 85.3, final 85.9, play-off 84.5 — the qualification
+  draw only lowers matchday 1, by 1.2; with the strongest 48 the same code gives 77.2 / 79.2 /
+  81.1, 80.3, 83.1, 84.2, 85.1, 85.9, 84.3). Outside a Nations draft there is no field: Legendary
   uses its `CUP_TUNING` row.
 
-**Best thirds** (`BEST_THIRD`, `thirdQualifies(row)`): third place goes through with 4 points, or
-3 points and a goal difference of −2 or better. A fixed, explainable rule standing in for the
-ranking of twelve thirds: over many simulated sets of twelve groups (fast model), every third
-on 4+ points makes the real cut, one on 3 points makes it 97% of the time at GD ≥ 0, ~90% at
-−1, ~70% at −2 and at most ~50% below; the rule passes ~63% of thirds (the real cut is 8/12).
+**Best thirds** (`BEST_THIRD`, `thirdQualifies(row)`): third place goes through with 4 points or
+more and never with fewer (over many simulated sets of twelve groups every third on 4+ points
+makes the real cut of 8/12).
 Snapshot table rows carry `qualifies` (as the table stands); the hub shows the rule under the
 group table and in the last-matchday stakes. Since the rule came in (with the Round of 32),
 fewer runs end in the group (World Class 13.7% → 4.7%, Legendary 23% → 10%), and the extra
@@ -258,3 +264,11 @@ World Class offsets then went +0.5 on every round (fast model: 10.6% → 8.2% no
 Budget; expect about 11% and 3.7% in the engine). Legendary is the real 48-nation field and is not
 tuned. The engine gives the drafted XI more than the fast model does (it beats its rating by
 about 0.8 points), so the model's own numbers read lower: 20.7 / 8.2 / 4.4% and 10.5 / 3.0 / 1.9%.
+
+## Title odds with the 93-nation reel, legends, Prime boosts and captains
+
+Nations baseline re-measured (effective 81.1 / 81.64 / 82.2 with 0 / 1 / 2 re-rolls, legend and
+primes included). Real engine, 200 runs per level, before Pro and World Class went up half a
+point per round: Pro 28.5%, World Class 14.5%, Legendary 5.0% (real field, drawn per run).
+Fast model after the half point (1,000 runs): see `cup-calibration.mjs runs`; Budget mode
+(`CUP_BUDGET=1`) reads about a quarter lower than normal on Pro and World Class.

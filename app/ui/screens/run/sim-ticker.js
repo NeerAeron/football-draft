@@ -52,6 +52,7 @@ export function useSimTicker() {
         .slice(0, limit)
         .map(({ r, ...x }) => x),
       progress: 0,
+      milestone: null,
       finished: false,
       announce: '',
     };
@@ -110,6 +111,26 @@ export function useSimTicker() {
         await onDone?.(m, result, snapshot);
         if (!flags.current.skip) playCue(res.outcome === 'W' ? 'goal' : 'tick');
         await pause(pace);
+        // Simulating the whole cup: a breath after the group and after every knockout round,
+        // with a word when a stage is cleared (out of the group, into the semis, into the final).
+        if (limit > 1 && !flags.current.stop) {
+          const won = res.outcome === 'W' || res.shootout?.winner === 'user',
+            id = snapshot.rounds[m.round].id,
+            milestone =
+              m.round === 2 && snapshot.status === 'playing'
+                ? 'Made it out of the group'
+                : id === 'qf' && won
+                  ? 'Into the semi-finals'
+                  : id === 'sf' && won
+                    ? 'Into the final'
+                    : null;
+          if (milestone) {
+            push({ milestone, announce: `${milestone}.` });
+            if (!flags.current.skip) playCue('pick-star');
+            await pause(1700);
+            push({ milestone: null });
+          } else if (m.round >= 3 && snapshot.status === 'playing') await pause(600);
+        }
       },
     });
     push({

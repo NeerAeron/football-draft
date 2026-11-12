@@ -166,9 +166,14 @@
   .home-hero__lead {
     font-size: var(--text-lg, 1.125rem);
   }
-  .home-hero__cta {
+  .home-hero__cta,
+  .home-hero__budget {
     max-width: 460px;
   }
+}
+
+.home-hero__budget {
+  margin-top: calc(-1 * var(--space-2));
 }
 
 /* ---------- Run path strip ---------- */

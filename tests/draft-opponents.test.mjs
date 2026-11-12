@@ -53,8 +53,7 @@ test('opponents land within the target gap for every mode and level', () => {
       for (let seed = 1; seed <= 12; seed++) {
         const ref = chooseOpponent(catalog, { mode, level, seed });
         // Within ±1.5 effective wherever three candidates exist there (all but the very top).
-        // National XIs are sparse around the Pro target (the captain's +1 opened a gap between
-        // Belgium 85.1 and Switzerland 83.1): ±2 there.
+        // National XIs are sparse around the Pro target: ±2 there. The very top: ±3.
         const tolerance = target > 89 ? 3 : mode === 'nations' && level === 'pro' ? 2 : 1.5;
         assert.ok(Math.abs(ref.effective - target) <= tolerance, `${mode} ${level} ${ref.name}`);
         names.add(ref.name);
@@ -73,12 +72,16 @@ test('real XIs are all mates and bosses top the ladder', () => {
   const list = opponentCandidates(catalog),
     world = list.find(c => c.key === 'boss:world-xi'),
     stars = list.find(c => c.key === 'boss:all-stars');
-  // National XIs are all nation mates (+2, +4 for club mates inside them), club XIs all club
-  // mates (+2, +4 for compatriots), plus the captain's boost when the XI has one.
+  // National XIs are all nation mates (+1.5, +2.5 for club mates inside them), club XIs all
+  // club mates (+1, +2.5 for compatriots).
+  // A side with a Captain gets his +1 for everyone too.
   const { nation, club, captain } = DEFAULT_CONFIG.draft.links;
   const real = list.filter(c => c.kind !== 'boss');
-  assert.ok(real.every(c => c.chem >= 2 && c.chem <= nation + club + captain));
-  assert.ok(real.some(c => c.chem === 2) && real.some(c => c.chem > 3));
+  assert.ok(real.every(c => c.chem >= Math.min(nation, club) && c.chem <= nation + club + captain));
+  assert.equal(list.find(c => c.key === 'nation:Netherlands').chem >= nation + captain, true);
+  assert.ok(real.some(c => c.chem === nation) && real.some(c => c.chem > nation));
+  assert.ok(real.filter(c => c.kind === 'nation').every(c => c.chem >= nation));
+  assert.ok(real.filter(c => c.kind === 'club').every(c => c.chem >= club));
   assert.ok(list.every(c => c.rating <= world.rating));
   assert.ok(stars.rating < world.rating && stars.rating > 85);
   const a = buildOpponent(catalog, world),

@@ -74,7 +74,7 @@ test('a broken cross-field rule resets only its group', () => {
   const storage = memory({
       _settingsVersion: 9,
       teamTiers: { S: 70 }, // below A: thresholds no longer descend
-      draft: { links: { nation: 4 } }, // + club mates + the Captain: above the engine cap
+      draft: { links: { nation: 4, club: 2 } }, // together above the engine cap
       gameplay: { shotPower: 1.1 },
       playerTiers: { Superstar: { minimum: 86 } },
     }),

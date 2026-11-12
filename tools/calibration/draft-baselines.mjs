@@ -5,7 +5,15 @@
 //   node tools/calibration/draft-baselines.mjs [--catalog file.json] [--n 200]
 //        [--modes nations,leagues,clubs,clubAndCountry] [--rerolls 0,1,2] [--out /tmp/x.json]
 //        [--budget "88:2,84:3,80:3;88:1,84:3,80:4"] [--policies positional,links,smart]
-//        [--smart-weight 3]
+//        [--smart-weight 3] [--legend] [--primes default|N] [--captains N]
+//
+// --legend: the first spin is the Legend spin (World Cup drafts); --primes: Prime boosts
+// (default = CONFIG.draft.primes for Pro… by the re-roll count's difficulty is not known here,
+// so "default" means 2 with 2 re-rolls and 1 otherwise, as the difficulties have it), spent
+// after the draft on the players who gain most in their slot. Extra columns: `captain` = share
+// of XIs with a Captain, `legend` = the legend's slot rating, `primeGain` = slot-rating points
+// the boosts added (sum per XI). --captains N: tag the first N players of data/captains.json
+// instead of the catalog's own Captain flags (to choose the list size).
 //
 // --catalog: a v3 catalog (default: app/data/catalog.v3.json) or a v2 runtime JSON.
 // Policies: "positional" = the session's suggestPick() (best slot rating in the pool), with a
@@ -17,15 +25,17 @@
 // players per band + free in the final XI, `blocked` = picks per draft whose best player (by
 // slot rating) had no band slot left, `spendOrWait` = picks per draft where the best affordable
 // player costs a band slot while a cheaper one within 3 points was on offer. Policy "smart":
-// slot rating + the boosts the pick adds to the XI (mates, Captain), and in Budget mode minus a
+// slot rating + the boosts the pick adds to the XI (mates), and in Budget mode minus a
 // penalty for spending a scarce band slot on a player from the bottom of his band
 // (--smart-weight points at most); `differs` = picks per draft where it did not take the
 // positional pick.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
+import { loadRuntimeCatalog, readLegends } from '../../scripts/data/catalog-file.mjs';
+import { attachLegends } from '../../app/core/players/legends.js';
+import { PATHS } from '../../scripts/data/paths.mjs';
 import { createDraftSession } from '../../app/core/draft/session.js';
 import { teamLinks } from '../../app/core/draft/links.js';
-import { budgetBands, bandIndex, bandUse } from '../../app/core/draft/budget.js';
+import { budgetBands, bandIndex, bandUse, BUDGET_TIERS } from '../../app/core/draft/budget.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../app/core/config/config.js';
 import { roleRating, roleFit, naturalRating, isKeeper } from '../../app/core/draft/pools.js';
 import { FORMATIONS } from '../../app/core/players/formations.js';
@@ -41,6 +51,9 @@ const file = arg('catalog', null),
   policies = arg('policies', 'positional,links').split(','),
   out = arg('out', null),
   SMART_WEIGHT = Number(arg('smart-weight', 3)),
+  LEGEND = process.argv.includes('--legend'),
+  PRIMES = arg('primes', null),
+  CAPTAINS = arg('captains', null),
   schemes = arg('budget', null)
     ?.split(';')
     .map(text => text.trim())
@@ -51,11 +64,21 @@ const schemeRules = text =>
     : Object.fromEntries(
         text.split(',').map((part, i) => {
           const [minimum, slots] = part.split(':').map(Number);
-          return ['band' + (i + 1), { minimum, slots }];
+          return [BUDGET_TIERS[i], { minimum, slots }];
         }),
       );
 const raw = file ? JSON.parse(readFileSync(file, 'utf8')) : null;
 const catalog = !raw || raw.schemaVersion >= 3 ? loadRuntimeCatalog(file || undefined) : raw;
+if (LEGEND || PRIMES) attachLegends(catalog, readLegends());
+if (CAPTAINS !== null) {
+  const list = JSON.parse(readFileSync(PATHS.captains, 'utf8')).players.slice(0, Number(CAPTAINS)),
+    ids = new Set(list.map(c => String(c.sofifaId)));
+  for (const p of catalog.players) p.captain = ids.has(p.profileId.split(':')[1]);
+  for (const p of catalog.legends?.primes.values() ?? [])
+    p.captain = ids.has(p.profileId.split(':')[1]);
+}
+const primeCount = rerolls =>
+  PRIMES === null ? 0 : PRIMES === 'default' ? (rerolls >= 2 ? 2 : 1) : Number(PRIMES);
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
 const REROLL_BELOW = 78;
 
@@ -81,7 +104,7 @@ function linkMove(s) {
   }
   return best;
 }
-// The smart drafter: slot rating plus the boosts the pick adds to the XI (mates, Captain), and
+// The smart drafter: slot rating plus the boosts the pick adds to the XI (mates), and
 // in Budget mode a band slot spent on a player from the bottom of his band is worth less than
 // one spent near its top, the more so the scarcer the slots are for the picks to come.
 function smartMove(s) {
@@ -156,6 +179,8 @@ function draft(mode, seed, rerolls, policy, scheme) {
     seed,
     rerolls,
     budget: !!scheme && scheme !== 'off',
+    legendSpin: LEGEND && mode === 'nations',
+    primes: primeCount(rerolls) || null,
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
   });
   CONFIG.draft.budget = structuredClone(DEFAULT_CONFIG.draft.budget);
@@ -163,7 +188,9 @@ function draft(mode, seed, rerolls, policy, scheme) {
     used = 0,
     blocked = 0,
     spendOrWait = 0,
-    differs = 0;
+    differs = 0,
+    legend = null,
+    primeGain = 0;
   while (!s.complete) {
     s.spin();
     if (s.rerollsLeft[0] > 0 && s.suggestPick().rating < REROLL_BELOW) {
@@ -181,6 +208,17 @@ function draft(mode, seed, rerolls, policy, scheme) {
     if (move.profileId !== greedy.profileId) differs++;
     const r = s.pick(move.profileId, move.slot);
     if (!r.ok) throw Error(r.reason);
+    if (s.player(r.profileId).legend) legend = r.rating;
+  }
+  // Prime boosts, used sensibly: each on the player who gains most in his slot.
+  for (;;) {
+    const options = s
+      .primeOptions(0)
+      .filter(o => o.allowed && o.to.rating > o.from.rating)
+      .sort((a, b) => b.to.rating - b.from.rating - (a.to.rating - a.from.rating));
+    if (!options.length) break;
+    primeGain += options[0].to.rating - options[0].from.rating;
+    s.prime(options[0].slot, 0);
   }
   const rows = FORMATIONS[s.formations[0]],
     xi = s.lineup(0),
@@ -196,12 +234,14 @@ function draft(mode, seed, rerolls, policy, scheme) {
     blocked,
     spendOrWait,
     differs,
-    captain: links.captain === null ? 0 : 1,
-    mates: links.score / 11,
     ovr,
     chem: links.chem,
     links: links.score,
     effective: ovr + links.chem,
+    captain: links.captain === null ? 0 : 1,
+    legend,
+    primeGain,
+    primesUsed: s.primesPerSide - s.primesLeft[0],
     superstars: xi.filter(p => naturalRating(p) >= 84.5).length,
     oop: xi.filter((p, i) => roleFit(p, rows[i][2]) < 0.95).length,
     duds,
@@ -241,8 +281,6 @@ for (const scheme of schemes)
           p90: r2(q(o, 0.9)),
           chem: r2(mean(rows.map(r => r.chem))),
           chemSd: r2(sd(rows.map(r => r.chem))),
-          mates: r2(mean(rows.map(r => r.mates))),
-          captain: r2(mean(rows.map(r => r.captain))),
           links: r2(mean(rows.map(r => r.links))),
           effectiveSd: r2(sd(rows.map(r => r.effective))),
           bands: rows[0].bands.map((_, i) => r2(mean(rows.map(r => r.bands[i])))).join(' / '),
@@ -254,6 +292,14 @@ for (const scheme of schemes)
               }
             : {}),
           effective: r2(mean(rows.map(r => r.effective))),
+          captain: r2(mean(rows.map(r => r.captain))),
+          ...(rows[0].legend !== null ? { legend: r2(mean(rows.map(r => r.legend))) } : {}),
+          ...(PRIMES !== null
+            ? {
+                primesUsed: r2(mean(rows.map(r => r.primesUsed))),
+                primeGain: r2(mean(rows.map(r => r.primeGain))),
+              }
+            : {}),
           superstars: r2(mean(rows.map(r => r.superstars))),
           oop: r2(mean(rows.map(r => r.oop))),
           dudPicks: r2(mean(rows.map(r => r.duds)) / 11),

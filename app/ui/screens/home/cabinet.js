@@ -3,7 +3,9 @@
 // Budget-mode trophies (their own, green kind) alongside; and the ultimate achievement, a
 // perfect Legendary run in Budget mode. Legendary is the game's main challenge: the centre and
 // largest slot. Each slot starts a run on its difficulty.
+import { useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
+import { Segmented } from '../../components/segmented.js';
 import { href } from '../../lib/router.js';
 import { Icon } from '../../components/icon.js';
 import { Prize, Cup } from '../../components/cup.js';
@@ -19,56 +21,51 @@ const said = tally =>
     ? 'not played yet'
     : `best finish ${tally.bestLabel}, ${plural(tally.gold, 'gold')}, ${int(tally.silver)} silver, ${int(tally.bronze)} bronze${tally.perfect ? ', with a perfect run' : ''}`;
 
-function Slot({ level }) {
+function Slot({ level, budget }) {
   const main = level.id === MAIN;
-  const b = level.budget;
+  // The Budget cabinet is the same shelf with the Budget-mode results (their own green trophies).
+  const tally = budget ? level.budget : level;
   return html`<li class=${cx('cabinet__item', main && 'is-main')}>
     <a
       class=${cx(
         'cabinet__slot',
         main && 'is-main',
-        level.medal && `is-${level.medal}`,
-        level.perfect > 0 && 'is-perfect',
+        tally.medal && `is-${tally.medal}`,
+        tally.perfect > 0 && 'is-perfect',
       )}
-      href=${href('/play/:mode', { mode: 'run' }, { difficulty: level.id })}
-      aria-label=${`${level.label}: ${said(level)}. Budget mode: ${said(b)}. Start a ${level.label} run`}
+      href=${href(
+        '/play/:mode',
+        { mode: 'run' },
+        { difficulty: level.id, ...(budget ? { budget: 1 } : {}) },
+      )}
+      aria-label=${`${level.label}${budget ? ', Budget mode' : ''}: ${said(tally)}. Start a ${level.label} run`}
       data-level=${level.id}
-      data-best=${level.runs ? level.best : ''}
+      data-best=${tally.runs ? tally.best : ''}
     >
-      ${main && html`<span class="cabinet__tag">${level.gold ? 'Conquered' : 'The big one'}</span>`}
       <span class="cabinet__prize" aria-hidden="true">
         <${Prize}
-          medal=${level.medal}
+          medal=${tally.medal}
           size=${main ? 84 : 56}
-          glow=${main && level.medal === 'gold'}
+          glow=${main && tally.medal === 'gold'}
+          budget=${budget}
         />
         ${
-          level.perfect > 0 &&
+          tally.perfect > 0 &&
           html`<span class="cabinet__star" title="Perfect run: eight wins out of eight"
             ><${Icon} name="star" size=${11}
           /></span>`
         }
       </span>
       <span class="cabinet__level">${level.label}</span>
-      <span class="cabinet__best">${bestText(level)}</span>
+      <span class="cabinet__best">${bestText(tally)}</span>
       ${
-        level.runs > 0 &&
+        tally.runs > 0 &&
         html`<span class="cabinet__medals num" aria-hidden="true">
-          <span class="is-gold">${int(level.gold)}</span>
-          <span class="is-silver">${int(level.silver)}</span>
-          <span class="is-bronze">${int(level.bronze)}</span>
+          <span class="is-gold">${int(tally.gold)}</span>
+          <span class="is-silver">${int(tally.silver)}</span>
+          <span class="is-bronze">${int(tally.bronze)}</span>
         </span>`
       }
-      <span
-        class=${cx('cabinet__budget', b.runs > 0 && 'is-played', b.medal && 'is-won')}
-        aria-hidden="true"
-      >
-        <${Prize} medal=${b.medal} size=${20} budget />
-        <span
-          ><span class="cabinet__budget-word">Budget</span
-          >${b.runs ? ` ${b.gold > 1 ? `Won ×${int(b.gold)}` : b.bestShort}` : ''}</span
-        >
-      </span>
     </a>
   </li>`;
 }
@@ -93,9 +90,6 @@ function Ultimate({ ultimate }) {
       }
     </span>
     <div class="cabinet__ultimate-text">
-      <p class="eyebrow">
-        ${done ? 'The ultimate achievement · unlocked' : 'The ultimate achievement · locked'}
-      </p>
       <h3 class="cabinet__ultimate-name">${ultimate.name}</h3>
       <p class="cabinet__ultimate-how">
         ${
@@ -112,7 +106,8 @@ export function Cabinet({ records }) {
   // The shelf is a podium: Legendary in the middle.
   const byId = Object.fromEntries(records.levels.map(l => [l.id, l]));
   const shelf = [byId.pro, byId[MAIN], byId.worldclass].filter(Boolean);
-  const main = byId[MAIN];
+  const [mode, setMode] = useState('normal');
+  const budget = mode === 'budget';
   return html`<section
     class="cabinet card card--pad-md"
     aria-labelledby="records-title"
@@ -130,19 +125,22 @@ export function Cabinet({ records }) {
         <b>${records.won}</b>/${records.levels.length}
       </p>
     </div>
-    <p class="cabinet__lead">
-      ${
-        records.ultimate.done
-          ? 'Legendary, Budget mode, eight out of eight. There is nothing harder in this game, and you did it.'
-          : main?.gold
-            ? 'You have won the World Cup on Legendary. One thing is left: do it in Budget mode, eight out of eight.'
-            : 'Three World Cups to win. Legendary is the one that counts: the hardest cup in the game.'
-      }
-    </p>
-    <ul class="cabinet__shelf" role="list">
-      ${shelf.map(level => html`<${Slot} key=${level.id} level=${level} />`)}
-    </ul>
     <${Ultimate} ultimate=${records.ultimate} />
+    <${Segmented}
+      label="Which trophies"
+      options=${[
+        { value: 'normal', label: 'Classic' },
+        { value: 'budget', label: 'Budget' },
+      ]}
+      value=${mode}
+      onChange=${setMode}
+      block
+      size="sm"
+      class="cabinet__mode"
+    />
+    <ul class="cabinet__shelf" role="list" data-mode=${mode}>
+      ${shelf.map(level => html`<${Slot} key=${level.id} level=${level} budget=${budget} />`)}
+    </ul>
     ${
       records.runs > 0 &&
       html`<p class="cabinet__foot">

@@ -349,9 +349,9 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
     fill = keeper ? kit.gk || '#f2e14c' : kit.primary || '#cdf545',
     ink = keeper ? kit.gkInk || '#0a0f1c' : kit.ink || '#0a0f1c',
     ring = keeper ? 'rgba(6,10,20,0.85)' : kit.secondary || '#ffffff';
-  let x = fx.sx[p.id];
-  const y = fx.sy[p.id],
-    r = fx.rad[p.id],
+  let x = fx.sx[p.id],
+    y = fx.sy[p.id];
+  const r = fx.rad[p.id],
     vx = p.vx || 0,
     vy = p.vy || 0,
     speed2 = vx * vx + vy * vy;
@@ -395,9 +395,14 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
       ctx.globalAlpha = 1;
     } else if (a.type === 'stumble') x += Math.sin(ak * Math.PI * 4) * r * 0.3 * (1 - ak);
   }
+  // A dive or a sliding tackle: the body is thrown out along its line. A keeper's save
+  // lunges at the ball and comes back; a penalty dive (`hold`: the engine moves him) leaves
+  // him stretched out where he landed.
+  let lunge = 0,
+    lungeAngle = 0;
   if (a && (a.type === 'dive' || a.type === 'tackle')) {
     const k = clamp(ak, 0, 1),
-      stretch = Math.sin(k * Math.PI);
+      stretch = a.hold ? Math.sin(Math.min(1, k * 3) * 1.5708) : Math.sin(k * Math.PI);
     if (stretch > 0.02) {
       const ang = screenAngle(t, a.angle ?? p.facing);
       ctx.save();
@@ -409,6 +414,15 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
       ctx.ellipse(r * stretch * 0.9, 0, r * (1 + stretch * 1.3), r * 0.72, 0, 0, TAU);
       ctx.fill();
       ctx.restore();
+      if (a.type === 'dive') {
+        lunge = stretch;
+        lungeAngle = ang;
+        if (!a.hold) {
+          const reach = r * stretch * (0.5 + 0.9 * (a.stretch ?? 0.5));
+          x += Math.cos(ang) * reach;
+          y += Math.sin(ang) * reach;
+        }
+      }
     }
   }
   // Speed lines for sprinting players
@@ -444,7 +458,9 @@ function drawToken(ctx, t, fx, p, m, state, dpr, role) {
   // Body
   ctx.globalAlpha = body;
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, TAU);
+  if (lunge > 0)
+    ctx.ellipse(x, y, r * (1 + lunge * 0.55), r * (1 - lunge * 0.2), lungeAngle, 0, TAU);
+  else ctx.arc(x, y, r, 0, TAU);
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.lineWidth = Math.max(1.4 * dpr, r * 0.2);

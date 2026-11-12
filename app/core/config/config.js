@@ -5,13 +5,27 @@ export const DEFAULT_CONFIG = {
   draft: {
     // A league needs this many players to be drawn (Leagues, Clubs, Club & Country).
     minimumLeaguePlayers: 5,
-    // Nations: the field is the strongest eligible nations (>= minimumPlayers and
-    // >= minimumGoalkeepers), shown in pots; each spin offers the best available call-ups.
+    // Nations: a nation is playable — on the reel, met as an opponent — when it can field an
+    // XI (>= minimumPlayers, >= minimumGoalkeepers and a best XI with nobody under the
+    // engine's minimum fit, ai.minimumFit). `fieldSize` / `potSize` are only the real World Cup
+    // draw (Legendary) and the Daily's schedule: the strongest playable nations, in pots. Each
+    // spin offers the best available call-ups (as many as the nation has, up to the squad
+    // numbers).
     nations: {
       fieldSize: 48,
       potSize: 12,
-      minimumPlayers: 23,
-      minimumGoalkeepers: 2,
+      minimumPlayers: 11,
+      minimumGoalkeepers: 1,
+      // The real World Cup draw (Legendary) qualifies its own 48 for every run: the strongest
+      // `fieldCore` playable nations are always in, the other seats are drawn from the rest
+      // with odds that halve every `fieldHalving` rating points below the last core nation.
+      fieldCore: 30,
+      fieldHalving: 1.5,
+      // Star nations: nations that cannot field an XI but are still on the reel because they
+      // have a star — at least one player rated reelStar or better and reelPlayers players
+      // (no keeper needed: they are spun, never met as opponents).
+      reelStar: 75,
+      reelPlayers: 9,
       squadSize: 23,
       squadGoalkeepers: 3,
       squadDefenders: 7,
@@ -61,26 +75,47 @@ export const DEFAULT_CONFIG = {
       legendary: 7,
     },
     // Mates (draft/links.js): attribute points for a player with a nation team-mate and for
-    // one with a club mate in the XI — one mate is enough, and the two stack (+4 with both).
+    // one with a club mate in the XI — one mate is enough, and the two stack (+2.5 with both).
+    // `captain`: an XI with a Captain (catalog `captain`, data/captains.json) gives every
+    // player this much on top (one captain counts).
     links: {
-      nation: 2,
-      club: 2,
-      // A Captain in the XI: attribute points added to every player on top.
+      nation: 1.5,
+      club: 1,
       captain: 1,
     },
-    // Budget mode (session option `budget`): at most `slots` players rated `minimum` or more
-    // per band (by the rating shown on the player, bands highest first); players under the
-    // last band are free.
+    // The Legend spin (World Cup drafts: the first spin). A legend is a past player whose best
+    // version EA rated `minimum` or more (the data ships exactly those); the reel holds the
+    // nations with a legend EA rated `reelStar` or better; a landing shows the nation's `shown`
+    // highest-rated legends. A nation's weight on the reel grows gently with how many legends
+    // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
+    legends: {
+      minimum: 83,
+      reelStar: 85,
+      shown: 10,
+      weightPerLegend: 0.15,
+      weightCap: 20,
+    },
+    // Prime boosts per drafter by difficulty (World Cup drafts): each swaps a drafted player
+    // for his stored prime version.
+    primes: {
+      pro: 2,
+      worldclass: 1,
+      legendary: 1,
+    },
+    // The draft's player tiers (draft/budget.js), by the rating shown on the player, highest
+    // first: `minimum` is where the tier starts (these are the tiers the game shows: frames,
+    // outlines, pick celebrations) and `slots` how many of them a Budget-mode XI may hold
+    // (session option `budget`). Players under Starter (Normal, Bench) are free.
     budget: {
-      band1: {
+      Superstar: {
         minimum: 88,
-        slots: 1,
+        slots: 2,
       },
-      band2: {
+      Star: {
         minimum: 84,
         slots: 2,
       },
-      band3: {
+      Starter: {
         minimum: 80,
         slots: 3,
       },
@@ -810,6 +845,15 @@ const ranges = {
 const DRAFT_FIELDS = {
   'draft.nations.fieldSize': ['Nations in the field', 8, 64, 1],
   'draft.nations.potSize': ['Nations per pot', 1, 64, 1],
+  'draft.nations.fieldCore': ['World Cup draw: nations always in', 0, 64, 1],
+  'draft.nations.fieldHalving': [
+    'World Cup draw: rating points that halve the odds',
+    0.25,
+    10,
+    0.25,
+  ],
+  'draft.nations.reelStar': ['Reel nation without an XI: best player at least', 60, 99, 1],
+  'draft.nations.reelPlayers': ['Reel nation without an XI: minimum players', 1, 30, 1],
   'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
   'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
   'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
@@ -826,14 +870,20 @@ const DRAFT_FIELDS = {
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
+  'draft.legends.minimum': ['Legend: best version rated at least', 80, 95, 1],
+  'draft.legends.reelStar': ['Legend spin: a nation needs a legend rated at least', 80, 95, 1],
+  'draft.legends.shown': ['Legend spin: legends shown', 1, 23, 1],
+  'draft.legends.weightPerLegend': ['Legend spin: reel weight per legend', 0, 1, 0.05],
+  'draft.legends.weightCap': ['Legend spin: legends that count for the weight', 1, 50, 1],
+  'draft.primes.': [null, 0, 5, 1],
   'draft.budget.': [null, 0, 99, 1],
 };
 const LEVEL_LABELS = {
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',
-  minimum: 'Budget band: rating from',
-  slots: 'Budget band: players allowed',
+  minimum: 'Draft tier: rating from',
+  slots: 'Budget mode: players of this tier allowed',
 };
 const draftField = path => {
   const key = Object.keys(DRAFT_FIELDS)
@@ -946,17 +996,17 @@ const CROSS_FIELD_RULES = [
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
   },
   {
-    message: 'Mates and Captain boosts cannot total more than 5 (the engine cap).',
+    message: 'Mates boosts cannot total more than 5 (the engine cap).',
     reset: ['draft.links'],
     ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain <= 5,
   },
   {
-    message: 'Budget bands must descend and their slots stay within an XI.',
+    message: 'Draft tiers must descend and their Budget slots stay within an XI.',
     reset: ['draft.budget'],
     ok: ({ draft: { budget: b } }) =>
-      b.band1.minimum > b.band2.minimum &&
-      b.band2.minimum > b.band3.minimum &&
-      [b.band1, b.band2, b.band3].every(x => x.slots <= 11),
+      b.Superstar.minimum > b.Star.minimum &&
+      b.Star.minimum > b.Starter.minimum &&
+      [b.Superstar, b.Star, b.Starter].every(x => x.slots <= 11),
   },
   {
     message: 'Minimum added time exceeds maximum.',

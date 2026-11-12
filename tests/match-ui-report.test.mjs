@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
-import { commentary, commentaryLines, minuteLabel } from '../app/ui/screens/match/commentary.js';
+import {
+  commentary,
+  commentaryLines,
+  minuteLabel,
+  storyTag,
+} from '../app/ui/screens/match/commentary.js';
 import {
   summarizeMatch,
   analysisChips,
@@ -47,7 +52,9 @@ test('commentary: goals with story tags, saves by type, misses, cards, shootout'
   assert.equal(late.tone, 'goal');
   assert.equal(late.minute, "86'");
   assert.match(late.text, /^GOAL! /);
-  assert.match(late.text, /Late winner!/);
+  // Never "winner": a highlight reel plays this line before the result is known.
+  assert.doesNotMatch(late.text, /winner/i);
+  assert.match(late.text, /Late drama!/);
   assert.ok(late.text.includes(a.name.split(' ').pop()), 'assist named');
   assert.match(goal(42, ['brace', 'hat-trick']).text, /Hat-trick for/);
   assert.match(goal(43, ['equaliser']).text, /are level/);
@@ -300,4 +307,31 @@ test('the demo request uses two real club XIs and is deterministic per seed', as
   assert.equal(pens.config.competition.knockout, true);
   assert.equal(pens.meta.forceShootout, true);
   assert.equal(pens.view, 'key');
+});
+
+test('the goal banner never calls a goal the winner while the match is being shown', () => {
+  assert.equal(storyTag(['go-ahead', 'late', 'winner', 'late winner']), 'Go-ahead goal');
+  assert.equal(storyTag(['opener', 'winner']), 'Opener');
+  assert.equal(storyTag(['winner']), null);
+  assert.equal(storyTag(['go-ahead', 'winner', 'late winner'], true), 'Late winner');
+  assert.equal(storyTag(['equaliser', 'late']), 'Late equaliser');
+});
+
+test('a hard save that is held is not called routine', () => {
+  const save = difficulty =>
+    commentary(
+      {
+        id: 3,
+        type: 'save',
+        team: 1,
+        time: 600,
+        half: 1,
+        playerId: 11,
+        saveType: 'catch',
+        difficulty,
+      },
+      ctx,
+    ).text;
+  assert.doesNotMatch(save(0.4), /Comfortable|Straight at|gathers/);
+  assert.match(save(0.05), /Comfortable|Straight at|gathers/);
 });

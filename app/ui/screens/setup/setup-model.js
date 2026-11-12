@@ -34,7 +34,7 @@ export const TYPE_INFO = [
     value: 'nations',
     label: 'Nations',
     icon: 'flag',
-    text: 'Spin one of 48 nations, pick from its best 23 call-ups.',
+    text: 'Spin one of 93 nations, pick from its best 23 call-ups.',
   },
   {
     value: 'leagues',
@@ -85,6 +85,7 @@ export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
     label: DIFFICULTY_LABELS[level],
     text: DIFFICULTY_TEXT[level] ?? '',
     rerolls,
+    primes: rules.primes?.[level] ?? 0, // Prime boosts (World Cup drafts)
     gap: rules.ladder[level] ?? 0,
     target: Math.round(ladderTarget(draftMode(type), level, { rules })),
   };
@@ -120,11 +121,9 @@ export function setupDefaults(mode, { query = {}, saved = {}, prefs = {} } = {})
     formation,
     hideRatings: query.hide != null ? truthy(query.hide) : !!prefs.hideRatings,
     uniqueNations: query.unique != null ? truthy(query.unique) : !!saved.uniqueNations,
-    // Budget mode: a harder World Cup (core/draft/budget.js). Runs only; a seeded link plays
-    // it only when it says so (?budget=1).
-    budget:
-      mode === 'run' &&
-      (query.budget != null ? truthy(query.budget) : seed == null && !!saved.budget),
+    // Budget mode: a harder World Cup (core/draft/budget.js), chosen on Home (its own button)
+    // and carried by the link (?budget=1); never a remembered setting.
+    budget: mode === 'run' && query.budget != null && truthy(query.budget),
     names: [0, 1].map(i => String(saved.names?.[i] || '').slice(0, 20)),
     kits,
     seed,
@@ -142,15 +141,12 @@ export const savedChoices = state => ({
 });
 
 /**
- * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 1 player
- * rated 88+, 2 at 84–87 and 3 at 80–83. Everyone else must be under 80.'
+ * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 2 Superstars
+ * (88+), 2 Stars (84–87) and 3 Starters (80–83). Everyone else must be under 80.'
  */
 export function budgetCopy(rules = CONFIG.draft.budget) {
   const bands = budgetBands(rules),
-    caps = bands.map(
-      (b, i) =>
-        `${b.slots} ${i === 0 ? `player${b.slots === 1 ? '' : 's'} rated` : 'at'} ${b.label}`,
-    );
+    caps = bands.map(b => `${b.slots} ${b.label}${b.slots === 1 ? '' : 's'} (${b.range})`);
   return `Harder: your XI may hold only ${caps.slice(0, -1).join(', ')} and ${caps.at(-1)}. Everyone else must be under ${bands.at(-1).minimum}.`;
 }
 

@@ -8,23 +8,26 @@
  *   size         's' (112px: rating, flag, kit, name) | 'm' (168px: + six stats, 1 badge)
  *                | 'l' (232px: + club · league line, 3 badges)                    default 'm'
  *   tier         override the tier ('Superstar' | 'Star' | 'Starter' | 'Normal' | 'Bench');
- *                default from ovr: 85+ holo, 80–84 gold, 74–79 silver, 68–73 bronze, else slate
+ *                default from ovr: 88+ holo, 84–87 gold, 80–83 silver, 74–79 bronze, else slate
+ *                (lib/tiers.js); a Superstar's or Star's card has a thin outline in its colour
  *   selected     volt ring + check (aria-pressed when interactive)
  *   disabled     dimmed, not clickable (e.g. no open slot)
  *   hideRatings  "Ball Knower": hides OVR, stats and the tier frame (shows '?')
  *   onClick      makes the card a <button>;  href makes it a link
  *   showBadges   default true
  *   children     optional footer content inside the card (e.g. a fit chip)
+ * A legend or a prime version shows the year of that version under the position ("’18"); a
+ * Captain wears the "C".
  */
 import { html, cx } from '../lib/html.js';
 import { resolveTier } from '../lib/tiers.js';
 import { teamStyle } from '../lib/color.js';
 import { surname } from '../lib/player-view.js';
 import { Flag } from './flag.js';
-import { CaptainMark } from './captain-mark.js';
 import { Crest, LeagueLogo } from './crest.js';
 import { Chip } from './chip.js';
 import { Icon } from './icon.js';
+import { CaptainMark } from './captain-mark.js';
 
 const MARK = { s: 18, m: 22, l: 28 };
 const BADGE_COUNT = { s: 0, m: 1, l: 3 };
@@ -73,11 +76,19 @@ export function PlayerCard({
     hideRatings ? null : t.label,
     p.nation?.name,
     p.club?.name,
+    p.legend
+      ? `legend, 20${p.era.slice(1)}`
+      : p.prime
+        ? `prime version, 20${p.era.slice(1)}`
+        : null,
+    p.captain ? 'captain' : null,
   ]
     .filter(Boolean)
     .join(', ');
   const classes = cx(
     'pcard',
+    p.legend && 'pcard--legend',
+    p.prime && 'pcard--prime',
     `pcard--${size}`,
     `pcard--tier-${frame}`,
     selected && 'is-selected',
@@ -91,6 +102,7 @@ export function PlayerCard({
         <span class="pcard__rating">
           <span class="pcard__ovr num">${hideRatings ? '?' : p.ovr}</span>
           <span class="pcard__pos">${p.position}</span>
+          ${p.era && html`<span class="pcard__era num">${p.era}</span>`}
           ${p.captain && html`<${CaptainMark} size=${size === 's' ? 'sm' : 'md'} />`}
         </span>
         <span class="pcard__art"><${KitShirt} colors=${p.club?.colors} /></span>

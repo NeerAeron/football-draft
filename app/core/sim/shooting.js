@@ -59,7 +59,7 @@ export class ShootingMethods {
         ? { quality: 1, foot: null }
         : footExecution(p, Math.atan2(34 - p.y, goalX - p.x));
     const curve = shotType === 'Curler' ? (p.y < 34 ? 1 : -1) * this.direction(p.team) * 3.6 : 0;
-    const aimY = 34 + (this.rand() > 0.5 ? 1 : -1) * (penalty ? 2.35 : 1.25 + this.rand() * 1.2);
+    const aimY = 34 + (this.rand() > 0.5 ? 1 : -1) * (penalty ? 1.95 : 1.25 + this.rand() * 1.2);
     const balance =
       1 +
       (100 - p.skill('composure')) * 0.004 +
@@ -218,13 +218,36 @@ export class ShootingMethods {
       },
       true,
     );
-    if (penalty) {
-      const g = this.keeper(1 - p.team);
-      g.penaltyDive = {
-        until: this.elapsed + 0.8,
-        y: 34 + (this.rand() < 0.5 ? -1 : 1) * (2 + this.rand() * 1.2),
+    if (penalty) this.startPenaltyDive(this.keeper(1 - p.team));
+  }
+  // The keeper commits as the penalty is struck: he goes one way or the other (now and then
+  // he stays), covering the ground in a third of a second — movement.js stepDive moves him,
+  // and the save model then works from where the dive has put him. Whether he guessed right
+  // is independent of the taker's side.
+  startPenaltyDive(g) {
+    if (!g) return;
+    const guess = this.rand(),
+      far = this.rand(),
+      side = guess < 0.1 ? 0 : guess < 0.55 ? -1 : 1;
+    g.penaltyDive = {
+      at: this.elapsed,
+      until: this.elapsed + 1.1,
+      x0: g.x,
+      y0: g.y,
+      x: g.x + (side ? this.direction(g.team) * 0.6 : 0),
+      y: 34 + side * (1.75 + far * 0.7),
+    };
+    g.vx = g.vy = 0;
+    g.action = side ? 'Diving for the penalty' : 'Standing up to the penalty';
+    if (side)
+      g.animation = {
+        type: 'dive',
+        start: this.elapsed,
+        duration: 1.1,
+        angle: (side * Math.PI) / 2,
+        stretch: 1,
+        hold: true,
       };
-    }
   }
   resolveShot(outcome) {
     const record = this.ball.shotRecord;

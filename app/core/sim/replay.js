@@ -50,7 +50,8 @@ export function snapshot(m) {
   };
 }
 // How much a non-goal moment deserves a highlight slot: chance quality (xG),
-// save difficulty and drama, not a flat priority per event type.
+// save difficulty and drama, not a flat priority per event type. (xG is the engine's own:
+// a typical shot is ~0.25, a big chance 0.6+.)
 export function highlightScore(e) {
   const xg = e.xg ?? 0,
     big = e.bigChance ? 1.5 : 0,
@@ -59,18 +60,18 @@ export function highlightScore(e) {
     case 'shot':
       return (
         2.5 +
-        xg * 10 +
+        xg * 3 +
         big +
         (e.outcome === 'post' ? 1.5 : e.outcome === 'saved' ? 1 : e.outcome === 'blocked' ? 0.3 : 0)
       );
     case 'save':
-      return 3 + (e.difficulty ?? 0.5) * 5 + xg * 6 + big;
+      return 3 + (e.difficulty ?? 0.5) * 5 + xg * 2 + big;
     case 'post':
-      return 5 + xg * 6 + big;
+      return 5 + xg * 2 + big;
     case 'near-miss':
-      return 3.5 + xg * 8 + big;
+      return 3.5 + xg * 2.5 + big;
     case 'block':
-      return 2.5 + xg * 6 + big;
+      return 2.5 + xg * 2 + big;
     case 'red':
       return 8;
     case 'penalty':
@@ -117,11 +118,18 @@ export function selectHighlights(events, duration, budget = 60) {
     return { start, end };
   });
   const kickTime = total(merge(kickClips.map(c => ({ ...c }))));
-  const perGoal = Math.min(8, (budget - kickTime) / Math.max(1, goals.length));
+  // Goals and red cards are always shown: they share the reel when there are many.
+  const reds = events.filter(e => e.type === 'red'),
+    perGoal = Math.min(8, (budget - kickTime) / Math.max(1, goals.length + reds.length)),
+    perRed = Math.min(5, perGoal);
   let clips = merge([
     ...goals.map(e => ({
       start: clamp(e.elapsed - perGoal * 0.67, 0, duration - perGoal),
       end: clamp(e.elapsed - perGoal * 0.67, 0, duration - perGoal) + perGoal,
+    })),
+    ...reds.map(e => ({
+      start: clamp(e.elapsed - perRed * 0.6, 0, duration - perRed),
+      end: clamp(e.elapsed - perRed * 0.6, 0, duration - perRed) + perRed,
     })),
     ...kickClips,
   ]);

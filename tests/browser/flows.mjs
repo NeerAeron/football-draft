@@ -238,7 +238,7 @@ const matchFlows = [
     async run({ page, shot, step, base, viewport }) {
       await page.goto(`${base}${MATCH}&view=key`);
       await kickOff(page, step, shot);
-      await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
+      await step('first clip plays', () => visible(page, '[data-testid="clip-minute"]', 30000));
       await step('the reel advances on its own', async () => {
         const clock = () => page.getAttribute('.match-bug', 'aria-label');
         const before = await clock();
@@ -328,7 +328,7 @@ const matchFlows = [
         } catch {}
       });
       await page.goto(`${base}${MATCH}&view=key&auto=1`);
-      await step('first clip plays', () => visible(page, '.stage-chip:has-text("Clip")', 30000));
+      await step('first clip plays', () => visible(page, '[data-testid="clip-minute"]', 30000));
       await step('the action camera zooms the clip', () =>
         visible(page, '.match-stage__scene.is-zoomed', 15000),
       );
@@ -403,6 +403,13 @@ export const flows = [
       await page.goto(base);
       await step('home screen', () => visible(page, '[data-screen="home"]'));
       await step('fonts', () => page.evaluate(() => document.fonts.ready));
+      await step('Home does not fetch the legends file', async () => {
+        await page.waitForTimeout(600);
+        const fetched = await page.evaluate(() =>
+          performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1')),
+        );
+        if (fetched) throw new Error('legends.v1.json was fetched on Home');
+      });
       await shot('landing');
       if (viewport === 'mobile') await shot('landing-full', { fullPage: true });
       await step('how-to sheet', async () => {
@@ -615,26 +622,54 @@ export const flows = [
     async run({ page, shot, step, base, viewport }) {
       await seed(page, ONBOARDED);
       await step('start a seeded run draft', () =>
-        startFromSetup(page, base, '#/play/run?type=nations&seed=7&formation=433'),
+        startFromSetup(page, base, '#/play/run?type=nations&seed=21&formation=433'),
       );
       await step('first spin lands', () => visible(page, '[data-testid="spin-result"]'));
+      await step(
+        'it is the Legend spin: gold stage, legends with their year, no odds',
+        async () => {
+          await visible(page, '.stage.is-legend');
+          const stage = await page.textContent('.stage');
+          if (!/Legend spin/.test(stage)) throw new Error('the stage does not say Legend spin');
+          if (await page.locator('.reveal__odds').count())
+            throw new Error('the Legend reel shows odds');
+          if (/%|chance|likely/i.test(stage)) throw new Error('odds text on the Legend stage');
+          const rows = page.locator('[data-testid="pool"] button.prow');
+          const count = await rows.count();
+          if (count < 1 || count > 10) throw new Error(`${count} legends shown, expected 1–10`);
+          const eras = await page.locator('[data-testid="pool"] .prow__era').allTextContents();
+          if (eras.length !== count || !eras.every(t => /^’(1[4-9]|2[0-2])$/.test(t)))
+            throw new Error('legend rows without a year: ' + eras.join(' '));
+          const text = await page.textContent('[data-screen="draft"]');
+          if (/FIFA \d\d/.test(text)) throw new Error('an edition name is on screen');
+          // The file is fetched for the draft only.
+          const fetched = await page.evaluate(() =>
+            performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1.json')),
+          );
+          if (!fetched) throw new Error('the legends file was not fetched');
+        },
+      );
       await page.evaluate(() => document.fonts.ready);
-      await shot('first-spin');
+      await shot('legend-spin');
       await step('select a player', async () => {
         await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
         await visible(page, '[data-testid="confirm-pick"]');
       });
-      await step('expand his six stats', async () => {
-        const panel = page.locator('[data-testid="player-attributes"]:visible').first();
-        await panel.locator('summary').click();
-        const bars = await panel.locator('.statbar').count();
-        if (bars !== 6) throw new Error(`${bars} stats shown, expected the card's six`);
+      await step('his card shows the six stats', async () => {
+        const card = page.locator('[data-testid="pick-card"]:visible').first();
+        const stats = await card.locator('.pcard__stat').count();
+        if (stats !== 6) throw new Error(`${stats} stats on the card, expected six`);
+        if (await page.locator('[data-testid="player-attributes"]').count())
+          throw new Error('the Stats dropdown is back');
       });
-      await shot('attributes');
-      await step('close the attributes', () =>
-        page.locator('[data-testid="player-attributes"]:visible summary').first().click(),
-      );
-      await shot('selected');
+      await step('the legend card shows his year', async () => {
+        const era = await page
+          .locator('[data-testid="pick-card"]:visible .pcard__era')
+          .first()
+          .textContent();
+        if (!/^’\d\d$/.test(era)) throw new Error('no year on the legend card');
+      });
+      await shot('legend-pick');
       await step('pick 1 (other slot, then Auto)', async () => {
         await page.click(
           '.pitch--interactive .pitch-slot.is-fit-ok, .pitch--interactive .pitch-slot.is-fit-penalty',
@@ -642,6 +677,11 @@ export const flows = [
         await page.click('[data-testid="auto-slot"]:visible');
         await page.click('[data-testid="confirm-pick"]:visible');
         await picksMade(page, 1);
+      });
+      await step('the second spin is an ordinary nation spin', async () => {
+        if (await page.locator('.stage.is-legend').count())
+          throw new Error('the Legend stage stays after the legend pick');
+        await visible(page, '[data-testid="prime-open"]');
       });
       await shot('after-first-pick');
       for (let pick = 2; pick <= 11; pick++) {
@@ -653,10 +693,56 @@ export const flows = [
       }
       await step('completion sheet', () => visible(page, 'dialog.complete-sheet[open]'));
       await shot('complete');
-      await step('continue to the run', async () => {
+      await step(
+        'Prime boost: one sheet, eligible players show the bump, the rest are closed',
+        async () => {
+          await page.click('dialog.complete-sheet[open] [data-testid="prime-open"]');
+          await visible(page, '.draft-prime [data-testid="prime-confirm"]');
+          const rows = page.locator('.draft-prime__row');
+          if ((await rows.count()) !== 11) throw new Error('the sheet does not list the XI');
+          const options = page.locator('[data-testid="prime-option"]');
+          if (!(await options.count())) throw new Error('nobody in this XI has a prime version');
+          if (!(await page.locator('.draft-prime__row:disabled').count()))
+            throw new Error('players without a prime version are selectable');
+          const bump = await options.first().locator('.draft-prime__bump').textContent();
+          if (!/^\s*\d\d\s*\d\d\s*\+\d+\s*$/.test(bump)) throw new Error('no bump: ' + bump);
+          if (!(await page.locator('[data-testid="prime-confirm"]').isDisabled()))
+            throw new Error('confirm is enabled before a choice');
+          await options.first().click();
+        },
+      );
+      await shot('prime-boost');
+      await step('confirm: he is his prime version, the boost is spent', async () => {
+        const before = await page.evaluate(
+          () =>
+            JSON.parse(localStorage.getItem('football-draft-draft')).session.state.primesLeft[0],
+        );
+        await page.click('[data-testid="prime-confirm"]');
+        await page.waitForFunction(
+          n =>
+            JSON.parse(localStorage.getItem('football-draft-draft')).session.state.primesLeft[0] ===
+            n - 1,
+          before,
+        );
+        const picks = await page.evaluate(
+          () => JSON.parse(localStorage.getItem('football-draft-draft')).session.state.picks[0],
+        );
+        if (picks.filter(id => /:prime$/.test(id)).length !== 1)
+          throw new Error('no prime version in the XI');
+        if (picks.filter(id => /:legend$/.test(id)).length !== 1)
+          throw new Error('no legend in the XI');
+      });
+      await shot('primed');
+      await step('continue to the run with the legend and the prime', async () => {
         await page.click('[data-testid="draft-continue"]');
         await page.waitForFunction(() => location.hash === '#/run');
+        await visible(page, '[data-screen="run"]');
+        await page.waitForFunction(() => {
+          const run = JSON.parse(localStorage.getItem('football-draft-run-state') || 'null');
+          return run?.run?.user?.players?.some(id => /:prime$/.test(id));
+        });
       });
+      await shot('run');
     },
   },
   {
@@ -666,15 +752,17 @@ export const flows = [
       await step('the World Cup setup offers Budget mode', async () => {
         await page.goto(`${base}#/play/run`);
         await visible(page, '[data-screen="setup"][data-mode="run"]');
-        const toggle = page.getByRole('switch', { name: 'Budget mode' });
-        if (await toggle.isChecked()) throw new Error('Budget mode is on by default');
-        await toggle.check();
+        if (await page.locator('[data-testid="setup-budget"]').count())
+          throw new Error('Budget mode is on by default');
+        // Budget mode is its own button on Home, under Start World Cup.
+        await page.goto(base);
+        await page.click('[data-testid="start-budget"]');
+        await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
         const text = await page.textContent('[data-screen="setup"]');
-        if (!/1 player rated 88\+, 2 at 84–87 and 3 at 80–83/.test(text))
-          throw new Error('the Budget switch does not say its caps');
+        if (!/2 Superstars \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)/.test(text))
+          throw new Error('Budget mode does not say its caps');
       });
       await page.evaluate(() => document.fonts.ready);
-      await page.getByRole('switch', { name: 'Budget mode' }).scrollIntoViewIfNeeded();
       await shot('setup');
       await step('Quick Match has no Budget mode', async () => {
         await page.goto(`${base}#/play/quick`);
@@ -691,7 +779,7 @@ export const flows = [
         const on = await page.locator('.draft-budget__pips i.is-on').count();
         if (on !== 0) throw new Error(`${on} budget slots used before the first pick`);
         const tags = await page.locator('[data-testid="pool"] .prow__cost').count();
-        if (!tags) throw new Error('pool rows do not show their band');
+        if (!tags) throw new Error('pool rows do not show their tier');
       });
       await page.evaluate(() => document.fonts.ready);
       await shot('first-spin');
@@ -714,7 +802,8 @@ export const flows = [
           await visible(page, '[data-testid="pool"] button.prow:not([disabled])');
           // Closed rows sit under the players he can still pick: show the whole pool.
           const more = page.locator('[data-testid="pool"] .pool__more button');
-          if (!closed && (await more.count())) await more.click();
+          // (The list also loads its next page by itself near the end: the button may be gone.)
+          if (!closed && (await more.count())) await more.click({ timeout: 2000 }).catch(() => {});
           const full = page.locator('[data-testid="pool"] .prow.is-disabled:has-text("full")');
           if (!closed && (await full.count())) {
             closed = true;
@@ -741,7 +830,7 @@ export const flows = [
               b.querySelectorAll('.draft-budget__pips i').length,
             ]),
         );
-        if (used.map(u => u[1]).join() !== '1,2,3') throw new Error(`budget slots: ${used}`);
+        if (used.map(u => u[1]).join() !== '2,2,3') throw new Error(`budget slots: ${used}`);
         if (used.some(([on, slots]) => on > slots)) throw new Error(`over budget: ${used}`);
       });
       await shot('complete');
@@ -880,6 +969,16 @@ export const flows = [
               .join('|') !== prev,
           before,
         );
+      });
+      await step('the formation picker shows the team OVR of every formation', async () => {
+        const options = await page.$$eval('[data-testid="formation-select"] option', els =>
+          els.map(e => e.textContent.trim()),
+        );
+        const bad = options.filter(text => !/ · \d\d\.\d( ★)?$/.test(text));
+        if (options.length < 20 || bad.length)
+          throw new Error(`formation options without a team OVR: ${bad.join(' | ')}`);
+        if (!options.some(text => text.endsWith('★')))
+          throw new Error('no formation is marked as the best');
       });
       await step('change a tactic', async () => {
         await page.click('.tactics__mentality label:has-text("Push")');
@@ -1164,10 +1263,10 @@ export const flows = [
         if (!/Runners-up/.test(await best('worldclass'))) throw new Error(await best('worldclass'));
         // The Legendary title was a Budget one: the standard slot is still to be won.
         if (!/Not played/.test(await best('legendary'))) throw new Error(await best('legendary'));
-        const budget = await page.textContent(
-          '.cabinet__slot[data-level="legendary"] .cabinet__budget',
-        );
-        if (!/Budget Won/.test(budget)) throw new Error(`budget: ${budget}`);
+        // The Budget cabinet is one tap away and has the Legendary cup.
+        await page.click('.cabinet__mode label:has-text("Budget")');
+        await visible(page, '.cabinet__shelf[data-mode="budget"]');
+        if (!/Champions/.test(await best('legendary'))) throw new Error(await best('legendary'));
       });
     },
   },
@@ -1235,8 +1334,11 @@ export const flows = [
         if (!/Runners-up/.test(await text('worldclass'))) throw new Error(await text('worldclass'));
         if (!/Quarter-finals/.test(await text('legendary')))
           throw new Error(await text('legendary'));
-        if (!/Budget 3rd/.test(await text('worldclass'))) throw new Error('budget bronze');
         await visible(page, '[data-testid="ultimate"][data-done="0"]');
+        await page.click('.cabinet__mode label:has-text("Budget")');
+        await visible(page, '.cabinet__shelf[data-mode="budget"]');
+        if (!/Third place/.test(await text('worldclass'))) throw new Error('budget bronze');
+        await page.click('.cabinet__mode label:has-text("Classic")');
       });
       await shot('partly');
       await step('an old cabinet migrates: titles become golds, removed levels go', async () => {

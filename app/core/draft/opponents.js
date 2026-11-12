@@ -1,7 +1,7 @@
 // Opponents and the difficulty ladder. A level is a target *effective* rating (team OVR + mean
 // link chem) relative to the typical XI the player drafts in that mode (MODE_BASELINES,
 // measured by tools/calibration/draft-baselines.mjs). Real club and national XIs are fully
-// linked (+2 chem), so they are matched on effective rating, not raw OVR.
+// linked (+1 chem or more), so they are matched on effective rating, not raw OVR.
 // Candidates: national best XIs (Nations), club XIs (Leagues, Clubs), both (Club & Country),
 // plus two bosses: the World XI (best XI in the catalog) and the All-Stars (the best XI
 // without the World XI players). Deterministic for a seed.
@@ -23,13 +23,13 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
 /**
  * Typical drafted XI per mode: solo, positional policy (best slot rating), smart re-roll below
  * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 300 drafts per cell (240 for Club & Country),
- * v3 catalog (15,378 players). `effective[r]` = OVR + chem (Links + the Captain's boost) with r
+ * v3 catalog (15,378 players). `effective[r]` = OVR + chem (the mates boosts) with r
  * re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {
-  nations: { ovr: 83.13, sd: 1.03, chem: 1.67, effective: [84.36, 84.79, 84.94] },
-  leagues: { ovr: 81.65, sd: 1.72, chem: 1.97, effective: [82.87, 83.61, 84.25] },
-  clubs: { ovr: 77.98, sd: 1.7, chem: 1.27, effective: [78.68, 79.25, 79.68] },
+  nations: { ovr: 81.04, sd: 1.1, chem: 0.6, effective: [81.1, 81.64, 82.2] },
+  leagues: { ovr: 81.65, sd: 1.72, chem: 0.67, effective: [81.62, 82.31, 82.91] },
+  clubs: { ovr: 77.98, sd: 1.7, chem: 0.52, effective: [77.98, 78.49, 78.89] },
   clubAndCountry: { ovr: 82.3, sd: 1.46, chem: 0.41, effective: [82.17, 82.71, 83.24] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
@@ -121,16 +121,16 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
     });
   };
   const none = new Set();
-  for (const n of index.nations.values())
-    if (n.players.length >= 11 && n.goalkeepers >= 1) {
-      add(
-        'nation',
-        n.id,
-        { name: n.name, code: n.code, flag: n.flag, color: null, secondary: null },
-        xiFor(index, 'nation', n.id, none),
-      );
-      yield;
-    }
+  // Every playable nation (an XI with a real keeper and nobody out of position).
+  for (const n of index.playable) {
+    add(
+      'nation',
+      n.id,
+      { name: n.name, code: n.code, flag: n.flag, color: null, secondary: null },
+      xiFor(index, 'nation', n.id, none),
+    );
+    yield;
+  }
   // Club XIs: the catalog's precomputed best lineups when they match the live configuration
   // (same assignment and tie-break as bestEleven), otherwise computed here (~0.3 s).
   const squads =

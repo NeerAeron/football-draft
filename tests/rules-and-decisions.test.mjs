@@ -124,18 +124,70 @@ test('foul risk responds to contact geometry, defensive skill, discipline and fa
 
 test('penalty setup enforces spot, goal line and encroachment positions', () => {
   const m = setup();
-  m.startRestart('Penalty', 0, 94, 34, 0.01);
-  m.stepRestart(0.02);
-  const taker = m.restart.taker;
-  assert.equal(m.ball.shotType, 'Penalty');
-  assert.equal(m.players[taker].x, 94);
-  assert.equal(m.players[11].x, 105);
-  for (const p of m.players)
-    if (p.id !== taker && p.id !== 11) {
-      assert.ok(p.x < 88.5);
-      assert.ok(p.x < 94);
-      assert.ok(Math.hypot(p.x - 94, p.y - 34) >= 9.15);
+  m.startRestart('Penalty', 0, 94, 34, 2.6);
+  const taker = m.restart.taker,
+    others = () => m.activePlayers.filter(p => p.id !== taker && p.id !== 11 && p.role !== 'GK');
+  const legal = () => {
+    for (const p of others()) {
+      assert.ok(p.x < 88.5, 'outside the box');
+      assert.ok(Math.hypot(p.x - 94, p.y - 34) >= 9.15, 'outside the arc');
     }
+  };
+  // Set up at once (the screen cuts to it): nobody walks through the box first.
+  legal();
+  assert.ok(
+    Math.abs(m.players[11].x - 104.6) < 1e-9 && m.players[11].y === 34,
+    'keeper on his line',
+  );
+  assert.ok(m.players[taker].x < 92 && m.players[taker].x > 88.5, 'taker behind the ball');
+  // Nobody stands on top of anybody else.
+  const all = others();
+  for (const p of all)
+    for (const q of all) if (p.id < q.id) assert.ok(Math.hypot(p.x - q.x, p.y - q.y) > 2);
+  // The keeper stays in the middle of his goal until the ball is struck; the taker runs up.
+  let ticks = 0;
+  while (m.mode === 'restart' && ticks++ < 400) {
+    m.step(1 / 60);
+    if (m.mode === 'restart') {
+      assert.ok(Math.abs(m.players[11].y - 34) < 0.2 && m.players[11].x > 104);
+      legal();
+    }
+  }
+  assert.equal(m.ball.shotType, 'Penalty');
+  assert.ok(ticks > 120, 'time to see it set up');
+  assert.equal(m.players[taker].x, 94);
+  assert.ok(Math.abs(m.players[11].x - 104.6) < 1e-9);
+  // At the kick he commits: one way or the other, or he stays.
+  const dive = m.players[11].penaltyDive;
+  assert.ok(dive && Math.abs(dive.y - 34) < 2.6);
+  for (let i = 0; i < 24; i++) m.step(1 / 60);
+  assert.ok(
+    Math.abs(m.players[11].y - dive.y) < 0.05,
+    'the dive covers the ground during the flight',
+  );
+});
+
+test('a penalty dive: both sides and standing still all happen, and a saved penalty is a save', () => {
+  const sides = new Set(),
+    outcomes = new Set();
+  for (let seed = 1; seed <= 60; seed++) {
+    const m = new Match(seed, 180);
+    m.mode = 'play';
+    m.startRestart('Penalty', 0, 94, 34, 0.05);
+    for (let i = 0; i < 10 && m.mode === 'restart'; i++) m.step(1 / 60);
+    const g = m.players[11],
+      shot = m.events.find(e => e.type === 'shot');
+    sides.add(Math.sign(Math.round(g.penaltyDive.y - 34)));
+    for (let i = 0; i < 120 && shot.outcome === 'in flight'; i++) m.step(1 / 60);
+    outcomes.add(shot.outcome);
+    if (shot.outcome === 'saved') {
+      // He went the right way: the ball and the keeper are on the same side.
+      const save = m.events.find(e => e.type === 'save');
+      assert.ok(save && Math.abs(g.y - 34) < 3.2);
+    }
+  }
+  assert.deepEqual([...sides].sort(), [-1, 0, 1]);
+  assert.ok(outcomes.has('goal') && outcomes.has('saved'));
 });
 
 test('an awarded penalty finishes even if the normal match clock expires', () => {

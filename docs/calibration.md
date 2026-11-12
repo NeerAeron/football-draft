@@ -23,6 +23,58 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 6: saves that do what they say, penalties, ten men, xG of this engine
+
+Measured on 1,600 deterministic club fixtures (`tools/calibration/lib/fixtures.mjs`, 180 s, even
+sides, team 1 AI-coached), before → after:
+
+| | before | after |
+| --- | --- | --- |
+| goals / match | 2.393 | 2.384 |
+| shots / match | 8.70 | 8.72 |
+| xG / match (xG ÷ goals) | 0.768 (0.32) | 2.319 (0.97) |
+| "tip over" saves · of them in the net straight after | 237 · 134 | 106 · 0 (104 corners) |
+| penalties: scored · saved · off target or woodwork | 82% · 3% · 16% | 76% · 18% · 5% |
+
+**Tip over.** The lift ignored how far the keeper stood from his line (2.2–3.7 m/s up, 3–5 m/s
+back): from more than about a metre out the ball dropped under the bar — 57% of "tipped over"
+saves were goals. The lift is now worked out from the time the ball needs to reach the line, so
+it always clears the bar. Those 0.08 goals a match came back by making a shot under the bar
+harder to save in the first place (save probability × (1 − 0.7 × `high`), shots only).
+
+**Penalties.** The keeper used to walk towards a side at running speed after the ball was
+struck (and the format's save adjustment left him 3%): he now commits at the strike and a
+scripted dive covers ~2 m during the flight; he can only save what he guessed (45% right way;
+then about 40%). Aim is 1.95 m either side of centre (2.35 before), so fewer miss the target.
+
+**Ten men.** `coverDismissal` (docs/engine-events.md): no RNG, both sides.
+
+**xG.** The old model was fitted to public open-play conversion, but this engine's shots go in
+about three times as often (8.7 shots, 2.4 goals), so the match report's xG was a third of the
+score. `shotXg` (insights.js) is a logistic regression on the engine's own shots — 10,557
+non-penalty shots of fixtures 0–1199 for the fit, fixtures 1200–1599 held out (884 goals against
+858 xG) — over the features the old model already used:
+`sigmoid(1.28 − 0.141·min(distance, 28) + 0.6·angle − 0.44·header − 0.216·min(blockers, 3) −
+0.15·pressure + 1.35·exposed)`, clamped to 0.02–0.92; a penalty is 0.76 (347 penalties: 76%).
+
+| distance | shots | conversion | xG before | xG after |
+| --- | --- | --- | --- | --- |
+| 0–6 m | 242 | 0.665 | 0.348 | 0.714 |
+| 6–11 m | 1,972 | 0.544 | 0.158 | 0.523 |
+| 11–16.5 m | 3,450 | 0.351 | 0.085 | 0.336 |
+| 16.5–22 m | 3,234 | 0.189 | 0.044 | 0.200 |
+| 22–28 m | 3,601 | 0.100 | 0.030 | 0.101 |
+| 28 m+ | 1,111 | 0.099 | 0.022 | 0.066 |
+
+The remaining 3% are own goals, crosses that go in and long-range specialists. xG is shot
+quality, so mismatches still show finishing: in the 64-match `match-calibration.mjs --duration
+180` batch (all-star XIs, big rating gaps) it reads 2.35 xG against 2.81 goals. Display only:
+results are unchanged by it. Everything that reads xG moved to the new scale — `bigChance`
+(≥ 0.6, or a one-on-one ≥ 0.5: the best twentieth of shots, as before), highlight ranking,
+the momentum weight (0.7 × xG), the slow-down before a big shot (≥ 0.5) and the two xG rows of
+`blunders.mjs` (28 m+ under 0.08; a goal under 0.19), which are therefore not comparable with
+an `--engine` from before this phase.
+
 ## Phase 5: mentality, rating gaps, out-of-position ratings
 
 **Mentality means one thing.** Push raises the chance of a goal at both ends, Hold lowers it at

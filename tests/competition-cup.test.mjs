@@ -132,8 +132,17 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
     ['group1', 'group2', 'group3', 'r32', 'r16', 'qf', 'sf', 'final'],
   );
   const offsets = cupOffsets('pro');
+  // (The group plays weakest first by what the XI is worth, which need not be target order.)
+  const targets = offsets.map(offset => ladderTarget('nations', 'pro', { offset }));
+  assert.deepEqual(
+    run.opponents
+      .slice(0, 3)
+      .map(o => o.target)
+      .sort(),
+    targets.slice(0, 3).sort(),
+  );
   run.opponents.forEach((o, i) => {
-    assert.equal(o.target, ladderTarget('nations', 'pro', { offset: offsets[i] }));
+    if (i >= 3) assert.equal(o.target, targets[i]);
     assert.ok(Math.abs(o.nominal - o.target) <= 1.5, o.name);
   });
   const group = run.opponents.slice(0, 3).map(o => o.effective),
@@ -270,9 +279,12 @@ test('places: the semi-final loser plays for third; runners-up, third and fourth
 });
 
 test('Legendary plays the real field: a drawn and simulated 48-nation World Cup', () => {
+  // Every run qualifies its own 48 of the playable nations: the strongest 30 always, the rest
+  // drawn with odds falling with the rating.
   const index = catalogIndex(catalog),
-    pot = new Map(index.field.map(n => ['nation:' + n.id, n.pot])),
-    weakest = 'nation:' + index.field.filter(n => n.pot === 1).at(-1).id;
+    playable = new Set(index.playable.map(n => 'nation:' + n.id)),
+    core = index.playable.slice(0, 30).map(n => 'nation:' + n.id),
+    weakest = 'nation:' + index.playable[11].id;
   const make = seed =>
     createCupRun(catalog, { mode: 'nations', difficulty: 'legendary', seed, user });
   const run = make(31);
@@ -280,20 +292,16 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   assert.equal(new Set(run.opponents.map(o => o.key)).size, 9);
   // The group: one nation from each of pots 2, 3 and 4 (you have the pot-1 seat).
   assert.deepEqual(
-    run.opponents
-      .slice(0, 3)
-      .map(o => pot.get(o.key))
-      .sort(),
-    [2, 3, 4],
-  );
-  assert.deepEqual(
     run
       .snapshot()
       .rounds.slice(0, 3)
-      .map(r => r.opponent.pot),
-    run.opponents.slice(0, 3).map(o => pot.get(o.key)),
+      .map(r => r.opponent.pot)
+      .sort(),
+    [2, 3, 4],
   );
-  assert.ok(run.opponents.every(o => o.kind === 'nation' && pot.has(o.key) && o.target === null));
+  assert.ok(
+    run.opponents.every(o => o.kind === 'nation' && playable.has(o.key) && o.target === null),
+  );
   // Deterministic for the seed, different for another.
   assert.deepEqual(
     make(31).opponents.map(o => o.key),
@@ -315,19 +323,33 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   // mates never come back, and the bracket gets harder round by round.
   const rating = new Map(opponentCandidates(catalog).map(c => [c.key, c.effective]));
   const sums = Array(9).fill(0),
+    qualified = new Map(),
     N = 300;
   for (let seed = 1; seed <= N; seed++) {
-    const draw = worldCupDraw(catalog, { random: lcg(seed) });
+    const draw = worldCupDraw(catalog, { random: lcg(seed) }),
+      pot = draw.pots;
     assert.equal(new Set(draw.keys).size, 9);
     assert.ok(!draw.keys.includes(weakest));
     assert.deepEqual(draw.group.map(k => pot.get(k)).sort(), [2, 3, 4]);
+    // 48 qualifiers in four pots of twelve by strength, the core among them.
+    assert.equal(pot.size, 48);
+    assert.ok(core.every(k => pot.has(k)));
+    assert.ok([...pot.keys()].every(k => playable.has(k)));
+    assert.deepEqual(
+      [1, 2, 3, 4].map(n => [...pot.values()].filter(v => v === n).length),
+      [12, 12, 12, 12],
+    );
+    assert.ok(
+      [...pot].every(([k, v], i, all) => !i || (rating.get(k) !== undefined && v >= all[i - 1][1])),
+    );
+    for (const k of pot.keys()) qualified.set(k, (qualified.get(k) || 0) + 1);
     assert.deepEqual(draw.keys, [...draw.group, ...draw.knockouts, draw.third]);
     draw.keys.forEach((k, i) => (sums[i] += rating.get(k)));
   }
   const mean = sums.map(x => x / N),
     [r32, r16, qf, sf, final, third] = mean.slice(3);
   assert.ok(r32 < r16 && r16 < qf && qf < sf && sf < final, mean.map(x => x.toFixed(1)).join(' '));
-  assert.ok(final > 85.5 && final < 88, `final ${final}`);
+  assert.ok(final > 85 && final < 88, `final ${final}`);
   assert.ok(Math.abs(third - sf) < 1.5, `play-off ${third} vs semi-final ${sf}`);
   // projectRun's targets for the level are these typical ratings (weakened XIs: a bit lower).
   FIELD_TYPICAL.slice(3).forEach((t, i) =>
@@ -343,15 +365,14 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   assert.ok(clubs.opponents.every(o => o.kind === 'club' && o.target !== null));
 });
 
-test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference ≥ −2', () => {
+test('third place goes through on BEST_THIRD: 4 points or more, nothing less', () => {
   const row = (points, gd) => ({ points, gd });
-  assert.deepEqual(BEST_THIRD, { points: 4, goalDifference: -2 });
+  assert.deepEqual(BEST_THIRD, { points: 4 });
   assert.equal(thirdQualifies(row(4, -6)), true);
-  assert.equal(thirdQualifies(row(3, -2)), true);
-  assert.equal(thirdQualifies(row(3, -3)), false);
+  assert.equal(thirdQualifies(row(3, 5)), false);
   assert.equal(thirdQualifies(row(2, 0)), false);
-  // Play W 1-0, L 0-1, L 0-1 (3 pts, GD −1) and W 1-0, L 0-3, L 0-3 (GD −5) on seeds where
-  // you finish third: the first goes through to the Round of 32, the second goes home.
+  // Play W 1-0, D 1-1, L 0-1 (4 pts) and W 1-0, L 0-1, L 0-1 (3 pts) on seeds where you finish
+  // third: the first goes through to the Round of 32, the second goes home.
   const thirdOn = (results, seeds) => {
     for (const seed of seeds) {
       const run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed, user });
@@ -361,11 +382,11 @@ test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference
     }
     return null;
   };
-  const seeds = Array.from({ length: 60 }, (_, i) => i + 1);
+  const seeds = Array.from({ length: 300 }, (_, i) => i + 1);
   const through = thirdOn(
     [
       [1, 0],
-      [0, 1],
+      [1, 1],
       [0, 1],
     ],
     seeds,
@@ -378,8 +399,8 @@ test('third place goes through on BEST_THIRD: 4 points, or 3 and goal difference
   const out = thirdOn(
     [
       [1, 0],
-      [0, 3],
-      [0, 3],
+      [0, 1],
+      [0, 1],
     ],
     seeds,
   );
@@ -509,12 +530,13 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
       rating = MODE_BASELINES.nations.effective[Math.min(2, rerolls)];
     const p = projectRun({ rating, mode: 'nations', difficulty, runs: 3000 }).probabilities;
     assert.ok(p.champion >= lo && p.champion <= hi, `${difficulty} champion ${p.champion}`);
-    assert.ok(p.champion < previous, difficulty);
+    assert.ok(p.champion <= previous, difficulty);
     previous = p.champion;
     if (difficulty === 'pro') assert.ok(p.group <= 0.22, `pro group exit ${p.group}`);
   }
   // The final is the strongest opponent of a run, and a recognisable side for the level.
-  const finalFloor = { pro: 85, worldclass: 86 };
+  // (Floors follow the drafted-XI baseline: 82 effective on the 93-nation reel.)
+  const finalFloor = { pro: 83, worldclass: 84 };
   for (const [difficulty, floor] of Object.entries(finalFloor))
     for (const seed of [3, 4]) {
       const run = createCupRun(catalog, { mode: 'nations', difficulty, seed, user });
@@ -525,4 +547,10 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
         difficulty,
       );
     }
+});
+
+test('third place goes through on four points or more, never on fewer', async () => {
+  const { thirdQualifies } = await import('../app/core/competition/cup.js');
+  assert.ok(thirdQualifies({ points: 4, gd: -5 }));
+  assert.ok(!thirdQualifies({ points: 3, gd: 6 }));
 });

@@ -2,7 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { createDraftSession, restoreDraftSession } from '../app/core/draft/session.js';
-import { budgetBands, bandIndex, bandUse, freeLabel } from '../app/core/draft/budget.js';
+import {
+  budgetBands,
+  bandIndex,
+  bandUse,
+  freeLabel,
+  draftTiers,
+  tierOfRating,
+} from '../app/core/draft/budget.js';
 import { naturalRating } from '../app/core/draft/pools.js';
 import { DEFAULT_CONFIG, normalizeConfig } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
@@ -44,13 +51,31 @@ function assertWithinBudget(s) {
   }
 }
 
-test('bands: 88+ ×1, 84–87 ×2, 80–83 ×3, the rest free', () => {
+test('tiers: 2 Superstars (88+), 2 Stars (84–87), 3 Starters (80–83), the rest free', () => {
   assert.deepEqual(
-    bands.map(b => [b.id, b.label, b.minimum, b.slots]),
+    bands.map(b => [b.id, b.label, b.range, b.minimum, b.slots]),
     [
-      ['band1', '88+', 88, 1],
-      ['band2', '84–87', 84, 2],
-      ['band3', '80–83', 80, 3],
+      ['superstar', 'Superstar', '88+', 88, 2],
+      ['star', 'Star', '84–87', 84, 2],
+      ['starter', 'Starter', '80–83', 80, 3],
+    ],
+  );
+  // One vocabulary: the tier a player shows is the tier his Budget slot is counted in.
+  assert.deepEqual(
+    [91, 88, 87, 84, 83, 80, 79, 74, 73, 50].map(r => tierOfRating(r, bands)),
+    ['Superstar', 'Superstar', 'Star', 'Star', 'Starter', 'Starter', 'Normal', 'Normal'].concat([
+      'Bench',
+      'Bench',
+    ]),
+  );
+  assert.deepEqual(
+    draftTiers(DEFAULT_CONFIG.draft.budget).map(t => [t.name, t.minimum]),
+    [
+      ['Superstar', 88],
+      ['Star', 84],
+      ['Starter', 80],
+      ['Normal', 74],
+      ['Bench', 0],
     ],
   );
   assert.equal(freeLabel(bands), 'Under 80');
@@ -63,7 +88,18 @@ test('bands: 88+ ×1, 84–87 ×2, 80–83 ×3, the rest free', () => {
   assert.deepEqual(budgetBands(undefined), bands);
   assert.deepEqual(budgetBands({}), bands);
   assert.throws(() =>
-    normalizeConfig({ draft: { budget: { band2: { minimum: 90 } } } }, { lenient: false }),
+    normalizeConfig({ draft: { budget: { Star: { minimum: 90 } } } }, { lenient: false }),
+  );
+  // Rules saved with numbered bands (before the tiers had names) keep their numbers.
+  const old = { band1: { minimum: 87, slots: 2 }, band2: { minimum: 83, slots: 2 } };
+  old.band3 = { minimum: 79, slots: 4 };
+  assert.deepEqual(
+    budgetBands(old).map(b => [b.label, b.range, b.slots]),
+    [
+      ['Superstar', '87+', 2],
+      ['Star', '83–86', 2],
+      ['Starter', '79–82', 4],
+    ],
   );
 });
 
@@ -91,10 +127,11 @@ test('a budget draft never exceeds a band, whatever the policy, and never dead-e
         for (const e of snap.pool) {
           const p = s.player(e.profileId);
           assert.equal(e.band, bands[bandIndex(bands, e.ovr)]?.id ?? null);
+          assert.equal(e.tier, tierOfRating(e.ovr, bands), 'the shown tier is the Budget tier');
           if (!s.affordable(p)) {
             closed++;
             assert.equal(e.available, false);
-            assert.match(e.reason, /^No (88\+|84–87|80–83) slot left$|filled$/);
+            assert.match(e.reason, /^No (Superstar|Star|Starter) slot left$|filled$/);
             assert.equal(s.pick(e.profileId).ok, false);
             assert.ok(s.placementOptions(e.profileId).every(o => !o.allowed));
           }
@@ -113,9 +150,9 @@ test('the team view counts the slots; a full band closes its players with a reas
   assert.deepEqual(
     s.snapshot().teams[0].budget.map(b => [b.label, b.slots, b.used, b.left]),
     [
-      ['88+', 1, 0, 1],
-      ['84–87', 2, 0, 2],
-      ['80–83', 3, 0, 3],
+      ['Superstar', 2, 0, 2],
+      ['Star', 2, 0, 2],
+      ['Starter', 3, 0, 3],
     ],
   );
   finish(s, spender);
@@ -134,7 +171,7 @@ test('the team view counts the slots; a full band closes its players with a reas
 });
 
 test('a nation spin with a full band still shows the stars (closed) and a full squad to pick', () => {
-  // Fill the 88+ slot and both 84–87 slots, then look at a strong nation's pool.
+  // Fill the Superstar slot and both Star slots, then look at a strong nation's pool.
   let found = false;
   for (let seed = 1; seed <= 60 && !found; seed++) {
     const s = createDraftSession(catalog, { seed, budget: true, rerolls: 0 });

@@ -1,13 +1,15 @@
 // Draft session: one spin per pick from a pluggable pool source, honest weights, a GK/outfield
-// dead-end guard, re-rolls by difficulty, placement with visible fit, serialise/restore and
-// match-config helpers. Pure and deterministic for a seed; the UI must never consume its RNG.
+// dead-end guard, re-rolls by difficulty, placement with visible fit, the Legend spin and Prime
+// boosts (World Cup drafts), serialise/restore and match-config helpers. Pure and deterministic for a seed; the UI must never consume its RNG.
 // API guide with examples: docs/draft-api.md.
 import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
 import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
 import { playerInitials } from '../players/lineups.js';
+import { legendPlayer, primeVersion, baseProfileId, editionYear } from '../players/legends.js';
 import {
   catalogIndex,
+  legendIndex,
   catalogStamp,
   draftRules,
   callUps,
@@ -15,11 +17,10 @@ import {
   roleFit,
   naturalRating,
   isKeeper,
-  tierName,
   LINE_OF,
 } from './pools.js';
-import { teamLinks } from './links.js';
-import { budgetBands, bandIndex, bandUse } from './budget.js';
+import { teamLinks, linkBoosts } from './links.js';
+import { budgetBands, bandIndex, bandUse, tierOfRating } from './budget.js';
 
 export const DRAFT_MODES = {
   nations: { label: 'Nations', categories: ['nation'] },
@@ -103,6 +104,10 @@ function normalizeOptions(o = {}) {
     hideRatings: !!o.hideRatings,
     uniqueNations: !!o.uniqueNations,
     budget: !!o.budget,
+    // The first spin of every side is a Legend spin (needs catalog.legends).
+    legendSpin: !!o.legendSpin,
+    // Prime boosts per side: true = by difficulty (rules.primes), a number, or none.
+    primes: o.primes === true ? true : Number.isInteger(o.primes) && o.primes > 0 ? o.primes : null,
     excludeNations: [...(o.excludeNations || [])].map(String),
     excludeClubs: [...(o.excludeClubs || [])].map(String),
     excludePlayers: [...(o.excludePlayers || [])].map(String),
@@ -122,6 +127,7 @@ function normalizeOptions(o = {}) {
 export class DraftSession {
   #catalog;
   #index;
+  #legends;
   #snapshot = null;
   #pool = null;
   constructor(catalog, options = {}, { rules = null, state = null } = {}) {
@@ -133,9 +139,20 @@ export class DraftSession {
     this.mode = this.options.mode;
     this.sides = this.options.sides;
     this.formations = [...this.options.formations];
-    // Budget mode: the rating bands and their slots (null when off).
-    this.bands = this.options.budget ? budgetBands(this.rules.budget) : null;
+    // The capped tiers (Superstar, Star, Starter: where each starts) and, in Budget mode, their
+    // slots (`bands`, null when off).
+    this.tiers = budgetBands(this.rules.budget);
+    this.bands = this.options.budget ? this.tiers : null;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
+    this.primesPerSide =
+      this.options.primes === true
+        ? (this.rules.primes?.[this.options.difficulty] ?? 0)
+        : (this.options.primes ?? 0);
+    this.#legends = legendIndex(catalog, this.rules);
+    if ((this.options.legendSpin || this.primesPerSide > 0) && !this.#legends)
+      throw Error('This draft needs the legends data (catalog.legends)');
+    if (this.options.legendSpin && this.options.schedule)
+      throw Error('A scheduled (daily) draft has no Legend spin');
     this.excluded = {
       nations: new Set(this.options.excludeNations),
       clubs: new Set(this.options.excludeClubs),
@@ -152,9 +169,14 @@ export class DraftSession {
       this.current = null;
       this.seen = [];
     }
+    this.primesLeft ??= Array(this.sides).fill(this.primesPerSide);
     this.used = new Set(this.picks.flat().filter(Boolean));
-    for (const id of this.used)
-      if (!this.#index.byId.has(id)) throw Error('Saved draft does not match the player database');
+    for (const id of [...this.used]) {
+      const p = this.player(id);
+      if (!p) throw Error('Saved draft does not match the player database');
+      // A primed player: his current version is taken too.
+      this.used.add(baseProfileId(p));
+    }
   }
   random() {
     this.rng = lcgNext(this.rng);
@@ -182,8 +204,13 @@ export class DraftSession {
     const c = DRAFT_MODES[this.mode].categories;
     return c[this.round(side) % c.length];
   }
+  /** A catalog player, a legend or a prime version by profileId (null when unknown). */
   player(id) {
-    return this.#index.byId.get(String(id)) || null;
+    return this.#index.byId.get(String(id)) || legendPlayer(this.#catalog, id);
+  }
+  /** The side's next (or current) spin is its Legend spin: the first of a Legend-spin draft. */
+  legendRound(side = this.turn) {
+    return this.options.legendSpin && this.round(side) === 0;
   }
   // ---- availability and the dead-end guard ---------------------------------------------
   available(p) {
@@ -196,9 +223,13 @@ export class DraftSession {
     );
   }
   // ---- Budget mode ------------------------------------------------------------------------
-  /** The rating a player is priced by: the OVR shown on him (rounded natural rating). */
+  /**
+   * The rating a player is priced by: the OVR shown on him (rounded natural rating). A primed
+   * player keeps the price of the version that was drafted: a Prime boost is free.
+   */
   #price(p) {
-    return Math.round(naturalRating(p));
+    const drafted = p.primeOf ? (this.#index.byId.get(p.primeOf) ?? p) : p;
+    return Math.round(naturalRating(drafted));
   }
   /** Players a side holds per band (aligned with this.bands). */
   #bandUsed(side) {
@@ -229,10 +260,11 @@ export class DraftSession {
   // The guard: some available (Budget mode: affordable) player of the group can fill an open
   // slot class. Call-ups always include the best available keepers and outfield players, so
   // the whole group is checked.
-  #fills(category, id, side) {
+  #fills(category, id, side, legend = false) {
     const ix = this.#index,
-      group =
-        category === 'nation'
+      group = legend
+        ? this.#legends.nations.get(id)
+        : category === 'nation'
           ? ix.nations.get(id)
           : category === 'league'
             ? ix.leagueById.get(id)
@@ -249,9 +281,10 @@ export class DraftSession {
       p => (isKeeper(p) ? open.gk : open.out) && this.available(p) && afford(p),
     );
   }
-  #poolOf(category, id) {
+  #poolOf(category, id, legend = false) {
     const ix = this.#index;
     if (category === 'nation') {
+      if (legend) return this.#legendPool(id);
       const nation = ix.nations.get(id);
       if (!nation) return [];
       const squad = callUps(nation, p => this.available(p), this.rules.nations);
@@ -271,16 +304,30 @@ export class DraftSession {
     const group = category === 'league' ? ix.leagueById.get(id) : ix.clubs.get(id);
     return group ? group.players.filter(p => this.available(p)) : [];
   }
+  // A Legend spin shows the nation's highest-rated legends (`legends.shown`, 10). Never a dead
+  // end: when none of those fits an open slot class and the Budget tiers, the best that do are
+  // shown instead.
+  #legendPool(id) {
+    const nation = this.#legends.nations.get(id);
+    if (!nation) return [];
+    const side = this.turn,
+      open = this.openClasses(side),
+      shown = this.#legends.shown,
+      free = nation.players.filter(p => this.available(p)),
+      fits = p => (isKeeper(p) ? open.gk : open.out) && this.affordable(p, side),
+      top = free.slice(0, shown);
+    return top.some(fits) ? top : free.filter(fits).slice(0, shown);
+  }
   #nationUsed(side, id) {
     return this.history.some(h => h.side === side && h.category === 'nation' && h.optionId === id);
   }
-  #valid(category, id, side) {
+  #valid(category, id, side, legend = false) {
     if (category === 'nation') {
       if (this.excluded.nations.has(id)) return false;
       if (this.options.uniqueNations && this.#nationUsed(side, id)) return false;
     }
     if (category === 'club' && this.excluded.clubs.has(id)) return false;
-    return this.#fills(category, id, side);
+    return this.#fills(category, id, side, legend);
   }
   // ---- spinning ---------------------------------------------------------------------------
   #reel(category, entries, weightOf) {
@@ -301,15 +348,35 @@ export class DraftSession {
     const { total, ...shown } = reel;
     return { ...shown, landing };
   }
-  #draw(category, exclude, forcedId) {
+  #draw(category, exclude, forcedId, legend = false) {
     const side = this.turn,
       ix = this.#index,
       tierWeight = t => this.rules.leagueTierWeights[t] ?? 0;
+    if (legend) {
+      // The Legend spin: the nations with a great legend; more legends, slightly better odds.
+      const reel = this.#land(
+        this.#reel(
+          'nation',
+          this.#legends.reel.map(n => ({
+            id: n.id,
+            name: n.name,
+            code: n.code,
+            flag: n.flag,
+            best: n.best,
+            legends: n.count,
+            weight: n.weight,
+          })),
+          o => (!exclude.has(o.id) && this.#valid('nation', o.id, side, true) ? o.weight : 0),
+        ),
+        forcedId,
+      );
+      return { category, option: reel.options[reel.landing], league: null, reels: [reel] };
+    }
     if (category === 'nation') {
       const reel = this.#land(
         this.#reel(
           'nation',
-          ix.field.map(n => ({
+          ix.spinField.map(n => ({
             id: n.id,
             name: n.name,
             code: n.code,
@@ -369,11 +436,13 @@ export class DraftSession {
   spin() {
     if (this.complete) throw Error('The draft is complete');
     if (this.current) throw Error('Pick a player (or re-roll) before spinning again');
-    const category = this.category(),
+    const legend = this.legendRound(),
+      category = legend ? 'nation' : this.category(),
       forced = this.#scheduled('spin'),
-      result = this.#draw(category, new Set(), forced);
+      result = this.#draw(category, new Set(), forced, legend);
     this.current = {
       ...result,
+      legend,
       side: this.turn,
       round: this.round(),
       reroll: 0,
@@ -397,10 +466,11 @@ export class DraftSession {
     if (blocked) throw Error(blocked);
     const category = this.current.category,
       forced = this.#scheduled('alternate'),
-      result = this.#draw(category, new Set(this.seen), forced);
+      result = this.#draw(category, new Set(this.seen), forced, !!this.current.legend);
     this.rerollsLeft[this.turn]--;
     this.current = {
       ...result,
+      legend: !!this.current.legend,
       side: this.turn,
       round: this.round(),
       reroll: this.current.reroll + 1,
@@ -414,7 +484,11 @@ export class DraftSession {
   /** Players of the current spin (drafted/excluded players removed), best fit first. */
   poolPlayers() {
     if (!this.current) return [];
-    this.#pool ??= this.#poolOf(this.current.category, this.current.option.id);
+    this.#pool ??= this.#poolOf(
+      this.current.category,
+      this.current.option.id,
+      !!this.current.legend,
+    );
     return this.#pool;
   }
   #inPool(p) {
@@ -512,6 +586,7 @@ export class DraftSession {
       optionName: spin.option.name,
       leagueId: spin.league?.id ?? null,
       rerolls: spin.reroll,
+      ...(spin.legend ? { legend: true } : {}),
     });
     this.current = null;
     this.seen = [];
@@ -586,10 +661,82 @@ export class DraftSession {
     this.#changed();
     return true;
   }
+  // ---- Prime boosts ------------------------------------------------------------------------
+  /** The stored prime version of a player when this draft has Prime boosts, else null. */
+  #primeOf(p) {
+    if (!this.primesPerSide) return null;
+    const prime = primeVersion(this.#catalog, p);
+    return prime && Math.round(naturalRating(prime)) > Math.round(naturalRating(p)) ? prime : null;
+  }
+  /**
+   * What a Prime boost would do to the player in a side's slot, or null when he has no stored
+   * prime version (or the slot is open): { slot, profileId, name, from: { ovr, rating }, to:
+   * { profileId, ovr, rating, edition, year, position, tier }, allowed, reason }. `rating` is
+   * the rating in that slot. `reason` when not allowed: 'No Prime boosts left'. Budget mode
+   * never refuses it: he keeps the tier slot of the version that was drafted.
+   */
+  primeOption(slot, side = this.turn) {
+    const id = this.picks[side]?.[slot],
+      p = id ? this.player(id) : null,
+      prime = p && this.#primeOf(p);
+    if (!prime) return null;
+    const role = FORMATIONS[this.formations[side]][slot][2],
+      ovr = Math.round(naturalRating(prime));
+    const reason = this.primesLeft[side] > 0 ? '' : 'No Prime boosts left';
+    return {
+      slot,
+      profileId: p.profileId,
+      name: p.name,
+      from: { ovr: Math.round(naturalRating(p)), rating: Math.round(roleRating(p, role)) },
+      to: {
+        profileId: prime.profileId,
+        ovr,
+        rating: Math.round(roleRating(prime, role)),
+        edition: prime.edition,
+        year: editionYear(prime.edition),
+        position: prime.primaryPosition,
+        tier: tierOfRating(ovr, this.tiers),
+      },
+      allowed: !reason,
+      reason,
+    };
+  }
+  /** Every slot of a side whose player has a stored prime version (see primeOption). */
+  primeOptions(side = this.turn) {
+    return this.picks[side].map((_, slot) => this.primeOption(slot, side)).filter(Boolean);
+  }
+  /**
+   * Spend a Prime boost: the player in the slot becomes his prime version (rating, attributes
+   * and positions of that edition; same name, nation, club and Captain tag). Not reversible.
+   * Returns { ok: true, side, slot, profileId, primeOf, rating } or { ok: false, reason }.
+   */
+  prime(slot, side = this.turn) {
+    const option = this.primeOption(slot, side);
+    if (!option) return { ok: false, reason: 'No prime version' };
+    if (!option.allowed) return { ok: false, reason: option.reason };
+    this.picks[side][slot] = option.to.profileId;
+    this.used.add(option.to.profileId);
+    this.primesLeft[side]--;
+    for (const h of this.history)
+      if (h.side === side && h.profileId === option.profileId) {
+        h.profileId = option.to.profileId;
+        h.primeOf = option.profileId;
+      }
+    this.#changed();
+    return {
+      ok: true,
+      side,
+      slot,
+      profileId: option.to.profileId,
+      primeOf: option.profileId,
+      rating: option.to.rating,
+    };
+  }
   // ---- views ----------------------------------------------------------------------------
   /** Display summary of a catalog player (no fit information). */
   playerSummary(p) {
-    const s = p.source || {};
+    const s = p.source || {},
+      prime = this.#primeOf(p);
     return {
       profileId: p.profileId,
       name: p.name,
@@ -597,16 +744,46 @@ export class DraftSession {
       position: p.primaryPosition,
       secondary: [...(p.secondaryPositions || [])],
       ovr: Math.round(naturalRating(p)),
-      tier: tierName(p),
+      tier: tierOfRating(Math.round(naturalRating(p)), this.tiers),
       nation: s.nationality || null,
       nationCode: this.#index.nations.get(s.nationality)?.code ?? null,
       club: s.club || null,
       clubId: s.clubId == null ? null : String(s.clubId),
       league: this.#index.leagueById.get(String(s.leagueId))?.name ?? null,
       leagueId: s.leagueId == null ? null : String(s.leagueId),
+      captain: !!p.captain,
+      legend: !!p.legend,
+      prime: !!p.prime,
+      edition: p.edition ?? null,
+      // The year of a legend's or prime version's edition (FIFA 19 came out in 2018).
+      year: editionYear(p.edition),
+      // His stored prime version (drafts with Prime boosts): what a boost would make him.
+      primeVersion: prime && {
+        profileId: prime.profileId,
+        ovr: Math.round(naturalRating(prime)),
+        edition: prime.edition,
+        year: editionYear(prime.edition),
+        position: prime.primaryPosition,
+      },
     };
   }
-  #entry(p, side, used) {
+  /** Nations and clubs of a side's XI (what makes a pool player a mate) + the boosts. */
+  #mates(side) {
+    const nations = new Set(),
+      clubs = new Set();
+    for (const p of this.lineup(side)) {
+      if (!p) continue;
+      if (p.source?.nationality) nations.add(p.source.nationality);
+      if (p.source?.clubId != null) clubs.add(String(p.source.clubId));
+    }
+    return {
+      nations,
+      clubs,
+      value: linkBoosts(this.rules.links),
+      captain: this.lineup(side).some(p => p?.captain),
+    };
+  }
+  #entry(p, side, used, mates) {
     const rows = FORMATIONS[this.formations[side]],
       natural = naturalRating(p);
     let best = null,
@@ -621,9 +798,23 @@ export class DraftSession {
     const band = this.bands ? bandIndex(this.bands, this.#price(p)) : -1,
       afford = band < 0 || used[band] < this.bands[band].slots,
       ok = this.available(p) && !!best && afford;
+    // The mates boost he would get in this XI (null when he has no mate in it).
+    const kinds = [];
+    if (mates.value.nation > 0 && mates.nations.has(p.source?.nationality)) kinds.push('nation');
+    if (
+      mates.value.club > 0 &&
+      p.source?.clubId != null &&
+      mates.clubs.has(String(p.source.clubId))
+    )
+      kinds.push('club');
     return {
       ...this.playerSummary(p),
       band: band < 0 ? null : this.bands[band].id,
+      boost: kinds.length
+        ? { value: kinds.reduce((sum, k) => sum + mates.value[k], 0), kinds }
+        : null,
+      // A Captain who would be the XI's first: what he gives every player (else 0).
+      captainBoost: p.captain && !mates.captain ? mates.value.captain : 0,
       best: best && {
         slot: best.slot,
         role: best.role,
@@ -666,6 +857,8 @@ export class DraftSession {
         rating: p ? Math.round(roleRating(p, role)) : null,
         familiarity: p ? round3(roleFit(p, role)) : null,
         link: links.players[slot],
+        // What a Prime boost would do here (null: no stored prime version).
+        prime: p ? this.primeOption(slot, side) : null,
       };
     });
     const mean = list => {
@@ -689,15 +882,17 @@ export class DraftSession {
       links: { ...linkSummary, boosts: linkPlayers.map(e => e?.chem ?? null) },
       budget: this.bands && this.#budgetView(side),
       rerollsLeft: this.rerollsLeft[side],
+      primesLeft: this.primesLeft[side],
       complete: filled.length === 11,
     };
   }
-  /** Budget mode: the bands with what the side has used: [{ id, label, slots, used, left }]. */
+  /** Budget mode: the capped tiers with what the side has used: [{ id, label, range, … }]. */
   #budgetView(side) {
     const used = this.#bandUsed(side);
     return this.bands.map((b, i) => ({
       id: b.id,
       label: b.label,
+      range: b.range,
       minimum: b.minimum,
       slots: b.slots,
       used: used[i],
@@ -708,9 +903,10 @@ export class DraftSession {
   snapshot() {
     if (this.#snapshot) return this.#snapshot;
     const side = this.turn,
-      bandUsed = this.bands && this.#bandUsed(side);
+      bandUsed = this.bands && this.#bandUsed(side),
+      mates = this.#mates(side);
     const pool = this.poolPlayers()
-      .map(p => this.#entry(p, side, bandUsed))
+      .map(p => this.#entry(p, side, bandUsed, mates))
       .sort(
         (a, b) =>
           b.available - a.available ||
@@ -727,6 +923,12 @@ export class DraftSession {
       hideRatings: this.options.hideRatings,
       uniqueNations: this.options.uniqueNations,
       budget: this.options.budget,
+      legendSpin: this.options.legendSpin,
+      // The spin to make (or the current one) is the side's Legend spin.
+      legendRound: this.current ? !!this.current.legend : !this.complete && this.legendRound(side),
+      primes: this.primesPerSide
+        ? { perSide: this.primesPerSide, left: [...this.primesLeft] }
+        : null,
       daily: !!this.options.schedule,
       phase: this.phase,
       complete: this.complete,
@@ -760,6 +962,7 @@ export class DraftSession {
         turn: this.turn,
         picks: this.picks,
         rerollsLeft: this.rerollsLeft,
+        primesLeft: this.primesLeft,
         history: this.history,
         current: this.current,
         seen: this.seen,
@@ -824,6 +1027,8 @@ export function buildSide({
       total: summary.total,
       chem: round3(summary.chem),
       pairs: summary.pairs,
+      captain: summary.captain,
+      captainBoost: summary.captainBoost,
     },
   };
 }

@@ -9,6 +9,7 @@ import { href, navigate } from '../../lib/router.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
 import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
+import { loadLegends } from '../../../services/legends.js';
 import { Button } from '../../components/button.js';
 import { Chip } from '../../components/chip.js';
 import { Icon } from '../../components/icon.js';
@@ -431,6 +432,12 @@ function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
       <span style=${{ width: `${Math.round(sim.progress * 100)}%` }}></span>
     </div>
     <${ResultsTicker} items=${sim.items} snapshot=${snapshot} />
+    ${
+      sim.milestone &&
+      html`<p class="sim__milestone" data-testid="sim-milestone" aria-hidden="true">
+        <${Icon} name="circle-check" size=${20} /> ${sim.milestone}
+      </p>`
+    }
     <p class="visually-hidden" aria-live="polite">${sim.announce}</p>
     <div class="sim__actions">
       ${
@@ -497,6 +504,8 @@ export default function RunScreen() {
     (async () => {
       try {
         const catalog = await loadWarmCatalog().then(warmOpponents);
+        // A World Cup XI can hold a legend and primed players (catalog.legends).
+        await loadLegends();
         if (!live) return;
         let saved = loadRun(catalog);
         let flash = null;

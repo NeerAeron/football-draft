@@ -7,9 +7,10 @@ import { clamp, lerp } from '../util/math.js';
 import { W, H, GOAL, hypot } from './constants.js';
 import { PERIOD_START } from './periods.js';
 
-const SETUP = 1.5; // real seconds to place the ball and the kicker
+const SETUP = 1.7; // real seconds from the cut to the kicker until he strikes it
+const RUN_UP = 0.8; // … the last of which he spends running at the ball
 const FLIGHT_LIMIT = 3; // a kick that has not resolved by then is over
-const PAUSE = 1; // show the outcome before the next kick
+const PAUSE = 1.15; // show the outcome before the next kick
 const CELEBRATE = 1.6; // after the decisive kick, before the final whistle
 const SPOT_X = 94;
 
@@ -153,28 +154,40 @@ export class ShootoutMethods {
       indirect: null,
       saver: null,
     });
-    const line = [0, 0];
+    // Everybody is put in place at once (the screen cuts from kick to kick): the kicker a few
+    // steps behind the ball, the keeper on his line in the middle of the goal, the other
+    // keeper waiting beside the goal, both teams lined up on halfway.
+    const line = [0, 0],
+      size = [0, 0];
+    for (const p of this.activePlayers) if (p.id !== kicker.id && p.role !== 'GK') size[p.team]++;
     for (const p of this.activePlayers) {
       p.vx = p.vy = 0;
       p.penaltyDive = null;
       p.animation = null;
       p.cooldown = 0;
       p.stun = 0;
+      p.trail = [];
       if (p.id === kicker.id) {
-        p.x = SPOT_X - 2.6;
-        p.y = 34.6;
+        p.x = SPOT_X - 3.4;
+        p.y = 35.1;
         p.facing = 0;
-        p.aim(SPOT_X - 0.5, 34, 'hold', 'Placing the ball');
+        p.aim(p.x, p.y, 'hold', 'Stepping up');
       } else if (p.id === keeper.id) {
         p.x = W - 0.4;
         p.y = 34;
         p.facing = Math.PI;
-        p.aim(W - 0.4, 34, 'keeper', 'On the line');
+        p.aim(p.x, p.y, 'keeper', 'On his line');
       } else if (p.role === 'GK') {
-        p.aim(SPOT_X - 7, 52, 'shape', 'Waiting at the edge of the box');
+        p.x = W - 1.2;
+        p.y = 34 + 9.5;
+        p.facing = Math.PI;
+        p.aim(p.x, p.y, 'shape', 'Waiting his turn');
       } else {
         const i = line[p.team]++;
-        p.aim(52.5 + (p.team ? 1.4 : -1.4), 30 + i * 0.85, 'shape', 'Watching from halfway');
+        p.x = 52.5 + (p.team ? 1.6 : -1.6);
+        p.y = 34 + (i - (size[p.team] - 1) / 2) * 1.9;
+        p.facing = 0;
+        p.aim(p.x, p.y, 'shape', 'Watching from halfway');
       }
     }
   }
@@ -185,9 +198,10 @@ export class ShootoutMethods {
     // Walk into place between kicks; full speed while the keeper dives.
     for (const p of this.activePlayers) this.move(p, dt, k.phase !== 'flight');
     if (k.phase === 'setup') {
-      k.timer -= dt;
-      if (k.timer > 0) return;
       const kicker = this.players[k.kickerId];
+      k.timer -= dt;
+      if (k.timer < RUN_UP) kicker.aim(SPOT_X - 0.5, 34, 'hold', 'Running up');
+      if (k.timer > 0) return;
       kicker.x = SPOT_X - 0.5;
       kicker.y = 34;
       kicker.vx = kicker.vy = 0;
@@ -201,9 +215,6 @@ export class ShootoutMethods {
       return;
     }
     if (k.phase === 'flight') {
-      const g = this.players[k.keeperId];
-      if (g.penaltyDive?.until > this.elapsed)
-        g.aim(W - 0.25, g.penaltyDive.y, 'save', 'Diving for the penalty');
       if (b.owner === null) {
         b.age += dt;
         this.moveBall(dt);
@@ -259,6 +270,7 @@ export class ShootoutMethods {
     const sh = this.shootout,
       s = this.shootoutState,
       k = s.kick,
+      b = this.ball,
       team = k.team,
       kicker = this.players[k.kickerId],
       keeper = this.players[k.keeperId];
@@ -317,6 +329,15 @@ export class ShootoutMethods {
     k.phase = 'pause';
     k.outcome = outcome;
     k.timer = winner === null ? PAUSE : CELEBRATE;
+    // He stays where the dive left him until the next kick is set up.
+    if (keeper.penaltyDive) keeper.penaltyDive.until = this.elapsed + k.timer + 1;
+    if (scored) {
+      // Into the net, not stopped on the line.
+      b.y += (b.vy / (Math.abs(b.vx) || 1)) * 0.9;
+      b.x = W + 0.9;
+      b.z = Math.min(b.z, 0.4);
+    }
+    b.vx = b.vy = b.vz = 0;
     if (winner !== null) sh.winner = winner;
   }
   // After the decisive kick has been shown.

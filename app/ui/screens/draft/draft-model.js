@@ -4,11 +4,14 @@ import { LINE_OF, roleRating } from '../../../core/draft/pools.js';
 import { teamLinks, linkBoosts } from '../../../core/draft/links.js';
 import { FORMATIONS } from '../../../core/players/formations.js';
 import { NATURAL_FIT } from '../../../core/draft/session.js';
+import { freeLabel } from '../../../core/draft/budget.js';
 import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
 import { searchKey } from '../../../core/util/text.js';
+import { editionLabel } from '../../../core/players/legends.js';
 import { keyStatsFirst, surname } from '../../lib/player-view.js';
+import { boost as fmtBoost } from '../../lib/format.js';
 
 export const CATEGORY_LABEL = { nation: 'Nation', league: 'League', club: 'Club' };
 export const CATEGORY_ICON = { nation: 'flag', league: 'layout-grid', club: 'shield' };
@@ -69,10 +72,13 @@ export function poolCounts(pool = []) {
 }
 
 /**
- * FitTag for a pool row: natural best slot, the drop when out of position, or why not
- * ('Taken', 'No slot', Budget mode: '88+ full').
+ * FitTag for a pool row — only what the row does not say already:
+ *   nothing when his best open slot is his own position at his full rating;
+ *   '81 at CM' (`at` = the role, `to` = his rating there, `from` = his own) when his best
+ *   open slot is another position: amber when he loses rating, plain otherwise;
+ *   why not when he cannot be picked ('Taken', 'No slot', Budget mode: 'Star full').
  */
-export function rowFit(entry, budget = null) {
+export function rowFit(entry, budget = null, hideRatings = false) {
   if (!entry.available) {
     const band = / slot left$/.test(entry.reason) && budget?.find(b => b.id === entry.band);
     return {
@@ -81,13 +87,38 @@ export function rowFit(entry, budget = null) {
     };
   }
   const best = entry.best;
-  if (!best) return null;
-  if (best.familiarity >= NATURAL_FIT) return { state: 'ok', label: best.role };
-  return { state: 'penalty', label: best.role, from: entry.ovr, to: best.rating };
+  if (!best || (best.role === entry.position && best.rating >= entry.ovr)) return null;
+  return {
+    // Ball Knower: the colour must not give the numbers away, only a real change of position.
+    state: hideRatings
+      ? best.familiarity < NATURAL_FIT
+        ? 'penalty'
+        : 'neutral'
+      : best.rating < entry.ovr
+        ? 'penalty'
+        : 'neutral',
+    at: best.role,
+    from: entry.ovr,
+    to: best.rating,
+  };
+}
+
+const MATE_TEXT = { nation: 'nation mate', club: 'club mate' };
+/**
+ * The boost a pool player would get in the XI — PlayerRow `boost` ({ label: '+1.5', text:
+ * 'nation mate' } · '+1' 'club mate' · '+2.5' 'nation + club mate'); null without a mate.
+ */
+export function rowBoost(entry) {
+  const b = entry.boost;
+  if (!b || !entry.available) return null;
+  return {
+    label: fmtBoost(b.value),
+    text: b.kinds.length > 1 ? 'nation + club mate' : MATE_TEXT[b.kinds[0]],
+  };
 }
 
 /**
- * Budget mode: what a pool row costs — PlayerRow `cost` ({ label: '88+', tone: 'band1', text })
+ * Budget mode: what a pool row costs — PlayerRow `cost` ({ label: 'Star', tone: 'star', text })
  * or the free tag; null when the draft has no budget (team.budget is null).
  */
 export function rowCost(entry, budget = null) {
@@ -122,13 +153,19 @@ export function slotHighlights(options = [], auto = null, { hideRatings = false 
   return out;
 }
 
-const GROUP_ORDER = ['Pot 1', 'Pot 2', 'Pot 3', 'Pot 4', 'S', 'A', 'B', 'C', 'D', 'F'].map(
-  (k, i) => [k.length === 1 ? `Tier ${k}` : k, i],
-);
+// Nations are one pool on the reel (every nation equally likely); leagues group by tier.
+const GROUP_ORDER = ['Nations', 'S', 'A', 'B', 'C', 'D', 'F'].map((k, i) => [
+  k.length === 1 ? `Tier ${k}` : k,
+  i,
+]);
 const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 
 /** The six summary stats with the position's key stats first (pool rows). */
 export const rowStats = (stats, position) => keyStatsFirst(stats, position);
+
+/** "Prime 94 · ’19": what a Prime boost would make a player (entry/slot `primeVersion`). */
+export const primeNote = version =>
+  version ? `Prime ${version.ovr} · ${editionLabel(version.edition)}` : '';
 
 /** PitchView link lines from mates pairs: nation mates 3 (gold), club mates 2 (volt). */
 export function linkLines(pairs = []) {
@@ -146,7 +183,7 @@ export function reelItems(reel, { league = null } = {}) {
       return {
         id: o.id,
         label: o.name,
-        sub: o.pot ? `Pot ${o.pot}` : '',
+        sub: '',
         flag: { code: o.code, name: o.name, src: o.flag || undefined },
       };
     if (reel.category === 'league')
@@ -178,7 +215,7 @@ export function oddsSummary(spin) {
   return spin.reels.map(reel => {
     const live = reel.options.filter(o => o.weight > 0);
     const landed = reel.options[reel.landing];
-    const groupKey = o => (reel.category === 'nation' ? `Pot ${o.pot}` : `Tier ${o.tier}`);
+    const groupKey = o => (reel.category === 'nation' ? 'Nations' : `Tier ${o.tier}`);
     const groups = new Map();
     for (const o of live) {
       const k = groupKey(o);
@@ -212,14 +249,24 @@ export function spinHeadline(spin, poolSize = 0) {
   if (!spin) return null;
   const o = spin.option;
   const players = `${poolSize} player${poolSize === 1 ? '' : 's'}`;
+  if (spin.legend)
+    return {
+      title: o.name,
+      kind: 'nation',
+      legend: true,
+      flag: { code: o.code, name: o.name, src: o.flag || undefined },
+      meta: `${poolSize} legend${poolSize === 1 ? '' : 's'}`,
+      big: true,
+      badge: null,
+    };
   if (spin.category === 'nation')
     return {
       title: o.name,
       kind: 'nation',
       flag: { code: o.code, name: o.name, src: o.flag || undefined },
-      meta: `Pot ${o.pot} · ${poolSize} call-up${poolSize === 1 ? '' : 's'}`,
+      meta: `${poolSize} call-up${poolSize === 1 ? '' : 's'}`,
       big: o.pot === 1,
-      badge: o.pot === 1 ? 'Pot 1' : null,
+      badge: null,
     };
   if (spin.category === 'league')
     return {
@@ -245,7 +292,7 @@ export function spinHeadline(spin, poolSize = 0) {
 export function landedAnnouncement(spin, poolSize) {
   const h = spinHeadline(spin, poolSize);
   if (!h) return '';
-  return `${CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
+  return `${spin.legend ? 'Legend spin' : CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
 }
 
 /**
@@ -319,13 +366,13 @@ export function draftProjection({ kind, mode, difficulty, teams, side = 0, rules
 }
 
 const KIND_LABEL = { nation: 'Nation', club: 'Club' };
-const boostText = n => `+${Number.isInteger(n) ? n : Math.round(n * 10) / 10}`;
+const boostText = n => fmtBoost(n);
 const nameList = names =>
   names.length <= 2 ? names.join(' and ') : `${names[0]}, ${names[1]} +${names.length - 2}`;
 
 /**
- * The mates lines of a pick preview, e.g. ['Nation mate of Mbappé: +2 each',
- * 'Club mate of Hakimi: +2', 'Both: +4', 'Also lifts Dembélé to +4'] — or
+ * The mates lines of a pick preview, e.g. ['Nation mate of Mbappé: +1.5 each',
+ * 'Club mate of Hakimi: +1', 'Both: +2.5', 'Also lifts Dembélé to +2.5'] — or
  * ['No mates in your XI yet'] ({ text, tone } entries).
  */
 export function mateLines(preview) {
@@ -351,13 +398,13 @@ export function mateLines(preview) {
  * What drafting `profileId` into `slot` would do: team OVR after the pick (exact mean slot
  * rating) and the boosts —
  *   boosts / gain  the XI's total boost after the pick and what the pick adds to it;
- *   boost          his own mates boost (0, 2 or 4);
+ *   boost          his own mates boost (0, 1, 1.5 or 2.5);
  *   mates          [{ kind, names, boost, shared }] one entry per kind that boosts him
  *                  (nation, club): his mates of that kind (surnames), the boost, and whether
- *                  those mates get it thanks to him ("+2 each");
+ *                  those mates get it thanks to him ("+1.5 each");
  *   lifts          [{ name, to }] other players whose boost rises, not said by `mates`;
- *   captain        { boost } when the pick makes him the XI's first captain;
- *   budget         Budget mode: { label, slots, left } of the band he uses up (left = after
+ *   captain        { boost } when the pick gives the XI its first Captain (+1 to everyone);
+ *   budget         Budget mode: { label, slots, left } of the tier he uses up (left = after
  *                  the pick), { free: true, label } for a free player; null without a budget;
  *   links          the mates score after the pick (sum of the mates boosts).
  * `session` is the DraftSession (read-only use: lineup/player/rules).
@@ -382,7 +429,7 @@ export function pickPreview(session, side, profileId, slot) {
   const before = teamLinks(lineup, session.rules.links);
   const me = links.players[slot];
   const boosts = linkBoosts(session.rules.links);
-  const said = new Map(); // slot -> boost explained by a "+2 each" line
+  const said = new Map(); // slot -> boost explained by a "+1.5 each" line
   const mates = me.kinds.map(kind => {
     const slots = links.pairs
       .filter(p => (p.a === slot || p.b === slot) && p.kinds.includes(kind))
@@ -399,9 +446,6 @@ export function pickPreview(session, side, profileId, slot) {
     if (rise > (said.get(i) || 0))
       lifts.push({ name: surname(p.name), to: links.players[i].boost });
   });
-  // Captain: the boost his XI gets when this pick makes him (or keeps someone else) captain.
-  const captain =
-    links.captain === slot && before.captain === null ? { boost: links.captainBoost } : null;
   let budget = null;
   const bands = session.bands && session.team(side).budget;
   if (bands) {
@@ -410,7 +454,7 @@ export function pickPreview(session, side, profileId, slot) {
     );
     budget = band
       ? { id: band.id, label: band.label, slots: band.slots, left: Math.max(0, band.left - 1) }
-      : { free: true, label: `Under ${bands[bands.length - 1].minimum}` };
+      : { free: true, label: freeLabel(bands) };
   }
   return {
     rating: Math.round((sum / n) * 10) / 10,
@@ -420,7 +464,10 @@ export function pickPreview(session, side, profileId, slot) {
     boost: me.boost,
     mates,
     lifts,
-    captain,
+    captain:
+      links.captain === slot && before.captain === null && links.captainBoost > 0
+        ? { boost: links.captainBoost }
+        : null,
     budget,
   };
 }
