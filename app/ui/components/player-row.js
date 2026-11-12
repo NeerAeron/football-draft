@@ -7,14 +7,16 @@
  *   stats        number of summary stats to show when the row is wide enough, the position's
  *                key stats first (default 3;
  *                the row hides them below ~460 px of its own width, container query)
- *   meta         override the second line (default "Club · League")
- *   cost         { label, tone? } a small tag before the second line: what the player costs
+ *   meta         override the club text of the second line (default "Club · League")
+ *   cost         { label, tone? } a small tag on the second line: what the player costs
  *                (Budget mode: 'Star' with tone 'superstar' | 'star' | 'starter', or 'Free')
  *   boost        { label, text } the mates boost he would get, green, on the second line
  *                ('+1.5' 'nation mate')
  *
  * A Captain's name carries the "C", a legend's the year of his version ("’18"); `player.primeNote`
- * ("Prime 94 · ’19") is shown on the second line.
+ * ("Prime 94 +8": a Prime boost is available, and what it adds) is a gold tag on the second
+ * line. The second line spans the whole row under the name: cost, boost and Prime are never
+ * cut (they wrap when the row is narrow); the club text takes what is left.
  * A Superstar's or a Star's row has a thin outline in the tier's colour (not with hideRatings).
  *   selected     volt edge + aria-pressed;  disabled (dimmed, not clickable)
  *   hideRatings  hide OVR + stats
@@ -60,36 +62,20 @@ export function PlayerRow({
     onClick && 'prow--interactive',
     className,
   );
+  // Two lines. The first: flag, name, position, rating, stats, fit. The second spans the row
+  // under the name: the tags (cost, boost, Prime) are never cut — they wrap — and the club
+  // line takes what is left, shortened with an ellipsis.
+  const prime = !hideRatings && p.primeNote;
   const grid = html`<span class="prow__grid">
     ${rank != null && html`<span class="prow__rank num">${rank}</span>`}
-    <${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative />
-    <span class="prow__who">
-      <span class="prow__name"
-        >${p.name}${p.era && html` <span class="prow__era num">${p.era}</span>`}${
-          p.captain && html` <${CaptainMark} class="prow__captain" />`
-        }</span
-      >
-      ${
-        (sub || cost || boost || p.primeNote) &&
-        html`<span class="prow__meta"
-          >${
-            cost &&
-            html`<b class=${cx('prow__cost num', cost.tone && `prow__cost--${cost.tone}`)}
-              >${cost.label}</b
-            >`
-          }${
-            boost &&
-            html`<span class="prow__boost"
-              ><b class="num">${boost.label}</b>${` ${boost.text}`}</span
-            >`
-          }${boost && sub ? ' · ' : ''}${sub}${
-            p.primeNote &&
-            !hideRatings &&
-            html`${sub || boost ? ' · ' : ''}<span class="prow__prime">${p.primeNote}</span>`
-          }</span
-        >`
-      }
-    </span>
+    <span class="prow__flag"
+      ><${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative
+    /></span>
+    <span class="prow__name"
+      >${p.name}${p.era && html` <span class="prow__era num">${p.era}</span>`}${
+        p.captain && html` <${CaptainMark} class="prow__captain" />`
+      }</span
+    >
     <span class="prow__pos">${p.position}</span>
     <span class=${cx('prow__ovr num', !hideRatings && `tier-text-${t.id}`)}
       >${hideRatings ? '?' : p.ovr}</span
@@ -108,6 +94,24 @@ export function PlayerRow({
     <span class="prow__fit"
       >${fit && html`<${FitTag} fit=${fit} hideRatings=${hideRatings} />`}</span
     >
+    ${
+      (sub || cost || boost || prime) &&
+      html`<span class="prow__meta"
+        >${
+          cost &&
+          html`<b class=${cx('prow__cost num', cost.tone && `prow__cost--${cost.tone}`)}
+            >${cost.label}</b
+          >`
+        }${
+          boost &&
+          html`<span class="prow__boost"
+            ><b class="num">${boost.label}</b>${` ${boost.text}`}</span
+          >`
+        }${prime && html`<span class="prow__prime num">${prime}</span>`}${
+          sub && html`<span class="prow__sub">${sub}</span>`
+        }</span
+      >`
+    }
   </span>`;
   if (onClick) {
     const label = [
@@ -120,6 +124,7 @@ export function PlayerRow({
       p.era && `20${p.era.slice(1)}`,
       cost && (cost.text || cost.label),
       boost && `${boost.label} ${boost.text}`,
+      prime,
       fitText(fit, hideRatings),
     ]
       .filter(Boolean)

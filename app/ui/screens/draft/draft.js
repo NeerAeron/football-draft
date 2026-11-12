@@ -39,6 +39,7 @@ import {
   pickPreview,
   rowStats,
   primeNote,
+  primeLine,
 } from './draft-model.js';
 import { SpinStage } from './spin-stage.js';
 import { PoolPanel } from './pool-list.js';
@@ -138,6 +139,7 @@ function Board({ state, draft, auto }) {
 
   // ---- views ----
   const toView = useMemo(() => makePlayerView(catalog), [catalog]);
+  const primesOn = team.primesLeft > 0;
   const entryView = useMemo(() => {
     const cache = new WeakMap();
     return e => {
@@ -149,13 +151,15 @@ function Board({ state, draft, auto }) {
           ovr: e.ovr,
           tier: e.tier,
           stats: rowStats(base.stats, base.position),
-          primeNote: primeNote(e.primeVersion),
+          // A Prime boost is on offer for him (while the side has one left).
+          primeNote: primesOn ? primeNote(e.primeVersion, e.ovr) : '',
+          primeLine: primesOn ? primeLine(e.primeVersion, e.ovr) : null,
         };
         cache.set(e, v);
       }
       return v;
     };
-  }, [toView, session]);
+  }, [toView, session, primesOn]);
   const lookups = useMemo(
     () => ({
       nations: new Map((catalog.nations || []).map(n => [n.name, n])),
@@ -203,7 +207,7 @@ function Board({ state, draft, auto }) {
                 ...toView(session.player(s.player.profileId)),
                 ovr: s.rating,
                 tier: s.player.tier,
-                primeNote: t.primesLeft > 0 ? primeNote(s.player.primeVersion) : '',
+                primeNote: t.primesLeft > 0 ? primeNote(s.player.primeVersion, s.player.ovr) : '',
               }
             : null,
         ),

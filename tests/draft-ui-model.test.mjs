@@ -14,6 +14,9 @@ import {
   rowBoost,
   mateLines,
   rowStats,
+  primeNote,
+  primeLine,
+  legendYearsLine,
   slotHighlights,
   linkLines,
   reelItems,
@@ -105,9 +108,36 @@ test('rowFit and slotHighlights show natural fit, small drops, poor fits and clo
   assert.ok(['best', 'penalty', 'neutral'].includes(hl[auto.slot].state));
   for (const o of options.filter(o => o.allowed && o.natural - o.rating > POOR_FIT_DROP))
     assert.equal(hl[o.slot].state, 'neutral');
+  // Every open slot carries his overall there (the number the pitch writes into the slot),
+  // closed slots none.
+  for (const o of options) {
+    const h = hl[o.slot];
+    if (o.allowed) assert.deepEqual([h.role, h.rating], [o.role, o.rating]);
+    else assert.deepEqual([h.state, h.rating], ['blocked', undefined]);
+  }
+  assert.ok(
+    options.some(o => o.allowed && o.rating !== auto.rating),
+    'numbers to compare',
+  );
   const hidden = slotHighlights(options, auto, { hideRatings: true });
-  for (const h of Object.values(hidden))
+  for (const h of Object.values(hidden)) {
     if (h.state === 'neutral') assert.equal(h.label, 'Poor', 'no rating leaks when hidden');
+    assert.equal(h.rating, undefined, 'no rating leaks when hidden');
+  }
+});
+
+test('the Prime tag of a row says the bump; the Legend spin says its years in one line', () => {
+  const version = { profileId: 'ea:1:fc20:prime', ovr: 94, edition: 20, year: 2019 };
+  assert.equal(primeNote(version, 86), 'Prime 94 +8');
+  assert.equal(primeNote(version), 'Prime 94');
+  assert.equal(primeNote(null, 86), '');
+  assert.deepEqual(primeLine(version, 86), { era: '’19', ovr: 94, gain: 8 });
+  // The year is the stored one (the snapshot's), not worked out from the edition.
+  assert.equal(primeLine({ ...version, year: 2020 }, 86).era, '’20');
+  assert.equal(primeLine(null, 86), null);
+  assert.equal(legendYearsLine([2014, 2022]), 'Best versions, 2014–2022');
+  assert.equal(legendYearsLine([2019, 2019]), 'Best versions, 2019');
+  assert.equal(legendYearsLine(null), '');
 });
 
 test('pool rows say the boost a player would get in the XI', () => {
