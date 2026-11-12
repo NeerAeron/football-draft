@@ -85,7 +85,7 @@ export function shareText(snapshot, extras = {}) {
 
 // ---- challenge links ----------------------------------------------------------------------
 // Token: c1.<kind>.<mode>.<formation>.<difficulty>.<flags>.<seed base36>[.<catalog stamp>]
-//   kind q quick match · c cup run · v versus · d daily; mode n/l/c/x; difficulty p/w/l (old
+//   kind q quick match · c cup run · v versus · d daily; mode n/l/c; difficulty p/w/l (old
 //   links may carry a or s, the removed Amateur and Semi-pro: they decode as Pro);
 //   flags any of h (hide ratings), u (one per nation), b (Budget mode: World Cup runs only),
 //   2 (two sides), or 0.
@@ -93,7 +93,7 @@ export function shareText(snapshot, extras = {}) {
 // Only [a-z0-9.-]: safe in a URL hash or query without escaping.
 export const CHALLENGE_VERSION = 'c1';
 const KINDS = { q: 'quick', c: 'cup', v: 'versus', d: 'daily' };
-const MODES = { n: 'nations', l: 'leagues', c: 'clubs', x: 'clubAndCountry' };
+const MODES = { n: 'nations', l: 'leagues', c: 'clubs' };
 const LEVEL_CODES = { p: 'pro', w: 'worldclass', l: 'legendary' };
 const OLD_LEVEL_CODES = { a: 'pro', s: 'pro' };
 const invert = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]));

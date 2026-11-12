@@ -3,7 +3,7 @@
 // opponents relative to these numbers (MODE_BASELINES); re-run after catalog/rating changes.
 //
 //   node tools/calibration/draft-baselines.mjs [--catalog file.json] [--n 200]
-//        [--modes nations,leagues,clubs,clubAndCountry] [--rerolls 0,1,2] [--out /tmp/x.json]
+//        [--modes nations,leagues,clubs] [--rerolls 0,1,2] [--out /tmp/x.json]
 //        [--budget "88:2,84:3,80:3;88:1,84:3,80:4"] [--policies positional,links,smart]
 //        [--smart-weight 3] [--legend] [--primes default|N] [--captains N]
 //
@@ -47,7 +47,7 @@ const arg = (name, fallback) => {
 };
 const file = arg('catalog', null),
   N = Number(arg('n', 200)),
-  modes = arg('modes', 'nations,leagues,clubs,clubAndCountry').split(','),
+  modes = arg('modes', 'nations,leagues,clubs').split(','),
   rerollCounts = arg('rerolls', '0,1,2').split(',').map(Number),
   policies = arg('policies', 'positional,links').split(','),
   out = arg('out', null),

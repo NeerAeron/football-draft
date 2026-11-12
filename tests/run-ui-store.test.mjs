@@ -3,9 +3,14 @@
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
-import { createDraftSession, DIFFICULTIES, DIFFICULTY_LABELS } from '../app/core/draft/session.js';
+import {
+  createDraftSession,
+  DIFFICULTIES,
+  DIFFICULTY_LABELS,
+  DRAFT_MODES,
+} from '../app/core/draft/session.js';
 import { decodeChallenge, ULTIMATE } from '../app/core/competition/share.js';
-import { PLACES, PLACE_LABELS, MEDALS } from '../app/core/competition/cup.js';
+import { PLACES, PLACE_LABELS, MEDALS, restoreCupRun } from '../app/core/competition/cup.js';
 
 // A Map-backed localStorage for the browser-side helpers.
 const store = new Map();
@@ -484,11 +489,35 @@ test('the third-place play-off: the Home summary, the labels and the Budget flag
   );
 });
 
-test('draft types map to core modes and back', () => {
-  assert.equal(runStore.modeOf('club-country'), 'clubAndCountry');
-  assert.equal(runStore.modeOf('nope'), 'nations');
-  assert.equal(runStore.typeOf('clubAndCountry'), 'club-country');
-  assert.equal(runStore.typeOf('club-country'), 'club-country');
+test('the draft type is the core mode; a mode the game no longer has reads as nothing saved', () => {
+  for (const mode of ['nations', 'leagues', 'clubs']) {
+    assert.equal(runStore.modeOf(mode), mode);
+    assert.equal(runStore.typeOf(mode), mode);
+  }
+  for (const gone of ['club-country', 'clubAndCountry', 'nope', undefined]) {
+    assert.equal(runStore.modeOf(gone), 'nations');
+    assert.equal(runStore.typeOf(gone), 'nations');
+  }
+  assert.deepEqual(saved.DRAFT_TYPES, Object.keys(DRAFT_MODES));
+  // A run saved in Club & Country: no run to resume, nothing to replace, no crash.
+  const { run, meta } = runStore.createRunFromDraft(catalog, { session: draft, context: {} });
+  runStore.saveRun(run, meta);
+  const state = JSON.parse(store.get(runStore.RUN_STATE_KEY));
+  state.run.mode = 'clubAndCountry';
+  store.set(runStore.RUN_STATE_KEY, JSON.stringify(state));
+  assert.equal(runStore.readRunState(), null);
+  assert.equal(runStore.loadRun(catalog), null);
+  assert.equal(runStore.runInProgress(), false);
+  assert.throws(() => restoreCupRun(catalog, state.run), /Not a saved run/);
+  // A draft saved in it: Home offers nothing to resume.
+  const session = JSON.parse(JSON.stringify(draft.serialize()));
+  store.set(saved.DRAFT_KEY, JSON.stringify({ format: 1, context: { kind: 'quick' }, session }));
+  assert.equal(saved.readSavedDraft().picks, 11);
+  session.options.mode = 'clubAndCountry';
+  store.set(saved.DRAFT_KEY, JSON.stringify({ format: 1, context: { kind: 'quick' }, session }));
+  assert.equal(saved.readSavedDraft(), null);
+  // A link in it is not a link.
+  assert.equal(runStore.readChallengeQuery({ c: 'c1.c.x.433.p.0.1a' }).challenge, null);
 });
 
 test('stage ids follow the next match, then the last one', () => {
@@ -558,7 +587,7 @@ test('challenge links carry the draft and the friend result, on this page', () =
   const link = runStore.challengeLink(
     {
       kind: 'cup',
-      mode: 'clubAndCountry',
+      mode: 'leagues',
       seed: 123456,
       formation: '4231',
       difficulty: 'worldclass',
@@ -572,12 +601,12 @@ test('challenge links carry the draft and the friend result, on this page', () =
   );
   assert.match(
     link,
-    /^https:\/\/x\.github\.io\/fd\/index\.html#\/challenge\?c=c1\.c\.x\.4231\.w\.h\./,
+    /^https:\/\/x\.github\.io\/fd\/index\.html#\/challenge\?c=c1\.c\.l\.4231\.w\.h\./,
   );
   const query = Object.fromEntries(new URLSearchParams(link.split('?')[1]));
   const { challenge, score } = runStore.readChallengeQuery(query);
   assert.equal(challenge.seed, 123456);
-  assert.equal(challenge.mode, 'clubAndCountry');
+  assert.equal(challenge.mode, 'leagues');
   assert.equal(challenge.hideRatings, true);
   assert.match(link, /&r=5-1-1\.th$/);
   assert.deepEqual(score, { w: 5, d: 1, l: 1, place: 'third', placeLabel: 'Third place' });

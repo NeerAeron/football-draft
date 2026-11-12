@@ -174,10 +174,7 @@ const DRAFT_KIND = {
 /** The draft in progress (lib/saved.js readSavedDraft): back to the board in one tap. */
 function DraftCard({ draft }) {
   const kind = DRAFT_KIND[draft.context.kind] || 'Draft';
-  const type =
-    draft.context.type === 'clubAndCountry' || draft.context.type === 'club-country'
-      ? 'Club & Country'
-      : TYPE_LABEL[draft.context.type];
+  const type = TYPE_LABEL[draft.context.type];
   const total = draft.total || 11;
   const pct = Math.round((draft.picks / total) * 100);
   return html`<${Card}

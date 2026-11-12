@@ -22,7 +22,7 @@ Starting a World Cup draft while a run is in progress asks first (`docs/ui-run.m
 
 | Param | Values | Notes |
 | --- | --- | --- |
-| `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`). `club-country` is no longer offered and reads as `nations` |
+| `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`); anything else reads as `nations` |
 | `difficulty` | `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` (so does a removed `amateur` / `semipro`) |
 | `formation` | any `FORMATIONS` key (`433`, `4231-wide`, …) | default: last choice, else `433` |
 | `seed` | digits (uint32) or any string (FNV-1a, like the core) | **implies standard rules** (`useDefaultRules`), shows the Challenge banner |
@@ -60,7 +60,8 @@ await restoreSaved(saved);  // { session, context, catalog } of a saved draft, n
 await resumeDraft(saved);   // make a saved draft the current one → #/draft (the Daily's kept draft)
 ```
 
-* `type` accepts `club-country` and `clubAndCountry`; `seed` numbers, digit strings or any
+* `type` is the core draft mode (`nations` · `leagues` · `clubs`; anything else reads as
+  `nations`); `seed` numbers, digit strings or any
   string; kind `daily` implies `useDefaultRules`. `normalizeContext()` / `sessionOptions()`
   show exactly what reaches `createDraftSession`.
 * Persisted after **every** action: `{ format: 1, context, session: session.serialize(),

@@ -252,7 +252,7 @@ achievement, `ULTIMATE.name` = Immortals) adds "👑 Immortals: Legendary · Bud
 
 Challenge links: `challengeUrl(base, { kind: 'cup' | 'quick' | 'versus' | 'daily', mode, seed,
 formation, difficulty, hideRatings, uniqueNations, budget, sides, catalog })` →
-`base#c=c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a World Cup
+`base#c=c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (mode `n` / `l` / `c`) (only `[a-z0-9.-]`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a World Cup
 run's only: any other kind with it does not encode or decode —, `2` two sides, or `0`;
 level `p` / `w` / `l`; an old link's `a` or `s` — Amateur, Semi-pro — decodes as Pro).
 On load: `const c = parseChallengeUrl(location.href)` (null if absent/invalid; never throws),

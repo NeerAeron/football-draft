@@ -25,6 +25,8 @@ export const RUN_KEY = 'football-draft-run';
 export const DAILY_KEY = 'football-draft-daily';
 export const DRAFT_KEY = 'football-draft-draft';
 export const DRAFT_FORMAT = 1;
+/** The draft modes (core DRAFT_MODES; kept here so Home loads no core code — a test compares). */
+export const DRAFT_TYPES = ['nations', 'leagues', 'clubs'];
 
 export const STAGES = [
   { id: 'G1', short: '1', label: 'Group match 1' },
@@ -128,6 +130,8 @@ export function readSavedDraft(now = new Date()) {
   const saved = readJSON(DRAFT_KEY, null);
   if (!saved || saved.format !== DRAFT_FORMAT || saved.session?.type !== 'draft-session')
     return null;
+  // A draft of a mode the game no longer has cannot be resumed.
+  if (!DRAFT_TYPES.includes(saved.session.options?.mode)) return null;
   const raw = saved.session.state?.picks,
     picks = Array.isArray(raw) ? raw.flat() : [];
   // A Daily draft of another day is over: nothing to resume.

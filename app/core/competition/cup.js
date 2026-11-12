@@ -900,7 +900,12 @@ export function createCupRun(catalog, options) {
 export function restoreCupRun(catalog, data) {
   if (data?.type !== 'cup-run' || data.format !== CUP_FORMAT) throw Error('Not a saved run');
   const { type, format, catalog: stamp, ...state } = data;
-  if (!DIFFICULTIES.includes(state.difficulty) || state.opponents?.length !== CUP_ROUNDS.length + 1)
+  // A run of a draft mode the game no longer has does not restore either.
+  if (
+    !DIFFICULTIES.includes(state.difficulty) ||
+    !MODE_BASELINES[state.mode] ||
+    state.opponents?.length !== CUP_ROUNDS.length + 1
+  )
     throw Error('Not a saved run');
   return new CupRun(catalog, state);
 }

@@ -8,6 +8,7 @@ import {
   applyMatchSetup,
   buildSide,
   DRAFT_MODES,
+  draftModeOf,
   NATURAL_FIT,
 } from '../app/core/draft/session.js';
 import {
@@ -105,19 +106,17 @@ test('every draft mode completes valid XIs for one and two sides', () => {
 
 test('a draft is deterministic for its seed and options', () => {
   const run = () =>
-    finish(
-      createDraftSession(catalog, { mode: 'clubAndCountry', seed: 'abc', sides: 2 }),
-      positional,
-    ).history;
+    finish(createDraftSession(catalog, { mode: 'leagues', seed: 'abc', sides: 2 }), positional)
+      .history;
   assert.deepEqual(run(), run());
   const other = finish(
-    createDraftSession(catalog, { mode: 'clubAndCountry', seed: 'abd', sides: 2 }),
+    createDraftSession(catalog, { mode: 'leagues', seed: 'abd', sides: 2 }),
     positional,
   );
   assert.notDeepEqual(other.history, run());
 });
 
-test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alternation', () => {
+test('spins follow the mode: nation field in pots, the draft squad, leagues, clubs', () => {
   assert.equal(index.field.length, 48);
   assert.deepEqual(
     [1, 2, 3, 4].map(pot => index.field.filter(n => n.pot === pot).length),
@@ -189,12 +188,18 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
   );
   assert.equal(c.reels[1].options[c.reels[1].landing].id, c.option.id);
   assert.equal(c.league.id, c.option.leagueId);
-  // Club & Country alternates nation / league spins per side.
-  const cc = finish(createDraftSession(catalog, { mode: 'clubAndCountry', seed: 2 }), positional);
-  assert.deepEqual(
-    cc.history.map(h => h.category),
-    Array.from({ length: 11 }, (_, i) => (i % 2 ? 'league' : 'nation')),
-  );
+  // Three modes, one category each. A mode the game no longer has (Club & Country) is
+  // unknown: not created, and a draft saved in it does not restore.
+  assert.deepEqual(Object.keys(DRAFT_MODES), ['nations', 'leagues', 'clubs']);
+  for (const mode of Object.keys(DRAFT_MODES))
+    assert.equal(DRAFT_MODES[mode].categories.length, 1, mode);
+  assert.throws(() => createDraftSession(catalog, { mode: 'clubAndCountry', seed: 2 }), /Unknown/);
+  const gone = JSON.parse(JSON.stringify(s.serialize()));
+  gone.options.mode = 'clubAndCountry';
+  assert.throws(() => restoreDraftSession(catalog, gone), /Unknown draft mode/);
+  assert.equal(draftModeOf('clubs'), 'clubs');
+  for (const id of ['clubAndCountry', 'club-country', 'toString', '', null, undefined])
+    assert.equal(draftModeOf(id), 'nations', String(id));
 });
 
 test('a nation offers its best 30 of the players shown 65+ and never refills', () => {
@@ -679,7 +684,7 @@ test('snapshot carries the UI data: spin, pool fit, teams, links and flags', () 
 });
 
 test('serialize/restore round-trips mid-spin and continues identically', () => {
-  for (const mode of ['nations', 'clubs', 'clubAndCountry']) {
+  for (const mode of ['nations', 'clubs', 'leagues']) {
     const a = createDraftSession(catalog, { mode, seed: 123, sides: 2, difficulty: 'worldclass' });
     for (let k = 0; k < 5; k++) {
       a.spin();

@@ -24,6 +24,7 @@ import {
   DIFFICULTIES,
   DIFFICULTY_LABELS,
   DRAFT_MODES,
+  draftModeOf,
   seedNumber,
 } from '../../core/draft/session.js';
 import { pickOpponent } from '../../core/draft/opponents.js';
@@ -40,22 +41,12 @@ export { DRAFT_KEY, readSavedDraft };
 export const DRAFT_KINDS = ['run', 'quick', 'versus', 'daily'];
 const FORMAT = DRAFT_FORMAT;
 
-/** UI draft types (Home chip, setup, query ?type=) → core session modes. */
-export const TYPE_TO_MODE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  'club-country': 'clubAndCountry',
-  clubAndCountry: 'clubAndCountry',
-};
-const MODE_TO_TYPE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  clubAndCountry: 'club-country',
-};
-export const draftMode = type => TYPE_TO_MODE[type] || 'nations';
-export const draftType = type => MODE_TO_TYPE[draftMode(type)];
+/**
+ * The draft type of the UI (setup, query ?type=, saved choices) is the core session mode:
+ * nations · leagues · clubs; anything else reads as nations.
+ */
+export const draftMode = draftModeOf;
+export const draftType = draftModeOf;
 export const modeLabel = type => DRAFT_MODES[draftMode(type)].label;
 export const difficultyLabel = id => DIFFICULTY_LABELS[id] || DIFFICULTY_LABELS.pro;
 
@@ -93,7 +84,7 @@ export function parseSeed(value) {
  *   { kind: 'run'|'quick'|'versus'|'daily', type, difficulty, formation,
  *     options: { hideRatings, uniqueNations }, seed, schedule?, rerolls?, useDefaultRules?,
  *     names?: [p1, p2], kits?: [kitId, kitId], returnTo?, daily?, meta? (kept as is) }
- * `type` accepts the UI ids (nations · leagues · clubs · club-country) and the core mode ids.
+ * `type` is a draft mode (nations · leagues · clubs); anything else reads as nations.
  */
 export function normalizeContext(context = {}) {
   const kind = DRAFT_KINDS.includes(context.kind) ? context.kind : 'quick';
@@ -109,7 +100,7 @@ export function normalizeContext(context = {}) {
   });
   return {
     kind,
-    type: MODE_TO_TYPE[mode],
+    type: mode,
     mode,
     difficulty: DIFFICULTIES.includes(context.difficulty) ? context.difficulty : 'pro',
     formation: FORMATIONS[context.formation] ? context.formation : '433',

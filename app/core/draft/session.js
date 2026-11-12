@@ -26,8 +26,9 @@ export const DRAFT_MODES = {
   nations: { label: 'Nations', categories: ['nation'] },
   leagues: { label: 'Leagues', categories: ['league'] },
   clubs: { label: 'Clubs', categories: ['club'] },
-  clubAndCountry: { label: 'Club & Country', categories: ['nation', 'league'] },
 };
+/** A draft mode id from a query, a link or a setting: anything unknown reads as 'nations'. */
+export const draftModeOf = id => (Object.hasOwn(DRAFT_MODES, id) ? id : 'nations');
 export const DIFFICULTIES = ['pro', 'worldclass', 'legendary'];
 export const DIFFICULTY_LABELS = {
   pro: 'Pro',

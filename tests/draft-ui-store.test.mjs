@@ -39,14 +39,16 @@ const reset = () => {
 };
 
 test('normalizeContext maps UI types, fills defaults and parses seeds', () => {
-  const ctx = draft.normalizeContext({ kind: 'run', type: 'club-country', seed: '42' });
-  assert.equal(ctx.mode, 'clubAndCountry');
-  assert.equal(ctx.type, 'club-country');
+  const ctx = draft.normalizeContext({ kind: 'run', type: 'leagues', seed: '42' });
+  assert.equal(ctx.mode, 'leagues');
+  assert.equal(ctx.type, 'leagues');
   assert.equal(ctx.seed, 42);
   assert.equal(ctx.difficulty, 'pro');
   assert.equal(ctx.formation, '433');
   assert.deepEqual(ctx.options, { hideRatings: false, uniqueNations: false });
-  assert.equal(draft.normalizeContext({ type: 'clubAndCountry' }).mode, 'clubAndCountry');
+  // Club & Country is gone: it reads like any unknown type.
+  assert.equal(draft.normalizeContext({ type: 'clubAndCountry' }).mode, 'nations');
+  assert.equal(draft.normalizeContext({ type: 'club-country' }).type, 'nations');
   assert.equal(draft.normalizeContext({ type: 'nope' }).mode, 'nations');
   assert.equal(draft.parseSeed('abc'), draft.parseSeed('abc'));
   assert.equal(typeof draft.normalizeContext({}).seed, 'number');

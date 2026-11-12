@@ -220,7 +220,7 @@ test('share text: emoji row, record, place, numbers, mode flags and link', () =>
 });
 
 test('challenge links round-trip and replay the same spins', () => {
-  for (const mode of ['nations', 'leagues', 'clubs', 'clubAndCountry'])
+  for (const mode of ['nations', 'leagues', 'clubs'])
     for (const difficulty of ['pro', 'worldclass', 'legendary'])
       for (const formation of ['433', '4231-wide', '352']) {
         const c = {
@@ -261,6 +261,8 @@ test('challenge links round-trip and replay the same spins', () => {
     'c1.z.n.433.p.0.1',
     'c1.c.n.433.p.x.1',
     'c1.c.n.433.p.0.zzzzzzzz',
+    // Club & Country (mode x) is gone: such a link is not valid.
+    'c1.c.x.433.p.0.1',
     null,
     42,
   ])
@@ -278,14 +280,14 @@ test('challenge links round-trip and replay the same spins', () => {
   assert.equal(parseChallengeUrl('https://x.io/#nothing'), null);
   // A friend opening the link drafts with the very same spins.
   const original = createDraftSession(catalog, {
-    mode: 'clubAndCountry',
+    mode: 'leagues',
     seed: 'friend',
     difficulty: 'worldclass',
     useDefaultRules: true,
   });
   const link = challengeUrl('https://x.io/', {
     kind: 'cup',
-    mode: 'clubAndCountry',
+    mode: 'leagues',
     seed: 'friend',
     difficulty: 'worldclass',
   });

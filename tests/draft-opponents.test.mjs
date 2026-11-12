@@ -45,7 +45,7 @@ test('opponents land within the target gap for every mode and level', () => {
   for (const mode of Object.keys(MODE_BASELINES)) {
     const kinds = new Set(modeCandidates(catalog, mode).map(c => c.kind));
     assert.ok(kinds.has('boss'));
-    assert.equal(kinds.has('nation'), mode === 'nations' || mode === 'clubAndCountry');
+    assert.equal(kinds.has('nation'), mode === 'nations');
     assert.equal(kinds.has('club'), mode !== 'nations');
     for (const { id: level } of LEVELS) {
       const target = ladderTarget(mode, level),

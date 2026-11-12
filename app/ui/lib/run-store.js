@@ -18,7 +18,7 @@ import {
 import { outcomeProbabilities } from '../../core/competition/model.js';
 import { encodeChallenge, decodeChallenge } from '../../core/competition/share.js';
 import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/competition/daily.js';
-import { seedNumber, difficultyOf } from '../../core/draft/session.js';
+import { seedNumber, difficultyOf, draftModeOf, DRAFT_MODES } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 import {
   RUN_KEY,
@@ -37,24 +37,10 @@ export const RUN_STATE_KEY = 'football-draft-run-state';
 export const RUN_STATE_FORMAT = 1;
 export { RUN_KEY, DAILY_KEY };
 
-// ---- draft type ↔ core mode -------------------------------------------------------------
-const TYPE_TO_MODE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  'club-country': 'clubAndCountry',
-  clubAndCountry: 'clubAndCountry',
-};
-const MODE_TO_TYPE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  clubAndCountry: 'club-country',
-};
-/** UI draft type ('club-country' …) or core mode → core mode. */
-export const modeOf = type => TYPE_TO_MODE[type] || 'nations';
-/** Core mode → UI draft type (Home, setup query). */
-export const typeOf = mode => MODE_TO_TYPE[mode] || MODE_TO_TYPE[TYPE_TO_MODE[mode]] || 'nations';
+// ---- draft type = core mode ---------------------------------------------------------------
+/** The UI's draft type is the core draft mode (nations · leagues · clubs; else nations). */
+export const modeOf = draftModeOf;
+export const typeOf = draftModeOf;
 
 // ---- stages -------------------------------------------------------------------------------
 export const STAGE_IDS = STAGES.map(s => s.id); // G1 G2 G3 R32 R16 QF SF F
@@ -286,6 +272,8 @@ export function readRunState() {
   const state = readJSON(RUN_STATE_KEY, null);
   if (!state || typeof state !== 'object' || state.format !== RUN_STATE_FORMAT) return null;
   if (!state.run || state.run.type !== 'cup-run' || state.run.format !== CUP_FORMAT) return null;
+  // A run of a draft mode the game no longer has.
+  if (!Object.hasOwn(DRAFT_MODES, state.run.mode)) return null;
   return {
     run: state.run,
     meta: state.meta && typeof state.meta === 'object' ? state.meta : {},

@@ -25,7 +25,10 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 | `nations` (default) | a nation of the reel: every playable nation (56) and 7 star nations, 63 in all | its draft squad: the nation's best 30 of the players shown 65+ (3 GK, ≥ 9 DEF, ≥ 9 MID, ≥ 5 ATT, then by OVR; fewer when the nation has fewer), less the players taken — it never refills | uniform 1/63 |
 | `leagues` | a league (41 usable) | the whole league | flat by tier A 4 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players a draft may offer: 472 of the 553 clubs) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
-| `clubAndCountry` | alternately a nation (picks 1, 3, 5…) and a league (2, 4, 6…) | as above | as above |
+
+Three modes (`DRAFT_MODES`; `draftModeOf(id)` reads anything else as `nations`). The fourth,
+Club & Country, is gone: a session, a saved draft, a saved run or a link in it is refused
+('Unknown draft mode', 'Not a saved run', an invalid link) and the UI reads it as nothing saved.
 
 Every pick is one spin. Re-rolls per drafter by `difficulty` (`DIFFICULTIES`: `pro`, `worldclass`,
 `legendary`): Pro 2 · World Class 1 · Legendary 1 (or `rerolls: n`). A removed id (`amateur`,
@@ -175,7 +178,7 @@ position }` on pool entries and slot players who have one (a legend version has 
 import { createDraftSession, restoreDraftSession, matchSetup, applyMatchSetup } from './core/draft/session.js';
 
 const draft = createDraftSession(catalog, {
-  mode: 'nations',           // 'nations' | 'leagues' | 'clubs' | 'clubAndCountry'
+  mode: 'nations',           // 'nations' | 'leagues' | 'clubs'
   seed: 123456,              // required: number or string. Never Math.random() inside core.
   sides: 1,                  // 2 = local versus: a seeded coin toss picks who drafts first
   formation: '433',          // or formations: ['433', '4231'] per side
@@ -360,11 +363,10 @@ solo drafts per mode × re-roll count, positional policy; the table is from befo
 | Nations | 82.89 ± 1.07 | 1.52 | 83.92 / 84.41 / 84.59 |
 | Leagues | 81.47 ± 1.72 | 1.33 | 82.10 / 82.80 / 83.39 |
 | Clubs | 77.71 ± 1.71 | 0.87 | 78.03 / 78.58 / 78.98 |
-| Club & Country (no longer offered) | 82.30 ± 1.46 | 0.41 | 82.17 / 82.71 / 83.24 |
 
 Gap (`CONFIG.draft.ladder`): Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: the best XI of every
-playable nation (Nations), club XIs (Leagues, Clubs), both (Club & Country), plus bosses **World XI** (88.5)
+playable nation (Nations), club XIs (Leagues, Clubs), plus bosses **World XI** (88.5)
 and **All-Stars** (87.3, the best XI without the World XI; `bosses: false` in `chooseOpponent`
 / `modeCandidates` leaves them out, as the World Cup Run and the Daily do). Real national XIs carry +1.5 chem or more, club XIs +1 or more (club mates in a national XI and compatriots in a club XI get +2.5). Nations examples:
 Pro ≈ Belgium/Uruguay/
