@@ -8,6 +8,8 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 | --- | --- |
 | `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `worldCupDraw`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `THIRD_ROUND`, `CUP_TUNING`, `FIELD_LEVEL`, `FIELD_TYPICAL`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `PLACES`, `PLACE_LABELS`, `MEDALS` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
+| `scorers.js` | `matchPerformances` (player lines for a modelled result) |
+| `awards.js` | `tournamentSteps` (behind `CupRun.awards()` / `awardsSteps()`), `BALL_MATCHES`, `BALL_DEPTH`, `GLOVE_STAGE` |
 | `daily.js` | `dailyId`, `dailyNumber`, `dailyIdFromNumber`, `previousDay`, `nextDay`, `dailyChallenge`, `perfectXI`, `perfectPercent`, `dailyScore`, `canPlayDaily`, `updateStreak`, `currentStreak`, `DAILY_EPOCH`, `DAILY_RULES`, `DAILY_POINTS` |
 | `share.js` | `shareText`, `resultEmoji`, `isUltimate`, `ULTIMATE`, `encodeChallenge`, `decodeChallenge` |
 
@@ -121,8 +123,10 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
     extraTime: false,                  // knockouts: true when the tie went to extra time
     shootout: null,                    // still level: { winner: 'user' | 'opponent', score: [5, 4] }
     players: [{ profileId, rating, goals, assists }], // user XI; rating = performanceRating (3–10)
+    opponents: [{ profileId, rating, goals, assists }], // the other XI (engine matches; optional)
   });
-  // run.simulateNext() plays it with the fast model instead (tests, the fastSim dev switch).
+  // run.simulateNext() plays it with the fast model instead (tests, the fastSim dev switch):
+  // a result without `players` gets the lines of scorers.js, so every match has its scorers.
 }
 ```
 
@@ -170,10 +174,57 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   … }` (best average rating, at least half the matches). `run.heldYouBack(n)` → the lowest
   averages with a `reason` ("Out of position at LB: 71 (natural 79)", "Weakest link: …",
   "Lowest match rating: 5.8"); before any rated match it ranks by slot rating.
+* **Player stats, however a match was played.** Every recorded match keeps the XI's lines
+  (`matches[i].players`): the engine's (`runResultFor` → `players`, and the other side's as
+  `opponents` → `matches[i].against`), or — the fast model, a result reported without them —
+  the lines of `scorers.js`, seeded by the match (`matchSeed(round)`), so they are the same on
+  every device. `run.squadStats()` → the XI in slot order: `{ profileId, name, role, matches,
+  goals, assists, average (null before a match), cleanSheets, slotRating, natural,
+  familiarity }`.
+  **The scorers rule** (`matchPerformances(xi, { goalsFor, goalsAgainst, random })`, `xi` =
+  players with `role` and `attrs`): each goal goes to one of the eleven in proportion to a role
+  weight (ST 1, AM 0.9, wingers 0.7, CM 0.5, wide midfielders 0.45, DM 0.25, full-backs 0.08,
+  CB 0.06, GK 0) × 2^((finish − 70) / 12), finish = 0.5 finishing + 0.2 shot power + 0.15 long
+  shots + 0.15 composure; 3% are own goals; 85% have an assist, drawn among the other ten by
+  role (AM and wingers 1, wide midfielders 0.9, CM 0.8, DM and ST 0.5, full-backs 0.4) ×
+  2^((create − 70) / 12), create = 0.4 vision + 0.3 short passes + 0.3 crosses. The rating
+  follows the engine's `performanceRating` with what a result can say: a base per role
+  (5.8–6.25), +1.1 a goal, +0.7 an assist, keeper and centre-backs +0.55 for a clean sheet or
+  −0.09 per goal against, a keeper +0.22 a save (2–4, one more from three goals against), ±0.35
+  of form. Weights and bases are the engine's own shares over 60 run matches.
+* **Tournament awards** — `run.awards()` → `{ teams, boot, ball, glove }` once the run is over
+  (null before), each `{ profileId, name, nation, role, user (one of the user's XI), team:
+  { key, name, code, flag, kind, user }, matches, goals, assists, average, cleanSheets,
+  conceded }`; computed once per run object, not stored (deterministic for the run).
+  `run.awardsSteps()` is the same work as a generator for `stepped()` (a Legendary run builds
+  38 squads, ~55 ms in Node).
+  **The field.** Legendary in a Nations draft: all 48 nations of its World Cup — the run
+  stores every tie `worldCupDraw` played (`run.field.matches`: `[stage, home key, away key,
+  goals, goals, winner?]`, ~4 KB; the squads are `buildOpponent`'s, built when the awards are
+  asked for). Pro, World Class, the Daily and every non-Nations run have no bracket: the field
+  is **the user and the nine teams of his path** (`teams: 10`), and each knockout opponent gets
+  the matches he must have played to be there — three group matches and a win per earlier
+  round against sides nobody sees (only his own players count), the finalist beating the
+  play-off opponent in the other semi-final. A run saved without `field` is counted that way
+  too. In both cases what the user did not play is played by the fast model from the run's
+  seed: whoever knocked him out takes his place in the bracket (the best of his group mates
+  after a group exit) and meets the opponents that were waiting, to the final and the
+  play-off. The user's matches count as recorded; every other side's lines come from
+  `scorers.js` with a seed per match and side. Line-ups are the ones the run stores
+  (`opponents[i].players` — whatever `buildOpponent` returned, legends included).
+  **The rules.** Golden Boot: most goals; level → more assists, fewer matches, then the order
+  of the tournament's matches. Golden Ball: best average match rating + `BALL_DEPTH` (0.1) per
+  round the team went past the group (champions +0.6), among players with `BALL_MATCHES` (4) or
+  more; level → goals, assists. Golden Glove: most clean sheets among keepers of teams that
+  played a quarter-final (`GLOVE_STAGE`); level → fewer goals against per match, more matches.
+  Over 60 fast-simulated Pro runs of one XI the user's players won 11 Boots, 13 Balls and 14
+  Gloves; on Legendary 2, 3 and 1.
 * `projectRun({ rating: team.effective, mode, difficulty })` → `{ stage ('group' … 'sf', 'final',
   'champion': the round reached), place, label: 'Projected: Quarter-finals', probabilities (by
   place) }` — a seeded 300-run Monte-Carlo (~5 ms) for the live meter.
-* Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~5 KB) and
+* Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~5 KB at the
+  start, more on Legendary with its field; each match adds its player lines, ~1.5 KB with both
+  sides) and
   `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 3 (the
   play-off: nine opponents; three difficulties); anything else — an older format, a removed
   difficulty or draft mode, link rules that are not the three numbers — throws 'Not a saved

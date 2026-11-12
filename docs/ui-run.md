@@ -14,7 +14,8 @@ render. Follow `docs/ui-guide.md` for components, tokens and flows.
 Shared pieces: `lib/run-store.js` (persistence, Home summary, prematch sides, stakes,
 links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/run/auto-sim.js`
 (engine auto-sims) + `auto-sim-worker.js`, `sim-ticker.js` (`useSimTicker` results ticker), `share-panel.js`,
-`team-view.js` (XI → PlayerViews, share card data), `trophy.js` (the gold `Cup`); the cups and
+`team-view.js` (XI → PlayerViews, share card data), `honours.js` (`Awards`: the three award
+cards, `SquadTable`, `useAwards(run)`, `honoursFor(run, awards)` for the share line), `trophy.js` (the gold `Cup`); the cups and
 medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
 
 ## World Cup Run flow
@@ -77,8 +78,21 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    question, and the hub's own "Abandon this run" keeps its dialog.
 5. **End.** The headline is where the run finished — World Champions (gold cup + confetti),
    Runners-up (silver medal), Third place (bronze), Fourth place, or "Out in the …" — with the
-   record W–D–L, Player of the Tournament, Held you back, XI, share text + image, Challenge a
-   friend, Play again. No letter grades. `saveRun()` puts every finished run into the **trophy
+   record W–D–L, the tournament's awards, the squad's table, Player of the Tournament, Held you
+   back, XI, share text + image, Challenge a friend, Play again. No letter grades.
+   **Awards** (`<Awards>`, right under the headline): Golden Boot, Golden Ball and Golden
+   Glove over the whole tournament (`run.awardsSteps()` through `stepped()` after the first
+   paint — the cards keep their height while it runs): the player, his nation's flag and the
+   number that won it (goals / average rating / clean sheets); a winner from the user's XI is
+   lit (`.is-yours`, `data-yours="1"`). On Legendary the field is the 48 nations of the run's
+   World Cup, otherwise the user and the nine teams of his path (`docs/competition-api.md`).
+   **The squad's table** (`<SquadTable rows=${run.squadStats()}>`, in "Your squad" with the
+   Player of the Tournament): one row per player — matches, goals, assists, clean sheets (the
+   keeper only), average match rating — whichever way each match was played: Full, Key
+   Moments, Instant, "Simulate this match", "Simulate the whole cup" (the engine's lines), or
+   the fast model (the fastSim switch: modelled scorers). No horizontal scrolling at 390 px.
+   The share text gets one line (`⚽ top scorer · 👟 Golden Boot · ⭐ Golden Ball · 🧤 Golden
+   Glove`) and the share image a third stat, "Top scorer". `saveRun()` puts every finished run into the **trophy
    cabinet** once (`lib/records.js` `recordRun(summary, meta.id)`), and the end screen announces
    what was new (`runNews(meta.id)`: first title on a difficulty, first perfect eight, a
    personal best, the cabinet completed, the ultimate achievement) plus the medal.
@@ -108,6 +122,9 @@ of best-XI search off the main thread; main-thread fallback) / `perfectPercent`,
 `beginDailyAttempt()` (the streak counts from here) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
 same results) → `dailyScore` → `finishDailyAttempt()` → result card (points, where it finished
 with its cup or medal, % of perfect, streak, share, replays of each match via `requestMatch(…, view 'key')`).
+The result shows the same honours as a run's end — the three award cards (the Daily's field is
+the user and its nine fixed opponents) and the squad's table — for the days whose full run is
+kept (the latest 7); the share text has the honours line.
 
 **One attempt, from the first pick.** As soon as a Daily draft has a pick, the draft store
 keeps it with the Daily record too (`lockDailyDraft(saved)` after every action →
@@ -126,7 +143,7 @@ dropped too and the day can start again.
 
 | Key | Shape |
 | --- | --- |
-| `football-draft-run-state` | `{ format: 1, run: CupRun.serialize() (its `user` holds the line-up: `formation`, `players` in slot order, `tactics?`), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation (the draft's, for the challenge link), seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
+| `football-draft-run-state` | `{ format: 1, run: CupRun.serialize() (its `user` holds the line-up: `formation`, `players` in slot order, `tactics?`; each of its `matches` the XI's player lines `players` and, from the engine, the other side's `against`; Legendary its World Cup's ties `field.matches` — a run saved without them still opens: no lines → no stats for that match, no field → the awards count the teams of its path), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation (the draft's, for the challenge link), seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
 | `football-draft-run` | Home summary: `{ format: 3, mode: 'run', type, stage: 'G1' \| 'G2' \| 'G3' \| 'R32' \| 'R16' \| 'QF' \| 'SF' \| 'F' \| '3P' (the play-off), record: { w, d, l }, team, status, complete, place, placeLabel, medal, perfect, budget, stageLabel, difficulty, rounds: 8, updatedAt }` |
 | `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, place, placeLabel, medal, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, draft: { id, context, session, savedAt } \| null (the day's draft from its first pick, as the draft store saves it), current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
 | `football-draft-draft` | `{ format: 2, context, session: DraftSession.serialize() (format 2), savedAt }` (`docs/ui-draft.md`) |
@@ -180,7 +197,12 @@ run's link** carries the flag (`runChallenge(meta)` → `budget: meta.budget ===
 - `tests/run-ui-store.test.mjs` — persistence round trips, tolerant readers, the cabinet (medals,
   Budget, the ultimate), the cut-off for older formats and the readers' tolerance of junk, the play-off summary, stakes, links, daily record + streak,
   the Daily's lock from the first pick, share image layout.
-- `tests/browser/flows.mjs` — `run` (the four ways to play), `run-end` (every finish, seeded),
+- `tests/competition-awards.test.mjs` — modelled scorers, the squad's stats for every way a
+  match is recorded, the awards (deterministic, ladder and real field, the user's player or
+  anybody else's, runs saved without lines or field).
+- `tests/browser/flows.mjs` — `run` (the four ways to play; awards and squad table after
+  "Simulate the whole cup"), `run-end` (every finish, seeded; `honours()` checks the three award
+  cards, the table of eleven, no sideways scroll and the share line),
   `run-lineup` (a new formation and mentality after the group stage, kept for the next match),
   `run-replace` (the question before a run in progress is replaced, from every entry),
   `home-cabinet` (empty, partly filled, an older format, complete), `daily`, `exhibition`,
