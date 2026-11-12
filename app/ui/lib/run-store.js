@@ -477,6 +477,8 @@ export function runChallenge(meta, snapshot) {
     difficulty: difficultyOf(meta.difficulty || snapshot.difficulty),
     hideRatings: !!meta.hideRatings,
     uniqueNations: !!meta.uniqueNations,
+    // A Budget run challenges the friend to a Budget draft.
+    budget: meta.budget === true,
   };
 }
 

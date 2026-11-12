@@ -1817,6 +1817,32 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('landing');
+      await step('a Budget run’s link says Budget and starts a Budget draft', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.b.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] [data-testid="challenge-budget"]');
+        const review = await page.getAttribute('.challenge-card__setup', 'href');
+        if (!/budget=1/.test(review)) throw new Error(`the review link reads ${review}`);
+        await page.evaluate(() => document.fonts.ready);
+        await shot('landing-budget');
+        await page.click('.challenge-card__setup');
+        await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
+        await page.goBack();
+        await page.click('[data-testid="accept-challenge"]');
+        await visible(page, '[data-screen="draft"][data-phase]');
+        const draft = await page.evaluate(() =>
+          JSON.parse(localStorage.getItem('football-draft-draft')),
+        );
+        if (!draft.context.options.budget || !draft.session.options.budget)
+          throw new Error('the friend’s draft is not a Budget draft');
+        if (draft.context.seed !== 42 || !draft.session.options.useDefaultRules)
+          throw new Error('not the same draft');
+        // A link without the flag is no Budget draft.
+        await page.evaluate(() => localStorage.removeItem('football-draft-draft'));
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] .friend-score');
+        if (await page.locator('[data-testid="challenge-budget"]').count())
+          throw new Error('a normal link says Budget');
+      });
       await step('accept → same draft → run', async () => {
         await page.click('[data-testid="accept-challenge"]');
         await completeDraft(page, '[data-testid="next-fixture"]');

@@ -86,7 +86,11 @@ export default function ChallengeScreen({ query }) {
         difficulty: c.difficulty,
         formation: c.formation,
         seed: c.seed,
-        options: { hideRatings: c.hideRatings, uniqueNations: c.uniqueNations },
+        options: {
+          hideRatings: c.hideRatings,
+          uniqueNations: c.uniqueNations,
+          ...(c.budget ? { budget: true } : {}),
+        },
         useDefaultRules: true,
         // draft-store keeps `meta` as is; the run reads meta.challenge (createRunFromDraft).
         meta: {
@@ -114,6 +118,7 @@ export default function ChallengeScreen({ query }) {
       seed: c.seed,
       hide: c.hideRatings ? 1 : 0,
       unique: c.uniqueNations ? 1 : 0,
+      ...(c.budget ? { budget: 1 } : {}),
     },
   );
   return html`<div class="screen container-narrow challenge" data-screen="challenge">
@@ -138,6 +143,7 @@ export default function ChallengeScreen({ query }) {
         <li><${Chip} icon="layout-grid">${formationLabel(c.formation)}<//></li>
         ${c.hideRatings && html`<li><${Chip} icon="eye-off" tone="holo">Ratings hidden<//></li>`}
         ${c.uniqueNations && html`<li><${Chip} icon="flag">One per nation<//></li>`}
+        ${c.budget && html`<li data-testid="challenge-budget"><${Chip} icon="gem">Budget<//></li>`}
         ${c.sides === 2 && html`<li><${Chip} icon="users">Two players<//></li>`}
       </ul>
       <${Button}

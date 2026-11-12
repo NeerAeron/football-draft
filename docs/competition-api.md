@@ -251,8 +251,9 @@ a perfect Legendary run in Budget mode (`isUltimate(snapshot, budget)`, the ulti
 achievement, `ULTIMATE.name` = Immortals) adds "👑 Immortals: Legendary · Budget · 8-0-0".
 
 Challenge links: `challengeUrl(base, { kind: 'cup' | 'quick' | 'versus' | 'daily', mode, seed,
-formation, difficulty, hideRatings, uniqueNations, sides, catalog })` →
-`base#c=c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`;
+formation, difficulty, hideRatings, uniqueNations, budget, sides, catalog })` →
+`base#c=c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a World Cup
+run's only: any other kind with it does not encode or decode —, `2` two sides, or `0`;
 level `p` / `w` / `l`; an old link's `a` or `s` — Amateur, Semi-pro — decodes as Pro).
 On load: `const c = parseChallengeUrl(location.href)` (null if absent/invalid; never throws),
 then `createDraftSession(catalog, challengeDraftOptions(c))` replays the same spins (and

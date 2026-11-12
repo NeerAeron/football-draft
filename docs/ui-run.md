@@ -157,7 +157,10 @@ Round of 32, `gs` group stage). A link from before the places carried a letter g
 friend's result (with its cup or medal) and starts the same draft:
 `startDraft({ kind, type, difficulty, formation, seed, options, useDefaultRules: true,
 challenge: { token, by }, returnTo })`; "Review the settings first" opens
-`#/play/<mode>?type=…&difficulty=…&formation=…&seed=…&challenge=1`. Daily links point to
+`#/play/<mode>?type=…&difficulty=…&formation=…&seed=…&hide=…&unique=…[&budget=1]`. A **Budget
+run's link** carries the flag (`runChallenge(meta)` → `budget: meta.budget === true` → flag
+`b` in the token): the landing shows a "Budget" chip and both ways in start a Budget draft
+(`options.budget`). Daily links point to
 `#/daily`.
 
 ## Tests

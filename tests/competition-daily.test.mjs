@@ -231,6 +231,7 @@ test('challenge links round-trip and replay the same spins', () => {
           difficulty,
           hideRatings: difficulty === 'pro',
           uniqueNations: mode === 'nations',
+          budget: formation === '352',
           sides: 1,
           catalog: 'abc123',
         };
@@ -239,6 +240,16 @@ test('challenge links round-trip and replay the same spins', () => {
         assert.deepEqual(decodeChallenge(token), c);
         assert.equal(encodeURIComponent(token), token);
       }
+  // Budget mode travels in the link (flag b) — a World Cup run's only.
+  const budget = encodeChallenge({ seed: 9, budget: true, hideRatings: true });
+  assert.equal(budget, 'c1.c.n.433.p.hb.9');
+  assert.equal(decodeChallenge(budget).budget, true);
+  assert.equal(decodeChallenge('c1.c.n.433.p.b.9').budget, true);
+  assert.equal(decodeChallenge('c1.c.n.433.p.h.9').budget, false);
+  assert.equal(decodeChallenge('c1.c.n.433.p.0.9').budget, false);
+  assert.equal(decodeChallenge('c1.d.n.433.p.b.9'), null, 'no Budget Daily');
+  assert.equal(decodeChallenge('c1.q.n.433.p.b.9'), null, 'no Budget Quick Match');
+  assert.throws(() => encodeChallenge({ kind: 'daily', daily: 3, budget: true }), /Budget/);
   const versus = decodeChallenge(
     encodeChallenge({ kind: 'versus', mode: 'clubs', seed: 'pizza', sides: 2 }),
   );

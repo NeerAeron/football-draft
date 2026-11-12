@@ -600,6 +600,23 @@ test('challenge links carry the draft and the friend result, on this page', () =
   // … and one on a removed difficulty opens as Pro.
   assert.equal(runStore.readChallengeQuery({ c: 'c1.c.n.433.a.0.1a' }).challenge.difficulty, 'pro');
   assert.ok(decodeChallenge(query.c));
+  // A Budget run's link starts a Budget draft for the friend; any other run's does not.
+  const meta = { mode: 'nations', seed: 77, formation: '442', difficulty: 'legendary' };
+  assert.equal(runStore.runChallenge(meta, {}).budget, false);
+  assert.equal(runStore.runChallenge({ ...meta, budget: 1 }, {}).budget, false);
+  const budgetLink = runStore.challengeLink(runStore.runChallenge({ ...meta, budget: true }, {}), {
+    base: 'https://x.io/',
+  });
+  assert.match(budgetLink, /#\/challenge\?c=c1\.c\.n\.442\.l\.b\./);
+  const back = runStore.readChallengeQuery({ c: /c=([^&]+)/.exec(budgetLink)[1] }).challenge;
+  assert.equal(back.budget, true);
+  assert.equal(back.seed, 77);
+  assert.equal(
+    runStore.readChallengeQuery({
+      c: /c=([^&]+)/.exec(runStore.challengeLink(runStore.runChallenge(meta, {})))[1],
+    }).challenge.budget,
+    false,
+  );
 });
 
 test('the daily record locks an attempt, keeps the streak and trims old replays', () => {

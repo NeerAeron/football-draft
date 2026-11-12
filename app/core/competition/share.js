@@ -87,7 +87,8 @@ export function shareText(snapshot, extras = {}) {
 // Token: c1.<kind>.<mode>.<formation>.<difficulty>.<flags>.<seed base36>[.<catalog stamp>]
 //   kind q quick match · c cup run · v versus · d daily; mode n/l/c/x; difficulty p/w/l (old
 //   links may carry a or s, the removed Amateur and Semi-pro: they decode as Pro);
-//   flags any of h (hide ratings), u (one per nation), 2 (two sides), or 0.
+//   flags any of h (hide ratings), u (one per nation), b (Budget mode: World Cup runs only),
+//   2 (two sides), or 0.
 //   For a daily the seed field is the challenge number (dailyIdFromNumber gives the day).
 // Only [a-z0-9.-]: safe in a URL hash or query without escaping.
 export const CHALLENGE_VERSION = 'c1';
@@ -99,7 +100,8 @@ const invert = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k])
 
 /**
  * Encode a challenge: { kind = 'cup', mode, seed (number or string), formation, difficulty,
- * hideRatings, uniqueNations, sides, catalog (catalogStamp, optional) }; a daily passes
+ * hideRatings, uniqueNations, budget (a cup run in Budget mode), sides, catalog (catalogStamp,
+ * optional) }; a daily passes
  * { kind: 'daily', daily: challenge number } instead of a seed.
  */
 export function encodeChallenge({
@@ -111,6 +113,7 @@ export function encodeChallenge({
   difficulty = 'pro',
   hideRatings = false,
   uniqueNations = false,
+  budget = false,
   sides = 1,
   catalog = null,
 }) {
@@ -118,8 +121,12 @@ export function encodeChallenge({
     m = invert(MODES)[mode],
     d = invert(LEVEL_CODES)[difficulty];
   if (!k || !m || !d || !FORMATIONS[formation]) throw Error('Invalid challenge');
+  if (budget && kind !== 'cup') throw Error('Only a World Cup run has a Budget mode');
   const flags =
-    (hideRatings ? 'h' : '') + (uniqueNations ? 'u' : '') + (sides === 2 ? '2' : '') || '0';
+    (hideRatings ? 'h' : '') +
+      (uniqueNations ? 'u' : '') +
+      (budget ? 'b' : '') +
+      (sides === 2 ? '2' : '') || '0';
   if (kind === 'daily' && !(Number.isInteger(daily) && daily > 0))
     throw Error('A daily link needs its challenge number');
   const value = kind === 'daily' ? daily : seedNumber(seed),
@@ -140,12 +147,14 @@ export function decodeChallenge(token) {
   const [, k, m, formation, d, flags, seed36, catalog = null] = parts;
   const difficulty = LEVEL_CODES[d] ?? OLD_LEVEL_CODES[d];
   if (!KINDS[k] || !MODES[m] || !difficulty || !FORMATIONS[formation]) return null;
-  if (!/^(0|[hu2]{1,3})$/.test(flags) || !/^[0-9a-z]{1,7}$/.test(seed36)) return null;
+  if (!/^(0|[hub2]{1,4})$/.test(flags) || !/^[0-9a-z]{1,7}$/.test(seed36)) return null;
   const seed = parseInt(seed36, 36);
   if (!Number.isSafeInteger(seed) || seed > 0xffffffff) return null;
   if (catalog !== null && !/^[0-9a-z]{1,24}$/.test(catalog)) return null;
   const kind = KINDS[k];
   if (kind === 'daily' && !seed) return null;
+  // Budget mode exists in a World Cup run only.
+  if (flags.includes('b') && kind !== 'cup') return null;
   return {
     kind,
     mode: MODES[m],
@@ -153,6 +162,7 @@ export function decodeChallenge(token) {
     difficulty,
     hideRatings: flags.includes('h'),
     uniqueNations: flags.includes('u'),
+    budget: flags.includes('b'),
     sides: flags.includes('2') ? 2 : 1,
     ...(kind === 'daily' ? { daily: seed, seed: null } : { seed }),
     catalog,
