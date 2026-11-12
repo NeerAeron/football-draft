@@ -11,8 +11,12 @@ test('every role has a normalized overall, with heading contributing to striker 
     assert.ok(Math.abs(Object.values(weights).reduce((a, b) => a + b, 0) - 100) < 1e-9, role);
     assert.ok(Object.values(weights).every(w => w > 0));
     const equal = { role, attrs: Object.fromEntries(Object.keys(p.attrs).map(k => [k, 70])) };
-    assert.equal(overallRating(equal), Math.round(70 + OVERALL_OFFSETS[role]));
+    // (Unrounded: with a half-point offset the weighted sum sits on the rounding edge.)
+    assert.ok(Math.abs(overallRating(equal, false) - (70 + OVERALL_OFFSETS[role])) < 1e-9, role);
+    assert.equal(overallRating(equal), Math.round(overallRating(equal, false)));
   }
+  // Heading's weight, measured without the stretch of the top ratings.
+  m.tuning.ratings.topLift = 0;
   p.role = 'ST';
   p.attrs.heading = 40;
   const lower = overallRating(p, false);

@@ -16,15 +16,17 @@ export const DEFAULT_CONFIG = {
       potSize: 12,
       minimumPlayers: 11,
       minimumGoalkeepers: 1,
+      // Only the strongest `playableSize` nations that can field an XI are playable.
+      playableSize: 56,
       // The real World Cup draw (Legendary) qualifies its own 48 for every run: the strongest
       // `fieldCore` playable nations are always in, the other seats are drawn from the rest
       // with odds that halve every `fieldHalving` rating points below the last core nation.
       fieldCore: 30,
       fieldHalving: 1.5,
-      // Star nations: nations that cannot field an XI but are still on the reel because they
-      // have a star — at least one player rated reelStar or better and reelPlayers players
+      // Star nations: nations that are not playable (no XI, or an XI outside the strongest
+      // `playableSize`) but are still on the reel because they have a star — at least one player rated reelStar or better and reelPlayers players
       // (no keeper needed: they are spun, never met as opponents).
-      reelStar: 75,
+      reelStar: 80,
       reelPlayers: 9,
       squadSize: 23,
       squadGoalkeepers: 3,
@@ -89,7 +91,7 @@ export const DEFAULT_CONFIG = {
     // highest-rated legends. A nation's weight on the reel grows gently with how many legends
     // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
     legends: {
-      minimum: 83,
+      minimum: 85,
       reelStar: 85,
       shown: 10,
       weightPerLegend: 0.15,
@@ -537,11 +539,11 @@ export const DEFAULT_CONFIG = {
     },
     roleOffsets: {
       GK: 0,
-      CB: 0.25,
-      LB: 1.5,
-      RB: 1.5,
-      DM: 1,
-      CM: 0.25,
+      CB: 0.5,
+      LB: 2,
+      RB: 2,
+      DM: 1.25,
+      CM: 0.5,
       AM: 0.5,
       LM: 1.25,
       RM: 1.25,
@@ -549,6 +551,8 @@ export const DEFAULT_CONFIG = {
       RW: 1.25,
       ST: 1,
     },
+    topFrom: 78,
+    topLift: 0.1,
     familiarityBase: 0.72,
     familiarityBonus: 0.28,
     familiarityDecay: 0.235,
@@ -755,6 +759,8 @@ export function configField(path) {
   return CONFIG_FIELDS.find(f => f.path === path) || null;
 }
 const labels = {
+  topFrom: 'Overall: stretch ratings above',
+  topLift: 'Overall: extra per point above that',
   controlQuality: 'Ball-control stat influence',
   passingQuality: 'Passing stat influence',
   defensiveQuality: 'Defensive reading stat influence',
@@ -834,6 +840,8 @@ const ranges = {
   standardDeviation: [0, 4, 0.1],
   storedTendencyWeight: [0, 1, 0.05],
   attributeCap: [0, 15, 1],
+  topFrom: [50, 99, 0.5],
+  topLift: [0, 1, 0.01],
   familiarityBase: [0.4, 0.9, 0.01],
   familiarityBonus: [0.1, 0.6, 0.01],
   familiarityDecay: [0.05, 3, 0.005],
@@ -845,6 +853,7 @@ const ranges = {
 const DRAFT_FIELDS = {
   'draft.nations.fieldSize': ['Nations in the field', 8, 64, 1],
   'draft.nations.potSize': ['Nations per pot', 1, 64, 1],
+  'draft.nations.playableSize': ['Playable nations: the strongest that can field an XI', 8, 250, 1],
   'draft.nations.fieldCore': ['World Cup draw: nations always in', 0, 64, 1],
   'draft.nations.fieldHalving': [
     'World Cup draw: rating points that halve the odds',

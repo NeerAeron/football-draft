@@ -127,10 +127,19 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
   const spin = s.spin();
   assert.equal(spin.category, 'nation');
   assert.equal(spin.reels.length, 1);
-  // The reel: the 48-nation field plus the wildcard nations (a star, not the depth).
+  // The reel: the 56 playable nations (the strongest that can field an XI) plus the star
+  // nations (a star rated 80+, not the depth).
   assert.equal(spin.reels[0].options.length, index.spinField.length);
-  assert.equal(index.playable.length, 80);
-  assert.equal(index.spinField.length, 93);
+  assert.equal(index.playable.length, CONFIG.draft.nations.playableSize);
+  assert.equal(index.playable.length, 56);
+  assert.equal(index.spinField.length, 64);
+  assert.deepEqual(
+    index.spinField
+      .filter(n => !n.playable)
+      .map(n => n.name)
+      .sort(),
+    ['Algeria', 'Armenia', 'Burkina Faso', 'Egypt', 'Gabon', 'Jamaica', 'New Zealand', 'Tunisia'],
+  );
   for (const name of ['Egypt', 'Wales', 'Guinea', 'Algeria'])
     assert.ok(
       index.spinField.some(n => n.name === name && n.pot === 5),
@@ -180,20 +189,20 @@ test('call-ups refill from the next best player and skip drafted ones', () => {
 });
 
 test('honest weights: landing frequencies match the shown reel probabilities', () => {
-  // Nations: uniform over the 93 nations of the reel (chi-square, 92 dof, p = 0.001 -> 139.7).
+  // Nations: uniform over the 64 nations of the reel (chi-square, 63 dof, p = 0.001 -> 103.4).
   const counts = new Map(),
     n = 2400;
   for (let seed = 1; seed <= n; seed++) {
     const spin = createDraftSession(catalog, { mode: 'nations', seed }).spin();
-    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.011));
+    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.016));
     counts.set(spin.option.id, (counts.get(spin.option.id) || 0) + 1);
   }
-  const expected = n / 93,
+  const expected = n / 64,
     chi = index.spinField.reduce(
       (s, x) => s + ((counts.get(x.id) || 0) - expected) ** 2 / expected,
       0,
     );
-  assert.ok(chi < 139.7, 'nation chi-square ' + chi.toFixed(1));
+  assert.ok(chi < 103.4, 'nation chi-square ' + chi.toFixed(1));
   // Leagues: tier frequencies follow the flat weights A4/B2/C1/D.5/F.25 (4 dof -> 18.5).
   const weight = { A: 4, B: 2, C: 1, D: 0.5, F: 0.25 },
     total = index.leagues.reduce((s, l) => s + weight[l.tier], 0),
