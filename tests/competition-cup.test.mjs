@@ -327,7 +327,7 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   const mean = sums.map(x => x / N),
     [r32, r16, qf, sf, final, third] = mean.slice(3);
   assert.ok(r32 < r16 && r16 < qf && qf < sf && sf < final, mean.map(x => x.toFixed(1)).join(' '));
-  assert.ok(final > 85.5 && final < 88, `final ${final}`);
+  assert.ok(final > 85 && final < 88, `final ${final}`);
   assert.ok(Math.abs(third - sf) < 1.5, `play-off ${third} vs semi-final ${sf}`);
   // projectRun's targets for the level are these typical ratings (weakened XIs: a bit lower).
   FIELD_TYPICAL.slice(3).forEach((t, i) =>

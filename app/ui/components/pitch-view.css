@@ -193,6 +193,15 @@ button.pitch-slot {
 .pitch-slot__token--normal {
   background: var(--tier-normal-frame);
 }
+/* The top two tiers stand out a little: a thin ring in the tier's colour around the token. */
+.pitch-slot__token--superstar {
+  outline: 1.5px solid color-mix(in srgb, var(--tier-superstar) 80%, transparent);
+  outline-offset: 1.5px;
+}
+.pitch-slot__token--star {
+  outline: 1.5px solid color-mix(in srgb, var(--tier-star) 70%, transparent);
+  outline-offset: 1.5px;
+}
 .pitch-slot__token--bench {
   background: var(--tier-bench-frame);
 }
@@ -347,7 +356,7 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
 .pitch-slot__face .flag__initials {
   font-size: calc(var(--token) * 0.34);
 }
-/* The boost chip (mates + Captain): green, on the token's other shoulder. */
+/* The boost chip (mates): green, on the token's other shoulder. */
 .pitch-slot__boost {
   position: absolute;
   top: calc(var(--token) * -0.12);
@@ -365,11 +374,4 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
   box-shadow:
     0 0 0 1.5px rgb(3 12 8 / 0.75),
     0 1px 4px rgb(0 0 0 / 0.5);
-}
-/* The captain's armband sits on the token's shoulder. */
-.pitch-slot__captain {
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  z-index: 1;
 }

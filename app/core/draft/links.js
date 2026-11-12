@@ -1,11 +1,9 @@
 // Mates (team chemistry), one rule a new player can read off the pitch:
-//   * a player with a nation team-mate in the XI gets +2, with a club mate +2, and the two
-//     stack: both a nation mate and a club mate = +4 (CONFIG.draft.links). One mate is enough;
-//   * Captain: an XI with a Captain-tagged player (catalog `captain`) adds `rules.captain`
-//     (+1) to every player on top (one captain counts; two do not stack).
-// The sum is the engine boost `chem` (0–5 attribute points, added to every skill in
-// Player.skill). Real national XIs are all nation mates (+2 each, +4 for club mates inside
-// them), real club XIs club mates (+2, +4 for compatriots).
+//   a player with a nation team-mate in the XI gets +1.5, with a club mate +1, and the two
+//   stack: both a nation mate and a club mate = +2.5 (CONFIG.draft.links). One mate is enough.
+// That is the engine boost `chem` (attribute points, added to every skill in Player.skill).
+// Real national XIs are all nation mates (+1.5 each, +2.5 for club mates inside them), real
+// club XIs club mates (+1, +2.5 for compatriots).
 import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
 
 /** Link kinds, in the order they are listed and drawn (nation first). */
@@ -14,17 +12,15 @@ const keyOf = {
   club: p => (p?.source?.clubId == null ? null : String(p.source.clubId)),
   nation: p => p?.source?.nationality || null,
 };
-const rating = p => p.sourceOverall ?? p.overall ?? 0;
 // Rules saved before the mates rule held thresholds per kind ({ level1, … }): those read as
 // the current defaults, so an old draft or run keeps working.
 const boostOf = (rules, kind) =>
   typeof rules?.[kind] === 'number' ? rules[kind] : DEFAULT_CONFIG.draft.links[kind];
-/** The boosts of a rules object: { nation, club, captain } (numbers). */
+/** The boosts of a rules object: { nation, club } (numbers). */
 export function linkBoosts(rules = CONFIG.draft.links) {
   return {
     nation: boostOf(rules, 'nation'),
     club: boostOf(rules, 'club'),
-    captain: boostOf(rules, 'captain'),
   };
 }
 
@@ -35,14 +31,13 @@ export function linkBoosts(rules = CONFIG.draft.links) {
  * @returns {{
  *   players: Array<{boost, kinds, chem, mates: {nation, club}}|null>,
  *   pairs: Array<{a, b, kind, kinds}>,
- *   score: number, maxScore: number, total: number, chem: number, linked: number,
- *   captain: number | null (input index of the captain), captainBoost: number
- * }} per-player entries aligned with the input: `boost` is the mates boost (0, 2 or 4),
- * `kinds` the kinds that give it (['nation'], ['club'], both or none), `chem` = boost + the
- * Captain's boost, `mates` the number of XI mates per kind. `pairs` index into the input:
- * every pair of nation mates or club mates (one line per pair; `kind` = 'nation' when they
- * share the nation, `kinds` = all they share). `score` = sum of the mates boosts (max 44),
- * `total` = sum of chem (Captain included, max 55), `chem` = mean chem.
+ *   score: number, maxScore: number, total: number, chem: number, linked: number
+ * }} per-player entries aligned with the input: `boost` is the mates boost (0, 1, 1.5 or
+ * 2.5), `kinds` the kinds that give it (['nation'], ['club'], both or none), `chem` the same
+ * number under the engine's name, `mates` the number of XI mates per kind. `pairs` index into
+ * the input: every pair of nation mates or club mates (one line per pair; `kind` = 'nation'
+ * when they share the nation, `kinds` = all they share). `score` = `total` = sum of the boosts
+ * (max `maxScore` = 27.5), `chem` = mean boost.
  */
 export function teamLinks(players, rules = CONFIG.draft.links) {
   const value = linkBoosts(rules);
@@ -53,12 +48,6 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
         const key = keyOf[k](p);
         if (key !== null) counts[k].set(key, (counts[k].get(key) || 0) + 1);
       }
-  // The captain: the first Captain-tagged player, by source rating (ties: slot order).
-  let captain = null;
-  players.forEach((p, i) => {
-    if (p?.captain && (captain === null || rating(p) > rating(players[captain]))) captain = i;
-  });
-  const captainBoost = captain === null ? 0 : value.captain || 0;
   const entries = players.map(p => {
     if (!p) return null;
     const mates = {},
@@ -72,7 +61,7 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
         boost += value[k];
       }
     }
-    return { boost, kinds, chem: boost + captainBoost, mates };
+    return { boost, kinds, chem: boost, mates };
   });
   const pairs = [];
   for (let a = 0; a < players.length; a++)
@@ -89,17 +78,15 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
   return {
     players: entries,
     pairs,
-    score: filled.reduce((s, e) => s + e.boost, 0),
+    score: total,
     maxScore: players.length * (value.nation + value.club),
     total,
     chem: filled.length ? total / filled.length : 0,
     linked: filled.filter(e => e.boost > 0).length,
-    captain,
-    captainBoost,
   };
 }
 
-/** Per-player engine `chem` values (0–5) aligned with the input. */
+/** Per-player engine `chem` values (0–2.5) aligned with the input. */
 export function chemValues(players, rules = CONFIG.draft.links) {
   return teamLinks(players, rules).players.map(e => (e ? e.chem : 0));
 }

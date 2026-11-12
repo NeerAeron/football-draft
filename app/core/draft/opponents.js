@@ -1,7 +1,7 @@
 // Opponents and the difficulty ladder. A level is a target *effective* rating (team OVR + mean
 // link chem) relative to the typical XI the player drafts in that mode (MODE_BASELINES,
 // measured by tools/calibration/draft-baselines.mjs). Real club and national XIs are fully
-// linked (+2 chem), so they are matched on effective rating, not raw OVR.
+// linked (+1 chem or more), so they are matched on effective rating, not raw OVR.
 // Candidates: national best XIs (Nations), club XIs (Leagues, Clubs), both (Club & Country),
 // plus two bosses: the World XI (best XI in the catalog) and the All-Stars (the best XI
 // without the World XI players). Deterministic for a seed.
@@ -23,7 +23,7 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
 /**
  * Typical drafted XI per mode: solo, positional policy (best slot rating), smart re-roll below
  * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 300 drafts per cell (240 for Club & Country),
- * v3 catalog (15,378 players). `effective[r]` = OVR + chem (Links + the Captain's boost) with r
+ * v3 catalog (15,378 players). `effective[r]` = OVR + chem (the mates boosts) with r
  * re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {

@@ -1,14 +1,19 @@
-// Player tiers by overall rating. Thresholds mirror CONFIG.playerTiers in
-// app/core/config/config.js (Superstar 85+, Star 80–84, Starter 74–79, Normal 68–73,
-// Bench below). Pass `tier` explicitly (e.g. playerTier(p).name from core) when a screen
-// uses tuned thresholds; tierOf() is the display default.
-export const TIERS = [
-  { id: 'superstar', name: 'Superstar', min: 85, label: 'Superstar' },
-  { id: 'star', name: 'Star', min: 80, label: 'Star' },
-  { id: 'starter', name: 'Starter', min: 74, label: 'Starter' },
-  { id: 'normal', name: 'Normal', min: 68, label: 'Normal' },
-  { id: 'bench', name: 'Bench', min: -Infinity, label: 'Bench' },
-];
+// Player tiers by the rating shown on a player — the draft's tiers (core/draft/budget.js,
+// CONFIG.draft.budget): Superstar 88+, Star 84–87, Starter 80–83, Normal 74–79, Bench below.
+// The same names Budget mode counts ("1 Superstar, 2 Stars, 3 Starters"), so a player's frame
+// and his Budget tier always agree. tierOf() is the display default; pass `tier` explicitly
+// (a draft pool entry's `tier`) when a session plays with other thresholds.
+import { DEFAULT_CONFIG } from '../../core/config/config.js';
+import { draftTiers } from '../../core/draft/budget.js';
+
+export const TIERS = draftTiers(DEFAULT_CONFIG.draft.budget).map((t, i, all) => ({
+  id: t.id,
+  name: t.name,
+  min: i === all.length - 1 ? -Infinity : t.minimum,
+  label: t.name,
+}));
+/** The tiers that get an outline wherever players are shown: the top two. */
+export const isTopTier = tier => tier?.id === 'superstar' || tier?.id === 'star';
 
 const BY_NAME = Object.fromEntries(TIERS.map(t => [t.name.toLowerCase(), t]));
 

@@ -1,24 +1,13 @@
-// Select-then-lock: the chosen player, where he fits (pitch highlights from
-// placementOptions), the effect of the pick (team OVR, his mates boost, Budget slot) and the
-// confirm button. Phones: inside a Sheet. Desktop: a dock under the pool (the big pitch on
-// the left lights up instead).
+// Select-then-lock: the chosen player's card (with his six stats), where he fits (pitch
+// highlights from placementOptions), the effect of the pick (team OVR, his mates boost, Budget
+// slot) and the confirm button. Phones: inside a Sheet. Desktop: a dock under the pool (the
+// big pitch on the left lights up instead).
 import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
-import {
-  PlayerCard,
-  FitTag,
-  Flag,
-  Button,
-  IconButton,
-  Sheet,
-  CaptainMark,
-} from '../../components/index.js';
+import { PlayerCard, FitTag, Button, IconButton, Sheet } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
 import { mateLines } from './draft-model.js';
-import { AttributeDetails } from './attributes.js';
 import { fmt1, signed1 } from '../../lib/format.js';
-
-const fmtBoost = n => (Number.isInteger(n) ? String(n) : fmt1(n));
 
 function Effects({ team, preview, hideRatings }) {
   if (!preview) return null;
@@ -37,14 +26,6 @@ function Effects({ team, preview, hideRatings }) {
             >${signed1(delta)}</span
           >`
         }
-      </li>`
-    }
-    ${
-      preview.captain &&
-      html`<li class="pick-effects__item pick-effects__captain" data-testid="captain-effect">
-        <${CaptainMark} />
-        <span class="pick-effects__label">Captain</span>
-        <span class="delta is-up">+${fmtBoost(preview.captain.boost)} every player</span>
       </li>`
     }
     <li class="pick-effects__item pick-effects__mates" data-testid="mates-effect">
@@ -69,6 +50,26 @@ function Effects({ team, preview, hideRatings }) {
       </li>`
     }
   </ul>`;
+}
+
+// The card shows the six stats in the usual card order (rows lead with the position's own).
+const CARD_ORDER = ['GK', 'PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'];
+const cardView = view => ({
+  ...view,
+  stats: [...(view.stats || [])].sort(
+    (a, b) => CARD_ORDER.indexOf(a.key) - CARD_ORDER.indexOf(b.key),
+  ),
+});
+/** The selected player's card: tier frame, rating, flag, kit and the six stats. */
+function PickCard({ view, hideRatings }) {
+  return html`<${PlayerCard}
+    player=${cardView(view)}
+    size="m"
+    hideRatings=${hideRatings}
+    showBadges=${false}
+    class="pick-card"
+    data-testid="pick-card"
+  />`;
 }
 
 function targetFit(highlights, target) {
@@ -130,7 +131,7 @@ export function PickSheet({
   >
     <div class="pick">
       <div class="pick__who">
-        <${PlayerCard} player=${view} size="s" hideRatings=${hideRatings} showBadges=${false} />
+        <${PickCard} view=${view} hideRatings=${hideRatings} />
         <div class="pick__info">
           <p class="pick__full">${view.fullName || view.name}</p>
           <p class="pick__pos">${(view.positions || [view.position]).join(' · ')}</p>
@@ -147,7 +148,6 @@ export function PickSheet({
           <${Effects} team=${team} preview=${preview} hideRatings=${hideRatings} />
         </div>
       </div>
-      <${AttributeDetails} view=${view} hideRatings=${hideRatings} />
       <p class="pick__hint">Tap a lit slot to play him there.</p>
       <${TeamPitch}
         team=${team}
@@ -183,7 +183,7 @@ export function PickDock({
   const option = target != null ? options[target] : null;
   const fit = targetFit(highlights, target);
   return html`<div class="dock" role="region" aria-label="Selected player">
-    <${Flag} code=${view.nation?.code} name=${view.nation?.name} size=${36} decorative />
+    <${PickCard} view=${view} hideRatings=${hideRatings} />
     <div class="dock__who">
       <span class="dock__name">${view.name}</span>
       <span class="dock__meta">
@@ -212,6 +212,5 @@ export function PickDock({
       >
       <${IconButton} icon="x" label="Cancel selection" size="sm" onClick=${onCancel} />
     </div>
-    <${AttributeDetails} view=${view} hideRatings=${hideRatings} />
   </div>`;
 }

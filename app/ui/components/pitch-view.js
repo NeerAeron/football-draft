@@ -18,10 +18,10 @@
  *               XI where everyone links). 'all': the full-strength style everywhere.
  *   selected    selected slot index (volt ring)
  *   onSelect    (index, slot) => void. Without it the pitch is display-only (no buttons).
- *   boosts      the green "+2" chips on the tokens: mates (nation mate +2, club mate +2,
- *               both +4) plus the Captain's +1. Default: worked out from the players (their `source`
- *               and `captain`, lib/player-view.js mateBoosts); pass an array aligned with the
- *               slots to override, or false for no chips. The OVR badge stays the plain rating.
+ *   boosts      the green "+1.5" chips on the tokens: mates (nation mate +1.5, club mate +1,
+ *               both +2.5). Default: worked out from the players (their `source`,
+ *               lib/player-view.js mateBoosts); pass an array aligned with the slots to
+ *               override, or false for no chips. The OVR badge stays the plain rating.
  *   hideRatings hide OVR badges;  names (default true) show surname labels under tokens
  *   label       accessible name of the slot group (default 'Formation')
  *   aspect      CSS aspect-ratio of the pitch (default '4 / 5')
@@ -34,10 +34,9 @@ import { useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../lib/html.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { resolveTier } from '../lib/tiers.js';
-import { surname, captainSlot, mateBoosts } from '../lib/player-view.js';
-import { fmt1 } from '../lib/format.js';
+import { surname, mateBoosts } from '../lib/player-view.js';
+import { boost as fmtBoost } from '../lib/format.js';
 import { Flag } from './flag.js';
-import { CaptainMark } from './captain-mark.js';
 import { Crest } from './crest.js';
 import { FitTag, fitText } from './fit-tag.js';
 
@@ -111,9 +110,7 @@ function PitchMarkings() {
   </svg>`;
 }
 
-const boostText = n => `+${Number.isInteger(n) ? n : fmt1(n)}`;
-
-function SlotToken({ player, hideRatings, captain, boost }) {
+function SlotToken({ player, hideRatings, boost }) {
   if (!player) return html`<span class="pitch-slot__token pitch-slot__token--empty"></span>`;
   const t = resolveTier(player.tier, player.ovr);
   const face = player.nation
@@ -129,8 +126,7 @@ function SlotToken({ player, hideRatings, captain, boost }) {
   >
     <span class="pitch-slot__face">${face}</span>
     ${!hideRatings && html`<span class="pitch-slot__ovr num">${player.ovr}</span>`}
-    ${captain && html`<${CaptainMark} class="pitch-slot__captain" />`}
-    ${boost > 0 && html`<span class="pitch-slot__boost num">${boostText(boost)}</span>`}
+    ${boost > 0 && html`<span class="pitch-slot__boost num">${fmtBoost(boost)}</span>`}
   </span>`;
 }
 
@@ -159,7 +155,6 @@ export function PitchView({
   const [aw, ah] = String(aspect).split('/').map(Number);
   const squat = aw > 0 && ah > 0 && aw / ah > 0.82;
   const slots = useMemo(() => layoutSlots(source, squat ? [86, 11] : TOP_BOTTOM), [source, squat]);
-  const captainAt = captainSlot(players);
   const boostAt = useMemo(
     () => (boosts === false ? [] : Array.isArray(boosts) ? boosts : mateBoosts(players)),
     [boosts, players],
@@ -249,7 +244,7 @@ export function PitchView({
           slot.role,
           player
             ? `${player.fullName || player.name}${hideRatings ? '' : `, ${player.ovr}`}${
-                boostAt[slot.index] > 0 ? `, boost ${boostText(boostAt[slot.index])}` : ''
+                boostAt[slot.index] > 0 ? `, boost ${fmtBoost(boostAt[slot.index])}` : ''
               }`
             : 'empty',
           fitText(fit, hideRatings),
@@ -266,7 +261,6 @@ export function PitchView({
             <${SlotToken}
               player=${player}
               hideRatings=${hideRatings}
-              captain=${slot.index === captainAt}
               boost=${player ? boostAt[slot.index] : 0}
             />
             ${!player && html`<span class="pitch-slot__role">${slot.role}</span>`}

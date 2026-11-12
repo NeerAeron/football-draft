@@ -142,15 +142,12 @@ export const savedChoices = state => ({
 });
 
 /**
- * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 1 player
- * rated 88+, 2 at 84–87 and 3 at 80–83. Everyone else must be under 80.'
+ * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 1 Superstar
+ * (88+), 2 Stars (84–87) and 3 Starters (80–83). Everyone else must be under 80.'
  */
 export function budgetCopy(rules = CONFIG.draft.budget) {
   const bands = budgetBands(rules),
-    caps = bands.map(
-      (b, i) =>
-        `${b.slots} ${i === 0 ? `player${b.slots === 1 ? '' : 's'} rated` : 'at'} ${b.label}`,
-    );
+    caps = bands.map(b => `${b.slots} ${b.label}${b.slots === 1 ? '' : 's'} (${b.range})`);
   return `Harder: your XI may hold only ${caps.slice(0, -1).join(', ')} and ${caps.at(-1)}. Everyone else must be under ${bands.at(-1).minimum}.`;
 }
 

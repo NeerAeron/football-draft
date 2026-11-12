@@ -21,7 +21,7 @@ export const HOW_TO_STEPS = [
   {
     icon: 'pitch',
     title: 'Pick & place',
-    text: 'Choose a player and the pitch lights up with the fit before you lock it in. Mates boost each other: a nation mate +2, a club mate +2, both +4 — and a Captain gives everyone +1.',
+    text: 'Choose a player and the pitch lights up with the fit before you lock it in. Mates boost each other: a nation mate gets +1.5, a club mate +1, both +2.5.',
     demo: true,
   },
   {

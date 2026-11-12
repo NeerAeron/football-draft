@@ -337,3 +337,14 @@
 .pcard.is-disabled:hover {
   transform: none;
 }
+
+/* The top two tiers stand out a little wherever a card is shown: a thin outline in the tier's
+   colour around the foil frame (lower tiers stay plain). */
+.pcard--tier-superstar:not(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, var(--tier-superstar) 70%, transparent);
+  outline-offset: 2px;
+}
+.pcard--tier-star:not(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, var(--tier-star) 60%, transparent);
+  outline-offset: 2px;
+}

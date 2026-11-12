@@ -2,7 +2,7 @@
 // pots, call-ups), leagues and clubs, cached role ratings and fast best-XI assignment.
 // Pure and deterministic: every list has a total order (rating, then profileId / name).
 import { CONFIG } from '../config/config.js';
-import { overallRating, positionFamiliarity, playerTier } from '../players/ratings.js';
+import { overallRating, positionFamiliarity } from '../players/ratings.js';
 import { FORMATIONS } from '../players/formations.js';
 import { NATION_CODES } from './nation-codes.js';
 
@@ -401,5 +401,3 @@ export function catalogStamp(catalog) {
   }
   return stamp;
 }
-/** Tier name (Superstar / Star / Starter / Normal / Bench) of a player's natural rating. */
-export const tierName = p => playerTier(p).name;

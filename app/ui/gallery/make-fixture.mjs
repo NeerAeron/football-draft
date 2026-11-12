@@ -43,7 +43,7 @@ const band = (lo, hi, pos) =>
   c.players
     .filter(p => ovr(p) >= lo && ovr(p) <= hi && p.primaryPosition === pos && p.source?.club)
     .sort((a, b) => ovr(b) - ovr(a) || a.profileId.localeCompare(b.profileId))[0];
-const extra = [band(80, 84, 'CM'), band(74, 79, 'ST'), band(68, 73, 'CB'), band(55, 67, 'LM')];
+const extra = [band(84, 87, 'CM'), band(80, 83, 'ST'), band(74, 79, 'CB'), band(55, 73, 'LM')];
 extra.push(c.players.filter(p => !p.source?.club).sort((a, b) => ovr(b) - ovr(a))[0]);
 
 const players = [...xi, ...extra].filter(Boolean).map(view);
