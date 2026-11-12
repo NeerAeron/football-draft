@@ -20,7 +20,13 @@ import { roleRating, roleFit, naturalRating, isKeeper } from '../../core/draft/p
 import { teamLinks } from '../../core/draft/links.js';
 import { NATURAL_FIT } from '../../core/draft/session.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
-import { buildMatchConfig, requestMatch, teamCode, MATCH_VIEWS } from './match-store.js';
+import {
+  buildMatchConfig,
+  requestMatch,
+  matchStore,
+  teamCode,
+  MATCH_VIEWS,
+} from './match-store.js';
 import { nationKit, nationTrigram } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 
@@ -184,6 +190,15 @@ export function openPrematch(input, { go = true } = {}) {
 export function clearPrematch() {
   prematchStore.set(null);
 }
+// A pre-match has served once its match is over: when the result of the match it kicked off
+// is stored, it is forgotten (the key does not outlive the match; going back from a finished
+// match never offers to kick the same fixture off again).
+const served = state => {
+  const pending = prematchStore.get();
+  if (pending && state?.result && state.request?.id === pending.id) clearPrematch();
+};
+matchStore.subscribe(served);
+served(matchStore.get());
 
 // ---------- lineup helpers (pure) ----------
 

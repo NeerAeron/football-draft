@@ -19,7 +19,7 @@ import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { toast } from '../../components/toast.js';
 import { completedDraft, clearDraft, loadDraft } from '../../lib/draft-store.js';
-import { openPrematch, clearPrematch, prematchStore } from '../../lib/prematch-store.js';
+import { openPrematch, prematchStore } from '../../lib/prematch-store.js';
 import { readMatchResult, runResultFor, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
   createRunFromDraft,
@@ -530,16 +530,12 @@ export default function RunScreen() {
             const before = saved.run.snapshot();
             const round = saved.pending.round;
             const input = runResultFor(result, 0);
-            if (!input.shootout && result.winner != null && input.goalsFor === input.goalsAgainst)
-              input.shootout = { winner: result.winner === 0 ? 'user' : 'opponent', score: null };
             saved.run.recordResult(input);
             const entry = logEntry(round, result);
             saved.log = withLog(saved.log, entry);
             saved.pending = null;
             saveRun(saved.run, saved.meta, { pending: null, log: saved.log });
             clearMatch(result.id);
-            // Its pre-match is done with too (the line-up is in the run now).
-            if (prematchStore.get()?.id === result.id) clearPrematch();
             flash = { kind: 'result', round, before, entry };
             playCue(input.outcome === 'L' ? 'full' : 'goal');
           } else if (saved.pending.round !== saved.run.round) {

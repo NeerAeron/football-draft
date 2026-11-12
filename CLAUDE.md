@@ -186,7 +186,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 | `football-draft-sound` | `services/sound.js` | muted, volume |
 | `football-draft-setup` | setup screen | last choices per mode |
 | `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`) |
-| `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits / last view |
+| `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits (until its match has a result) / last view |
 | `football-draft-match` | `match-store.js` | current match request + result |
 | `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |

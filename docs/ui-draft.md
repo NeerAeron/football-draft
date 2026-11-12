@@ -112,7 +112,9 @@ openPrematch({
 * `id` falls back to `meta.fixture`, then `match-<seed36>`; `meta` is kept intact (plus
   `context`/`title`/`returnTo` defaults). Sides: `players` may be `draft.matchSide(i).players`
   or `buildOpponent(...).players` (their `chem` is kept); `editable` defaults to `kind !== 'ai'`.
-* Persisted under `football-draft-prematch` (edits survive a reload). Edits: `swapPlayers(side,
+* Persisted under `football-draft-prematch` (edits survive a reload) until its match has a
+  result: the store then forgets it (`clearPrematch()`; it subscribes to the match store), so
+  the key does not outlive the match. Edits: `swapPlayers(side,
   a, b)` (GK slot keepers only), `changeFormation(side, f)` (exact best re-slot: the lineup with the best team OVR, keeper in
   goal), `setSideTactic(side, key, value)` (the screens set `mentality` only),
   `setMatchView(view)` (remembered in `football-draft-match-view`).

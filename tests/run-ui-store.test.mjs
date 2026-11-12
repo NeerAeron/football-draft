@@ -29,6 +29,7 @@ const saved = await import('../app/ui/lib/saved.js');
 const records = await import('../app/ui/lib/records.js');
 const share = await import('../app/ui/lib/share-image.js');
 const { runSide } = await import('../app/ui/screens/run/auto-sim.js');
+const { runResultFor } = await import('../app/ui/lib/match-store.js');
 
 let catalog, draft;
 before(() => {
@@ -998,12 +999,71 @@ test('auto-sim results convert to CupRun input for the user side', () => {
       { profileId: 'b', team: 1, rating: 6, goals: 1, assists: 0 },
     ],
   };
-  assert.deepEqual(runSide(result), {
+  const expected = {
     goalsFor: 1,
     goalsAgainst: 1,
+    outcome: 'D',
     shootout: { winner: 'opponent', score: [4, 5] },
     players: [{ profileId: 'a', rating: 7.1, goals: 1, assists: 0 }],
+  };
+  assert.deepEqual(runSide(result), expected);
+  // One rule: the auto-sim's conversion is the match screen's (lib/match-store.js).
+  assert.deepEqual(runSide(result), runResultFor(result, 0));
+  // A level match with a winner and no shootout (abandoned: a side fell below seven): the
+  // winner is carried, from either side's point of view, so a knockout can be recorded.
+  const abandoned = { score: [1, 1], shootout: null, winner: 0, players: result.players };
+  for (const convert of [runSide, r => runResultFor(r, 0)])
+    assert.deepEqual(convert(abandoned).shootout, { winner: 'user', score: null });
+  assert.deepEqual(runResultFor(abandoned, 1).shootout, { winner: 'opponent', score: null });
+  assert.deepEqual(runResultFor({ ...abandoned, winner: 1 }, 0).shootout, {
+    winner: 'opponent',
+    score: null,
   });
+  // A draw without a winner, and a decided match, carry none.
+  assert.equal(runSide({ ...abandoned, winner: null }).shootout, null);
+  assert.equal(runSide({ ...abandoned, score: [2, 1] }).shootout, null);
+  const { run } = runStore.createRunFromDraft(catalog, { session: draft, context: {} });
+  for (let i = 0; i < 3; i++) run.recordResult({ goalsFor: 2, goalsAgainst: 0 });
+  assert.equal(run.nextMatch().knockout, true);
+  assert.doesNotThrow(() => run.recordResult(runResultFor(abandoned, 0)));
+  assert.equal(run.complete, false, 'through on the carried winner');
+});
+
+test('the pre-match is forgotten once its match has a result', async () => {
+  const prematch = await import('../app/ui/lib/prematch-store.js');
+  const matches = await import('../app/ui/lib/match-store.js');
+  const { run, meta } = runStore.createRunFromDraft(catalog, { session: draft, context: {} });
+  const m = run.nextMatch(),
+    id = runStore.fixtureId(meta, m.round);
+  const open = (fixtureId = id) =>
+    prematch.openPrematch(
+      {
+        id: fixtureId,
+        seed: m.seed,
+        sides: [runStore.matchSideFor(m.home, { kind: 'user' }), runStore.matchSideFor(m.away)],
+        meta: { context: 'run', returnTo: '/run' },
+      },
+      { go: false },
+    );
+  open();
+  assert.ok(store.has(prematch.PREMATCH_KEY));
+  const request = prematch.kickOff({ go: false });
+  matches.markMatchLive();
+  assert.ok(store.has(prematch.PREMATCH_KEY), 'kept while the match is played');
+  // Another match's result does not touch it.
+  assert.equal(matches.saveMatchResult({ id: 'other', score: [0, 0], players: [] }), false);
+  assert.ok(prematch.prematchStore.get());
+  matches.saveMatchResult({ id: request.id, score: [1, 0], shootout: null, players: [] });
+  assert.equal(prematch.prematchStore.get(), null);
+  assert.equal(store.has(prematch.PREMATCH_KEY), false, 'the key is gone from storage');
+  // The run still learns the line-up of that match: from the request's kick-off config.
+  assert.ok(runStore.fixtureLineup(id, { prematch: null, request }));
+  // A new pre-match (the next fixture) is not affected by the finished match in the store.
+  open('run:next:1');
+  assert.ok(prematch.prematchStore.get());
+  matches.clearMatch();
+  assert.ok(prematch.prematchStore.get());
+  prematch.clearPrematch();
 });
 
 test('share image layout: tokens inside the pitch, keeper at the bottom, no overlaps', () => {

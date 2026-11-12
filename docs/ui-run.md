@@ -43,7 +43,8 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    **The line-up stays.** What is set up in a pre-match — player positions, mentality and,
    once allowed, the formation — is kept with the run for the matches that follow, watched or
    simulated: when the hub loads with a pending fixture it reads that fixture's pre-match as
-   it was left (kicked off or not; else the kick-off config of its match request) —
+   it was left (not kicked off yet), else the kick-off config of its match request (a
+   pre-match is forgotten once its match has a result) —
    `fixtureLineup(id, { prematch, request })` → `applyLineup(run, lineup)` →
    `run.setLineup(…)` → `saveRun`. The run's user side (`run.user`: `formation`, `players` in
    slot order, `tactics`) is then what `nextMatch().home`, the next pre-match
@@ -52,7 +53,7 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    panel) are not kept. The Daily never opens a pre-match — its XI plays every match as
    drafted, in the day's formation.
 3. **Return.** `readMatchResult(id)` (fallback: the stored result with the same seed and
-   `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` (and `clearPrematch()` for that fixture's pre-match) → save.
+   `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` → save. (`runResultFor` is the one conversion of a result to `recordResult` input — the auto-sim's `runSide(result)` calls it — and carries the winner of a level match that had no shootout; the fixture's pre-match was forgotten when its result was stored.)
    The hub shows a "Full time" banner, the other group match ticking in, table moves. A lost
    semi-final does not end the run: the next fixture is the third-place play-off (the path's
    last node reads "3rd").

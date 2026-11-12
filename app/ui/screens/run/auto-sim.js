@@ -11,6 +11,7 @@ import { Match, MATCH_SECONDS } from '../../../core/sim/engine.js';
 import { performanceRating } from '../../../core/sim/replay.js';
 import { PERIOD_END } from '../../../core/sim/periods.js';
 import { readJSON } from '../../lib/storage.js';
+import { runResultFor } from '../../lib/match-store.js';
 
 /** Real seconds of an auto-simmed match: the game's one match length. */
 export const AUTO_DURATION = MATCH_SECONDS;
@@ -204,28 +205,8 @@ export function simulateRequest(request, options) {
   return autoSimulate(request.config, request.seed, { ...options, id: request.id });
 }
 
-/** CupRun.recordResult input from a result (user = side 0); same as match-store runResultFor. */
-export function runSide(result) {
-  const [h, a] = result.score;
-  // A level match decided otherwise (abandoned: a side fell below seven) has a winner but no
-  // shootout; carry the winner so a knockout can still be recorded.
-  const decided = h === a && !result.shootout && (result.winner === 0 || result.winner === 1);
-  return {
-    goalsFor: h,
-    goalsAgainst: a,
-    shootout: result.shootout
-      ? {
-          winner: result.shootout.winner === 0 ? 'user' : 'opponent',
-          score: [result.shootout.score[0], result.shootout.score[1]],
-        }
-      : decided
-        ? { winner: result.winner === 0 ? 'user' : 'opponent', score: null }
-        : null,
-    players: result.players
-      .filter(p => p.team === 0)
-      .map(p => ({ profileId: p.profileId, rating: p.rating, goals: p.goals, assists: p.assists })),
-  };
-}
+/** CupRun.recordResult input from a result (user = side 0): match-store's runResultFor. */
+export const runSide = result => runResultFor(result, 0);
 
 /**
  * Play every remaining match of a CupRun in order until the run is over (or flags.stop):

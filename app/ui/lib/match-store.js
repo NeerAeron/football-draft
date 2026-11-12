@@ -272,7 +272,8 @@ export function clearMatch(id) {
 /**
  * A result from one side's point of view, in the shape CupRun.recordResult takes:
  *   { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L' (90/120-minute score),
- *     shootout: null | { winner: 'user' | 'opponent', score: [for, against] },
+ *     shootout: null | { winner: 'user' | 'opponent', score: [for, against] | null (a level
+ *               match with a winner and no shootout: abandoned) },
  *     players: [{ profileId, rating, goals, assists }] }   // that side's XI
  */
 export function runResultFor(result, side = 0) {
@@ -280,6 +281,10 @@ export function runResultFor(result, side = 0) {
   const o = 1 - side,
     goalsFor = result.score[side],
     goalsAgainst = result.score[o];
+  // A level match decided otherwise (abandoned: a side fell below seven) has a winner but no
+  // shootout: the winner is carried, so a knockout can still be recorded.
+  const decided =
+    goalsFor === goalsAgainst && !result.shootout && (result.winner === 0 || result.winner === 1);
   return {
     goalsFor,
     goalsAgainst,
@@ -289,7 +294,9 @@ export function runResultFor(result, side = 0) {
           winner: result.shootout.winner === side ? 'user' : 'opponent',
           score: [result.shootout.score[side], result.shootout.score[o]],
         }
-      : null,
+      : decided
+        ? { winner: result.winner === side ? 'user' : 'opponent', score: null }
+        : null,
     players: result.players
       .filter(p => p.team === side)
       .map(p => ({
