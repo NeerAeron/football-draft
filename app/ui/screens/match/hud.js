@@ -6,6 +6,9 @@ import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
 import { Flag, Crest, Icon, Confetti } from '../../components/index.js';
 import { fmt2 } from '../../lib/format.js';
+import { storyTag } from './commentary.js';
+
+export { storyTag };
 
 /** matchMedia as state (e.g. a smaller score bug on phones). */
 export function useMedia(query) {
@@ -267,30 +270,6 @@ export function ShootoutPanel({ shootout, teams = [], fixed = false }) {
       }
     </p>
   </section>`;
-}
-
-const STORY_LABELS = {
-  'late winner': 'Late winner',
-  winner: 'Winner',
-  'hat-trick': 'Hat-trick',
-  haul: 'Four-goal haul',
-  comeback: 'Comeback',
-  equaliser: 'Equaliser',
-  brace: 'Brace',
-  'go-ahead': 'Go-ahead goal',
-  opener: 'Opener',
-  stoppage: 'Stoppage time',
-  late: 'Late goal',
-};
-const STORY_ORDER = Object.keys(STORY_LABELS);
-
-// A goal that turns out to be the winner is only called that once the match is over
-// (`final`): the banner over a highlight must not give the result away.
-export function storyTag(story = [], final = false) {
-  const tag = STORY_ORDER.find(s => story.includes(s) && (final || !s.includes('winner')));
-  if (!tag) return null;
-  if (tag === 'late' && story.includes('equaliser')) return 'Late equaliser';
-  return STORY_LABELS[tag];
 }
 
 /** Goal celebration banner over the pitch (+ team-colour confetti, off with reduced motion). */

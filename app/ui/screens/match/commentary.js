@@ -75,6 +75,9 @@ function saveLine(e, ctx) {
     text = pick([`${k} parries it… right into danger!`, `${k} can only palm it out!`], e.id);
   else if (e.saveType === 'parry')
     text = pick([`Parried away by ${k}!`, `${k} beats it out.`, `Strong hands from ${k}.`], e.id);
+  // A catch: routine only when it was (the stage captions a hard one GREAT SAVE!).
+  else if (d >= 0.3)
+    text = pick([`Good save — ${k} holds on.`, `${k} gets down and holds it.`], e.id);
   else text = pick([`Comfortable for ${k}.`, `${k} gathers it.`, `Straight at ${k}.`], e.id);
   if (e.bigChance && s && d >= 0.45) text += ` ${s} denied!`;
   const level = d >= 0.45 || e.bigChance ? 2 : 1;
@@ -306,4 +309,28 @@ export function commentaryLines(events, ctx, minLevel = 1) {
     if (line && line.level >= minLevel) out.push(line);
   }
   return out;
+}
+
+const STORY_LABELS = {
+  'late winner': 'Late winner',
+  winner: 'Winner',
+  'hat-trick': 'Hat-trick',
+  haul: 'Four-goal haul',
+  comeback: 'Comeback',
+  equaliser: 'Equaliser',
+  brace: 'Brace',
+  'go-ahead': 'Go-ahead goal',
+  opener: 'Opener',
+  stoppage: 'Stoppage time',
+  late: 'Late goal',
+};
+const STORY_ORDER = Object.keys(STORY_LABELS);
+
+// A goal that turns out to be the winner is only called that once the match is over
+// (`final`): the banner over a highlight must not give the result away.
+export function storyTag(story = [], final = false) {
+  const tag = STORY_ORDER.find(s => story.includes(s) && (final || !s.includes('winner')));
+  if (!tag) return null;
+  if (tag === 'equaliser' && story.includes('late')) return 'Late equaliser';
+  return STORY_LABELS[tag];
 }

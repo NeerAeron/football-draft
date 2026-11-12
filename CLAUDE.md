@@ -106,8 +106,9 @@ club-less national-team players have `source.club === null` and appear only in n
   modules on `Match.prototype`: `planning.js`, `movement.js`, `possession.js`, `decisions.js`,
   `passing.js`, `shooting.js`, `ball.js`, `defence.js`, `restarts.js`, `fouls.js`. Also
   `player.js` (skill/awareness/speed view), `player-model.js` (hidden tendencies), `rules.js`
-  (offside), `discipline.js` (cards), `goal-zones.js`, `insights.js` (xG, situations — display
-  only), `periods.js` (clock, stoppage), `shootout.js` (extra time, penalties), `replay.js`
+  (offside), `discipline.js` (cards; `fouls.js coverDismissal` reshapes a side to ten men),
+  `keeper.js` (dive/save model; a save's ball does what its `saveType` says), `goal-zones.js`,
+  `insights.js` (xG fitted to the engine's own conversion, situations — display only), `periods.js` (clock, stoppage), `shootout.js` (extra time, penalties), `replay.js`
   (record, highlights, `simulateComplete`/`simulateHalf`, `performanceRating`), `coach.js`
   (`coachAI` for side 1 in AI mode, `tacticAccess`), `constants.js`.
 - **Players** (`players/`) — `ratings.js` (attributes, role weights, `overallRating`,

@@ -47,8 +47,10 @@ export const DETECTORS = {
   'unmarked-receiver':
     'pass received in the danger zone with nobody within 3.5 m, against a set defence',
   'no-shot': 'carrier 1.5 s+ within 11 m of goal, in front of it, unpressed, without shooting',
-  'hopeless-shot': 'shot from 28 m+ with xG under 0.03',
-  'soft-goal': 'goal from a shot with xG under 0.04',
+  // xG thresholds are on the engine's own scale (insights.js shotXg, refitted): the same
+  // shots the old 0.03 / 0.04 picked out. Not comparable with an --engine older than the refit.
+  'hopeless-shot': 'shot from 28 m+ with xG under 0.08',
+  'soft-goal': 'goal from a shot with xG under 0.19',
   'own-goal': 'own goal',
   'keeper-wander': 'seconds a keeper is 26 m+ from his goal in open play',
   'ping-pong': 'two players swapping 4+ short passes in a row',
@@ -376,7 +378,7 @@ function analyse(m, spec) {
             situation: e.situation,
           });
       }
-      if (e.type === 'shot' && !e.penalty && e.distance >= 28 && e.xg < 0.03)
+      if (e.type === 'shot' && !e.penalty && e.distance >= 28 && e.xg < 0.08)
         add('hopeless-shot', {
           player: name(e.playerId),
           distance: Math.round(e.distance),
@@ -384,7 +386,7 @@ function analyse(m, spec) {
         });
       if (e.type === 'goal') {
         if (e.ownGoal) add('own-goal', {});
-        else if (!e.penalty && e.xg != null && e.xg < 0.04)
+        else if (!e.penalty && e.xg != null && e.xg < 0.19)
           add('soft-goal', { player: name(e.playerId), xg: e.xg, shotType: e.shotType });
       }
       if (e.type === 'offside') add('offside', { player: name(e.playerId) });
