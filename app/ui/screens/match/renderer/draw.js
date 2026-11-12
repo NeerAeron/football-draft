@@ -808,17 +808,11 @@ function drawEffects(ctx, t, m, state, dpr, width, r, over) {
         ctx.globalAlpha = clamp(e.life * 3, 0, 1);
       }
     }
-    // In a shootout only the verdict of each kick is captioned (SCORED / SAVED / MISSED)
-    const kick = m.mode === 'shootout';
-    if (
-      e.label &&
-      (LABELLED_EFFECTS.has(type) || (type === 'feint' && e.label === 'SLALOM')) &&
-      (!kick || type === 'whistle')
-    ) {
+    if (e.label && (LABELLED_EFFECTS.has(type) || (type === 'feint' && e.label === 'SLALOM'))) {
       const text = upper(e.label),
         card = type === 'whistle' && (text === 'YELLOW CARD' || text === 'RED CARD'),
         // Saves, cards and penalties are the moments: a size up, with a quick pop on entry
-        big = save || card || kick || (type === 'whistle' && text === 'PENALTY'),
+        big = save || card || (type === 'whistle' && text === 'PENALTY'),
         pop = big ? 1 + 0.35 * Math.max(0, 1 - k * 7) : 1,
         font = fontOf('display', Math.round((big ? 15 : 12) * dpr)),
         pad = (big ? 8 : 6) * dpr,

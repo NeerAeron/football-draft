@@ -178,18 +178,28 @@ while the reel plays: commentary lines never say "winner", and the goal banner's
 the `winner` / `late winner` tags (`storyTag(story, final)`; the engine only knows them at full
 time, but a recorded reel carries the finished match's events).
 
+**The penalty shootout is never animated.** The engine takes the kicks (so the result is the
+one an Instant match or an auto-sim gets) and the stage shows the shootout panel over the final
+whistle's picture (`MatchController.startPens`, `ShootoutPanel` in `hud.js`): a ✓ / ✗ per kick
+and the running score, one kick at a time — the taker's name (0.35 s), then his mark (0.5 s) —
+then the winner (2.2 s) and straight on to the result, which shows the finished panel again.
+Playback speed scales the pauses, pause holds it, "Next" shows the rest at once; reduced motion
+shows every kick and the winner at once. A side the player controls gets confetti for a win. In
+Full the live match is stepped to the end a few milliseconds per frame while the panel opens; a
+Key Moments reel never contains the shootout (`selectHighlights`).
+
 **Cards.** A side with a player sent off shows a red card by its name in the score bug (one per
 dismissal, `ScoreBug` `home.reds` / `away.reds`, from `stats[t].redCards`; also in the result
 header). Every red card is a Key Moments clip (`selectHighlights`), with the RED CARD caption on
 the pitch; the side reshapes at once (docs/engine-events.md, _Ten men_).
 
 Controls: Space play/pause, ←/→ (or ↓/↑) speed 1×/2×/4×, N next moment (Full) / next clip (Key
-Moments), C camera. Mentality is just the four options — Auto / Push / Balanced / Hold, no helper
+Moments; the rest of a shootout), C camera. Mentality is just the four options — Auto / Push / Balanced / Hold, no helper
 text under them anywhere (pre-match, half-time, live controls). It is live in Full and at half-time
 in Key Moments: Auto is the default (`tactics.mentality === 'auto'`), the control marks the
 mentality in effect (`match.mentality(team)` → HUD `effective`), and picking one of the other
 three overrides it until Auto is picked again. The tactics sheet follows `tacticAccess`
-(formation only at half-time in AI/Versus matches). Goals (and the deciding penalty) get a
+(formation only at half-time in AI/Versus matches). Goals get a
 celebration banner, team-colour confetti and a slow-motion replay (reduced motion: a static
 banner, no confetti, no replay, no camera moves). Screen readers hear goals only (`aria-live`,
 never per tick).
@@ -222,16 +232,14 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
   pitch), easing out for long passes, shots (the goal stays in frame) and set pieces, and wide
   for kick-offs and goal kicks; the ball can never leave the frame. Key Moments default to the
   action camera, Full to the whole pitch; the toggle in the controls (C) stores the choice per
-  view. Goal replays are always the close-up. The shootout close-up (`SHOOTOUT_CAMERA`: the
-  goal, the six-yard box and the spot fill the stage, so the keeper's dive is readable on a
-  phone) goes through the same camera. Reduced motion: no camera at all (the toggle is hidden; the shootout view is set
-  without easing).
+  view. Goal replays are always the close-up. Reduced motion: no camera at all (the toggle is
+  hidden).
 - **Cuts.** When a restart repositions four or more players at once (corners, kick-offs,
   penalties) or places the ball outside the zoomed view, the controller shows a cut — a short
   fade (`.stage-cut`) and a camera snap — instead of tokens sliding across the pitch. Clip
   changes and replays cut the same way.
 - **Moments.** Engine effects are drawn with their labels (shot type, SAVED / PARRIED / TIPPED
-  OVER, FOUL, OFFSIDE, cards, PENALTY; SCORED / SAVED / MISSED in a shootout). The controller
+  OVER, FOUL, OFFSIDE, cards, PENALTY). The controller
   adds captions from events: OFF THE POST! / OFF THE BAR!, JUST WIDE! / JUST OVER!, GREAT SAVE!
   (save `difficulty` ≥ 0.3) / WHAT A SAVE! (≥ 0.6), CHANCE MISSED! (a big chance off target).
   A keeper's `dive` animation is drawn as a save: the token stretches into an ellipse along the

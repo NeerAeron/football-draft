@@ -2,12 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
 import { matchClock } from '../app/core/sim/periods.js';
-import {
-  applyReplayFrame,
-  selectHighlights,
-  snapshot,
-  RECORD_STEP,
-} from '../app/core/sim/replay.js';
+import { applyReplayFrame, selectHighlights, simulateHalf } from '../app/core/sim/replay.js';
 
 // A knockout match that has just reached the end of regulation, level.
 function levelAtFullTime(seed, competition = {}) {
@@ -118,44 +113,38 @@ test('a non-knockout draw stays a draw', () => {
   assert.equal(m.winner(), null);
 });
 
-test('highlights show every shootout kick', () => {
+test('highlights never show the shootout: the reel ends with the final whistle', () => {
   const kicks = Array.from({ length: 12 }, (_, i) => ({
     type: 'shootout',
     kickedAt: 300 + i * 3,
     elapsed: 301 + i * 3,
   }));
   const goals = [50, 120, 200].map(elapsed => ({ type: 'goal', elapsed }));
-  const clips = selectHighlights([...goals, ...kicks], 340, 60);
+  const start = { type: 'shootout-start', elapsed: 298 };
+  const clips = selectHighlights([...goals, start, ...kicks], 340, 60);
   assert.ok(Math.abs(clips.reduce((s, c) => s + c.end - c.start, 0) - 60) < 0.01);
-  for (const e of [...goals, ...kicks])
-    assert.ok(clips.some(c => e.elapsed >= c.start && e.elapsed <= c.end));
+  for (const e of goals) assert.ok(clips.some(c => e.elapsed >= c.start && e.elapsed <= c.end));
+  assert.ok(clips.every(c => c.end <= 298));
 });
 
-test('shootout replays: recorded frames carry the kicks and the result', () => {
-  const m = levelAtFullTime(36),
-    frames = [];
-  m.finishPeriod();
-  frames.push(snapshot(m));
-  for (let i = 1; i < 60 * 400 && !m.finished; i++) {
-    m.step(1 / 60);
-    if (i % RECORD_STEP === 0) frames.push(snapshot(m));
-  }
-  frames.push(snapshot(m));
-  const clips = selectHighlights(m.events, m.elapsed, 60),
-    recording = { frames, clips, result: m },
-    total = clips.reduce((s, c) => s + c.end - c.start, 0);
-  const target = levelAtFullTime(36);
-  applyReplayFrame(target, recording, total - 0.01);
-  // The reel ends on the decisive kick: winner known, all kicks shown.
-  assert.deepEqual(target.shootout, m.shootout);
-  assert.ok(target.shootout.winner !== null);
-  // Mid-shootout frames show the kicks taken so far, at the shootout end.
-  const kick = m.events.find(e => e.type === 'shootout' && e.round === 2);
-  const clip = clips.find(c => kick.elapsed >= c.start && kick.elapsed <= c.end);
-  applyReplayFrame(target, recording, clip.offset + (kick.elapsed - clip.start) + 0.1);
-  assert.equal(target.mode, 'shootout');
-  assert.ok(target.shootout.kicks.length >= 3 && target.shootout.kicks.length <= 4);
-  assert.equal(target.direction(kick.team), 1);
+test('a recorded half stops at the final whistle; the result carries every kick', async () => {
+  const m = levelAtFullTime(37);
+  m.elapsed = m.duration - 2;
+  m.periodStart = m.duration / 2;
+  const { result, frames, clips } = await simulateHalf(m);
+  assert.equal(result.finished, true);
+  assert.ok(result.shootout.winner !== null);
+  assert.ok(result.shootout.kicks.length >= 6);
+  const whistle = result.events.find(e => e.type === 'shootout-start').elapsed;
+  assert.ok(frames.length > 1);
+  assert.ok(frames.every(f => f.mode !== 'shootout' && f.elapsed <= whistle));
+  assert.ok(clips.length > 0 && clips.every(c => c.end <= whistle));
+  // The last picture of the reel is open play, not players lined up for the kicks
+  const target = levelAtFullTime(37);
+  const total = clips.reduce((s, c) => s + c.end - c.start, 0);
+  applyReplayFrame(target, { frames, clips, result }, total);
+  assert.notEqual(target.mode, 'shootout');
+  assert.equal(target.shootout, null);
 });
 
 test('a shootout kick reads like a penalty: set up at once, keeper central, a run-up, a dive', () => {

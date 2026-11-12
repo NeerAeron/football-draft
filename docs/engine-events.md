@@ -195,7 +195,9 @@ With `competition.knockout === true`, a match level after regulation (incl. stop
 extra time when `competition.extraTime === true`) goes to a shootout: `mode` becomes
 `'shootout'`, then `finished` once a winner is known. Kicks alternate, five each then sudden
 death; takers are ordered by penalties + composure (keeper last); each kick is simulated
-physically (keeper dive, ball flight; no follow-ups), so live play and replays show it. All kicks
+physically (keeper dive, ball flight; no follow-ups). The UI does not show that: it steps the
+match to the end and lists the kicks as marks (docs/ui-match.md), and recordings stop at the
+final whistle. All kicks
 are taken at the x = 105 goal (`m.direction()` follows the kicking side). Each kick is set up at
 once (no walking between kicks: the kicker 3.4 m behind the ball, the keeper on his line in the
 middle, the other keeper beside the goal, both teams lined up on halfway) and takes about
@@ -223,6 +225,6 @@ m.shootout = {
 | `RECORD_STEP` | frames are stored every 3 steps (20 per second) |
 | `snapshot(m)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout` |
 | `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved), `momentum` (samples up to the frame) and `shootout`. Returns the 1-based clip number. |
-| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. |
+| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. A penalty shootout is never in a reel: clips end at the `shootout-start` event, and `simulateHalf` / `simulateComplete` record no frames after it (`result.shootout` has the kicks). |
 | `highlightScore(event)` | Interest of a non-goal moment: xG and big chances for shots, near misses and woodwork, save difficulty, red cards and penalties, delivery/take-on strength. `0` = never a highlight. |
 | `performanceRating(player, match)` | 3–10 match rating |

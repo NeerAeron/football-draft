@@ -78,8 +78,6 @@ export function highlightScore(e) {
       return 7;
     case 'yellow':
       return 1.5;
-    case 'shootout':
-      return 6 + (e.decisive ? 4 : 0);
     case 'cross':
     case 'cutback':
     case 'through':
@@ -91,13 +89,16 @@ export function highlightScore(e) {
       return 0;
   }
 }
-// Every penalty-shootout kick is shown: a short clip from the run-up to the outcome.
-const KICK_BEFORE = 1.1,
-  KICK_AFTER = 0.7;
+// A penalty shootout is never part of a reel (the UI shows its kicks as a list of marks):
+// the clips end with the final whistle.
 export function selectHighlights(events, duration, budget = 60) {
+  const pens = events.find(e => e.type === 'shootout-start');
+  if (pens) {
+    duration = Math.min(duration, pens.elapsed);
+    events = events.filter(e => e.elapsed <= duration && !e.type.startsWith('shootout'));
+  }
   budget = Math.min(budget, duration);
   const goals = events.filter(e => e.type === 'goal').sort((a, b) => a.elapsed - b.elapsed);
-  const kicks = events.filter(e => e.type === 'shootout');
   const merge = list => {
     const out = [];
     for (const c of list.sort((a, b) => a.start - b.start)) {
@@ -108,19 +109,9 @@ export function selectHighlights(events, duration, budget = 60) {
     return out;
   };
   const total = list => list.reduce((s, c) => s + c.end - c.start, 0);
-  // Kicks may use up to 60% of the reel; a very long shootout trims each run-up.
-  const kickSpan = e => Math.max(0.3, e.elapsed - (e.kickedAt ?? e.elapsed));
-  const natural = kicks.reduce((s, e) => s + kickSpan(e) + KICK_BEFORE + KICK_AFTER, 0),
-    squeeze = natural > budget * 0.6 ? (budget * 0.6) / natural : 1;
-  const kickClips = kicks.map(e => {
-    const end = Math.min(duration, e.elapsed + KICK_AFTER * squeeze),
-      start = Math.max(0, end - (kickSpan(e) + KICK_BEFORE + KICK_AFTER) * squeeze);
-    return { start, end };
-  });
-  const kickTime = total(merge(kickClips.map(c => ({ ...c }))));
   // Goals and red cards are always shown: they share the reel when there are many.
   const reds = events.filter(e => e.type === 'red'),
-    perGoal = Math.min(8, (budget - kickTime) / Math.max(1, goals.length + reds.length)),
+    perGoal = Math.min(8, budget / Math.max(1, goals.length + reds.length)),
     perRed = Math.min(5, perGoal);
   let clips = merge([
     ...goals.map(e => ({
@@ -131,7 +122,6 @@ export function selectHighlights(events, duration, budget = 60) {
       start: clamp(e.elapsed - perRed * 0.6, 0, duration - perRed),
       end: clamp(e.elapsed - perRed * 0.6, 0, duration - perRed) + perRed,
     })),
-    ...kickClips,
   ]);
   const candidates = events
     .map(e => ({ e, score: highlightScore(e) }))
@@ -185,14 +175,19 @@ export async function simulateComplete(
       const before = m.mode;
       m.step(1 / 60);
       ticks++;
-      if (record && (ticks % RECORD_STEP === 0 || (before !== m.mode && m.mode === 'halftime')))
+      if (
+        record &&
+        m.mode !== 'shootout' &&
+        (ticks % RECORD_STEP === 0 || (before !== m.mode && m.mode === 'halftime'))
+      )
         frames.push(snapshot(m));
     }
     if (cancelled()) return null;
     onProgress(clamp(m.elapsed / m.expectedDuration(), 0, 1));
     await new Promise(resolve => setTimeout(resolve, 0));
   }
-  if (record && frames.at(-1)?.elapsed !== m.elapsed) frames.push(snapshot(m));
+  // A shootout is not recorded (nobody replays it): those frames end at the final whistle.
+  if (record && !m.shootout && frames.at(-1)?.elapsed !== m.elapsed) frames.push(snapshot(m));
   return { result: m, frames, clips: record ? selectHighlights(m.events, m.elapsed, 60) : [] };
 }
 // A structured clone of a Match (plain data) → a working Match with the same state.
@@ -231,13 +226,13 @@ export async function simulateHalf(source, onProgress = () => {}, cancelled = ()
     for (let i = 0; i < 600 && !m.finished && m.mode !== 'halftime'; i++) {
       m.step(1 / 60);
       ticks++;
-      if (ticks % RECORD_STEP === 0) frames.push(snapshot(m));
+      if (ticks % RECORD_STEP === 0 && m.mode !== 'shootout') frames.push(snapshot(m));
     }
     if (cancelled()) return null;
     onProgress(clamp((m.elapsed - start) / (m.periodDeadline() - start), 0, 1));
     await new Promise(resolve => setTimeout(resolve, 0));
   }
-  if (frames.at(-1).elapsed !== m.elapsed) frames.push(snapshot(m));
+  if (!m.shootout && frames.at(-1).elapsed !== m.elapsed) frames.push(snapshot(m));
   const events = m.events
     .filter(e => e.half === half)
     .map(e => ({ ...e, elapsed: e.elapsed - start }));

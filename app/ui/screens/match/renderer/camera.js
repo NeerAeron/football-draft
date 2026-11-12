@@ -7,8 +7,8 @@
 //   cam.update(dt, match, 'follow', 1.5);   // every frame → cam.rect (world rectangle)
 //   cam.snap();                             // the next update jumps (cuts, replays)
 //
-// Modes: 'wide' (the whole pitch), 'follow', 'shootout' (the penalty close-up).
-import { WORLD, SHOOTOUT_CAMERA, fullView } from './geometry.js';
+// Modes: 'wide' (the whole pitch) and 'follow'.
+import { WORLD, fullView } from './geometry.js';
 
 const W = 105,
   H = 68;
@@ -104,13 +104,6 @@ export class ActionCamera {
     this.tz = 1;
   }
 
-  aimShootout() {
-    const r = SHOOTOUT_CAMERA[this.orientation === 'portrait' ? 'portrait' : 'landscape'];
-    this.tx = (r.x0 + r.x1) / 2;
-    this.ty = (r.y0 + r.y1) / 2;
-    this.tz = this.fit(r.x1 - r.x0, r.y1 - r.y0);
-  }
-
   /** Where a follow camera wants to be for this match state. */
   aimFollow(m, base) {
     const b = m.ball;
@@ -185,8 +178,7 @@ export class ActionCamera {
    * `base` is the follow zoom (CAMERA_ZOOM.follow, lower at 2× / 4× playback).
    */
   update(dt, m, mode = 'wide', base = CAMERA_ZOOM.follow) {
-    if (mode === 'shootout') this.aimShootout();
-    else if (mode === 'follow' && m) this.aimFollow(m, base * this.slack);
+    if (mode === 'follow' && m) this.aimFollow(m, base * this.slack);
     else this.aimWide();
     if (this.pending) {
       this.pending = false;
