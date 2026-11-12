@@ -15,7 +15,7 @@ import { overallRating } from '../app/core/players/ratings.js';
 import { normalizeBadges } from '../app/core/players/badges.js';
 import { explicitEvidence } from '../app/core/players/catalog-derived.js';
 
-export const LEGEND_MINIMUM = 83;
+export const LEGEND_MINIMUM = 85;
 export const PRIME_GAP = 3;
 export const PRIME_MINIMUM = 88;
 export const LEGACY = {
