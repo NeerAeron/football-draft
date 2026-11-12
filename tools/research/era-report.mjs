@@ -3,6 +3,8 @@
 // eras, the all-time top — and, with a nation and an era, that pool.
 //   node tools/research/era-report.mjs                 the summary
 //   node tools/research/era-report.mjs 2002 Brazil     one pool
+//   node tools/research/era-report.mjs --strength      Markdown: each era's top 10 players and
+//                                                      how strong the eras are next to each other
 import { readFile } from 'node:fs/promises';
 import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
 import { PATHS } from '../../scripts/data/paths.mjs';
@@ -25,7 +27,43 @@ const shown = p => overallRating(p, true, p.primaryPosition),
   ),
   [eraId, nation] = process.argv.slice(2);
 
-if (eraId && nation) {
+if (eraId === '--strength') {
+  const mean = list => (list.reduce((sum, v) => sum + v, 0) / list.length).toFixed(1),
+    rows = [],
+    out = ['# Era pools: the top 10 of each era and how strong the eras are', ''];
+  for (const era of eraList(catalog)) {
+    const cards = era.nations
+      .flatMap(n => eraPool(catalog, era.id, n.name))
+      .map(p => ({ p, rating: shown(p) }))
+      .sort((a, b) => b.rating - a.rating || (b.p.year ?? 2026) - (a.p.year ?? 2026));
+    out.push(
+      `## ${era.label} (ratings of ${era.from}–${era.to}; ${era.nations.length} nations)`,
+      '',
+      '| # | player | nation | card | position | rating |',
+      '| --- | --- | --- | --- | --- | --- |',
+      ...cards
+        .slice(0, 10)
+        .map(
+          ({ p, rating }, i) =>
+            `| ${i + 1} | ${p.name} | ${p.source.nationality} | ${p.year ? editionLabel(p) : 'today'} | ${p.primaryPosition} | ${rating} |`,
+        ),
+      '',
+    );
+    const top = n => mean(cards.slice(0, n).map(c => c.rating)),
+      nations = n => mean(era.nations.slice(0, n).map(x => x.strength));
+    rows.push(
+      `| ${era.label} | ${top(10)} | ${top(50)} | ${top(200)} | ${nations(10)} | ${nations(20)} | ${cards.filter(c => c.rating >= 90).length} | ${cards.filter(c => c.rating >= 85).length} | ${cards.length} |`,
+    );
+  }
+  out.push(
+    '## Relative strength',
+    '',
+    '| era | top 10 | top 50 | top 200 | best XI, 10 strongest nations | best XI, 20 strongest | 90+ | 85+ | cards |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...rows,
+  );
+  console.log(out.join('\n'));
+} else if (eraId && nation) {
   for (const p of eraPool(catalog, eraId, nation)) {
     const best = bestVersion(catalog, p);
     console.log(

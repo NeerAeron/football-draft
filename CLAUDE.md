@@ -146,7 +146,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `baseProfileId`, `editionLabel`: the UI shows the year of that version's ratings (1997–2025)
   — stored with it, never the edition; a legend can be a catalog player's best past version,
   `legendOf`, when it shows at least 2 more than today's card), `eras-codec.js` + `eras.js`
-  (era pools for the two-spinner draft: `ERAS` (eight World Cup cycles, 1998 … 2026),
+  (era pools for the two-spinner draft: `ERAS` (eight World Cup cycles named by their hosts, France 98 … USA/Canada/Mexico 26, each with a `short` label for reels and chips),
   `attachEras` puts them on `catalog.eras`, `eraList` (an era's spinnable nations and their
   strength), `eraPool(catalog, eraId, nation)` (≤ 26, best first), `eraPlayer`, `personId` (one
   man on all his cards), `personVersions`, `bestVersion` (the Prime: his best card of all
@@ -382,17 +382,19 @@ weak foot for the early titles). It is stamped with the catalog build (`catalog.
 and the badge configuration, so rebuild both files together.
 
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
-player table; 12,274 cards, 2.4 MB / 0.70 MB gzip; fetched by `services/eras.js` with a draft)
+player table; 12,486 cards, 2.4 MB / 0.71 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
 `scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
 2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
 version inside the era (the same overalls and cards as above; 3 keepers and at least 7
 defenders, 7 midfielders, 4 forwards where the nation has them; no minimum rating). A catalog
 player is in the 2026 pool as he is unless an FC 24–26 version shows more. A nation can be spun
-in an era when its pool has 18 players with a keeper, 5 defenders, 5 midfielders and 2
-forwards; the 70 strongest when more qualify (27 / 52 / 61 / 65 / 70 / 70 / 70 / 70 nations;
+in an era when its pool has 18 players, 5 defenders, 5 midfielders and 2 forwards — no
+goalkeeper required (`keepers` says how many a pool has; the draft's guards make sure one can
+be drafted; a keeperless pool's strength takes the era's weakest first-choice keeper,
+`keeperLevel`); the 70 strongest when more qualify (27 / 54 / 62 / 70 / 70 / 70 / 70 / 70 nations;
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
-file (585 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
+file (601 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
 independent; both are stamped with the catalog build. **Captains** come from the reviewed
 list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
 
