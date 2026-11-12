@@ -9,9 +9,12 @@
 //     primes: Map(profileId of the catalog player → his prime version),
 //     byId: Map(profileId → legend | prime version),
 //   }
-// A legend is shaped like a catalog player plus `legend: true`, `edition` (15–23) and `year`
-// (the year of that version's ratings); his `source` has today's nation name and, when his
-// club of that edition is in the catalog, that club (so he is a club mate). A legend can be the
+// A legend is shaped like a catalog player plus `legend: true`, `edition` (the title's number:
+// 98, 99, 0–23 for FIFA 98 … FIFA 23) and `year` (the year of that version's ratings,
+// 1997–2022); his `source` has today's nation name and, when his club of that edition is in
+// the catalog, that club (so he is a club mate). His card shows the overall EA gave him that
+// year (FIFA 98–08 printed none: theirs is chain-linked to FIFA 09's scale by the compiler),
+// so the best of all time stand above today's cards. A legend can be the
 // best past version of a player who IS in the catalog: `legendOf` is that player's profileId,
 // and the two are one person (baseProfileId) — an XI holds him once. A prime version is the
 // catalog player with the attributes, positions, badges and rating of that edition: `prime:
@@ -75,20 +78,25 @@ export const primeVersion = (catalog, p) =>
  * version count as the current player (an XI holds a person once; opponents never field him).
  */
 export const baseProfileId = p => p.primeOf ?? p.legendOf ?? p.profileId;
+// A title comes out in the autumn before its number: FIFA 19 in September 2018, FIFA 98 in
+// 1997, FIFA 2000 (edition 0) in 1999.
+const releaseYear = edition =>
+  Number.isInteger(edition) && edition >= 0 ? (edition >= 90 ? 1899 : 1999) + edition : null;
 /**
- * The year of a legend or prime version: the year of the ratings snapshot it was compiled from
- * (`year`, stored by the compiler from the source row's date). Takes a player, a version
- * summary ({ year, edition }) or a bare edition number. Without a stored year the release
- * snapshot is assumed: a FIFA edition comes out in the autumn before its number (FIFA 19 in
- * September 2018).
+ * The year of a legend or prime version: the year of the ratings it was compiled from (`year`,
+ * stored by the compiler: the source row's date, or the title's release year). Takes a player,
+ * a version summary ({ year, edition }) or a bare edition number. Without a stored year the
+ * release ratings are assumed.
  */
 export function editionYear(version) {
   if (version == null) return null;
-  if (typeof version === 'object')
-    return version.year ?? (version.edition ? 1999 + version.edition : null);
-  return version ? 1999 + version : null;
+  if (typeof version === 'object') return version.year ?? releaseYear(version.edition);
+  return releaseYear(version);
 }
-/** "’18" for a version of 2018 (FIFA 19): what the game shows, never the edition. */
+/**
+ * "’18" for a version of 2018 (FIFA 19), "’97" for one of 1997 (FIFA 98): what the game shows,
+ * never the edition. Two digits tell every year of the data apart (1997–2022).
+ */
 export function editionLabel(version) {
   const year = editionYear(version);
   return year ? `’${String(year % 100).padStart(2, '0')}` : '';

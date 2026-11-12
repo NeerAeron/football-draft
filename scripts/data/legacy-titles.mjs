@@ -202,6 +202,17 @@ const NO_CLUB = new Set(['NG - FA']); // national-team players without a license
 export const isRepresentative = (team, edition) =>
   REPRESENTATIVE.has(team) || (edition === 0 && CLASSIC_2000.test(team));
 
+// Invented names EA gave a player it had no licence for, under an id of their own: the rows
+// are the real player's (same club, nation and birth year; the day and month swapped), and
+// the invented name is never shown. "Teodor Petrovici" (FIFA 07) and "Andrei Murgu"
+// (FIFA 08–13) are Adrian Mutu.
+const ALIASES = new Map([
+  [177848, 21195],
+  [184410, 21195],
+]);
+// An unlicensed stand-in ("No 9", "No. 11") is not a name either.
+const STAND_IN = /^no\.?\s*\d+$/i;
+
 const TRAITS = {
   comesforcrosses: 'Comes For Crosses',
   divesintotackles: 'Dives Into Tackles (AI)',
@@ -275,7 +286,8 @@ function names(row) {
 /**
  * The file → { source, titles: [{ title, edition, year, ranking, scale, sourceFile, pool,
  * fields, keeper, players }] }. `fields` says which skills of the title make each compiler
- * column (`keeper`: a keeper's number). A player: { id, edition, year, rank, name, fullName,
+ * column (`keeper`: a keeper's number). A player: { id, standIn (his name here is not his),
+ * edition, year, rank, name, fullName,
  * teams[], teamIds[], clubs[] / clubIds[] (without the representative squads),
  * representativeOnly, nationName, nationCode, positions[] (the game's, primary first), label
  * (the title's), born, age, foot, weakFoot, overall (stored, FIFA 09–14, else null), native:
@@ -305,7 +317,8 @@ export function decodeLegacyTitles(file) {
       for (const f of SKILL_FIELDS)
         native[f] = fields[f] === null ? NEUTRAL[f] : mean(row, fields[f]);
       return {
-        id: row.playerid,
+        id: ALIASES.get(row.playerid) ?? row.playerid,
+        standIn: ALIASES.has(row.playerid) || STAND_IN.test(String(row.name).trim()),
         title: t.title,
         edition,
         year,

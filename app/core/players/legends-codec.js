@@ -1,6 +1,6 @@
-// Legends file format v1 (app/data/legends.v1.json): the Legends (best past versions: of
-// players who are not in the catalog, and of catalog players who were better then) and the
-// Prime versions of catalog players, columnar like the catalog
+// Legends file format v1 (app/data/legends.v1.json): the Legends (best past versions,
+// FIFA 98–23: of players who are not in the catalog, and of catalog players who were better
+// then) and the Prime versions of catalog players, columnar like the catalog
 // (catalog-codec.js). Pure: no DOM, no fetch, no CONFIG. `encodeLegends` writes the layout,
 // `decodeLegends` rebuilds the same objects; players/legends.js attaches them to a catalog.
 //
@@ -11,8 +11,9 @@
 //   attributeKeys[K], tendencyKeys[T], dictionaries { positions[], badges[] }
 //   precomputed { badges }                 config stamp of the normalised badges
 //   nations[]                              nation names (catalog spelling) legends.nation indexes
-//   legends { count, sourceId[], edition[], year[] (the year of that version's ratings
-//             snapshot), name[], fullName[], club[] (catalog team id, 0 = none), nation[],
+//   legends { count, sourceId[] (EA's player id), edition[] (the title's number: 98, 99,
+//             0–23), year[] (the year of that version's ratings), name[], fullName[], club[]
+//             (catalog team id, 0 = none), nation[],
 //             current[] (1 = the player is in the catalog: `legendOf`), position, secondary[],
 //             foot, weakFoot[], sourceOverall[], attrs[K*N], tendencies[T*N], tags[],
 //             evidence[], evidenceConfidence[] }
