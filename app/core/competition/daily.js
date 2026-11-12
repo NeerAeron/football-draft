@@ -5,7 +5,14 @@
 import { DEFAULT_CONFIG } from '../config/config.js';
 import { lcg } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import { catalogIndex, draftRules, callUps, roleRating, isKeeper } from '../draft/pools.js';
+import {
+  catalogIndex,
+  draftRules,
+  callUps,
+  roleRating,
+  isKeeper,
+  selectable,
+} from '../draft/pools.js';
 import { seedValue } from '../draft/session.js';
 import { chooseOpponent } from '../draft/opponents.js';
 import { cupOffsets } from './cup.js';
@@ -189,7 +196,8 @@ function bestFromNations(index, nations, roles, rules) {
   let states = new Map([[0, 0]]);
   for (const [name, c] of counts) {
     const n = rules.nations,
-      squad = callUps(index.nations.get(name), () => true, {
+      // What the draft offered: only players it may offer (draft.pickMinimum).
+      squad = callUps(index.nations.get(name), p => selectable(p, rules.pickMinimum), {
         ...n,
         squadSize: n.squadSize + c - 1,
         squadDefenders: n.squadDefenders + c - 1,

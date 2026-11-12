@@ -221,7 +221,8 @@ test('oddsSummary reports uniform nation odds and tiered league odds honestly', 
   const nations = createDraftSession(catalog, { mode: 'nations', seed: 2 });
   const [n] = oddsSummary(nations.spin());
   assert.equal(n.uniform, true);
-  assert.equal(n.eligible, 64);
+  assert.equal(n.eligible, n.total); // every nation of the reel, each as likely as the next
+  assert.ok(n.eligible >= 56);
   const clubs = createDraftSession(catalog, { mode: 'clubs', seed: 2 });
   const [league, club] = oddsSummary(clubs.spin());
   assert.equal(league.uniform, false);

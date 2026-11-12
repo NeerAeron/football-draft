@@ -16,6 +16,7 @@ import {
   roleRating,
   roleFit,
   naturalRating,
+  selectable,
   isKeeper,
   LINE_OF,
 } from './pools.js';
@@ -143,6 +144,8 @@ export class DraftSession {
     // slots (`bands`, null when off).
     this.tiers = budgetBands(this.rules.budget);
     this.bands = this.options.budget ? this.tiers : null;
+    // Only players shown at this rating or more are offered (0: a draft saved before the rule).
+    this.pickMinimum = this.rules.pickMinimum ?? 0;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
     this.primesPerSide =
       this.options.primes === true
@@ -217,9 +220,15 @@ export class DraftSession {
   #taken(p) {
     return this.used.has(p.profileId) || this.used.has(baseProfileId(p));
   }
+  /**
+   * This draft may offer him: selectable (rules.pickMinimum), not drafted, not excluded. Every
+   * pool and every guard of a spin goes through here, so nobody under the minimum is ever
+   * listed and a spin never lands where only such players are left.
+   */
   available(p) {
     const s = p.source || {};
     return (
+      selectable(p, this.pickMinimum) &&
       !this.#taken(p) &&
       !this.excluded.players.has(p.profileId) &&
       !this.excluded.players.has(baseProfileId(p)) &&

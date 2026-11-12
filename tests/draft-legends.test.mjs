@@ -344,12 +344,15 @@ test('with only the goalkeeper slot left, a spin lands only where a keeper is av
     if (stuck) continue;
     assert.deepEqual(s.openClasses(), { gk: true, out: false });
     const check = spin => {
-      const used = new Set(s.picks[0].filter(Boolean));
       for (const o of spin.reels[0].options) {
+        // A keeper the draft may offer (65+), not taken, and affordable in Budget mode.
         const nation = index.nations.get(o.id),
-          able = keepers(nation).some(p => !used.has(p.profileId) && s.affordable(p));
+          able = keepers(nation).some(
+            p => shown(p) >= s.pickMinimum && s.available(p) && s.affordable(p),
+          );
         assert.equal(o.weight > 0, able && !s.seen.slice(0, -1).includes(o.id), o.id);
       }
+      assert.ok(s.snapshot().pool.every(e => e.ovr >= 65));
       const pool = s.snapshot().pool;
       assert.ok(
         pool.some(e => e.available && e.position === 'GK'),

@@ -64,6 +64,13 @@ export function naturalRating(p) {
   const t = table(p);
   return t[24] === t[24] ? t[24] : (t[24] = overallRating(p, false, p.primaryPosition));
 }
+/**
+ * A draft may offer this player: the game shows him at `minimum` or more at his own position
+ * (`draft.pickMinimum`; 0 or none = everyone). Legends and prime versions are not asked.
+ * Only drafts ask: a team's XI (an opponent, a club, a nation) keeps its real players.
+ */
+export const selectable = (p, minimum) =>
+  !minimum || !!p.legend || !!p.prime || Math.round(naturalRating(p)) >= minimum;
 /** Highest natural rating first; ties by profileId (total order, deterministic). */
 export const byNatural = (a, b) =>
   naturalRating(b) - naturalRating(a) || (a.profileId < b.profileId ? -1 : 1);
@@ -198,7 +205,13 @@ export function lineupRating(players, formation) {
 
 // ---- catalog index --------------------------------------------------------------------
 const rulesStamp = rules =>
-  JSON.stringify([rules.nations, rules.clubs, rules.minimumLeaguePlayers, CONFIG.ai.minimumFit]);
+  JSON.stringify([
+    rules.nations,
+    rules.clubs,
+    rules.minimumLeaguePlayers,
+    rules.pickMinimum ?? 0,
+    CONFIG.ai.minimumFit,
+  ]);
 const indexes = new WeakMap();
 /** The draft rules a session snapshots (defaults: the live CONFIG.draft). */
 export function draftRules(source = CONFIG.draft) {
@@ -213,6 +226,8 @@ export function draftRules(source = CONFIG.draft) {
     primes: source.primes,
     budget: source.budget,
     minimumLeaguePlayers: source.minimumLeaguePlayers,
+    // Rules saved before the minimum existed have none: such a draft offers everyone.
+    pickMinimum: source.pickMinimum ?? 0,
   });
 }
 /**
@@ -269,6 +284,13 @@ function* buildIndex(catalog, rules) {
     });
   }
   const n = rules.nations;
+  // Players a draft may offer (rules.pickMinimum): what a spin's pool is made of. Whether a
+  // nation or a club is a team — playable, its strength, its XI — never asks.
+  const pickable = list => {
+    let count = 0;
+    for (const p of list) if (selectable(p, rules.pickMinimum)) count++;
+    return count;
+  };
   const eligible = [];
   for (const nation of nations.values()) {
     if (nation.players.length < n.minimumPlayers || nation.goalkeepers < n.minimumGoalkeepers)
@@ -299,7 +321,7 @@ function* buildIndex(catalog, rules) {
       .filter(
         nation =>
           !isPlayable.has(nation) &&
-          nation.players.length >= reelPlayers &&
+          pickable(nation.players) >= reelPlayers &&
           nation.players.some(p => Math.round(naturalRating(p)) >= reelStar),
       )
       .map(nation => {
@@ -362,8 +384,9 @@ function* buildIndex(catalog, rules) {
           };
         })
         .sort((a, b) => b.strength - a.strength || a.name.localeCompare(b.name));
+      // A club spin needs a squad to choose from: that many players a draft may offer.
       league.spinnableClubs = league.clubs.filter(
-        c => c.players.length >= rules.clubs.minimumPlayers,
+        c => pickable(c.players) >= rules.clubs.minimumPlayers,
       );
       return league;
     })

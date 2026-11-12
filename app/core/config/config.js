@@ -5,6 +5,11 @@ export const DEFAULT_CONFIG = {
   draft: {
     // A league needs this many players to be drawn (Leagues, Clubs, Club & Country).
     minimumLeaguePlayers: 5,
+    // Drafts offer only players the game shows at this rating or more at their own position
+    // (the rounded number on the card): in every draft pool, every guard that asks "can this
+    // spin still fill an open slot", and the Daily's perfect XI. Teams are not drafts: the XIs
+    // of opponents, clubs and nations keep their real players whatever they are rated.
+    pickMinimum: 65,
     // Nations: a nation is playable — on the reel, met as an opponent — when it can field an
     // XI (>= minimumPlayers, >= minimumGoalkeepers and a best XI with nobody under the
     // engine's minimum fit, ai.minimumFit). `fieldSize` / `potSize` are only the real World Cup
@@ -865,6 +870,7 @@ const DRAFT_FIELDS = {
   'draft.nations.reelStar': ['Reel nation without an XI: best player at least', 60, 99, 1],
   'draft.nations.reelPlayers': ['Reel nation without an XI: minimum players', 1, 30, 1],
   'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
+  'draft.pickMinimum': ['Draft: a player can be picked from this rating', 0, 85, 1],
   'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
   'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
   'draft.nations.squadGoalkeepers': ['Call-ups: goalkeepers', 1, 5, 1],
