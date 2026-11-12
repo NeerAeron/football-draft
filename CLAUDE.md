@@ -300,7 +300,9 @@ python3 -I tools/research/legacy-titles.py <legends-98-14.xlsx> data/legacy-titl
 version keeps the overall EA printed (FIFA 09–23 — never pulled down to today's cards: the
 all-time best stand above them), and a title that printed none (FIFA 98–08) is chain-linked to
 the next one through the players both have, so that they carry on average and in spread what
-the next title gives them (FIFA 08 against 09 … back to 98; no ranking, no forced top). The
+the next title gives them (FIFA 08 against 09 … back to 98; no ranking, no forced top). FC 27
+is the baseline, not a ceiling: a title whose 30 best average less than FC 27's (FIFA 09–16,
+and 98–08 through FIFA 09) is lifted by that difference at the top, fading to nothing at 84. The
 card then has the skills of its year, moved together until the game's `overallRating` shows
 that overall, so every threshold is in the rating a card shows: a player's **best version** is
 his highest overall (ties → the latest title); **legends** = best versions shown 85+, of players

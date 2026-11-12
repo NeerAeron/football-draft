@@ -6,6 +6,9 @@
 //     it (scripts/legends-calibration.mjs). Its card has the skills of that year, moved
 //     together by the few points that make the game's own rating model show that overall —
 //     so every threshold below is in the rating a card shows.
+//   * FC 27 is the baseline of the scale: a title whose best players EA rated lower than it
+//     rates today's (FIFA 09–16, and FIFA 98–08 through the chain) is lifted at the top by
+//     that difference; no title is lowered.
 //   * One person, all his versions: EA's player id ties FIFA 2000–23 and the catalog together;
 //     FIFA 98/99 rows join by name and team. Best version = the highest overall; ties → the
 //     latest title (the richer data).
@@ -39,6 +42,10 @@ import {
 } from './legends-calibration.mjs';
 
 export const LEGEND_MINIMUM = 85;
+// The lift of a stingy title (see `lifts` below): measured on the title's LIFT_TOP best,
+// nothing under LIFT_FROM, in full from the level of those best.
+export const LIFT_TOP = 30;
+export const LIFT_FROM = 84;
 export const LEGACY = {
   url: 'https://huggingface.co/datasets/jsulz/FIFA23',
   author: 'jsulz',
@@ -54,6 +61,7 @@ export const TITLES = {
 export const SELECTION = {
   overall:
     'EA’s printed overall (FIFA 09–23); FIFA 98–08 print none and are chain-linked to the next title through the players both have',
+  lift: `A title whose ${LIFT_TOP} best are rated lower on average than FC 27's is lifted by the difference (never lowered): in full from the level of those best, fading to nothing at ${LIFT_FROM}; FIFA 98–08 carry the lift of FIFA 09, whose scale they are linked to`,
   card: 'The skills of that year, moved together until the game shows that overall',
   bestVersion: 'Highest overall; ties: the latest title',
   legends: `Best versions shown ${LEGEND_MINIMUM}+: players who are not in the catalog, and catalog players whose card today shows less; of a catalog nation; the club of that title when it is in the catalog`,
@@ -263,16 +271,62 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     }
     return null;
   };
+  // ---- the lift ---------------------------------------------------------------------------
+  // EA printed lower numbers for its best players in some years than it does today (FIFA
+  // 09–16: one to two points at the top), and the chain hands FIFA 09's scale down to FIFA
+  // 98–08. FC 27 is the baseline: a title whose LIFT_TOP best average less than FC 27's is
+  // lifted by the difference — one constant per title, never a lowering (FIFA 17–23 stay as
+  // printed). The lift is for the top: in full from the level of the title's best, fading to
+  // nothing at LIFT_FROM, so the ordinary players of a lifted year do not become legends.
+  const topMean = list => {
+    const best = [...list].sort((a, b) => b - a).slice(0, LIFT_TOP);
+    return best.reduce((sum, v) => sum + v, 0) / best.length;
+  };
+  const baseline = topMean(catalog.players.map(p => p.sourceOverall)),
+    printed = new Map(); // edition → the printed overalls of the title
+  for (const row of legacyRows) {
+    const edition = Number(row.fifa_version);
+    if (!printed.has(edition)) printed.set(edition, []);
+    printed.get(edition).push(Number(row.overall));
+  }
+  const official = older.titles.filter(t => t.players[0].overall != null);
+  for (const t of official)
+    printed.set(
+      t.edition,
+      t.players.filter(p => p.given != null).map(p => p.overall),
+    );
+  const lifts = new Map();
+  for (const [edition, list] of printed) {
+    const top = topMean(list);
+    lifts.set(edition, { lift: Math.max(0, Math.round((baseline - top) * 100) / 100), full: top });
+  }
+  // The chain titles are on the scale of the first official title: its lift, not a second one.
+  for (const t of older.titles)
+    if (!lifts.has(t.edition) && official.length)
+      lifts.set(t.edition, lifts.get(official[0].edition));
+  const lifted = (edition, overall) => {
+    const { lift, full } = lifts.get(edition) ?? { lift: 0 };
+    if (!lift) return overall;
+    const share = Math.max(0, Math.min(1, (overall - LIFT_FROM) / (full - LIFT_FROM)));
+    return overall + lift * share;
+  };
   // ---- versions --------------------------------------------------------------------------
   const versions = one => [
     ...one.old
       .filter(p => p.given != null)
-      .map(p => ({ old: p, year: p.year, edition: p.edition, overall: Math.round(p.given) })),
+      .map(p => ({
+        old: p,
+        year: p.year,
+        edition: p.edition,
+        printed: Math.round(p.given),
+        overall: Math.round(lifted(p.edition, p.given)),
+      })),
     ...one.legacy.map(entry => ({
       entry,
       year: snapshotYear(entry.row),
       edition: Number(entry.row.fifa_version),
-      overall: Number(entry.row.overall),
+      printed: Number(entry.row.overall),
+      overall: Math.round(lifted(Number(entry.row.fifa_version), Number(entry.row.overall))),
     })),
   ];
   const bestVersion = one => {
@@ -342,6 +396,7 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
   const card = (one, v, suffix, count) => {
     const inference = {},
       note = { overall: v.overall };
+    if (v.overall !== v.printed) note.lifted = v.overall - v.printed;
     let row, position, skills, index;
     if (v.entry) {
       row = { ...v.entry.row };
@@ -502,7 +557,23 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     legends,
     primes,
     stats,
-    calibration: { yardstick, links, pool, poolYears: POOL_YEARS },
+    calibration: {
+      yardstick,
+      links,
+      pool,
+      poolYears: POOL_YEARS,
+      lift: {
+        baseline: Math.round(baseline * 100) / 100,
+        top: LIFT_TOP,
+        from: LIFT_FROM,
+        titles: Object.fromEntries(
+          [...lifts].map(([edition, l]) => [
+            edition >= 90 ? `FIFA ${edition}` : `FIFA ${String(edition).padStart(2, '0')}`,
+            l.lift,
+          ]),
+        ),
+      },
+    },
     notes,
   };
 }

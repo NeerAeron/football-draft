@@ -172,12 +172,13 @@ precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 407 legends — best past versions of 1997–2022 the game shows at 85+: 314
+draft starts) holds 411 legends — best past versions of 1997–2022 the game shows at 85+: 318
 players who are not in the catalog and 93 catalog players who were better then — and the prime
 versions of 2,814 catalog players (any gain on today's card), compiled by the same compiler. A
-past version shows the overall EA gave it that year (Messi ’19 and Cristiano Ronaldo ’18 are
-the top cards at 94); FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through
-the players neighbouring titles share (Ronaldo ’03 92, Zidane ’03 and Ronaldinho ’05 91). A draft
+past version shows the overall EA gave it that year, lifted at the top where EA rated its best
+lower than it does today (FIFA 09–16; never lowered): Messi ’15 95, Cristiano Ronaldo ’18 94.
+FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through the players
+neighbouring titles share (Ronaldo ’03 94, Zidane ’03 and Ronaldinho ’05 92). A draft
 offers only players shown at 65 or more (10,968 of the 15,788); teams field their real players.
 
 ## Deploy

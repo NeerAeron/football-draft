@@ -74,13 +74,13 @@ Budget — not Quick Match, Versus or the Daily). The side's first spin lands on
 legend and offers that nation's legends; the other ten spins are ordinary. Legends are the
 players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
 **best past versions (26 titles, FIFA 98–23: the ratings of 1997–2022) the game shows at
-`legends.minimum` (85) or more** — the rating on the card. Two kinds, 407 in all:
+`legends.minimum` (85) or more** — the rating on the card. Two kinds, 411 in all:
 
-- 314 **players of the past**, who are not in the catalog (Ronaldo ’03 92, Xavi ’11 92,
-  Buffon ’07 92, Zidane ’03, Ronaldinho ’05 and Henry ’04 91, Neymar ’19 92, Kaká ’08 90);
+- 318 **players of the past**, who are not in the catalog (Ronaldo ’03 94, Xavi ’11 and
+  Buffon ’07 93, Zidane ’03, Ronaldinho ’05 and Henry ’04 92, Neymar ’19 92, Kaká ’08 91);
 - 93 **current players at their best** (`legendOf` = the catalog player's `profileId`): a
   catalog player's best version when it shows 85+ and more than his card today, however far
-  apart the two are (Messi ’19 94 for 89 today; Neuer ’17 92 for 81). A player whose card
+  apart the two are (Messi ’15 95 for 89 today; Neuer ’17 92 for 81). A player whose card
   today is his best is just a normal pick.
 
 **What a past version is rated** (the compiler, `scripts/legends-calibration.mjs`): its overall
@@ -91,12 +91,18 @@ above today's cards, nothing is pulled down to them). FIFA 98–08 printed none:
 chain-linked to the next title through the players both have (FIFA 08 against 09, 07 against
 08, … back to 98) so that those players carry, on average and in spread, what the next title
 gives them, less a year of ageing — real differences between years survive, no year's best is
-forced to a number. FIFA 98–2003 have 8 to 16 levels and 8 to 17 skills and cannot tell a star
+forced to a number. **FC 27 is the baseline of the scale, never a ceiling**: EA printed lower
+numbers for its best players in FIFA 09–16 than it does today, so a title whose 30 best average
+less than FC 27's (89.03) is lifted by the difference — FIFA 09 +1.2, 10 +1.77, 11 +2.33, 12
++0.87, 13 +1.07, 14 +1.37, 15 +1.43, 16 +1.23; FIFA 98–08 carry FIFA 09's +1.2, the scale they
+are linked to; FIFA 17–23 are at or above and stay as printed. The lift is for the top: in full
+from the level of the title's best, fading to nothing at 84 (it makes four more legends, not a
+flood). A card's `sourceOverall` is this lifted overall. FIFA 98–2003 have 8 to 16 levels and 8 to 17 skills and cannot tell a star
 from a good player on their own (their ratings agree with the next data generation's about a
 third as well as two official titles agree): such a card is rated by what all the data
 generations within three years say about the player, weighed by that measured trust, and a
-player whom only one coarse generation knows gets none. So 221 legends are from FIFA 98–14 (146
-from the chain), but only 7 from before 2003 (Denilson ’97 86 the oldest), and keepers start
+player whom only one coarse generation knows gets none. So 227 legends are from FIFA 98–14 (152
+from the chain), but only 8 from before 2003 (Denilson ’97 86 the oldest), and keepers start
 with FIFA 2005 (the first title with three keeper skills). Classic and all-star squads
 (Classic XI, World XI, FIFA 2000's classic teams) are no source; an unlicensed stand-in ("No 9"
 is Ronaldo in FIFA 2000–02) or an invented name is never shown.
@@ -112,17 +118,17 @@ is taken or excluded takes the legend version off the Legend spin (a nation whos
 he is leaves the reel). A legend version offers no Prime boost: it is his best already.
 Rules in `CONFIG.draft.legends`:
 
-- the reel (`legendIndex(catalog).reel`) holds the 56 nations with a legend shown at `reelStar`
+- the reel (`legendIndex(catalog).reel`) holds the 57 nations with a legend shown at `reelStar`
   (85) or more; the index filters by the shown rating itself, so nobody under `minimum` is ever
   offered, whatever the file holds;
 - a nation's weight is `1 + weightPerLegend (0.15) × min(its legends, weightCap (20))`: 1.15 for
-  one legend, 4 for twenty or more (Spain 51, Brazil 49, France 43, Germany 38, Italy 29,
-  Argentina 27, England 25 and the Netherlands 21 legends: 4.1% each; Portugal 16, 3.4%;
-  Belgium 12, 2.8%; the nineteen nations with one legend 1.2% each). The spin
+  one legend, 4 for twenty or more (Spain 52, Brazil 50, France 43, Germany 38, Italy 29,
+  Argentina 27, England 25 and the Netherlands 21 legends: 4.0% each; Portugal 16, 3.4%;
+  Belgium 12, 2.8%; the twenty nations with one legend 1.2% each). The spin
   carries the honest `weight` / `probability` like every reel; the UI shows no odds for this
   one;
 - the pool is the nation's `shown` (10) highest-rated legends (the rating on the card, then the
-  name) — one legend for nineteen of the nations; if none of them could be placed (slot class,
+  name) — one legend for twenty of the nations; if none of them could be placed (slot class,
   Budget tier), the best that can are shown instead. Never a dead end: a nation without a
   legend who is free, fits an open slot class and (Budget mode) a tier with a slot left has
   weight 0, so in local Versus a one-legend nation leaves the second side's reel once its legend
@@ -139,11 +145,12 @@ Rules in `CONFIG.draft.legends`:
 - `snapshot().legendYears` is `[first, last]` year of the legends' versions (`[1997, 2022]`;
   `legendIndex().years`): the Legend spin's one line, "Best versions, 1997–2022".
 
-A legend is a club mate through the club of that edition when the catalog has it (397 of the
-407: EA's team id; the early titles name their clubs, matched by name) and a nation mate like
-anyone; he is never a Captain — a current Captain's legend version neither. 131 legends show
-88+, 276 show 85–87; 52 are keepers. Today's best card shows 92: two legends stand above it
-(Messi ’19 and Cristiano Ronaldo ’18, 94), seven beside it.
+A legend is a club mate through the club of that edition when the catalog has it (401 of the
+411: EA's team id; the early titles name their clubs, matched by name) and a nation mate like
+anyone; he is never a Captain — a current Captain's legend version neither. 163 legends show
+88+, 248 show 85–87; 52 are keepers. Today's best card shows 92: six legends stand above it
+(Messi ’15 95, Cristiano Ronaldo ’18 and Ronaldo ’03 94, Xavi ’11, Buffon ’07 and van
+Nistelrooy ’04 93), ten beside it (Zidane, Ronaldinho, Henry, Iniesta, Neymar, Neuer…).
 
 **Prime boosts** (session option `primes: true` = `CONFIG.draft.primes` by difficulty — Pro 2,
 World Class 1, Legendary 1 — or a number; the game: World Cup Run drafts). A boost turns a

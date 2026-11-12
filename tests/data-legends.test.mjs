@@ -139,19 +139,26 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
     legends.find(p => p.name === name && p.source.nationality === nation);
   const facts = p => [shown(p), p.year, p.edition, p.primaryPosition, p.source.club];
   assert.equal(legends[0].name, 'L. Messi');
-  assert.deepEqual(facts(legends[0]), [94, 2019, 20, 'RW', 'FC Barcelona']);
+  // A title whose best EA rated lower than it rates today's best (FIFA 09–16, and FIFA 98–08
+  // through the chain) is lifted at the top to FC 27's level; FIFA 17–23 stay as printed.
+  assert.deepEqual(facts(legends[0]), [95, 2015, 16, 'RW', 'FC Barcelona']); // printed 94
   assert.deepEqual(facts(card('Cristiano Ronaldo', 'Portugal')), [94, 2018, 19, 'ST', 'Juventus']);
-  assert.deepEqual(facts(card('Ronaldo', 'Brazil')), [92, 2003, 4, 'ST', 'Real Madrid']);
-  assert.deepEqual(facts(card('Xavi', 'Spain')), [92, 2011, 12, 'CM', 'FC Barcelona']);
-  assert.deepEqual(facts(card('Ronaldinho', 'Brazil')), [91, 2005, 6, 'AM', 'FC Barcelona']);
-  assert.deepEqual(facts(card('Z. Zidane', 'France')), [91, 2003, 4, 'AM', 'Real Madrid']);
-  assert.deepEqual(facts(card('T. Henry', 'France')), [91, 2004, 5, 'ST', 'Arsenal']);
-  assert.deepEqual(facts(card('G. Buffon', 'Italy')).slice(0, 4), [92, 2007, 8, 'GK']);
+  assert.deepEqual(facts(card('Neymar Jr', 'Brazil')).slice(0, 3), [92, 2019, 20]); // as printed
+  assert.deepEqual(facts(card('Ronaldo', 'Brazil')), [94, 2003, 4, 'ST', 'Real Madrid']);
+  assert.deepEqual(facts(card('Xavi', 'Spain')), [93, 2011, 12, 'CM', 'FC Barcelona']);
+  assert.deepEqual(facts(card('Ronaldinho', 'Brazil')), [92, 2005, 6, 'AM', 'FC Barcelona']);
+  assert.deepEqual(facts(card('Z. Zidane', 'France')), [92, 2003, 4, 'AM', 'Real Madrid']);
+  assert.deepEqual(facts(card('T. Henry', 'France')), [92, 2004, 5, 'ST', 'Arsenal']);
+  assert.deepEqual(facts(card('G. Buffon', 'Italy')).slice(0, 4), [93, 2007, 8, 'GK']);
+  assert.equal(shown(card('Kaká', 'Brazil')), 91); // FIFA 09 printed 90
+  // The lift is for the top: it fades to nothing at 84, so it makes hardly anyone a legend.
+  assert.match(file.selection.lift, /never lowered/);
+  assert.ok(legends.length > 395 && legends.length < 430, 'legends: ' + legends.length);
   assert.ok(shown(card('P. Maldini', 'Italy')) >= 87);
-  // Today's best card shows 92: Messi and Cristiano Ronaldo stand above it, Ronaldo, Xavi and
-  // Buffon beside it.
+  // Today's best card shows 92: Messi, Cristiano Ronaldo, Ronaldo, Xavi and Buffon stand above
+  // it, Zidane, Ronaldinho and Henry beside it.
   const best = Math.max(...catalog.players.map(shown));
-  assert.ok(shown(legends[1]) > best && shown(legends[8]) >= best, `today's best: ${best}`);
+  assert.ok(shown(legends[5]) > best && shown(legends[15]) >= best, `today's best: ${best}`);
   // A man with two EA ids (Raúl changes id between FIFA 2003 and 2004) is one legend; an
   // invented name ("Andrei Murgu" for Adrian Mutu) is never shown.
   assert.equal(legends.filter(p => p.name === 'Raúl').length, 1);
@@ -212,10 +219,10 @@ test('prime versions: a catalog player at his best past version, any gain, ident
   assert.ok(byOne > 300, 'a gain of one point is a prime version too: ' + byOne);
   const messi = catalog.players.find(p => p.name === 'L. Messi'),
     prime = primeVersion(catalog, messi);
-  assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [89, 94, 20]);
+  assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [89, 95, 16]);
   assert.equal(prime.captain, true); // the armband goes with him
-  assert.equal(editionLabel(prime), '’19'); // FIFA 20's release ratings: 2019
-  assert.equal(editionYear(prime), 2019);
+  assert.equal(editionLabel(prime), '’15'); // FIFA 16's release ratings: 2015
+  assert.equal(editionYear(prime), 2015);
   // The year is the stored one; an edition alone reads as its release year.
   assert.equal(editionYear({ edition: 23, year: 2023 }), 2023);
   assert.equal(editionLabel({ edition: 23, year: 2023 }), '’23');
