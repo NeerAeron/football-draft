@@ -33,11 +33,15 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     if (seen.has(row.player_id)) throw Error(`Duplicate ${row.player_id}`);
     seen.add(row.player_id);
   }
-  // Selection policy: every player of every available league (no caps), in reference league
-  // order, best source overall first. Then the players whose club has no reviewed entry in
-  // the reference (leagues the game does not carry), from the overall the reference sets:
-  // they get no club or league, so they can join nation pools but never league or club pools.
-  const indexed = rows.map((row, index) => ({ row, index })),
+  // Selection policy: every player rated at least the reference's minimum overall, wherever he
+  // plays. Players of the available leagues come first, in reference league order, best
+  // source overall first; then the players whose club has no reviewed entry in the reference
+  // (leagues the game does not carry): they get no club or league, so they can join nation
+  // pools but never league or club pools.
+  const minimum = reference.selection?.minimumOverall ?? 0,
+    indexed = rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => Number(row.overall) >= minimum),
     byOverall = (a, b) => Number(b.row.overall) - Number(a.row.overall) || a.index - b.index,
     selected = [],
     leagues = [];
@@ -49,11 +53,7 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     selected.push(...chosen);
     leagues.push({ ...definition, playerCount: chosen.length });
   }
-  const minimum = reference.selection?.clublessMinimumOverall,
-    clubless =
-      minimum != null
-        ? indexed.filter(({ row }) => !row.club_team_id && Number(row.overall) >= minimum)
-        : [];
+  const clubless = indexed.filter(({ row }) => !row.club_team_id);
   selected.push(...clubless.sort(byOverall));
   const players = selected.map(({ row, index }) => {
     const p = compilePlayer(row, index + 1);
@@ -111,13 +111,13 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
       : null,
     selection: {
       sourceRows: rows.length,
-      policy: `Every player of every reviewed club of an available league, no caps; plus the players rated ${minimum}+ whose club has no reviewed entry (no club or league: nation pools only)`,
+      policy: `Every player rated ${minimum}+: with his club when it has a reviewed entry in an available league, otherwise without club or league (nation pools only)`,
+      minimumOverall: minimum,
       leaguePlayers: selected.length - clubless.length,
       clublessPlayers: clubless.length,
-      clublessMinimumOverall: minimum ?? null,
       order:
         'Leagues in reference order, then club-less players; each by source overall descending, original row order breaking ties',
-      excluded: `Women's football, and players rated under ${minimum} at clubs without a reviewed entry (leagues absent from the reference or unavailable)`,
+      excluded: `Women's football and players rated under ${minimum}`,
     },
     attributeKeys: Object.keys(ATTRS),
     leagues,

@@ -2,9 +2,9 @@
 //
 // The source feed names clubs, leagues and nations but carries no ids. This tool ties every
 // name to data/catalog-reference.json and writes data/source-map.json (the compiler's input):
-//   * clubs    by the players they share with the catalog in app/data (same EA player id →
-//              the club he had there), then by name inside the league; ambiguous ones are left
-//              out and listed
+//   * clubs    by the name the feed gave them last time, by the players they share with the
+//              catalog in app/data (same EA player id → the club he had there), then by name
+//              inside the league; ambiguous ones are left out and listed
 //   * leagues  by the reference league most of their matched clubs belong to
 //   * nations  by the nationality the same players have in the catalog (Holland → Netherlands)
 // Decisions already in the map are kept (hand corrections survive; a re-run only looks at
@@ -121,6 +121,23 @@ export function reconcile(rows, previous, reference, existing = null, codes = {}
     const id = existing?.clubs?.[club.key];
     if (id != null && refClubs.has(String(id)) && !taken.has(String(id)))
       assign(club, String(id), 'kept');
+  }
+  // 1b: the same club name under another league of the feed (promoted, relegated): the feed
+  // keeps its club names from snapshot to snapshot.
+  const byName = new Map();
+  for (const [key, id] of Object.entries(existing?.clubs || {})) {
+    const name = key.slice(key.indexOf(' | ') + 3);
+    if (!byName.has(name)) byName.set(name, new Set());
+    byName.get(name).add(String(id));
+  }
+  for (const club of clubs.values()) {
+    if (club.key in map.clubs) continue;
+    const ids = byName.get(club.club),
+      [id] = ids || [];
+    // Shared players may say otherwise (two clubs of one name): they decide below.
+    const won = winner(club.votes, 4);
+    if (ids?.size === 1 && refClubs.has(id) && !taken.has(id) && (!won || won.id === id))
+      assign(club, id, 'same source name');
   }
   const claims = [];
   for (const club of clubs.values()) {
