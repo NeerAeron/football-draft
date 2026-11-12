@@ -84,7 +84,7 @@ test('the Legend reel: nations with an 85+ legend, slightly weighted by their le
   // The years the legends come from (the Legend spin's one line).
   const years = catalog.legends.players.map(p => p.year);
   assert.deepEqual(legends.years, [Math.min(...years), Math.max(...years)]);
-  assert.deepEqual(legends.years, [2014, 2022]);
+  assert.deepEqual(legends.years, [1997, 2022]); // FIFA 98 … FIFA 23
   assert.deepEqual(worldCup(1).snapshot().legendYears, legends.years);
   assert.equal(createDraftSession(catalog, { seed: 1 }).snapshot().legendYears, null);
   for (const name of ['Brazil', 'Spain', 'Wales', 'Sweden', 'Uruguay'])
@@ -132,7 +132,7 @@ test('the first spin of a World Cup draft is the Legend spin: honest odds, ten l
       assert.equal(e.legend, true);
       assert.equal(e.available, true);
       assert.ok(e.ovr >= 85, `${e.name} is offered at ${e.ovr}`);
-      assert.ok(e.edition >= 15 && e.edition <= 23);
+      assert.ok(e.edition >= 98 || (e.edition >= 0 && e.edition <= 23)); // FIFA 98 … FIFA 23
       assert.equal(e.year, s.player(e.profileId).year); // the year of that version's ratings
       assert.ok(e.year >= legends.years[0] && e.year <= legends.years[1]);
       assert.equal(e.nation, spin.option.id);

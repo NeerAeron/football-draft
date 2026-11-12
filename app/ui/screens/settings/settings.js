@@ -62,6 +62,12 @@ const CREDITS = [
       'Past versions of players (FIFA 15–23, career mode) from the ',
       a('https://huggingface.co/datasets/jsulz/FIFA23', 'FIFA23 dataset'),
       ' by jsulz on Hugging Face, MIT licence. Upstream data from SoFIFA / EA SPORTS FIFA; compiled like the current players.',
+      ' The versions of 1997–2013 (FIFA 98–14) were extracted from the games’ own databases (',
+      a(
+        'https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/',
+        'soccergaming.com archive',
+      ),
+      ').',
     ],
   },
   {

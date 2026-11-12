@@ -758,13 +758,14 @@ export const flows = [
           const count = await rows.count();
           if (count < 1 || count > 10) throw new Error(`${count} legends shown, expected 1–10`);
           const eras = await page.locator('[data-testid="pool"] .prow__era').allTextContents();
-          if (eras.length !== count || !eras.every(t => /^’(1[4-9]|2[0-2])$/.test(t)))
+          // A year of 1997–2022, two digits.
+          if (eras.length !== count || !eras.every(t => /^’(9[7-9]|[01]\d|2[0-2])$/.test(t)))
             throw new Error('legend rows without a year: ' + eras.join(' '));
           const text = await page.textContent('[data-screen="draft"]');
           if (/FIFA \d\d/.test(text)) throw new Error('an edition name is on screen');
           // One line says which years the legends come from.
           const years = await page.textContent('.stage [data-testid="legend-years"]');
-          if (!/^\s*Best versions, 20\d\d–20\d\d\s*$/.test(years))
+          if (!/^\s*Best versions, 1997–2022\s*$/.test(years))
             throw new Error('no years line on the Legend stage: ' + years);
           // Nobody under 85 is offered.
           const ovrs = await page.locator('[data-testid="pool"] .prow__ovr').allTextContents();

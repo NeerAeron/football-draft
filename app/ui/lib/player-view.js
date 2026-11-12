@@ -120,7 +120,7 @@ export function playerView(p, { team, league, nation } = {}) {
     sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
     legend: !!p.legend,
     prime: !!p.prime,
-    era: editionLabel(p.edition), // '’18' for a legend or a prime version, else ''
+    era: editionLabel(p), // '’18' for a legend or a prime version (the year stored), else ''
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };
 }

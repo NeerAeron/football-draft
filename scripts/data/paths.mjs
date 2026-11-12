@@ -28,9 +28,21 @@ export const LEGACY_SOURCE = {
   bytes: 90933390,
   sha256: '13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e',
 };
+// Older titles (FIFA 98–14, the top 1,000 players of each): data/legacy-titles.json, copied
+// out of the owner's workbook "FIFA 98–14 top 1,000" (extracted from the games' own PC
+// databases; soccergaming.com archive) by tools/research/legacy-titles.py. The file is in the
+// repository, so a build needs neither the workbook nor Python; both hashes are pinned.
+export const LEGACY_TITLES = {
+  file: 'legacy-titles.json',
+  workbook: 'legends-98-14.xlsx',
+  workbookSha256: 'b49592c70e29b71af9d68d6fc53a108ac054473a425dde1ccf1875d7f625de2a',
+  archive: 'https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/',
+  sha256: '4be7bc78b84a5bb299f9d4f6edbbf823d3cb3d4d939e530a6506fba00e8aabf4',
+};
 export const PATHS = {
   csv: at(`data/raw/${SOURCE.file}`), // gitignored download
   legacyCsv: at(`data/raw/${LEGACY_SOURCE.file}`), // gitignored download (91 MB)
+  legacyTitles: at(`data/${LEGACY_TITLES.file}`), // FIFA 98–14, in the repository
   captains: at('data/captains.json'), // reviewed Captain list (compiler input)
   legends: at('app/data/legends.v1.json'), // Legends + Prime versions, fetched when a draft starts
   legendsProvenance: at('data/build/legends.json'), // gitignored, with provenance

@@ -119,7 +119,7 @@ function number(row, key, min = 1, max = 99) {
   return n;
 }
 const roleAlias = { CDM: 'DM', CAM: 'AM', CF: 'ST', LWB: 'LB', RWB: 'RB' };
-function positions(row) {
+export function positions(row) {
   const p = [
     ...new Set(
       row.player_positions
@@ -192,14 +192,11 @@ const labelMap = {
 // Past editions capitalise the same labels differently ('#Clinical Finisher').
 const labelLookup = new Map(Object.entries(labelMap).map(([k, v]) => [k.toLowerCase(), v]));
 /**
- * One source row → a compiled player. `options` (past editions, scripts/compile-legends.mjs):
- * `suffix` of the profile id (default `u<update>`), `source` ({ url, license }) and
- * `inference` notes to record.
+ * The game's attributes of a source row (before normalizeAttributes): the columns of `fields`,
+ * awareness from two of them, and goalkeeping — a keeper's is EA's overall.
  */
-export function compilePlayer(row, sourceRow, options = {}) {
-  if (!/^\d+$/.test(row.player_id || '')) throw new Error('Invalid player ID');
-  const [primaryPosition, ...secondaryPositions] = positions(row),
-    attrs = {};
+export function sourceAttributes(row, primaryPosition) {
+  const attrs = {};
   for (const [key, source] of Object.entries(fields)) attrs[key] = number(row, source);
   attrs.awareness = Math.round(
     number(row, 'defending_marking_awareness') * 0.7 + number(row, 'movement_reactions') * 0.3,
@@ -213,6 +210,17 @@ export function compilePlayer(row, sourceRow, options = {}) {
             0,
           ) / 5,
         );
+  return attrs;
+}
+/**
+ * One source row → a compiled player. `options` (past editions, scripts/compile-legends.mjs):
+ * `suffix` of the profile id (default `u<update>`), `source` ({ url, license }) and
+ * `inference` notes to record.
+ */
+export function compilePlayer(row, sourceRow, options = {}) {
+  if (!/^\d+$/.test(row.player_id || '')) throw new Error('Invalid player ID');
+  const [primaryPosition, ...secondaryPositions] = positions(row),
+    attrs = sourceAttributes(row, primaryPosition);
   const foot = row.preferred_foot?.toLowerCase();
   if (!['left', 'right'].includes(foot)) throw new Error(`${row.player_id}: invalid foot`);
   const weakFoot = [0, 15, 35, 60, 82, 100][number(row, 'weak_foot', 1, 5)];
