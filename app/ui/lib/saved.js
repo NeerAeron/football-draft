@@ -8,7 +8,7 @@
 //        stageLabel?, difficulty?, rounds: 8, updatedAt: ISO string }
 //      stage: the next match ('3P' = the third-place play-off, in the final's slot).
 //      format: the cup format the run was saved in. A run in progress without format: 3 is
-//      from an older format (no play-off, five difficulties): it cannot be resumed and reads
+//      from an older format (no play-off, other difficulties): it cannot be resumed and reads
 //      as no run. A finished one still shows as the last run (older ones without a place).
 //   'football-draft-daily'  Daily Challenge record:
 //      { streak: 3, best: 7, lastPlayed: 'YYYY-MM-DD' (UTC day), lastResult?: '5-1-1',
@@ -113,12 +113,6 @@ export function readDailyStatus(now = new Date()) {
           }
         : null,
   };
-}
-
-/** Local calendar date as YYYY-MM-DD. (The daily uses UTC days: dailyKey().) */
-export function todayKey(date = new Date()) {
-  const p = n => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
 }
 
 /**

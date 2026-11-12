@@ -71,7 +71,7 @@ export function fitText(text, maxWidth, measure) {
  *   results: ['W','D',…], champion, placeLabel: 'Third place', placeShort: '3rd',
  *   medal: 'gold' | 'silver' | 'bronze' | null, stageLabel (the line under it), formation,
  *   players: [{ name, code, nation, rating? }] (slot order), hideRatings,
- *   stats: [{ label, value }] (≤ 3), footer: 'football-draft.example' }
+ *   stats: [{ label, value }] (≤ 3), footer: 'world-cup-draft.example' }
  */
 
 // ---- drawing (browser) -------------------------------------------------------------------------
@@ -433,7 +433,7 @@ export async function renderShareImage(card, { canvas } = {}) {
  * Share a PNG with the Web Share API (files) when the device can, else download it.
  * Returns 'shared' | 'downloaded' | 'cancelled'.
  */
-export async function shareImage(blob, { filename = 'football-draft.png', title, text } = {}) {
+export async function shareImage(blob, { filename = 'world-cup-draft.png', title, text } = {}) {
   const File_ = globalThis.File;
   const file = File_ ? new File_([blob], filename, { type: 'image/png' }) : null;
   const nav = globalThis.navigator;

@@ -35,7 +35,7 @@ export function SharePanel({
   text,
   card,
   link,
-  filename = 'football-draft.png',
+  filename = 'world-cup-draft.png',
   heading = 'Share your run',
   title,
   class: className,

@@ -3,7 +3,7 @@ import { V8_DEFAULT_SIGNATURE } from './v8-defaults.js';
 export const DEFAULT_CONFIG = {
   // Draft session (core/draft/session.js, pools.js, opponents.js, links.js).
   draft: {
-    // A league needs this many players to be drawn (Leagues, Clubs, Club & Country).
+    // A league needs this many players to be drawn (league and club drafts).
     minimumLeaguePlayers: 5,
     // Nations: a nation is playable — on the reel, met as an opponent — when it can field an
     // XI (>= minimumPlayers, >= minimumGoalkeepers and a best XI with nobody under the
@@ -1280,4 +1280,3 @@ export function setRuntimeConfig(value) {
   copyInto(CONFIG, normalizeConfig(value));
   return CONFIG;
 }
-export { at as configValue, put as setConfigValue };

@@ -299,10 +299,8 @@ export function GroupTable({ snapshot, moves = {}, compact = false, label = 'Gro
 }
 
 // ---- matchday results ----------------------------------------------------------------------------
-/**
- * Fixtures by matchday. hidden: Set of 'md:home:away' keys whose score is still "ticking in".
- */
-export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
+/** Fixtures by matchday. */
+export function MatchdayList({ snapshot }) {
   const byMd = [1, 2, 3].map(md => snapshot.group.fixtures.filter(f => f.md === md));
   return html`<div class="matchdays">
     ${byMd.map(
@@ -312,9 +310,7 @@ export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
           <ul class="matchday__list" role="list">
             ${fixtures.map(f => {
               const key = `${f.md}:${f.home}:${f.away}`;
-              const pending = hidden.has(key);
-              const isLive = live && live.key === key;
-              const score = isLive ? live.score : !pending ? f.score : null;
+              const score = f.score;
               const home = teamOf(snapshot, f.home),
                 away = teamOf(snapshot, f.away);
               return html`<li
@@ -322,17 +318,15 @@ export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
                 class=${cx(
                   'fixture-row',
                   (home.user || away.user) && 'is-user',
-                  pending && 'is-pending',
-                  isLive && 'is-live',
-                  !pending && f.score && 'is-final',
+                  f.score && 'is-final',
                 )}
               >
                 <span class="fixture-row__team is-home">
                   <span class="truncate">${home.name}</span>
                   <${TeamMark} team=${home} size=${20} />
                 </span>
-                <span class="fixture-row__score num" aria-live=${isLive ? 'off' : undefined}
-                  >${score ? `${score[0]}–${score[1]}` : isLive ? '0–0' : 'v'}</span
+                <span class="fixture-row__score num"
+                  >${score ? `${score[0]}–${score[1]}` : 'v'}</span
                 >
                 <span class="fixture-row__team is-away">
                   <${TeamMark} team=${away} size=${20} />

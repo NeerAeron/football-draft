@@ -1,4 +1,4 @@
-// Home: one big World Cup Run CTA with a draft-type quick switch, the Daily Challenge,
+// Home: one big World Cup Run CTA (and Budget mode under it), the Daily Challenge,
 // a continue-run card when a run is saved, and the other modes.
 import { useEffect, useMemo } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';

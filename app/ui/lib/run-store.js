@@ -358,7 +358,7 @@ export function groupStakes(snapshot) {
 // ---- share links -------------------------------------------------------------------------------
 /** The deployed page's own URL (no hash), e.g. 'https://user.github.io/football-draft/'. */
 export function pageBase(loc = globalThis.location) {
-  if (!loc) return 'https://football-draft.example/';
+  if (!loc) return 'https://world-cup-draft.example/';
   return `${loc.origin}${loc.pathname}`;
 }
 // Where the friend finished, in the link: two letters per place (core cup.js PLACES). Links

@@ -728,7 +728,7 @@ export default function RunScreen() {
     </div>
     <${GroupTable} snapshot=${snapshot} moves=${moves} />
     <p class="run-group__rule text-3 text-xs">${THIRD_PLACE_RULE}</p>
-    <${MatchdayList} snapshot=${snapshot} live=${sim ? null : null} />
+    <${MatchdayList} snapshot=${snapshot} />
   </section>`;
 
   return html`<div class="screen container run" data-screen="run" data-phase=${state.phase}>

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
-import { loadWarmCatalog } from '../../lib/catalog-warm.js';
+import { loadWarmCatalog, warmOpponents } from '../../lib/catalog-warm.js';
 import { opponentCandidates, buildOpponent } from '../../../core/draft/opponents.js';
 import { buildSide } from '../../../core/draft/session.js';
 import { randomLineups } from '../../../core/players/lineups.js';
@@ -58,7 +58,17 @@ function teamFromCandidate(c, leagues) {
     ref: c,
   };
 }
+// A Random XI costs an assignment over the whole catalog: built once per seed and side.
+const randomTeams = new Map();
 function randomTeam(catalog, seed, side) {
+  const cacheKey = `${seed}:${side % 2}`,
+    cached = randomTeams.get(cacheKey);
+  if (cached?.catalog === catalog) return cached.team;
+  const team = buildRandomTeam(catalog, seed, side);
+  randomTeams.set(cacheKey, { catalog, team });
+  return team;
+}
+function buildRandomTeam(catalog, seed, side) {
   const formation = '433';
   const slots = FORMATIONS[formation].map(([, , role]) => ({ role }));
   const players = randomLineups(slots, catalog.players, seed);
@@ -186,7 +196,7 @@ export default function ExhibitionScreen() {
   const [error, setError] = useState(null);
   const saved = useMemo(() => readJSON(KEY, {}) || {}, []);
   const [keys, setKeys] = useState([saved.home || null, saved.away || null]);
-  const [active, setActive] = useState(saved.home ? (saved.away ? 1 : 1) : 0);
+  const [active, setActive] = useState(saved.home ? 1 : 0);
   const [tab, setTab] = useState('club');
   const [query, setQuery] = useState('');
   const [league, setLeague] = useState('all');
@@ -199,8 +209,9 @@ export default function ExhibitionScreen() {
       .then(async catalog => {
         if (!live) return;
         const leagues = new Map(catalog.leagues.map(l => [String(l.id), l]));
-        // Every club and nation XI (~170 ms once): its own task, then render in the next.
-        await nextTask();
+        // Every club and nation XI (~170 ms once): built in short slices (a cache hit when
+        // the idle warm-up got there first), then rendered in the next task.
+        await warmOpponents(catalog);
         const list = opponentCandidates(catalog);
         await nextTask();
         if (!live) return;

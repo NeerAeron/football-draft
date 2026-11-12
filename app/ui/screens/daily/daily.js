@@ -272,7 +272,7 @@ function CountUp({ value, duration = 1200 }) {
 
 function Result({ catalog, day, entry, state, today, fresh }) {
   const hide = !!entry.hideRatings;
-  const run = useMemo(() => rebuildRun(catalog, day, entry), [catalog, day, entry]);
+  const run = useMemo(() => rebuildRun(catalog, entry), [catalog, entry]);
   const snapshot = useMemo(() => run?.snapshot() ?? null, [run]);
   const views = useMemo(() => (run ? xiViews(catalog, run.userSide()) : []), [run]);
   const link = challengeLink(
@@ -387,7 +387,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
           link=${link}
           heading="Share your Daily"
           title=${`Daily #${day.number}`}
-          filename=${`football-draft-daily-${day.number}.png`}
+          filename=${`world-cup-draft-daily-${day.number}.png`}
         />
         ${
           snapshot &&
@@ -439,7 +439,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
 }
 
 /** Rebuild a finished daily run from the stored XI (deterministic: same opponents and results). */
-function rebuildRun(catalog, day, entry) {
+function rebuildRun(catalog, entry) {
   try {
     if (entry.run) return restoreCupRun(catalog, entry.run);
   } catch {

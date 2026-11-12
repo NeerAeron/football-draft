@@ -26,7 +26,7 @@ export function removeKey(key) {
   } catch {}
 }
 
-/** Keys owned by this game (prefix match), e.g. sound, tuning overrides, runs, UI prefs. */
+/** Keys owned by this game (prefix match), e.g. sound, runs, UI prefs. */
 export function ownKeys() {
   try {
     const storage = globalThis.localStorage;

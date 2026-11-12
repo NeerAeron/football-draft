@@ -42,11 +42,6 @@ export const TACTIC_DEFAULTS = {
   mentality: 'auto',
 };
 export const TACTIC_SLIDERS = ['tempo', 'width', 'press'].map(key => ({ key, ...TACTICS[key] }));
-export const STYLE_OPTIONS = Object.entries(STYLES).map(([value, s]) => ({
-  value,
-  label: s.label,
-  description: s.description,
-}));
 
 /** Engine coach level for a draft difficulty id (other values pass through). */
 export const COACH_LEVEL = {
@@ -186,9 +181,6 @@ export function openPrematch(input, { go = true } = {}) {
   if (go && loc && loc.hash !== '#/prematch') loc.hash = '#/prematch';
   return data;
 }
-
-/** Re-read from storage (e.g. after Settings → reset). */
-export const reloadPrematch = () => prematchStore.set(load());
 
 export function clearPrematch() {
   prematchStore.set(null);
