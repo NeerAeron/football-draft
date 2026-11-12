@@ -1531,9 +1531,51 @@ export const flows = [
       await step('intro', () => visible(page, '[data-testid="start-daily"]', 30000));
       await page.evaluate(() => document.fonts.ready);
       await shot('intro', { fullPage: true });
-      await step('draft with auto picks', async () => {
+      const dailyDraft = () =>
+        page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-daily') || '{}').draft;
+          return d ? d.session.state.picks.flat().filter(Boolean).join() : null;
+        });
+      let picked = null;
+      await step('the first pick locks the day: the draft is kept with the Daily', async () => {
         await page.click('[data-testid="start-daily"]');
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+        if (await dailyDraft()) throw new Error('locked before a pick was made');
+        await page.click('[data-testid="auto-pick"]');
+        await page.waitForFunction(
+          () => !!JSON.parse(localStorage.getItem('football-draft-daily') || '{}').draft,
+        );
+        picked = await dailyDraft();
+        if (!picked) throw new Error('no pick was kept');
+      });
+      await step('left mid-draft: Home and the Daily offer to resume, not to start', async () => {
+        await page.click('.topbar__back');
+        await visible(page, '[data-screen="home"] .home-daily');
+        const card = await page.textContent('.home-daily');
+        if (!/Started/.test(card) || !/Resume/.test(card)) throw new Error(`Daily card: ${card}`);
+        // Another draft takes the one draft slot meanwhile.
+        await page.evaluate(async () => {
+          const store = await import('./ui/lib/draft-store.js');
+          await store.startDraft({ kind: 'quick', type: 'clubs', seed: 5 }, { go: false });
+        });
+        await page.goto(`${base}#/daily`);
+        await visible(page, '[data-testid="resume-daily"]', 30000);
+        if (await page.locator('[data-testid="start-daily"]').count())
+          throw new Error('the Daily can be started again after a pick');
+        if ((await dailyDraft()) !== picked) throw new Error('the kept draft changed');
+      });
+      await shot('resume', { fullPage: true });
+      await step('resume: the same draft with its pick, then auto picks', async () => {
+        await page.click('[data-testid="resume-daily"]');
+        await visible(page, '[data-screen="draft"][data-phase]');
+        const state = await page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-draft'));
+          return [d.context.kind, d.session.state.picks.flat().filter(Boolean).join()];
+        });
+        if (state[0] !== 'daily' || !state[1].startsWith(picked))
+          throw new Error(`resumed ${state.join(' ')}, kept ${picked}`);
         await completeDraft(page, '[data-testid="daily-sim"], [data-testid="daily-result"]');
+        if (await dailyDraft()) throw new Error('the kept draft outlived the draft');
       });
       await step('auto-sim to the result', () =>
         visible(page, '[data-testid="daily-result"]', 120000),

@@ -34,6 +34,7 @@ import { loadWarmCatalog } from './catalog-warm.js';
 import { sideColors, teamCode, nationTrigram } from './kits.js';
 import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
+import { lockDailyDraft } from './run-store.js';
 
 export { DRAFT_KEY, readSavedDraft };
 export const DRAFT_KINDS = ['run', 'quick', 'versus', 'daily'];
@@ -235,12 +236,16 @@ function go(path) {
 
 function persist() {
   if (!session) return;
-  writeJSON(DRAFT_KEY, {
+  const saved = {
     format: FORMAT,
     context,
     session: session.serialize(),
     savedAt: new Date().toISOString(),
-  });
+  };
+  writeJSON(DRAFT_KEY, saved);
+  // The Daily is one attempt from its first pick: the Daily record keeps the draft too, so
+  // the day can only be resumed (run-store.js lockDailyDraft).
+  if (context.kind === 'daily' && session.history.length > 0) lockDailyDraft(saved);
 }
 
 function publish(extra = {}) {
@@ -317,6 +322,36 @@ export function loadDraft() {
       loading = null;
     });
   return loading;
+}
+
+/**
+ * Rebuild a saved draft ({ context, session }) without making it the current one:
+ * { session, context }. Rejects when it no longer fits the player database.
+ */
+export async function restoreSaved(saved) {
+  const options = saved?.session?.options || {};
+  const catalog = await catalogLoader({ legends: !!(options.legendSpin || options.primes) });
+  return {
+    session: restoreDraftSession(catalog, saved.session),
+    context: normalizeContext(saved.context),
+    catalog,
+  };
+}
+
+/**
+ * Make a saved draft the current one and (by default) go to the board: the Daily's kept draft
+ * when another draft took the slot. Replaces whatever draft was in progress.
+ */
+export async function resumeDraft(saved, { go: navigateTo = true } = {}) {
+  const restored = await restoreSaved(saved);
+  session = restored.session;
+  context = restored.context;
+  catalogRef = restored.catalog;
+  opponent = null;
+  persist();
+  publish({ animate: null, lastPick: null });
+  if (navigateTo) go('/draft');
+  return { session, context };
 }
 
 /** { session, context, catalog } of the draft in memory, or null. */

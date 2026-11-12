@@ -235,9 +235,11 @@ function DailyCard({ daily }) {
         <h2 class="home-daily__title" id="daily-title">${date}</h2>
       </div>
       ${
-        played
+        played && !daily.inProgress
           ? html`<${Chip} tone="green" icon="check">Played<//>`
-          : html`<${Chip} tone="gold" variant="outline">New<//>`
+          : daily.inProgress
+            ? html`<${Chip} tone="gold">Started<//>`
+            : html`<${Chip} tone="gold" variant="outline">New<//>`
       }
     </div>
     <p class="home-daily__text">
@@ -255,7 +257,7 @@ function DailyCard({ daily }) {
         ${daily.best > 0 && html`<span class="home-daily__best">· best ${daily.best}</span>`}
       </span>
       <${Button} variant="secondary" size="sm" iconEnd="arrow-right" href=${href('/daily')}
-        >${played ? 'Results' : 'Play'}<//
+        >${daily.inProgress ? 'Resume' : played ? 'Results' : 'Play'}<//
       >
     </div>
   <//>`;

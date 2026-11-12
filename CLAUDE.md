@@ -190,7 +190,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 | `football-draft-match` | `match-store.js` | current match request + result |
 | `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |
-| `football-draft-daily` | `run-store.js` | daily streak, results, attempt in progress |
+| `football-draft-daily` | `run-store.js` | daily streak, results, the day's draft from its first pick (one attempt: resume only), attempt in progress |
 | `football-draft-records` | `ui/lib/records.js` | trophy cabinet: runs, medals and best finish per difficulty, Budget-mode trophies, the ultimate achievement |
 | `football-draft-exhibition` | exhibition screen | last two teams |
 | `football-draft-dev` | tests only | `{ fastSim: true }`: auto-sims use the fast model |

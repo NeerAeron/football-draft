@@ -154,6 +154,66 @@ test('autoPick spins and picks in one press; auto-complete finishes run drafts t
   assert.ok(draft.completedDraft(), 'RUN-UI reads the XI before clearing it');
 });
 
+test('a Daily draft is kept with the Daily record from its first pick, and resumes from it', async () => {
+  reset();
+  const { readDaily, lockedDailyDraft } = await import('../app/ui/lib/run-store.js');
+  const { dailyChallenge } = await import('../app/core/competition/daily.js');
+  const day = dailyChallenge(catalog, '2026-11-08'),
+    context = {
+      kind: 'daily',
+      type: 'nations',
+      difficulty: day.difficulty,
+      formation: day.formation,
+      seed: day.seed,
+      schedule: day.schedule,
+      rerolls: day.rerolls,
+      daily: day.id,
+      useDefaultRules: true,
+      returnTo: '/daily',
+    };
+  await draft.startDraft(context);
+  // The first spin alone locks nothing (nor does a re-roll).
+  assert.equal(readDaily().draft, null);
+  draft.rerollDraft();
+  assert.equal(readDaily().draft, null);
+  // The first pick does.
+  assert.ok(draft.autoPick().ok);
+  const kept = lockedDailyDraft(readDaily(), day.id);
+  assert.ok(kept);
+  assert.equal(kept.session.state.history.length, 1);
+  draft.spinDraft();
+  assert.ok(lockedDailyDraft(readDaily(), day.id).session.state.current, 'every action is kept');
+  const before = JSON.stringify(draft.currentDraft().session.serialize());
+  // Another draft takes the slot: the Daily's is not lost.
+  await draft.startDraft({ kind: 'quick', type: 'clubs', seed: 4 });
+  assert.equal(draft.currentDraft().context.kind, 'quick');
+  const locked = lockedDailyDraft(readDaily(), day.id);
+  assert.equal(JSON.stringify(locked.session), before);
+  // Rebuilt without touching the slot…
+  const copy = await draft.restoreSaved(locked);
+  assert.equal(copy.context.kind, 'daily');
+  assert.equal(JSON.stringify(copy.session.serialize()), before);
+  assert.equal(draft.currentDraft().context.kind, 'quick');
+  // …or resumed on the board: the same spins and the pick, never a new draft.
+  globalThis.location.hash = '#/daily';
+  await draft.resumeDraft(locked);
+  assert.equal(globalThis.location.hash, '#/draft');
+  assert.equal(draft.currentDraft().context.daily, day.id);
+  assert.equal(JSON.stringify(draft.currentDraft().session.serialize()), before);
+  assert.equal(draft.draftStore.get().snap.pickIndex, 1);
+  assert.ok(draft.autoComplete());
+  assert.equal(lockedDailyDraft(readDaily(), day.id).session.state.history.length, 11);
+  // A kept draft that no longer fits the player database is refused.
+  const broken = structuredClone(locked);
+  broken.session.state.picks[0][0] = 'ea:0:nobody';
+  await assert.rejects(draft.restoreSaved(broken));
+  // Other kinds of draft never touch the Daily record.
+  reset();
+  await draft.startDraft({ kind: 'run', type: 'leagues', seed: 3 });
+  draft.autoPick();
+  assert.equal(readDaily().draft, null);
+});
+
 test('quick drafts reveal a ladder opponent and open the pre-match; kick-off requests the match', async () => {
   reset();
   await draft.startDraft({ kind: 'quick', type: 'nations', difficulty: 'pro', seed: 11 });

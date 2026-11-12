@@ -1,6 +1,7 @@
 // Daily Challenge (#/daily): today's rules, group and streak → the scheduled Nations draft
 // (DRAFT-UI, returns here) → the whole World Cup simulated with the engine, live ticker + Skip
-// → result card (points, where it finished, % of the perfect XI, streak, share). One attempt per UTC day;
+// → result card (points, where it finished, % of the perfect XI, streak, share). One attempt per UTC day,
+// from the first pick of the draft (it can be left and resumed, never started again);
 // afterwards the day's result, a countdown and replays of your matches.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
@@ -24,10 +25,20 @@ import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { Confetti } from '../../components/confetti.js';
 import { toast } from '../../components/toast.js';
-import { completedDraft, clearDraft, startDraft, loadDraft } from '../../lib/draft-store.js';
+import {
+  completedDraft,
+  currentDraft,
+  clearDraft,
+  startDraft,
+  loadDraft,
+  restoreSaved,
+  resumeDraft,
+} from '../../lib/draft-store.js';
 import { buildMatchConfig, requestMatch, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
   readDaily,
+  lockedDailyDraft,
+  dropDailyDraft,
   beginDailyAttempt,
   saveDailyProgress,
   finishDailyAttempt,
@@ -107,7 +118,7 @@ function Streak({ state, today, bump = false }) {
 }
 
 // ---- intro ------------------------------------------------------------------------------------
-function Intro({ catalog, day, state, today, onStart, starting }) {
+function Intro({ catalog, day, state, today, onStart, starting, resume = false }) {
   const group = day.opponents.slice(0, 3).map(key => {
     const [, id] = key.split(':');
     const n = catalog.nations?.find(x => x.name === id);
@@ -160,8 +171,8 @@ function Intro({ catalog, day, state, today, onStart, starting }) {
         iconEnd="arrow-right"
         onClick=${onStart}
         loading=${starting}
-        data-testid="start-daily"
-        >Start today's draft<//
+        data-testid=${resume ? 'resume-daily' : 'start-daily'}
+        >${resume ? 'Resume today’s draft' : 'Start today’s draft'}<//
       >
     </section>
     <aside class="daily-side stack stack-md">
@@ -540,15 +551,23 @@ export default function DailyScreen() {
         const held = matchStore.get()?.request;
         if (held?.id?.startsWith('daily:')) clearMatch(held.id);
         const ctx = { catalog, day, today, state };
+        const mine = d => d?.context?.kind === 'daily' && (d.context.daily ?? today) === today;
         // In memory right after the draft; restored from storage after a reload.
-        const draft = completedDraft() ?? (await loadDraft());
-        if (
-          draft?.session?.complete &&
-          draft.context?.kind === 'daily' &&
-          (draft.context.daily ?? today) === today &&
-          !state.results[today] &&
-          state.current?.id !== today
-        ) {
+        const slot = completedDraft() ?? currentDraft() ?? (await loadDraft());
+        // Today's draft is kept with the Daily record from its first pick (one attempt): when
+        // another draft took the slot meanwhile, it is rebuilt from there.
+        let locked = lockedDailyDraft(state, today),
+          draft = mine(slot) ? slot : null;
+        if (!draft && locked) {
+          draft = await restoreSaved(locked).catch(() => null);
+          if (!live()) return;
+          // It no longer fits the player database: the day starts again.
+          if (!draft) {
+            state = ctx.state = dropDailyDraft(state);
+            locked = null;
+          }
+        }
+        if (draft?.session.complete && !state.results[today] && state.current?.id !== today) {
           const user = draft.session.matchSide(0);
           const run = createCupRun(catalog, { ...day.cup, user });
           // The perfect XI tries every re-roll combination (~250 ms): in a worker.
@@ -567,11 +586,17 @@ export default function DailyScreen() {
             ...ctx.state,
             current: { ...ctx.state.current, hideRatings: !!draft.session.options?.hideRatings },
           };
-          clearDraft();
+          if (draft === slot) clearDraft();
           simulate(ctx, run);
           return;
         }
-        if (draft?.session?.complete && draft.context?.kind === 'daily') clearDraft();
+        // A Daily draft in the slot that is over (another day's, or today's once played).
+        if (
+          slot?.context?.kind === 'daily' &&
+          (!mine(slot) || !!state.results[today] || state.current?.id === today)
+        )
+          clearDraft();
+        if (state.draft && !locked) state = ctx.state = dropDailyDraft(state);
         if (state.current?.id === today) {
           const run = resumeAttempt(catalog, day, state.current.run);
           // A restarted attempt (see resumeAttempt) drops the log of the old format's matches.
@@ -588,7 +613,12 @@ export default function DailyScreen() {
           state = { ...state, current: null };
           ctx.state = state;
         }
-        setS({ ...ctx, phase: state.lastPlayed === today ? 'used' : 'intro' });
+        // A draft with a pick made can only be resumed.
+        setS({
+          ...ctx,
+          phase: locked ? 'intro' : state.lastPlayed === today ? 'used' : 'intro',
+          resume: !!locked,
+        });
       } catch (error) {
         console.error('[daily] could not load', error);
         if (live()) setS({ phase: 'error', error });
@@ -605,9 +635,15 @@ export default function DailyScreen() {
 
   const start = async () => {
     setS(prev => ({ ...prev, starting: true }));
-    const { day } = s;
+    const { day, today } = s;
     try {
-      await startDailyDraft(day);
+      const locked = lockedDailyDraft(readDaily(), today),
+        open = currentDraft();
+      if (!locked) await startDailyDraft(day);
+      // The board still holds it (left with the back arrow), or it is rebuilt from the record.
+      else if (open?.context.kind === 'daily' && open.context.daily === today)
+        globalThis.location.hash = '#/draft';
+      else await resumeDraft(locked);
     } catch (error) {
       console.error('[daily] could not start the draft', error);
       toast({
@@ -650,7 +686,12 @@ export default function DailyScreen() {
       action=${html`<${Button} variant="primary" onClick=${() => location.reload()}>Retry<//>`}
     />`;
   else if (s.phase === 'intro')
-    body = html`<${Intro} ...${s} onStart=${start} starting=${!!s.starting} />`;
+    body = html`<${Intro}
+      ...${s}
+      onStart=${start}
+      starting=${!!s.starting}
+      resume=${!!s.resume}
+    />`;
   else if (s.phase === 'sim')
     body = html`<${SimView} day=${s.day} snapshot=${s.snapshot} ticker=${ticker} />`;
   else if (s.phase === 'result') body = html`<${Result} ...${s} />`;

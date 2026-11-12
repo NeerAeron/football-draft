@@ -12,7 +12,8 @@
 //      as no run. A finished one still shows as the last run (older ones without a place).
 //   'football-draft-daily'  Daily Challenge record:
 //      { streak: 3, best: 7, lastPlayed: 'YYYY-MM-DD' (UTC day), lastResult?: '5-1-1',
-//        streakState?: { current, best, last }, results?: { [day]: entry }, current?: {…} }
+//        streakState?: { current, best, last }, results?: { [day]: entry }, current?: {…},
+//        draft?: { id, context, session, savedAt } (the day's draft, from its first pick) }
 //   'football-draft-draft'  the draft in progress (lib/draft-store.js writes it):
 //      { format: 1, context: { kind, type, difficulty, … }, session: { type: 'draft-session',
 //        state: { picks: [[…11 ids or null], …] } }, savedAt }
@@ -93,11 +94,15 @@ export function readDailyStatus(now = new Date()) {
   // A streak is alive while the last attempt was today or yesterday.
   const alive = lastPlayed && (lastPlayed === today || lastPlayed === previousDayKey(today));
   const entry = daily.results && typeof daily.results === 'object' ? daily.results[today] : null;
+  const started = daily.draft?.id === today || daily.current?.id === today;
   return {
     streak: alive ? daily.streak | 0 : 0,
     best: daily.best | 0,
     lastPlayed,
     playedToday: lastPlayed === today,
+    // Today's attempt is under way (drafting from the first pick on, or being simulated): it
+    // can only be resumed.
+    inProgress: !!started && !entry,
     lastResult: typeof daily.lastResult === 'string' ? daily.lastResult : null,
     // Today's finished attempt (points, where it finished) when there is one.
     todayResult:
@@ -119,12 +124,15 @@ export function readDailyStatus(now = new Date()) {
  * Sync summary of the draft in progress (no catalog needed — Home and setup show it):
  * { context, picks, total, complete, savedAt } | null.
  */
-export function readSavedDraft() {
+export function readSavedDraft(now = new Date()) {
   const saved = readJSON(DRAFT_KEY, null);
   if (!saved || saved.format !== DRAFT_FORMAT || saved.session?.type !== 'draft-session')
     return null;
   const raw = saved.session.state?.picks,
     picks = Array.isArray(raw) ? raw.flat() : [];
+  // A Daily draft of another day is over: nothing to resume.
+  const day = saved.context?.kind === 'daily' ? saved.context.daily : null;
+  if (typeof day === 'string' && day !== dailyKey(now)) return null;
   return {
     context: saved.context && typeof saved.context === 'object' ? saved.context : {},
     picks: picks.filter(Boolean).length,

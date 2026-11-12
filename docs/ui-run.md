@@ -79,10 +79,22 @@ schedule: day.schedule, seed: day.seed, formation, rerolls, daily: id,
 useDefaultRules: true, returnTo: '/daily' })` → back on `#/daily`: `createCupRun(catalog,
 { ...day.cup, user })`, `perfectXI` (in a module Worker: `screens/daily/perfect-xi.js`, ~250 ms
 of best-XI search off the main thread; main-thread fallback) / `perfectPercent`,
-`beginDailyAttempt()` (the day is used
-from here on) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
+`beginDailyAttempt()` (the streak counts from here) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
 same results) → `dailyScore` → `finishDailyAttempt()` → result card (points, where it finished
 with its cup or medal, % of perfect, streak, share, replays of each match via `requestMatch(…, view 'key')`).
+
+**One attempt, from the first pick.** As soon as a Daily draft has a pick, the draft store
+keeps it with the Daily record too (`lockDailyDraft(saved)` after every action →
+`football-draft-daily.draft`). From then on the day can only be resumed, never started again:
+the intro's button reads "Resume today's draft" (`data-testid="resume-daily"`) and reopens the
+board — the one in memory, or the kept copy (`resumeDraft(locked)`) when another draft took the
+draft slot meanwhile; a completed XI that was left on the completion sheet starts its
+tournament from the kept copy (`restoreSaved`). Home's Daily card says "Started" and "Resume"
+(`readDailyStatus().inProgress`). Before the first pick (the first spin only) nothing is kept.
+The streak and `lastPlayed` still move when the XI is complete (`beginDailyAttempt`, which
+drops the kept draft): a day whose draft is never finished is used, and does not count for the
+streak. The next day the kept draft is dropped; one that no longer fits the player database is
+dropped too and the day can start again.
 
 ## Persistence (`localStorage`, all keys start with `football-draft`)
 
@@ -90,7 +102,7 @@ with its cup or medal, % of perfect, streak, share, replays of each match via `r
 | --- | --- |
 | `football-draft-run-state` | `{ format: 1, run: CupRun.serialize(), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation, seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
 | `football-draft-run` | Home summary: `{ format: 3, mode: 'run', type, stage: 'G1' \| 'G2' \| 'G3' \| 'R32' \| 'R16' \| 'QF' \| 'SF' \| 'F' \| '3P' (the play-off), record: { w, d, l }, team, status, complete, place, placeLabel, medal, perfect, budget, stageLabel, difficulty, rounds: 8, updatedAt }` |
-| `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, place, placeLabel, medal, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
+| `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, place, placeLabel, medal, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, draft: { id, context, session, savedAt } \| null (the day's draft from its first pick, as the draft store saves it), current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
 | `football-draft-records` | `{ format: 3, levels: { pro \| worldclass \| legendary: { runs, gold, silver, bronze, perfect, best } }, budget: { the same per level, for Budget-mode runs }, ultimate: { count, first: ISO date \| null }, seen: [run ids, last 24], last: { id, level, budget, news: ['title' \| 'perfect' \| 'best' \| 'cabinet' \| 'ultimate'] } }` — `best` is the index of the best place (0 group stage, 1 R32, 2 R16, 3 QF, 4 fourth, 5 third, 6 runners-up, 7 champions); World Cup Runs only (the Daily keeps its own streak) |
 | `football-draft-exhibition` | `{ home: key, away: key }` (`nation:…`, `club:…`, `boss:…`, `random:<seed>`) |
 | `football-draft-dev` | `{ fastSim: true }` — dev/test only: auto-sims use the fast rating model |
@@ -133,7 +145,7 @@ challenge: { token, by }, returnTo })`; "Review the settings first" opens
 
 - `tests/run-ui-store.test.mjs` — persistence round trips, tolerant readers, the cabinet (medals,
   Budget, the ultimate, migration), the play-off summary, stakes, links, daily record + streak,
-  share image layout.
+  the Daily's lock from the first pick, share image layout.
 - `tests/browser/flows.mjs` — `run` (the four ways to play), `run-end` (every finish, seeded),
   `home-cabinet` (empty, partly filled, migrated, complete), `daily`, `exhibition`,
   `challenge-link` (seeded, fast sims). Drafts finish on the real board via `#/draft?auto=1` + the completion sheet's

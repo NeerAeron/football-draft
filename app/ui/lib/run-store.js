@@ -424,6 +424,7 @@ const DAILY_RUNS_KEPT = 7; // full run state (replays) only for the latest week
  *   { streak, best, lastPlayed, lastResult,            // what Home reads (lib/saved.js)
  *     streakState: { current, best, last },            // core updateStreak() state
  *     results: { 'YYYY-MM-DD': entry },                // finished attempts (latest 40)
+ *     draft: { id, context, session, savedAt } | null, // the day's draft, from its first pick
  *     current: { id, number, run, rating, perfect, startedAt } | null }  // attempt being simmed
  */
 export function readDaily() {
@@ -443,6 +444,13 @@ export function readDaily() {
     lastResult: typeof d.lastResult === 'string' ? d.lastResult : null,
     streakState,
     results,
+    draft:
+      d.draft &&
+      typeof d.draft === 'object' &&
+      typeof d.draft.id === 'string' &&
+      d.draft.session?.type === 'draft-session'
+        ? d.draft
+        : null,
     current: d.current && typeof d.current === 'object' && d.current.run ? d.current : null,
   };
 }
@@ -467,8 +475,39 @@ export function displayStreak(state, today = todayDailyId()) {
   return currentStreak(state.streakState, today);
 }
 /**
- * Lock today's attempt once the XI is drafted (one attempt per day): sets lastPlayed and the
- * streak, stores the serialised run so a refresh resumes the auto-sim.
+ * One attempt per day, from the first pick: keep the day's draft ({ context, session:
+ * session.serialize(), savedAt }, as the draft store saves it) with the Daily record. From then
+ * on the day can only be resumed from this copy — whatever happens to the one draft slot
+ * ('football-draft-draft': another draft may replace it) — never started again. Called by the
+ * draft store after every action of a Daily draft with a pick made.
+ */
+export function lockDailyDraft(saved) {
+  const id = saved?.context?.daily;
+  if (typeof id !== 'string' || saved.session?.type !== 'draft-session') return null;
+  const state = readDaily();
+  // The day is past the draft already (being simulated, or finished).
+  if (state.results[id] || state.current?.id === id) return null;
+  const draft = {
+    id,
+    context: saved.context,
+    session: saved.session,
+    savedAt: saved.savedAt ?? null,
+  };
+  writeDaily({ ...state, draft });
+  return draft;
+}
+/** The day's draft that can only be resumed (see lockDailyDraft), or null. */
+export const lockedDailyDraft = (state, today = todayDailyId()) =>
+  state?.draft?.id === today && !state.results?.[today] && state.current?.id !== today
+    ? state.draft
+    : null;
+/** Forget the kept draft (a new day, or one that no longer fits the player database). */
+export function dropDailyDraft(state) {
+  return state.draft ? writeDaily({ ...state, draft: null }) : state;
+}
+/**
+ * The XI is drafted: sets lastPlayed and the streak, stores the serialised run so a refresh
+ * resumes the auto-sim, and drops the kept draft.
  */
 export function beginDailyAttempt(state, { id, number, run, rating, perfect, formation }) {
   const streakState = updateStreak(state.streakState, id);
@@ -478,6 +517,7 @@ export function beginDailyAttempt(state, { id, number, run, rating, perfect, for
     best: streakState.best,
     lastPlayed: id,
     streakState,
+    draft: null,
     current: {
       id,
       number,

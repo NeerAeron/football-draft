@@ -55,6 +55,8 @@ await loadDraft();     // the same after a reload (restores 'football-draft-draf
 readSavedDraft();      // sync summary { context, picks, total, complete, savedAt } | null
                        // (lives in lib/saved.js, no catalog; Home's "Draft in progress" card)
 clearDraft();          // forget it (memory + storage)
+await restoreSaved(saved);  // { session, context, catalog } of a saved draft, not made current
+await resumeDraft(saved);   // make a saved draft the current one → #/draft (the Daily's kept draft)
 ```
 
 * `type` accepts `club-country` and `clubAndCountry`; `seed` numbers, digit strings or any
@@ -62,7 +64,9 @@ clearDraft();          // forget it (memory + storage)
   show exactly what reaches `createDraftSession`.
 * Persisted after **every** action: `{ format: 1, context, session: session.serialize(),
   savedAt }` under `football-draft-draft`. A reload restores the board where it was (a spin that
-  was animating is shown landed).
+  was animating is shown landed). A Daily draft with a pick made is also kept with the Daily
+  record after every action (`lockDailyDraft`, `docs/ui-run.md`): one attempt from the first
+  pick. `readSavedDraft()` ignores a Daily draft of another day.
 * A World Cup Run's Nations draft (`worldCupDraft(ctx)`) gets `legendSpin: true, primes: true`;
   for it (and when restoring one) the catalog loader is asked for `{ legends: true }` and
   fetches `app/data/legends.v1.json` (`services/legends.js`) — Home and every other screen but

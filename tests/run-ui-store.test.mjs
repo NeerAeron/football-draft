@@ -630,6 +630,80 @@ test('the daily record locks an attempt, keeps the streak and trims old replays'
   assert.ok(withRun.includes('2026-11-06'));
 });
 
+test('the Daily is locked from the first pick: the draft is kept and can only be resumed', () => {
+  const day = '2026-11-08',
+    noon = new Date(day + 'T12:00:00Z'),
+    partial = createDraftSession(catalog, { mode: 'nations', seed: 'daily:' + day });
+  partial.spin();
+  partial.pick(partial.suggestPick().profileId);
+  const kept = {
+    format: 1,
+    context: { kind: 'daily', type: 'nations', daily: day },
+    session: JSON.parse(JSON.stringify(partial.serialize())),
+    savedAt: '2026-11-08T10:00:00.000Z',
+  };
+  // Nothing kept: a fresh day.
+  assert.equal(runStore.lockedDailyDraft(runStore.readDaily(), day), null);
+  assert.equal(saved.readDailyStatus(noon).inProgress, false);
+  // Not a Daily draft, or a broken one: ignored.
+  assert.equal(runStore.lockDailyDraft({ context: { kind: 'run' }, session: kept.session }), null);
+  assert.equal(runStore.lockDailyDraft({ context: kept.context, session: { nope: 1 } }), null);
+  assert.equal(runStore.lockDailyDraft(null), null);
+  assert.equal(runStore.readDaily().draft, null);
+  // Kept with the record: the day is under way, the streak is not touched yet.
+  store.set(saved.DAILY_KEY, JSON.stringify({ streak: 3, best: 5, lastPlayed: '2026-11-07' }));
+  assert.equal(runStore.lockDailyDraft(kept).id, day);
+  let state = runStore.readDaily();
+  assert.deepEqual(runStore.lockedDailyDraft(state, day).session, kept.session);
+  assert.equal(state.lastPlayed, '2026-11-07');
+  assert.equal(state.streak, 3);
+  const status = saved.readDailyStatus(noon);
+  assert.equal(status.inProgress, true);
+  assert.equal(status.playedToday, false);
+  assert.equal(status.streak, 3);
+  // The next day it is over: nothing to resume.
+  assert.equal(runStore.lockedDailyDraft(state, '2026-11-09'), null);
+  assert.equal(saved.readDailyStatus(new Date('2026-11-09T12:00:00Z')).inProgress, false);
+  assert.equal(runStore.dropDailyDraft(state).draft, null);
+  assert.equal(runStore.readDaily().draft, null);
+  // The XI is complete: the attempt begins, the kept draft goes, the streak counts.
+  runStore.lockDailyDraft(kept);
+  const { run } = runStore.createRunFromDraft(catalog, { session: draft, context: {} });
+  state = runStore.beginDailyAttempt(runStore.readDaily(), {
+    id: day,
+    number: 8,
+    run,
+    rating: 82,
+    perfect: 97,
+    formation: '433',
+  });
+  assert.equal(state.draft, null);
+  assert.equal(runStore.readDaily().draft, null);
+  assert.equal(state.streak, 4);
+  assert.equal(saved.readDailyStatus(noon).inProgress, true, 'being simulated');
+  // From here on the day cannot be locked again (a stale draft store would try).
+  assert.equal(runStore.lockDailyDraft(kept), null);
+  state = runStore.finishDailyAttempt(state, {
+    id: day,
+    record: { w: 1, d: 0, l: 2, gf: 2, ga: 4 },
+    points: 300,
+  });
+  assert.equal(runStore.lockDailyDraft(kept), null);
+  const done = saved.readDailyStatus(noon);
+  assert.equal(done.inProgress, false);
+  assert.equal(done.playedToday, true);
+  // Broken data in the record reads as nothing kept.
+  for (const draftValue of [5, 'x', {}, { id: day }, { id: 7, session: kept.session }]) {
+    store.set(saved.DAILY_KEY, JSON.stringify({ draft: draftValue }));
+    assert.equal(runStore.readDaily().draft, null);
+    assert.equal(saved.readDailyStatus(noon).playedToday, false);
+  }
+  // Home's "Draft in progress" card: a Daily draft of another day is over.
+  store.set(saved.DRAFT_KEY, JSON.stringify(kept));
+  assert.equal(saved.readSavedDraft(noon).picks, 1);
+  assert.equal(saved.readSavedDraft(new Date('2026-11-09T00:00:01Z')), null);
+});
+
 test('countdown to the next UTC day', () => {
   assert.equal(runStore.msUntilNextDaily(Date.parse('2026-11-07T23:59:30Z')), 30000);
   assert.equal(runStore.countdownText(3723000), '01:02:03');
