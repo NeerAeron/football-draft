@@ -265,6 +265,9 @@ function Board({ state, draft, auto }) {
   useEffect(() => {
     if (auto && !snap.complete) autoComplete();
   }, [auto]);
+  // Leaving mid-spin (the back arrow): the spin is made and saved, so coming back shows it
+  // landed instead of spinning again.
+  useEffect(() => () => markLanded(), []);
   useEffect(() => {
     if (!wide || !sel) return;
     const onKey = e => e.key === 'Escape' && setSel(null);

@@ -3,8 +3,9 @@
 //   export default function DraftScreen({ params, query }) { … }
 //
 // Fields: path ('/play/:mode'), title (document title + top bar), load (dynamic import),
-// back (where the top-bar back button goes; omit on Home), immersive (true = no top bar,
-// e.g. a full-screen match).
+// back (where the top-bar back button goes; omit on Home), leave (true = the back button always
+// goes to `back`, not one step back in history), immersive (true = no top bar, e.g. a
+// full-screen match).
 // To add a screen: create app/ui/screens/<name>/<name>.js (+ .css imported in styles/app.css)
 // and point its route's load() at it — see docs/ui-guide.md#add-a-screen.
 const placeholder = () => import('./screens/placeholder/placeholder.js');
@@ -33,7 +34,14 @@ export const routes = [
     back: '/',
     load: () => import('./screens/setup/setup.js'),
   },
-  { path: '/draft', title: 'Draft', back: '/', load: () => import('./screens/draft/draft.js') },
+  {
+    path: '/draft',
+    title: 'Draft',
+    back: '/',
+    // The back arrow leaves the draft for Home (it stays saved), never for the setup screen.
+    leave: true,
+    load: () => import('./screens/draft/draft.js'),
+  },
   {
     path: '/prematch',
     title: 'Pre-match',

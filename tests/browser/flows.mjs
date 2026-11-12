@@ -746,6 +746,47 @@ export const flows = [
     },
   },
   {
+    name: 'draft-back',
+    async run({ page, step, base }) {
+      await seed(page, ONBOARDED);
+      const saved = () =>
+        page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-draft') || 'null');
+          return d && `${d.context.seed}:${d.session.state.current?.option.id}`;
+        });
+      let draft = null;
+      await step('"Play again" (?go=1) starts a draft at once', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await visible(page, '[data-screen="draft"][data-phase]');
+        draft = await saved();
+        if (!draft) throw new Error('no draft was saved');
+      });
+      await step('the device back button shows the setup: ?go=1 is spent', async () => {
+        await page.goBack();
+        await visible(page, '[data-screen="setup"] .setup-resume');
+        await page.waitForTimeout(300);
+        if ((await saved()) !== draft) throw new Error('going back started another draft');
+        await page.goForward();
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+      });
+      await step('the back arrow leaves for Home and keeps the draft', async () => {
+        await page.click('.topbar__back');
+        await visible(page, '[data-screen="home"] [data-testid="resume-draft"]');
+        await page.waitForTimeout(300);
+        if (!/^(#\/)?$/.test(await page.evaluate(() => location.hash)))
+          throw new Error('not on Home');
+        if ((await saved()) !== draft) throw new Error('the draft changed: it was started again');
+      });
+      await step('Resume shows the same spin', async () => {
+        await page.click('[data-testid="resume-draft"]');
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+        if ((await saved()) !== draft) throw new Error('the draft changed on resume');
+      });
+    },
+  },
+  {
     name: 'draft-budget',
     async run({ page, shot, step, base, viewport }) {
       await seed(page, ONBOARDED);

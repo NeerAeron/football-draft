@@ -26,7 +26,7 @@ ui/
   lib/                    framework-free helpers (no JSX, no DOM except motion/audio/router)
     html.js               html`` (htm bound to Preact), cx(), nextId()
     store.js              createStore, useStore, shallowEqual
-    router.js             hash router: startRouter, useRoute, href, navigate, back
+    router.js             hash router: startRouter, useRoute, href, navigate, back, leave, rewrite
     screen-loader.js      lazy screen modules: loadScreen, preloadRoutes
     prefs.js              UI preferences (motion, hideRatings, onboarded, draftType)
     motion.js             isReducedMotion(), useReducedMotion()
@@ -137,7 +137,8 @@ from 960 px. Primary action on phones: `div.action-bar` (sticky bottom, safe-are
 ## 5. Routing
 
 Hash routes (static hosting, back button works). Table in `app/ui/routes.js`:
-`{ path, title, load, back?, immersive? }`; `'*'` is the not-found route.
+`{ path, title, load, back?, leave?, immersive? }`; `'*'` is the not-found route. `leave: true`
+(the draft): the top-bar back arrow always goes to `back` (Home), however many screens ago that was.
 
 | Route         | Owner (P2)   | Meaning                                                         |
 | ------------- | ------------ | --------------------------------------------------------------- |
@@ -157,6 +158,8 @@ import { href, navigate, back, useRoute } from '../../lib/router.js';
 href('/play/:mode', { mode: 'run' }, { type: 'clubs' }); // '#/play/run?type=clubs'
 navigate('/draft');            // push;  navigate('/', { replace: true })
 back('/');                     // history back inside the app, else replace with fallback
+leave('/');                    // out of a flow: back to that screen, however many steps it is
+rewrite('/play/run');          // new URL for the current entry, no navigation (spends ?go=1)
 const { path, params, query, direction } = useRoute();
 ```
 

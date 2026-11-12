@@ -11,6 +11,9 @@ The draft experience of the new UI and its two hand-off stores. Core rules live 
 | `#/prematch` | `screens/prematch/` | generic pre-match for any two XIs: lineup swaps, formation, tactics, opponent preview, view mode, Kick off. |
 
 Home → Start (setup) → the reel is already spinning: two taps from Home to the first spin.
+The draft's back arrow always leaves for Home (route `leave: true`), also mid-spin: the draft
+stays saved, Home's card resumes it with that spin landed. "Play again" (`?go=1`) starts a
+draft once — the parameter is removed from the history entry, so going back never starts another.
 
 ## Setup query parameters (challenge links land here)
 

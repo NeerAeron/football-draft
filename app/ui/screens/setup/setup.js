@@ -4,7 +4,7 @@
 // first spin, so Home → Start → the reel is already spinning.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
-import { navigate } from '../../lib/router.js';
+import { navigate, rewrite, href } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
@@ -355,6 +355,9 @@ function Setup({ mode, query }) {
   useEffect(() => {
     if (query.go !== '1' || went.current || mode === 'versus') return;
     went.current = true;
+    // One shot: going back to this entry must show the setup, not start another draft.
+    const { go: _go, ...rest } = query;
+    rewrite(href('/play/:mode', { mode }, rest));
     start();
   }, []);
 
