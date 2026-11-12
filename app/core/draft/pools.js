@@ -1,5 +1,5 @@
 // Catalog index for the draft session, the opponents and the competitions: nations (field,
-// pots, call-ups), leagues and clubs, cached role ratings and fast best-XI assignment.
+// pots, draft squads), leagues and clubs, cached role ratings and fast best-XI assignment.
 // Pure and deterministic: every list has a total order (rating, then profileId / name).
 import { CONFIG } from '../config/config.js';
 import { overallRating, positionFamiliarity } from '../players/ratings.js';
@@ -281,11 +281,14 @@ function* buildIndex(catalog, rules) {
       flag: info?.flag ?? null,
       players: members,
       goalkeepers: members.filter(isKeeper).length,
+      // What a draft can take from it (draftSquad): the team above keeps everyone.
+      squad: draftSquad(members, rules),
     });
   }
   const n = rules.nations;
-  // Players a draft may offer (rules.pickMinimum): what a spin's pool is made of. Whether a
-  // nation or a club is a team — playable, its strength, its XI — never asks.
+  // Players a draft may offer (rules.pickMinimum): what a league's or a club's pool is made of
+  // (a nation's is its draft squad). Whether a nation or a club is a team — playable, its
+  // strength, its XI — never asks.
   const pickable = list => {
     let count = 0;
     for (const p of list) if (selectable(p, rules.pickMinimum)) count++;
@@ -321,7 +324,7 @@ function* buildIndex(catalog, rules) {
       .filter(
         nation =>
           !isPlayable.has(nation) &&
-          pickable(nation.players) >= reelPlayers &&
+          nation.squad.length >= reelPlayers &&
           nation.players.some(p => Math.round(naturalRating(p)) >= reelStar),
       )
       .map(nation => {
@@ -411,32 +414,36 @@ function* buildIndex(catalog, rules) {
 }
 
 /**
- * Best available call-ups of a nation: the best `squadGoalkeepers` keepers and at least
- * `squadDefenders` / `squadMidfielders` / `squadAttackers` by line, then the best remaining
- * outfield players up to `squadSize` (natural OVR order). `available(p)` filters drafted or
- * excluded players, so the list refills from the next best as players are taken.
+ * A nation's draft squad: the only players a nation spin ever offers. Its best `squadSize` (30)
+ * among the players a draft may offer (`rules.pickMinimum`): the best `squadGoalkeepers`
+ * keepers, at least `squadDefenders` / `squadMidfielders` / `squadAttackers` by line, then the
+ * best remaining outfield players (natural OVR order) — fewer when the nation has fewer. Fixed
+ * for a catalog and rules: a spin's pool is those of them still available, it never refills
+ * from deeper in the nation. `rules` = the draft rules ({ nations, pickMinimum }).
  */
-export function callUps(nation, available, rules = CONFIG.draft.nations) {
-  const need = {
-    GK: rules.squadGoalkeepers,
-    DEF: rules.squadDefenders,
-    MID: rules.squadMidfielders,
-    ATT: rules.squadAttackers,
-  };
+export function draftSquad(players, rules = draftRules()) {
+  const n = rules.nations,
+    need = {
+      GK: n.squadGoalkeepers,
+      DEF: n.squadDefenders,
+      MID: n.squadMidfielders,
+      ATT: n.squadAttackers,
+    },
+    offered = players.filter(p => selectable(p, rules.pickMinimum)).sort(byNatural);
   let open = need.GK + need.DEF + need.MID + need.ATT;
   const chosen = new Set();
-  for (const p of nation.players) {
+  for (const p of offered) {
     if (!open) break;
     const line = LINE_OF[p.primaryPosition];
-    if (need[line] > 0 && available(p)) {
+    if (need[line] > 0) {
       need[line]--;
       open--;
       chosen.add(p);
     }
   }
-  for (const p of nation.players) {
-    if (chosen.size >= rules.squadSize) break;
-    if (!chosen.has(p) && !isKeeper(p) && available(p)) chosen.add(p);
+  for (const p of offered) {
+    if (chosen.size >= n.squadSize) break;
+    if (!isKeeper(p)) chosen.add(p);
   }
   return [...chosen].sort(byNatural);
 }

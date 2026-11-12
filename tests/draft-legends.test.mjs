@@ -327,8 +327,9 @@ test('one player, one place in an XI: a legend version blocks his current versio
 });
 
 test('with only the goalkeeper slot left, a spin lands only where a keeper is available', () => {
-  // Every nation of the reel, with re-rolls and in Budget mode.
-  const keepers = n => n.players.filter(isKeeper);
+  // Every nation of the reel, with re-rolls and in Budget mode. A nation's keepers are the
+  // ones of its draft squad.
+  const keepers = n => n.squad.filter(isKeeper);
   assert.ok(
     index.spinField.some(n => !keepers(n).length),
     'some reel nations have no keeper',

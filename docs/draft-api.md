@@ -9,7 +9,7 @@ deterministic for a seed.
 | `links.js` | `teamLinks(players)`, `chemValues(players)`, `linkBoosts(rules)`, `captainSlot(players)` — mates (chemistry) and the Captain |
 | `budget.js` | the player tiers (Superstar / Star / Starter / Normal / Bench) and Budget mode's slots: `budgetBands`, `bandIndex`, `bandUse`, `freeLabel`, `draftTiers`, `tierOfRating`, `BUDGET_TIERS` |
 | `opponents.js` | the difficulty ladder: `pickOpponent`, `chooseOpponent`, `buildOpponent`, `opponentCandidates`, `ladderPreview`, `ladderTarget`, `MODE_BASELINES`, `LEVELS` |
-| `pools.js` | catalog index (playable nations, field/pots, reel, leagues, clubs), `legendIndex`, `callUps`, `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
+| `pools.js` | catalog index (playable nations, field/pots, reel, leagues, clubs), `legendIndex`, `draftSquad` (`nation.squad`), `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
 | `nation-codes.js` | nationality → flag code fallback when the catalog has no `nations` table |
 
 Input is a decoded catalog (`loadCatalog()` in the browser, `loadRuntimeCatalog()` in Node):
@@ -22,7 +22,7 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 
 | Mode (`mode`) | One spin lands on | Pool | Odds (shown on the reel) |
 | --- | --- | --- | --- |
-| `nations` (default) | a nation of the reel: every playable nation (56) and 7 star nations, 63 in all | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR (fewer when the nation has fewer); refills as players are taken | uniform 1/63 |
+| `nations` (default) | a nation of the reel: every playable nation (56) and 7 star nations, 63 in all | its draft squad: the nation's best 30 of the players shown 65+ (3 GK, ≥ 9 DEF, ≥ 9 MID, ≥ 5 ATT, then by OVR; fewer when the nation has fewer), less the players taken — it never refills | uniform 1/63 |
 | `leagues` | a league (41 usable) | the whole league | flat by tier A 4 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players a draft may offer: 472 of the 553 clubs) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubAndCountry` | alternately a nation (picks 1, 3, 5…) and a league (2, 4, 6…) | as above | as above |
@@ -37,18 +37,41 @@ available when only the GK slot is left. All numbers live in `CONFIG.draft` (`pi
 
 **Only players shown 65+ are offered** (`draft.pickMinimum`, `selectable(p, minimum)` in
 `pools.js`): a player is in a draft's pools only when the rating on his card — his natural
-rating, rounded — is 65 or more. One rule, in `DraftSession.available()`: nation call-ups,
-league and club pools, the Budget extras, `suggestPick` / Auto-pick and every guard go through
+rating, rounded — is 65 or more. One rule, in `DraftSession.available()`: nation squads,
+league and club pools, `suggestPick` / Auto-pick and every guard go through
 it, so a spin lands only where a 65+ player can fill an open slot class (only the keeper slot
 left: a 65+ keeper) and no row under 65 is ever listed; the Daily's perfect XI is built from the
 same pools. Legends, prime versions and Budget tiers are not asked. **Teams are not drafts**:
 opponents' XIs (nations, clubs, bosses), club squads and ratings, a nation's strength,
 `playable` / `field`, the ladder and Exhibition sides keep their real players whatever they are
 rated. Today 10,968 of the 15,788 players are selectable (961 of 1,719 keepers); the smallest
-nation pools are Armenia 9 and Egypt 11 (one playable nation, Guinea, has no keeper of 65+,
+nation squads are Armenia 9 and Egypt 11 (one playable nation, Guinea, has no keeper of 65+,
 so it never lands for the keeper slot), the smallest club pools 11. A draft
 saved before the rule has no `pickMinimum` in its rules: it loads and offers everyone. The UI
 says nothing about it.
+
+**A nation has at most 30 draftable players** (`draftSquad(players, rules)` in `pools.js`,
+stored as `nation.squad` in the index; numbers in `CONFIG.draft.nations`: `squadSize` 30,
+`squadGoalkeepers` 3, `squadDefenders` 9, `squadMidfielders` 9, `squadAttackers` 5). Of the
+players shown 65+: the best three keepers, the best nine defenders, nine midfielders and five
+attackers, then the best four outfield players left (natural OVR; ties by id). The squad is
+fixed for a catalog and rules — it does not depend on the draft — and a nation spin's pool is
+the squad less the players taken or excluded: it shrinks and never refills from deeper in the
+nation. Every nation guard counts only these players (a nation lands only when one of its 30
+can fill an open slot class and, in Budget mode, be afforded), the star-nation rule counts them
+(`reelPlayers`), and the Daily's perfect XI is built from the same squads. Leagues and clubs
+offer everyone shown 65+. Teams are not drafts: `nation.players`, a nation's strength, its XI as
+an opponent and `playable` use everyone. Today 55 of the 63 reel nations have the full 30;
+fewer: Armenia 9, Egypt 11, Costa Rica 12, Russia 14, New Zealand 18, Burkina Faso 20, Gambia
+26 (the star nations) and Georgia 28 (the one playable nation); 1,788 players are draftable in
+a nation draft (of the reel nations' 10,119 shown 65+; the largest nation has 786). Four reel
+nations have no draftable keeper (Guinea, Egypt, Gambia, Armenia), Algeria and Mali one.
+Measured (`draft-baselines.mjs --n 200 --modes nations --rerolls 1,2`, positional policy;
+before → after): the typical XI did not move — OVR 83.15 / 83.29, effective 84.04 / 84.18 with
+1 / 2 re-rolls, to the last digit (the best pick of a spin was in the 23 call-ups and is in the
+30); World Cup drafts with the Legend spin and Prime boosts 84.79 / 85.02, unchanged; Budget
+mode 82.90 → 82.82 / 83.13 → 83.04 (its pool no longer adds affordable players from deeper in
+the nation).
 
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
@@ -175,7 +198,7 @@ const spin = draft.spin();            // phase 'spin' -> 'pick'
 // Animate each reel honestly: options with weight > 0 are what could have been drawn; stop on
 // reels[i].options[landing]. Use your own animation RNG, never the session's.
 
-draft.snapshot().pool;                // call-ups, best fit first (see below)
+draft.snapshot().pool;                // the spin's players, best fit first (see below)
 draft.placementOptions(profileId);    // per slot: fit numbers and why a slot is closed
 draft.autoSlot(profileId);            // { slot, role, rating, familiarity, natural } | null
 draft.pick(profileId);                // Auto: best natural slot (familiarity >= 0.95) first
@@ -405,9 +428,11 @@ left'`; `placementOptions` gives the same reason, `pick` refuses, `suggestPick` 
 - `snapshot().budget` is the flag; `teams[i].budget` is `[{ id, label, range, minimum, slots,
 used, left }]` (`label: 'Star'`, `range: '84–87'`; or `null`). Helpers: `budgetBands(rules)`,
   `bandIndex`, `bandUse`, `freeLabel` ('Under 80').
-- Never a dead end: the spin guard also needs an affordable player for an open slot class, and
-  a nation's pool is its usual 23 call-ups (the stars you cannot afford are listed, closed)
-  plus the best 23 call-ups you can afford.
+- Never a dead end: the spin guard also needs an affordable player for an open slot class. A
+  nation's pool is its draft squad as always (the stars you cannot afford are listed, closed);
+  nobody is added from deeper in the nation, so a nation whose squad has nobody you can
+  afford for an open slot class is off the reel for that spin — France, Spain, Brazil, England
+  and Germany have no outfield player under 80 in their 30, Italy three.
 - Serialised with the session (`options.budget`, `rules.budget`); old saves have no budget,
   and rules saved with numbered bands (`band1`–`band3`) keep their numbers under the tier
   names.

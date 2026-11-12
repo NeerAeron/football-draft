@@ -12,7 +12,7 @@ Everything you do is saved in your own browser.
 1. **Pick a mode**, then a difficulty and a formation (Quick Match and Versus also pick a draft
    type).
 2. **Spin.** One tap spins the reel; where it lands is decided before it moves. You get the
-   players of what it lands on: a nation's best 23 call-ups, a league, or a club's squad.
+   players of what it lands on: a nation's best 30 players, a league, or a club's squad.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
@@ -49,7 +49,7 @@ Everything you do is saved in your own browser.
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
-| **Nations** | one of 63 football nations, all equally likely | its best 23 available call-ups |
+| **Nations** | one of 63 football nations, all equally likely | its best 30 players (those still available) |
 | **Leagues** | one of 41 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 

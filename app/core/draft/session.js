@@ -12,7 +12,6 @@ import {
   legendIndex,
   catalogStamp,
   draftRules,
-  callUps,
   roleRating,
   roleFit,
   naturalRating,
@@ -271,9 +270,9 @@ export class DraftSession {
     });
     return { gk, out };
   }
-  // The guard: some available (Budget mode: affordable) player of the group can fill an open
-  // slot class. Call-ups always include the best available keepers and outfield players, so
-  // the whole group is checked.
+  // The guard: some available (Budget mode: affordable) player the spin would offer can fill an
+  // open slot class. A nation offers its draft squad only (pools.js draftSquad), a league or a
+  // club everyone a draft may offer.
   #fills(category, id, side, legend = false) {
     const ix = this.#index,
       group = legend
@@ -291,7 +290,7 @@ export class DraftSession {
         const band = bandIndex(this.bands, this.#price(p));
         return band < 0 || used[band] < this.bands[band].slots;
       };
-    return group.players.some(
+    return (category === 'nation' && !legend ? group.squad : group.players).some(
       p => (isKeeper(p) ? open.gk : open.out) && this.available(p) && afford(p),
     );
   }
@@ -299,21 +298,10 @@ export class DraftSession {
     const ix = this.#index;
     if (category === 'nation') {
       if (legend) return this.#legendPool(id);
+      // The nation's draft squad, less whoever is taken or excluded: it does not refill. Budget
+      // mode lists the players a full tier closes too (the guard asked for one that is not).
       const nation = ix.nations.get(id);
-      if (!nation) return [];
-      const squad = callUps(nation, p => this.available(p), this.rules.nations);
-      if (!this.bands) return squad;
-      // Budget mode: the squad as always (stars you cannot afford are shown, closed) plus the
-      // best call-ups you can afford, so a spin always offers a full choice.
-      const side = this.turn,
-        seen = new Set(squad);
-      for (const p of callUps(
-        nation,
-        q => this.available(q) && this.affordable(q, side),
-        this.rules.nations,
-      ))
-        if (!seen.has(p)) squad.push(p);
-      return squad;
+      return nation ? nation.squad.filter(p => this.available(p)) : [];
     }
     const group = category === 'league' ? ix.leagueById.get(id) : ix.clubs.get(id);
     return group ? group.players.filter(p => this.available(p)) : [];

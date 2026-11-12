@@ -209,7 +209,8 @@ const points = dailyScore(run.snapshot(), { rating: draft.matchSide(0).rating, p
   date (DEFAULT_CONFIG rules; the device's config cannot change them). Opponent XIs still
   drop the players you drafted.
 * **Perfect XI**: the exact hindsight optimum — one player per round from that round's
-  call-ups (repeat nations refill), using the alternate in at most `rerolls` rounds, distinct
+  nation (its draft squad of 30, `nation.squad`: a repeated nation offers the same squad
+  again, less the players taken), using the alternate in at most `rerolls` rounds, distinct
   players and slots. A positional drafter averages ≈ 97.7% of it.
 * **Points** (`DAILY_POINTS`): W 100 · D 40 · shootout won +20 · place R32 10 / R16 20 / QF 40 /
   fourth 80 / third 100 / runners-up 120 / champions 200 · 10 per team-OVR point above 70 · 10 per % of perfect above 80.

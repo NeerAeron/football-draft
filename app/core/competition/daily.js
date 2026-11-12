@@ -5,14 +5,7 @@
 import { DEFAULT_CONFIG } from '../config/config.js';
 import { lcg } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import {
-  catalogIndex,
-  draftRules,
-  callUps,
-  roleRating,
-  isKeeper,
-  selectable,
-} from '../draft/pools.js';
+import { catalogIndex, draftRules, roleRating, isKeeper } from '../draft/pools.js';
 import { seedValue } from '../draft/session.js';
 import { chooseOpponent } from '../draft/opponents.js';
 import { cupOffsets } from './cup.js';
@@ -190,20 +183,14 @@ function combinations(slots, size) {
 }
 // Best XI from a multiset of nations (one player per occurrence, distinct players and slots):
 // exact DP over slot masks, nation by nation; within a nation an assignment per slot subset.
-function bestFromNations(index, nations, roles, rules) {
+function bestFromNations(index, nations, roles) {
   const counts = new Map();
   for (const n of nations) counts.set(n, (counts.get(n) || 0) + 1);
   let states = new Map([[0, 0]]);
   for (const [name, c] of counts) {
-    const n = rules.nations,
-      // What the draft offered: only players it may offer (draft.pickMinimum).
-      squad = callUps(index.nations.get(name), p => selectable(p, rules.pickMinimum), {
-        ...n,
-        squadSize: n.squadSize + c - 1,
-        squadDefenders: n.squadDefenders + c - 1,
-        squadMidfielders: n.squadMidfielders + c - 1,
-        squadAttackers: n.squadAttackers + c - 1,
-      });
+    // What the draft offered: the nation's draft squad (a repeated nation offers the same
+    // players again, less the ones taken).
+    const squad = index.nations.get(name).squad;
     // Only the best c per role can be needed (exchange argument).
     const keep = new Set();
     for (const role of new Set(roles))
@@ -241,8 +228,8 @@ function bestFromNations(index, nations, roles, rules) {
 }
 /**
  * The hindsight optimum ("perfect XI") of a day's spins: the best team rating one player per
- * round could reach, using a round's alternate in at most `rerolls` rounds, from the call-ups
- * those spins offer (repeat nations refill). { rating, alternates: rounds that used theirs }.
+ * round could reach, using a round's alternate in at most `rerolls` rounds, from the draft
+ * squads of those nations. { rating, alternates: rounds that used theirs }.
  */
 export function perfectXI(catalog, challenge, { formation = challenge.formation } = {}) {
   const rules = DEFAULT_CONFIG.draft,
@@ -252,7 +239,7 @@ export function perfectXI(catalog, challenge, { formation = challenge.formation 
   let best = { total: -Infinity, alternates: [] };
   const consider = alternates => {
     const nations = rounds.map((r, i) => (alternates.includes(i) ? r.alternate : r.spin)),
-      total = bestFromNations(index, nations, roles, rules);
+      total = bestFromNations(index, nations, roles);
     if (total > best.total + 1e-9) best = { total, alternates };
   };
   consider([]);

@@ -34,7 +34,7 @@ export const TYPE_INFO = [
     value: 'nations',
     label: 'Nations',
     icon: 'flag',
-    text: 'Spin one of 64 nations, pick from its best 23 call-ups.',
+    text: 'Spin a nation, pick from its best 30 players.',
   },
   {
     value: 'leagues',
