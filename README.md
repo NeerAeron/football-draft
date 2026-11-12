@@ -1,7 +1,7 @@
 # World Cup Draft
 
-A browser football (soccer) game. Spin for nations, leagues or clubs, draft an XI from 15,378
-real EA SPORTS FC 26 player profiles, then take it through a World Cup in a continuous,
+A browser football (soccer) game. Spin for nations, leagues or clubs, draft an XI from 15,788
+real EA SPORTS FC 27 player profiles, then take it through a World Cup in a continuous,
 physics-based 2D 11v11 match simulation.
 
 It is a static site: HTML, CSS and native ES modules with no build step, no server, no accounts.
@@ -12,7 +12,7 @@ Everything you do is saved in your own browser.
 1. **Pick a mode**, then a difficulty and a formation (Quick Match and Versus also pick a draft
    type).
 2. **Spin.** One tap spins the reel; where it lands is decided before it moves. You get the
-   players of what it lands on: a nation's best 23 call-ups, a league, or a club's squad.
+   players of what it lands on: a nation's best 30 players, a league, or a club's squad.
 3. **Pick and place.** Choose a player and the pitch lights up with how well he fits each open
    slot (`79 → 75` means he loses rating out of position). Lock him in. Eleven picks make your XI.
    A limited number of **re-rolls** (by difficulty) spin again without the options you saw.
@@ -20,13 +20,16 @@ Everything you do is saved in your own browser.
    **+1**, with both **+2.5** (shown as a green chip on the pitch; the pool says who would
    get one).
    A **Captain** (a "C" on his card) gives every player of your XI **+1** more.
-   In a World Cup Run the first spin is the **Legend spin** — a great of the past (Neymar ’19,
-   Bale ’16, Buffon ’17…) joins your XI — and you have **Prime boosts** (2 on Pro, 1 above):
-   each turns a drafted player into his best past version (Messi 86 → 93).
+   In a World Cup Run the first spin is the **Legend spin** — a best version of 2014–2022,
+   rated 85 or more: a great of the past (Neymar ’19, Bale ’16, Buffon ’17…) or a current
+   player at his peak (Messi ’19, De Bruyne ’20) — and you have **Prime boosts** (2 on Pro, 1
+   above): each turns a drafted player into his best past version. A player is in your XI
+   once: his legend version and his card of today never both.
    **Budget mode** is the hard way: only 2 **Superstars** (rated 88+), 2 **Stars** (84–87) and
    3 **Starters** (80–83) — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World
-   Cup Run the first match is played in the formation you drafted in). Watch
+   Cup Run the group stage is played in the formation you drafted in, and what you set up
+   stays for the next matches). Watch
    **Key Moments** (highlights per half with a half-time team talk), the **Full** match live (three
    minutes, with live mentality and tactics), or go straight to an **Instant** result. All three
    are the same match: one seed, one result, however you watch it. The action camera follows the
@@ -47,8 +50,8 @@ Everything you do is saved in your own browser.
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
-| **Nations** | one of 64 football nations, all equally likely | its best 23 available call-ups |
-| **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
+| **Nations** | one of 63 football nations, all equally likely | its best 30 players (those still available) |
+| **Leagues** | one of 41 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
 Three difficulties — Pro, World Class and Legendary — set your re-rolls (2, 1, 1) and how
@@ -79,6 +82,14 @@ desktop browser. The first launch of the installed app (online) caches the whole
 what you have used is kept. Online, every file is always fetched fresh: the service worker
 (`app/sw.js`) is network-first and its cache is only a fallback. It is not registered on
 `localhost`/`127.0.0.1` (development and tests) unless the URL has `?sw=1`.
+
+The offline copy follows deploys. `app/build.json` holds a build stamp: the Pages deploy writes
+the commit there (the checked-in file says `dev`). The worker keeps one cache per stamp; the
+first online launch of the installed app after a deploy caches the whole new build, and only
+when it is complete are the older caches deleted — until then the previous complete copy keeps
+answering offline. If you publish `app/` some other way, write a new value into `build.json`
+with every publish (any text of letters, digits, `.`, `_` or `-`), or the installed app keeps
+its first copy of the screens it does not open.
 
 Shared links unfurl with a preview card (`app/assets/og-image.png`). Its absolute address in
 `app/index.html` (`og:url`, `og:image`, `twitter:image`) points at the GitHub Pages deployment,
@@ -114,12 +125,13 @@ app/                  the deployed site, served as-is
   index.html          the game (loads ui/main.js)
   gallery.html        component gallery
   manifest.webmanifest, sw.js   install metadata and the offline service worker
+  build.json          build stamp of the offline copy ("dev" here; the deploy writes the commit)
   core/               pure logic, no DOM or storage; runs in Node
     sim/              match engine, rules, cards, periods, replay, shootouts, AI coach
     players/          ratings, badges, formations, club lineups, catalog codec
     draft/            draft session, pools, mates boosts, Budget mode, opponent ladder
     competition/      World Cup Run, fast rating model, Daily Challenge, share links
-    config/           tuning defaults, saved overrides, normalisation
+    config/           tuning defaults, the live config, normalisation
     util/             seeded RNG, math and text helpers
   services/           catalog loader, simulation worker + client, sound, playback clock
   ui/                 the interface: Preact + htm (vendored), shell, components, screens
@@ -130,56 +142,78 @@ scripts/              catalog compiler; scripts/data/ the data pipeline, scripts
 tests/                node:test suites, fixtures, browser flows
 tools/calibration/    calibration runners (manual, not part of the tests)
 tools/og/             the link-preview card and app icons (HTML template + render script)
-tools/research/       StatsBomb research scripts that produced the reference data
+tools/research/       StatsBomb research scripts that produced the reference data, and
+                      legacy-titles.py (the FIFA 98–14 workbook → data/legacy-titles.json)
 docs/                 API contracts, UI guides, calibration notes, development history
 ```
 
 ## Data pipeline
 
-The player catalog is compiled, never hand-edited. Source: rovnez, "FC 26 (FIFA 26) player
-data" on Kaggle, file `FC26_20250921.csv` (18,405 rows, CC BY 4.0, SHA-256
-`4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2`). An identical public copy:
-<https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv>.
+The player catalog is compiled, never hand-edited. Source: EA SPORTS FC 27, EA's own ratings feed
+as of 12 September 2026 (19,789 rows; the game uses the 17,849 men), from the public copy at
+<https://raw.githubusercontent.com/LakshmiKanth11/EA_FC_ANALYSIS/c0b2542d9fcae72d2c538a472a30ee57c4e7c75e/EA_FC_PLAYERS_DATASET_AND_%20DASHBOARD/data/players.csv>
+(SHA-256 `18ed434e5bb90f9afa72363d14438005c785eb4b8872a64c89c75bb38e14e911`; published on Kaggle as
+"EA SPORTS FC 27 Player Ratings" by mikedpad). The feed names clubs and leagues without ids;
+`npm run data:reconcile` ties them to the reviewed reference (`data/source-map.json`).
 
 Legends and prime versions come from a second pinned source: `male_players (legacy).csv` of the
 Hugging Face dataset [jsulz/FIFA23](https://huggingface.co/datasets/jsulz/FIFA23) (MIT; career-mode
 players of FIFA 15–23 from sofifa.com, the same columns; revision
 `0b74dbfc434808cf5573f0f11f4c977185bd0e0c`, 90,933,390 bytes, SHA-256
-`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`).
+`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`). Legends go back to 1997
+with a third one, `data/legacy-titles.json` (in the repository): the top 1,000 players of each
+of FIFA 98 … FIFA 14, extracted from the games' own PC databases
+([soccergaming.com archive](https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/))
+and copied column for column out of a workbook by `tools/research/legacy-titles.py`.
 
 ```sh
 npm run data:fetch   # downloads both pinned CSVs into data/raw/ and checks their SHA-256
+npm run data:reconcile  # a new snapshot only: its club, league and nation names -> the reference
 npm run data:build   # compiles app/data/catalog.v3.json, app/data/legends.v1.json, the flags
                      # and data/build/*.json (provenance)
+python3 -I tools/research/legacy-titles.py legends-98-14.xlsx data/legacy-titles.json
+                     # a new FIFA 98–14 workbook only (openpyxl); the build needs no Python
 ```
 
 The build is deterministic, so a rerun is byte-identical. The catalog holds every player of every
-league we have reviewed club metadata for (15,378 players, 546 clubs, 152 nations), including
-national-team players without a club, plus precomputed badges, club ratings and club best XIs.
+club we have reviewed metadata for (15,788 players, 553 clubs in 41 leagues, 163 nations),
+including 831 players rated 65+ whose clubs the game does not carry (nation pools only), plus
+precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 90 legends — past players who are not in the catalog, at their best version
-rated 85+ — and the prime versions of 1,963 catalog players, compiled by the same compiler.
+draft starts) holds 411 legends — best past versions of 1997–2022 the game shows at 85+: 318
+players who are not in the catalog and 93 catalog players who were better then — and the prime
+versions of 2,814 catalog players (any gain on today's card), compiled by the same compiler. A
+past version shows the overall EA gave it that year, lifted at the top where EA rated its best
+lower than it does today (FIFA 09–16; never lowered): Messi ’15 95, Cristiano Ronaldo ’18 94.
+FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through the players
+neighbouring titles share (Ronaldo ’03 94, Zidane ’03 and Ronaldinho ’05 92). A draft
+offers only players shown at 65 or more (10,968 of the 15,788); teams field their real players.
 
 ## Deploy
 
 Deploying means publishing the `app/` folder to any static host; nothing else in the
 repository is needed at runtime.
 
-GitHub Pages is set up in `.github/workflows/pages.yml`: every push to `main` (or a manual run)
-uploads `app/` and deploys it. To use it, enable Pages once under **Settings → Pages → Build and
-deployment → Source: GitHub Actions**. `.github/workflows/ci.yml` runs the format check, lint,
-tests and browser smoke test on every push and pull request.
+`.github/workflows/ci.yml` runs the format check, lint, tests and browser smoke test once per
+change: on every pull request and on every push to `main` (or by hand: Actions → CI → Run
+workflow). On `main`, a green run then deploys `app/` to GitHub Pages (without the component
+gallery, a development page, and with the commit as the build stamp in `build.json`), so nothing is published that did not pass. To use it, enable Pages
+once under **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
 ## Credits and licences
 
-- **Player data:** "FC 26 (FIFA 26) player data" by rovnez, licensed
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); upstream data from SoFIFA /
-  EA SPORTS FC. Player ratings are converted, not invented (see the compiler).
+- **Player data:** EA SPORTS FC 27 player ratings as published by EA (12 September 2026), from
+  the copy in [EA_FC_ANALYSIS](https://github.com/LakshmiKanth11/EA_FC_ANALYSIS) by Lakshmi
+  Kanth (no licence stated there); player data belongs to Electronic Arts. Player ratings are
+  converted, not invented (see the compiler).
 - **Legends and prime versions:** the [FIFA23 dataset](https://huggingface.co/datasets/jsulz/FIFA23)
   by jsulz on Hugging Face (`male_players (legacy).csv`, FIFA 15–23 career-mode players), MIT
-  licence; upstream data from SoFIFA / EA SPORTS FIFA.
+  licence; upstream data from SoFIFA / EA SPORTS FIFA. The versions of 1997–2013 (FIFA 98–14,
+  the top 1,000 players of each title) were extracted from the games' own databases
+  ([soccergaming.com archive](https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/);
+  no licence stated — player data belongs to Electronic Arts).
 - **Club and league strength:** a September 2026 snapshot of the
   [Opta Power Rankings](https://dataviz.theanalyst.com/opta-power-rankings/), stored in
   `data/catalog-reference.json`.

@@ -1,4 +1,4 @@
-// FC 26 nationality name -> flag-icons code (ISO 3166-1 alpha-2, plus gb-eng/gb-sct/gb-wls/gb-nir).
+// Catalog nationality name -> flag-icons code (ISO 3166-1 alpha-2, plus gb-eng/gb-sct/gb-wls/gb-nir).
 // Vendored lookup for catalogs without a nations table; catalog.nations wins when present.
 export const NATION_CODES = Object.freeze({
   Afghanistan: 'af',

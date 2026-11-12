@@ -1,9 +1,11 @@
 // Select-then-lock: the chosen player's card (with his six stats), where he fits (pitch
-// highlights from placementOptions), the effect of the pick (team OVR, his mates boost, Budget
-// slot) and the confirm button. Phones: inside a Sheet. Desktop: a dock under the pool (the
+// highlights from placementOptions: his overall in every open slot), the effect of the pick
+// (team OVR, his mates boost, the Captain, a Prime boost on offer, Budget slot) and the confirm
+// button. Everything a pool row says — and what it had no room for — is here. Phones: inside a Sheet. Desktop: a dock under the pool (the
 // big pitch on the left lights up instead).
 import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
+import { resolveTier } from '../../lib/tiers.js';
 import {
   PlayerCard,
   FitTag,
@@ -16,7 +18,7 @@ import { TeamPitch } from './team-panel.js';
 import { mateLines } from './draft-model.js';
 import { fmt1, signed1 } from '../../lib/format.js';
 
-function Effects({ team, preview, hideRatings }) {
+function Effects({ team, preview, hideRatings, prime }) {
   if (!preview) return null;
   const delta = team.rating == null ? null : Math.round((preview.rating - team.rating) * 10) / 10;
   const lines = mateLines(preview);
@@ -46,6 +48,15 @@ function Effects({ team, preview, hideRatings }) {
       html`<li class="pick-effects__item pick-effects__captain" data-testid="captain-effect">
         <${CaptainMark} />
         <span>Captain: <b class="delta is-up">+${preview.captain.boost}</b> to every player</span>
+      </li>`
+    }
+    ${
+      prime &&
+      !hideRatings &&
+      html`<li class="pick-effects__item pick-effects__prime" data-testid="prime-effect">
+        <span>Prime ${prime.era}</span>
+        <b class="num">${prime.ovr}</b>
+        ${prime.gain != null && html`<span class="delta is-up">+${prime.gain}</span>`}
       </li>`
     }
     ${
@@ -89,6 +100,33 @@ function PickCard({ view, hideRatings }) {
 function targetFit(highlights, target) {
   const fit = target != null ? highlights[target] : null;
   return fit && fit.state !== 'blocked' ? fit : null;
+}
+
+/**
+ * "At DM 79 ★ Best": the slot he is headed for, his overall there, and a tag only when it adds
+ * something — Best, or the drop out of position ("82 → 79", which carries the number itself).
+ */
+function SlotLine({ option, fit, hideRatings, arrow }) {
+  if (!option) return 'Choose a slot';
+  const drop = fit?.state === 'penalty' && fit.to != null;
+  return html`${arrow ? '→ ' : 'At '}<b>${option.role}</b>
+    ${!hideRatings && !drop && html`<b class="num pick__rating">${option.rating}</b>`}
+    ${
+      fit &&
+      (hideRatings || drop || fit.state === 'best') &&
+      html`<${FitTag} fit=${fit} size="sm" hideRatings=${hideRatings} />`
+    }`;
+}
+
+/** His tier by name and, for a legend, the year of that version: "Star · Legend ’18". */
+function Standing({ view, hideRatings }) {
+  const tier = !hideRatings && resolveTier(view.tier, view.ovr);
+  const legend = view.legend && view.era ? `Legend ${view.era}` : '';
+  if (!tier && !legend) return null;
+  return html`<span class="pick__standing" data-testid="pick-standing">
+    ${tier && html`<span class=${`tier-text-${tier.id}`}>${tier.label}</span>`}
+    ${tier && legend && ' · '}${legend && html`<span class="pick__legend">${legend}</span>`}
+  </span>`;
 }
 
 function confirmLabel(view, option) {
@@ -148,18 +186,25 @@ export function PickSheet({
         <${PickCard} view=${view} hideRatings=${hideRatings} />
         <div class="pick__info">
           <p class="pick__full">${view.fullName || view.name}</p>
-          <p class="pick__pos">${(view.positions || [view.position]).join(' · ')}</p>
+          <p class="pick__pos">
+            <span>${(view.positions || [view.position]).join(' · ')}</span>
+            <${Standing} view=${view} hideRatings=${hideRatings} />
+          </p>
           ${
             (view.club || view.league) &&
             html`<p class="pick__club">
               ${[view.club?.name, view.league?.name].filter(Boolean).join(' · ')}
             </p>`
           }
-          <p class="pick__slot">
-            ${option ? html`At <b>${option.role}</b>` : 'Choose a slot'}
-            ${fit && html`<${FitTag} fit=${fit} size="sm" hideRatings=${hideRatings} />`}
+          <p class="pick__slot" data-testid="pick-slot">
+            <${SlotLine} option=${option} fit=${fit} hideRatings=${hideRatings} />
           </p>
-          <${Effects} team=${team} preview=${preview} hideRatings=${hideRatings} />
+          <${Effects}
+            team=${team}
+            preview=${preview}
+            hideRatings=${hideRatings}
+            prime=${view.primeLine}
+          />
         </div>
       </div>
       <p class="pick__hint">Tap a lit slot to play him there.</p>
@@ -200,12 +245,17 @@ export function PickDock({
     <${PickCard} view=${view} hideRatings=${hideRatings} />
     <div class="dock__who">
       <span class="dock__name">${view.name}</span>
-      <span class="dock__meta">
-        ${option ? html`→ <b>${option.role}</b>` : 'Choose a slot'}
-        ${fit && html`<${FitTag} fit=${fit} size="sm" hideRatings=${hideRatings} />`}
+      <${Standing} view=${view} hideRatings=${hideRatings} />
+      <span class="dock__meta" data-testid="pick-slot">
+        <${SlotLine} option=${option} fit=${fit} hideRatings=${hideRatings} arrow />
       </span>
     </div>
-    <${Effects} team=${team} preview=${preview} hideRatings=${hideRatings} />
+    <${Effects}
+      team=${team}
+      preview=${preview}
+      hideRatings=${hideRatings}
+      prime=${view.primeLine}
+    />
     <div class="dock__actions">
       <${Button}
         variant="ghost"

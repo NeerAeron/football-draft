@@ -21,11 +21,6 @@
   color: var(--gold-400);
   font-size: 30px;
 }
-.cabinet__lead {
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-}
 
 /* ---------- Shelf ---------- */
 .cabinet__shelf {
@@ -76,23 +71,6 @@
 }
 .cabinet__slot.is-main.is-gold {
   box-shadow: var(--glow-gold);
-}
-.cabinet__tag {
-  position: absolute;
-  top: -9px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--tier-star-frame);
-  color: var(--on-gold);
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: var(--weight-heavy);
-  letter-spacing: 0.06em;
-  line-height: 1.3;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 .cabinet__prize {
   position: relative;
@@ -173,34 +151,9 @@
   background: var(--medal-bronze);
 }
 /* The Budget-mode trophy of the level: its own, green kind. */
-.cabinet__budget {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  margin-top: auto;
-  padding: 3px 7px 3px 4px;
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px rgb(61 220 132 / 0.28);
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: var(--weight-bold);
-  line-height: 1.1;
-  white-space: nowrap;
-}
-.cabinet__budget.is-played {
-  background: rgb(61 220 132 / 0.1);
-  color: var(--green-300);
-}
-.cabinet__budget.is-won {
-  box-shadow: inset 0 0 0 1px rgb(61 220 132 / 0.6);
-}
 
 /* Narrow side slots: the green trophy says "Budget"; the word shows where there is room. */
 @media (max-width: 719px) {
-  .cabinet__item:not(.is-main) .cabinet__budget.is-played .cabinet__budget-word {
-    display: none;
-  }
 }
 
 /* ---------- The ultimate achievement ---------- */
@@ -298,8 +251,7 @@
   .cabinet__slot.is-main .cabinet__level {
     font-size: 22px;
   }
-  .cabinet__best,
-  .cabinet__budget {
+  .cabinet__best {
     font-size: var(--text-sm);
   }
 }
@@ -317,9 +269,6 @@
   }
   .cabinet__head {
     grid-area: head;
-  }
-  .cabinet__lead {
-    grid-area: lead;
   }
   .cabinet__shelf {
     grid-area: shelf;

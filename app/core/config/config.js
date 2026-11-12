@@ -1,16 +1,18 @@
 // One set of named tuning inputs, shared by every game mode.
-import { V8_DEFAULT_SIGNATURE } from './v8-defaults.js';
 export const DEFAULT_CONFIG = {
   // Draft session (core/draft/session.js, pools.js, opponents.js, links.js).
   draft: {
-    // A league needs this many players to be drawn (Leagues, Clubs, Club & Country).
+    // A league needs this many players to be drawn (league and club drafts).
     minimumLeaguePlayers: 5,
+    // Drafts offer only players the game shows at this rating or more at their own position
+    // (the rounded number on the card): in every draft pool, every guard that asks "can this
+    // spin still fill an open slot", and the Daily's perfect XI. Teams are not drafts: the XIs
+    // of opponents, clubs and nations keep their real players whatever they are rated.
+    pickMinimum: 65,
     // Nations: a nation is playable — on the reel, met as an opponent — when it can field an
     // XI (>= minimumPlayers, >= minimumGoalkeepers and a best XI with nobody under the
     // engine's minimum fit, ai.minimumFit). `fieldSize` / `potSize` are only the real World Cup
-    // draw (Legendary) and the Daily's schedule: the strongest playable nations, in pots. Each
-    // spin offers the best available call-ups (as many as the nation has, up to the squad
-    // numbers).
+    // draw (Legendary) and the Daily's schedule: the strongest playable nations, in pots.
     nations: {
       fieldSize: 48,
       potSize: 12,
@@ -28,11 +30,16 @@ export const DEFAULT_CONFIG = {
       // (no keeper needed: they are spun, never met as opponents).
       reelStar: 80,
       reelPlayers: 9,
-      squadSize: 23,
+      // A nation's draft squad (draft/pools.js draftSquad): the only players a nation spin
+      // ever offers — its best `squadSize` among the players a draft may offer (pickMinimum),
+      // with that many keepers and at least that many defenders, midfielders and attackers so
+      // every position can be filled. A spin's pool is those of them still available; it never
+      // refills from deeper in the nation. Teams (opponents, strength, playable) keep everyone.
+      squadSize: 30,
       squadGoalkeepers: 3,
-      squadDefenders: 7,
-      squadMidfielders: 7,
-      squadAttackers: 4,
+      squadDefenders: 9,
+      squadMidfielders: 9,
+      squadAttackers: 5,
     },
     // Leagues (and the league leg of Clubs): flat odds per league tier.
     leagueTierWeights: {
@@ -85,10 +92,11 @@ export const DEFAULT_CONFIG = {
       club: 1,
       captain: 1,
     },
-    // The Legend spin (World Cup drafts: the first spin). A legend is a past player whose best
-    // version EA rated `minimum` or more (the data ships exactly those); the reel holds the
-    // nations with a legend EA rated `reelStar` or better; a landing shows the nation's `shown`
-    // highest-rated legends. A nation's weight on the reel grows gently with how many legends
+    // The Legend spin (World Cup drafts: the first spin). A legend is a best past version the
+    // game shows at `minimum` or more — the rating on his card, not EA's — of a player of the
+    // past or of a current player who was better then (the data ships exactly those); the reel
+    // holds the nations with a legend shown at `reelStar` or better; a landing shows the
+    // nation's `shown` highest-rated legends. A nation's weight on the reel grows gently with how many legends
     // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
     legends: {
       minimum: 85,
@@ -191,7 +199,7 @@ export const DEFAULT_CONFIG = {
     shotFrequency: 2,
     shotScatter: 1.08,
     shotPower: 1,
-    saveAbility: 1,
+    saveAbility: 1.02,
     passCompletion: 1,
     passError: 1,
     routinePassError: 0.6,
@@ -217,6 +225,16 @@ export const DEFAULT_CONFIG = {
     runsInBehind: 1,
     crossWillingness: 1.5,
     keeperRange: 1,
+  },
+  // The player's side as favourite. Against the AI (competition.mode 'ai'), when the player's
+  // XI (team 0) has the higher overall, its shots are saved a little less and the shots it
+  // faces a little more: `perPoint` of the save chance per point of overall it is ahead, at
+  // most `cap` (a 5-point favourite: about +3% on its conversion, -3% on the opponent's).
+  // Never for the weaker side, never in Versus or Exhibition. Read once, at kick-off
+  // (match.edge); the fast rating model (competition/model.js) does not include it.
+  userEdge: {
+    perPoint: 0.006,
+    cap: 0.05,
   },
   // What a mentality changes, as differences from Balanced (which is all zeros). Push raises
   // the chance of a goal at both ends, Hold lowers it at both ends (docs/calibration.md).
@@ -271,13 +289,25 @@ export const DEFAULT_CONFIG = {
     halftimeVariation: 1,
   },
   periods: {
-    firstHalfMean: 2,
-    secondHalfMean: 3,
+    // Announced added time (minutes): 1.5 and 2 on average since the whistle waits for an
+    // attack to finish (they were 2 and 3; the minute and a half pays for the goals that
+    // scores, docs/calibration.md).
+    firstHalfMean: 1.5,
+    secondHalfMean: 2,
     firstHalfSpread: 0.8,
     secondHalfSpread: 1,
     minimum: 1,
     firstHalfMaximum: 5,
     secondHalfMaximum: 6,
+    // The whistle is held for an attack that is on when time runs out (sim/whistle.js): the
+    // attackers on the ball within holdRange metres of the goal line, for at most holdAttack
+    // seconds of play (and again from the delivery of a set piece they win); at most
+    // holdCorners corners awarded after time was up are taken; nothing new is waited for
+    // beyond holdMaximum seconds. Real seconds: 2 are a minute on the match clock.
+    holdRange: 30,
+    holdAttack: 4,
+    holdCorners: 1,
+    holdMaximum: 10,
   },
   formats: {
     180: {
@@ -740,11 +770,6 @@ export const DEFAULT_CONFIG = {
     },
   },
 };
-const STORAGE_KEY = 'football-draft-settings-v1';
-// 9: only differences from the defaults are stored. Keys that are no longer settings (the
-// pre-overhaul draft's budget, re-spin and league/club odds, its AI opponent and display
-// settings) are ignored on load and dropped on the next save.
-const SETTINGS_VERSION = 9;
 const clone = x => JSON.parse(JSON.stringify(x));
 const at = (o, path) => path.split('.').reduce((a, k) => a?.[k], o);
 const put = (o, path, value) => {
@@ -754,11 +779,9 @@ const put = (o, path, value) => {
   next[keys.at(-1)] = value;
 };
 const isPlainObject = x => !!x && typeof x === 'object' && !Array.isArray(x);
-/** The CONFIG_FIELDS entry for a settings path, or null. */
-export function configField(path) {
-  return CONFIG_FIELDS.find(f => f.path === path) || null;
-}
 const labels = {
+  perPoint: "Player's side as favourite: save-chance edge per point of overall",
+  cap: "Player's side as favourite: largest edge",
   topFrom: 'Overall: stretch ratings above',
   topLift: 'Overall: extra per point above that',
   controlQuality: 'Ball-control stat influence',
@@ -808,7 +831,10 @@ const labels = {
   sprintRecovery: 'Sprint reserve recovery',
   firstHalfMean: 'First-half added time mean',
   secondHalfMean: 'Second-half added time mean',
-  standardDeviation: 'Added time variation',
+  holdRange: 'Whistle held for an attack within (m of the goal line)',
+  holdAttack: 'Whistle held: seconds an attack gets',
+  holdCorners: 'Whistle held: corners awarded after time that are taken',
+  holdMaximum: 'Whistle held: longest wait (seconds)',
   storedTendencyWeight: 'Source tendency contribution',
   attributeCap: 'Total badge boost per attribute',
   shotUrge: 'Box shooting willingness',
@@ -826,6 +852,8 @@ const labels = {
   deepUrge: 'Deep build-up urgency',
 };
 const ranges = {
+  perPoint: [0, 0.05, 0.001],
+  cap: [0, 0.25, 0.005],
   yellowSeverity: [0, 3, 0.01],
   redSeverity: [0, 3, 0.01],
   bookedFoulRisk: [0, 1, 0.01],
@@ -837,7 +865,6 @@ const ranges = {
   halftimeVariation: [0, 2, 0.05],
   firstHalfMean: [0, 10, 0.25],
   secondHalfMean: [0, 10, 0.25],
-  standardDeviation: [0, 4, 0.1],
   storedTendencyWeight: [0, 1, 0.05],
   attributeCap: [0, 15, 1],
   topFrom: [50, 99, 0.5],
@@ -864,12 +891,13 @@ const DRAFT_FIELDS = {
   'draft.nations.reelStar': ['Reel nation without an XI: best player at least', 60, 99, 1],
   'draft.nations.reelPlayers': ['Reel nation without an XI: minimum players', 1, 30, 1],
   'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
+  'draft.pickMinimum': ['Draft: a player can be picked from this rating', 0, 85, 1],
   'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
-  'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
-  'draft.nations.squadGoalkeepers': ['Call-ups: goalkeepers', 1, 5, 1],
-  'draft.nations.squadDefenders': ['Call-ups: at least defenders', 0, 15, 1],
-  'draft.nations.squadMidfielders': ['Call-ups: at least midfielders', 0, 15, 1],
-  'draft.nations.squadAttackers': ['Call-ups: at least attackers', 0, 15, 1],
+  'draft.nations.squadSize': ['Draftable players per nation', 11, 40, 1],
+  'draft.nations.squadGoalkeepers': ['Draftable per nation: goalkeepers', 1, 5, 1],
+  'draft.nations.squadDefenders': ['Draftable per nation: at least defenders', 0, 15, 1],
+  'draft.nations.squadMidfielders': ['Draftable per nation: at least midfielders', 0, 15, 1],
+  'draft.nations.squadAttackers': ['Draftable per nation: at least attackers', 0, 15, 1],
   'draft.leagueTierWeights.': [null, 0, 20, 0.05],
   'draft.clubs.minimumPlayers': ['Spinnable club: minimum players', 1, 30, 1],
   'draft.clubs.tierWeights.': [null, 0, 20, 0.05],
@@ -879,8 +907,8 @@ const DRAFT_FIELDS = {
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
-  'draft.legends.minimum': ['Legend: best version rated at least', 80, 95, 1],
-  'draft.legends.reelStar': ['Legend spin: a nation needs a legend rated at least', 80, 95, 1],
+  'draft.legends.minimum': ['Legend: best version shown at least', 80, 95, 1],
+  'draft.legends.reelStar': ['Legend spin: a nation needs a legend shown at least', 80, 95, 1],
   'draft.legends.shown': ['Legend spin: legends shown', 1, 23, 1],
   'draft.legends.weightPerLegend': ['Legend spin: reel weight per legend', 0, 1, 0.05],
   'draft.legends.weightCap': ['Legend spin: legends that count for the weight', 1, 50, 1],
@@ -951,7 +979,11 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
       ? [0, 5, 0.1]
       : f.key.includes('Mean')
         ? [0, 15, 0.25]
-        : [0, 15, 1];
+        : f.key === 'holdAttack' || f.key === 'holdMaximum'
+          ? [0, 30, 0.5]
+          : f.key === 'holdRange'
+            ? [0, 52, 0.5]
+            : [0, 15, 1];
   return {
     ...f,
     label:
@@ -964,8 +996,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
     step,
   };
 });
-// Whole-config rules that single fields cannot express. In lenient mode (loading saved
-// settings) a broken rule resets only the named groups to their defaults, with a warning.
+// Whole-config rules that single fields cannot express. In lenient mode a broken rule resets only the named groups to their defaults, with a warning.
 const CROSS_FIELD_RULES = [
   {
     message: 'Badge minimum cannot exceed its maximum.',
@@ -999,7 +1030,7 @@ const CROSS_FIELD_RULES = [
     ok: c => c.playerTiers.Bench.minimum === 0 && c.teamTiers.F === 0,
   },
   {
-    message: 'Call-up minimums cannot exceed the call-up size.',
+    message: 'A nation’s line minimums cannot exceed its draftable players.',
     reset: ['draft.nations'],
     ok: ({ draft: { nations: n } }) =>
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
@@ -1051,9 +1082,9 @@ function fieldProblem(field, value) {
  * Validate a (possibly partial) settings object against DEFAULT_CONFIG and return a complete
  * configuration. Missing fields take their defaults; unknown keys (including settings that
  * no longer exist) are ignored silently.
- * Strict (default): the first invalid value throws (the config page shows the message).
- * Lenient ({ lenient: true }, used when loading saved settings): an invalid value is dropped
- * with a warning and only that field (or the group a cross-field rule names) falls back.
+ * Strict (default): the first invalid value throws.
+ * Lenient ({ lenient: true }): an invalid value is dropped with a warning and only that field
+ * (or the group a cross-field rule names) falls back.
  */
 export function normalizeConfig(input = {}, { lenient = false, warn = defaultWarn } = {}) {
   if (!isPlainObject(input)) {
@@ -1068,7 +1099,7 @@ export function normalizeConfig(input = {}, { lenient = false, warn = defaultWar
     const problem = fieldProblem(field, value);
     if (!problem) put(out, field.path, value);
     else if (!lenient) throw Error(problem);
-    else warn(`Ignoring saved setting ${field.path}=${JSON.stringify(value)}: ${problem}`);
+    else warn(`Ignoring setting ${field.path}=${JSON.stringify(value)}: ${problem}`);
   }
   for (const rule of CROSS_FIELD_RULES)
     if (!rule.ok(out)) {
@@ -1081,191 +1112,10 @@ export function normalizeConfig(input = {}, { lenient = false, warn = defaultWar
 function defaultWarn(...args) {
   globalThis.console?.warn?.('[settings]', ...args);
 }
-function defaultStorage() {
-  try {
-    return globalThis.localStorage ?? null;
-  } catch {
-    return null; // e.g. storage blocked by the browser
-  }
-}
-const fnv1a = text => {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0;
-  return h;
-};
-let v8Defaults = null;
-// Settings saved before version 9 were full snapshots: drop every leaf that still holds its
-// version-8 default, so it follows the current default instead of pinning the old one.
-function dropUntouchedV8Defaults(saved) {
-  v8Defaults ??= new Set(V8_DEFAULT_SIGNATURE.match(/.{7}/g).map(h => parseInt(h, 36)));
-  (function prune(o, prefix) {
-    for (const [key, value] of Object.entries(o)) {
-      const path = prefix ? prefix + '.' + key : key;
-      if (isPlainObject(value)) {
-        prune(value, path);
-        if (!Object.keys(value).length) delete o[key];
-      } else if (v8Defaults.has(fnv1a(path + '=' + JSON.stringify(value)))) delete o[key];
-    }
-  })(saved, '');
-}
-/** Only the settings that differ from `base`. */
-export function configDiff(value, base = DEFAULT_CONFIG) {
-  const diff = {};
-  for (const field of CONFIG_FIELDS) {
-    const v = at(value, field.path);
-    if (v !== undefined && v !== at(base, field.path)) put(diff, field.path, v);
-  }
-  return diff;
-}
-// Version upgrades of saved settings, oldest format first. Each rewrites only unchanged old
-// defaults; customised values and imported match configurations keep their chosen values.
-function migrateSaved(saved) {
-  const version = saved?._settingsVersion ?? 0;
-  delete saved._settingsVersion;
-  // Moderate only unchanged device defaults. Explicit custom settings and
-  // imported match configurations keep their chosen influence values.
-  if (version < 8)
-    for (const [key, old] of Object.entries({
-      qualityImpact: 1.08,
-      controlQuality: 1.4,
-      passingQuality: 1.6,
-      defensiveQuality: 1,
-      creativeQuality: 1,
-    }))
-      if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-  if (version < 7)
-    for (const [key, old] of [
-      ['receptionError', 0.75],
-      ['difficultReceptionError', 1.05],
-    ])
-      if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-  if (version < 6)
-    for (const key of ['longBallPreference', 'clearanceWillingness'])
-      if (saved?.gameplay?.[key] === 1) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-  if (version < 5) {
-    for (const [key, old] of [
-      ['receptionError', 0.18],
-      ['difficultReceptionError', 0.55],
-      ['tackleSuccess', 0.94],
-      ['shotFrequency', 1.24],
-    ])
-      if (saved?.gameplay?.[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-    for (const [duration, old] of [
-      [180, -0.5],
-      [300, -0.27],
-    ])
-      if (saved?.formats?.[duration]?.saveBoost === old)
-        saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
-  }
-  if (version < 4 && saved?.gameplay?.tackleSuccess === 1)
-    saved.gameplay.tackleSuccess = DEFAULT_CONFIG.gameplay.tackleSuccess;
-  if (version < 4)
-    for (const [duration, old] of [
-      [180, -0.6],
-      [300, -0.37],
-    ])
-      if (saved?.formats?.[duration]?.saveBoost === old)
-        saved.formats[duration].saveBoost = DEFAULT_CONFIG.formats[duration].saveBoost;
-  if (version < 2) {
-    if (saved?.playerTiers?.Superstar?.minimum === 83) saved.playerTiers.Superstar.minimum = 85;
-    // Migrate only unchanged role defaults, leaving custom weights and replays intact.
-    const priorWeights = {
-      GK: 3070697025,
-      CB: 3528548659,
-      LB: 917603,
-      RB: 917603,
-      DM: 4285413286,
-      CM: 3983548147,
-      AM: 1207724980,
-      LW: 2493809455,
-      RW: 2493809455,
-      LM: 3102840154,
-      RM: 3102840154,
-      ST: 3884776852,
-    };
-    const priorOffsets = {
-      GK: 0,
-      CB: 2.5,
-      LB: 2,
-      RB: 2,
-      DM: 1.75,
-      CM: 0.5,
-      AM: 2,
-      LM: 3,
-      RM: 3,
-      LW: 1,
-      RW: 1,
-      ST: 1.5,
-    };
-    const signature = weights =>
-      [
-        ...Object.keys(weights)
-          .sort()
-          .map(k => k + ':' + weights[k])
-          .join(','),
-      ].reduce((hash, c) => (Math.imul(hash, 31) + c.charCodeAt(0)) >>> 0, 0);
-    for (const role of Object.keys(priorWeights)) {
-      const weights = saved?.ratings?.roleWeights?.[role];
-      if (weights && signature(weights) === priorWeights[role])
-        saved.ratings.roleWeights[role] = clone(DEFAULT_CONFIG.ratings.roleWeights[role]);
-      if (saved?.ratings?.roleOffsets?.[role] === priorOffsets[role])
-        saved.ratings.roleOffsets[role] = DEFAULT_CONFIG.ratings.roleOffsets[role];
-    }
-  }
-  // Upgrade unchanged device defaults, while replay imports retain their original physics.
-  if (saved?.display?.commentaryInterval !== undefined && saved.gameplay) {
-    for (const [key, old] of Object.entries({
-      movementSpeed: 1.03,
-      acceleration: 1.03,
-      shotFrequency: 1.12,
-      passSpeed: 1,
-    }))
-      if (saved.gameplay[key] === old) saved.gameplay[key] = DEFAULT_CONFIG.gameplay[key];
-  }
-  if (version < 9) dropUntouchedV8Defaults(saved);
-  return saved;
-}
-/**
- * Load saved settings. Never throws: unreadable storage or JSON falls back to the defaults, and
- * an invalid saved value is dropped field by field with a console warning.
- */
-export function loadConfig({ storage = defaultStorage(), warn = defaultWarn } = {}) {
-  let saved = {};
-  try {
-    const raw = storage?.getItem(STORAGE_KEY);
-    if (raw) saved = JSON.parse(raw);
-  } catch (e) {
-    warn('Saved settings could not be read; using the defaults.', e?.message || e);
-  }
-  if (!isPlainObject(saved)) {
-    warn('Ignoring saved settings that are not an object.');
-    saved = {};
-  }
-  try {
-    migrateSaved(saved);
-    return normalizeConfig(saved, { lenient: true, warn });
-  } catch (e) {
-    warn('Saved settings are unusable; using the defaults.', e?.message || e);
-    return clone(DEFAULT_CONFIG);
-  }
-}
-/** Validate strictly (throws on an invalid value), store only the differences from the defaults. */
-export function saveConfig(value, { storage = defaultStorage(), warn = defaultWarn } = {}) {
-  const next = normalizeConfig(value);
-  try {
-    storage?.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ...configDiff(next), _settingsVersion: SETTINGS_VERSION }),
-    );
-  } catch (e) {
-    warn('Settings could not be saved on this device.', e?.message || e);
-  }
-  return next;
-}
 /**
  * The live config. Tuning is a developer job (DEFAULT_CONFIG in code; tools pass patches): the
  * game does not read players' saved overrides any more (the tuning page is gone), so every
- * device plays the same engine. loadConfig()/saveConfig() remain for tools and tests.
+ * device plays the same engine. Nothing is stored: setRuntimeConfig() lasts for the process.
  */
 export const CONFIG = clone(DEFAULT_CONFIG);
 function copyInto(target, source) {
@@ -1280,4 +1130,3 @@ export function setRuntimeConfig(value) {
   copyInto(CONFIG, normalizeConfig(value));
   return CONFIG;
 }
-export { at as configValue, put as setConfigValue };

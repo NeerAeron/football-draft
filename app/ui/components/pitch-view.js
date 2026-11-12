@@ -8,7 +8,10 @@
  *   rows        explicit [[x, y, role], …] rows instead of a formation key (same format)
  *   players     array aligned with the slots: PlayerView | null per slot
  *   highlights  { [slotIndex]: fit } — FitTag fit objects ({ state: 'best'|'ok'|'penalty'|
- *               'swap'|'blocked', label?, from?, to? }); 'blocked' slots cannot be selected
+ *               'swap'|'blocked', label?, from?, to? }); 'blocked' slots cannot be selected.
+ *               A fit with `rating` (and `role`) on an open slot writes that number into the
+ *               slot — the overall the selected player would have there — and its tag says
+ *               the role ("★ DM", "✓ LB"), so positions compare at a glance
  *   links       [{ from, to, strength: 1 | 2 | 3 }] slot-index pairs (3 = nation mates: gold,
  *               thickest; 2 = club mates: volt; 1 = a faint dashed line for other uses)
  *               → lines under tokens
@@ -242,6 +245,9 @@ export function PitchView({
         const player = players[slot.index] || null;
         const fit = highlights[slot.index];
         const blocked = fit?.state === 'blocked';
+        // The selected player's overall in this open slot, in the slot itself.
+        const rated = !player && !blocked && !hideRatings && fit?.rating != null;
+        const tag = rated ? { state: fit.state, label: fit.role || slot.role } : fit;
         const classes = cx(
           'pitch-slot',
           player ? 'is-filled' : 'is-empty',
@@ -255,6 +261,7 @@ export function PitchView({
                 boostAt[slot.index] > 0 ? `, boost ${fmtBoost(boostAt[slot.index])}` : ''
               }`
             : 'empty',
+          rated ? `rating ${fit.rating}` : '',
           fitText(fit, hideRatings),
         ]
           .filter(Boolean)
@@ -262,7 +269,7 @@ export function PitchView({
         const inner = html`${
             fit &&
             html`<span class="pitch-slot__fit"
-              ><${FitTag} fit=${fit} size="sm" hideRatings=${hideRatings}
+              ><${FitTag} fit=${tag} size="sm" hideRatings=${hideRatings}
             /></span>`
           }
           <span class="pitch-slot__ring">
@@ -272,7 +279,12 @@ export function PitchView({
               boost=${player ? boostAt[slot.index] : 0}
               captain=${slot.index === captainAt}
             />
-            ${!player && html`<span class="pitch-slot__role">${slot.role}</span>`}
+            ${
+              !player &&
+              (rated
+                ? html`<span class="pitch-slot__role pitch-slot__rating num">${fit.rating}</span>`
+                : html`<span class="pitch-slot__role">${slot.role}</span>`)
+            }
           </span>
           ${
             names && player && html`<span class="pitch-slot__name">${surname(player.name)}</span>`

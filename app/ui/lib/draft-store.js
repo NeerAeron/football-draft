@@ -1,6 +1,6 @@
 // Draft hand-off store: the one draft session of the new UI (setup → #/draft → what comes
-// next). Framework-free (no Preact, no router import) so Node tests can drive it; the tiny
-// observable has the same get/set/subscribe shape as lib/store.js, so useStore() works on it.
+// next). Framework-free (no Preact, no router import) so Node tests can drive it; its state
+// is a lib/create-store.js store, so useStore() works on it.
 // Full documentation: docs/ui-draft.md.
 //
 //   import { startDraft, completedDraft, clearDraft } from '../../lib/draft-store.js';
@@ -24,36 +24,31 @@ import {
   DIFFICULTIES,
   DIFFICULTY_LABELS,
   DRAFT_MODES,
+  draftModeOf,
   seedNumber,
 } from '../../core/draft/session.js';
 import { pickOpponent } from '../../core/draft/opponents.js';
 import { FORMATIONS } from '../../core/players/formations.js';
+import { baseProfileId } from '../../core/players/legends.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { loadWarmCatalog } from './catalog-warm.js';
 import { sideColors, teamCode, nationTrigram } from './kits.js';
 import { DRAFT_KEY, DRAFT_FORMAT, readSavedDraft } from './saved.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
+import { lockDailyDraft } from './run-store.js';
+import { createStore } from './create-store.js';
+import { randomSeed } from './random.js';
 
 export { DRAFT_KEY, readSavedDraft };
 export const DRAFT_KINDS = ['run', 'quick', 'versus', 'daily'];
 const FORMAT = DRAFT_FORMAT;
 
-/** UI draft types (Home chip, setup, query ?type=) → core session modes. */
-export const TYPE_TO_MODE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  'club-country': 'clubAndCountry',
-  clubAndCountry: 'clubAndCountry',
-};
-const MODE_TO_TYPE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  clubAndCountry: 'club-country',
-};
-export const draftMode = type => TYPE_TO_MODE[type] || 'nations';
-export const draftType = type => MODE_TO_TYPE[draftMode(type)];
+/**
+ * The draft type of the UI (setup, query ?type=, saved choices) is the core session mode:
+ * nations · leagues · clubs; anything else reads as nations.
+ */
+export const draftMode = draftModeOf;
+export const draftType = draftModeOf;
 export const modeLabel = type => DRAFT_MODES[draftMode(type)].label;
 export const difficultyLabel = id => DIFFICULTY_LABELS[id] || DIFFICULTY_LABELS.pro;
 
@@ -67,14 +62,6 @@ export const KIT_COLORS = [
   { id: 'white', name: 'White', colors: ['#f3f6fd', '#16213a'] },
 ];
 const kitColors = id => (KIT_COLORS.find(k => k.id === id) || KIT_COLORS[0]).colors;
-
-/** A presentation-side seed (crypto). Never used inside core — the session mixes it itself. */
-export function randomSeed() {
-  const buf = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0;
-  return buf[0] >>> 0;
-}
 
 /** '123' → 123, 'abc' → FNV-1a of 'abc' (seedNumber), numbers as uint32; null when empty. */
 export function parseSeed(value) {
@@ -91,7 +78,7 @@ export function parseSeed(value) {
  *   { kind: 'run'|'quick'|'versus'|'daily', type, difficulty, formation,
  *     options: { hideRatings, uniqueNations }, seed, schedule?, rerolls?, useDefaultRules?,
  *     names?: [p1, p2], kits?: [kitId, kitId], returnTo?, daily?, meta? (kept as is) }
- * `type` accepts the UI ids (nations · leagues · clubs · club-country) and the core mode ids.
+ * `type` is a draft mode (nations · leagues · clubs); anything else reads as nations.
  */
 export function normalizeContext(context = {}) {
   const kind = DRAFT_KINDS.includes(context.kind) ? context.kind : 'quick';
@@ -107,7 +94,7 @@ export function normalizeContext(context = {}) {
   });
   return {
     kind,
-    type: MODE_TO_TYPE[mode],
+    type: mode,
     mode,
     difficulty: DIFFICULTIES.includes(context.difficulty) ? context.difficulty : 'pro',
     formation: FORMATIONS[context.formation] ? context.formation : '433',
@@ -162,30 +149,7 @@ export function sessionOptions(ctx) {
 /** The draft rules a context plays with (DEFAULT_CONFIG for daily/challenge links). */
 export const contextRules = ctx => (ctx?.useDefaultRules ? DEFAULT_CONFIG.draft : CONFIG.draft);
 
-// ---------- observable state ----------
-
-function observable(initial) {
-  let state = initial;
-  const listeners = new Set();
-  return {
-    get: () => state,
-    set(next) {
-      const value =
-        typeof next === 'function'
-          ? next(state)
-          : next && typeof next === 'object' && state && typeof state === 'object'
-            ? { ...state, ...next }
-            : next;
-      if (Object.is(value, state)) return;
-      state = value;
-      for (const listener of [...listeners]) listener(state);
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
+// ---------- state ----------
 
 const IDLE = {
   status: 'idle', // 'idle' | 'loading' | 'ready' | 'empty' | 'error'
@@ -201,7 +165,7 @@ const IDLE = {
  * Draft state for the screens: { status, context, snap, animate, lastPick, error, version }.
  * `useStore(draftStore, s => s.snap)` re-renders after every action.
  */
-export const draftStore = observable({ ...IDLE });
+export const draftStore = createStore({ ...IDLE });
 
 let session = null;
 let context = null;
@@ -234,12 +198,16 @@ function go(path) {
 
 function persist() {
   if (!session) return;
-  writeJSON(DRAFT_KEY, {
+  const saved = {
     format: FORMAT,
     context,
     session: session.serialize(),
     savedAt: new Date().toISOString(),
-  });
+  };
+  writeJSON(DRAFT_KEY, saved);
+  // The Daily is one attempt from its first pick: the Daily record keeps the draft too, so
+  // the day can only be resumed (run-store.js lockDailyDraft).
+  if (context.kind === 'daily' && session.history.length > 0) lockDailyDraft(saved);
 }
 
 function publish(extra = {}) {
@@ -284,7 +252,6 @@ export async function startDraft(input, { go: navigateTo = true, spin = true } =
   }
 }
 
-/** The saved draft without restoring it (sync): { context, picks, total, complete } | null. */
 /**
  * The current draft, restoring the saved one after a reload: { session, context } | null.
  * Sets status 'empty' when nothing is saved and 'error' when the save no longer fits the
@@ -317,6 +284,36 @@ export function loadDraft() {
       loading = null;
     });
   return loading;
+}
+
+/**
+ * Rebuild a saved draft ({ context, session }) without making it the current one:
+ * { session, context }. Rejects when it no longer fits the player database.
+ */
+export async function restoreSaved(saved) {
+  const options = saved?.session?.options || {};
+  const catalog = await catalogLoader({ legends: !!(options.legendSpin || options.primes) });
+  return {
+    session: restoreDraftSession(catalog, saved.session),
+    context: normalizeContext(saved.context),
+    catalog,
+  };
+}
+
+/**
+ * Make a saved draft the current one and (by default) go to the board: the Daily's kept draft
+ * when another draft took the slot. Replaces whatever draft was in progress.
+ */
+export async function resumeDraft(saved, { go: navigateTo = true } = {}) {
+  const restored = await restoreSaved(saved);
+  session = restored.session;
+  context = restored.context;
+  catalogRef = restored.catalog;
+  opponent = null;
+  persist();
+  publish({ animate: null, lastPick: null });
+  if (navigateTo) go('/draft');
+  return { session, context };
 }
 
 /** { session, context, catalog } of the draft in memory, or null. */
@@ -426,7 +423,11 @@ export function autoComplete() {
 export function quickOpponent() {
   if (!session?.complete) return null;
   if (!opponent) {
-    const exclude = session.picks.flat().filter(Boolean);
+    // A prime or legend version counts as the current player: the opponent never fields him.
+    const exclude = session.picks
+      .flat()
+      .filter(Boolean)
+      .map(id => baseProfileId(session.player(id)));
     opponent = pickOpponent(catalogRef, {
       mode: context.mode,
       level: context.difficulty,

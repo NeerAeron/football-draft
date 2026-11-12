@@ -1,7 +1,7 @@
 // Top bar: back (off Home), brand, screen title (phones), help, sound, settings.
 import { html, cx } from '../lib/html.js';
 import { useStore } from '../lib/store.js';
-import { back } from '../lib/router.js';
+import { back, leave } from '../lib/router.js';
 import { soundStore, toggleSound, getAudio } from '../lib/audio.js';
 import { IconButton } from '../components/button.js';
 import { Brand } from './brand.js';
@@ -20,7 +20,9 @@ export function TopBar({ route }) {
           icon="arrow-left"
           label="Back"
           class="topbar__back"
-          onClick=${() => back(route.route?.back || '/')}
+          onClick=${() =>
+            // A route with `leave` (the draft) goes straight to its `back` screen.
+            (route.route?.leave ? leave : back)(route.route?.back || '/')}
         />`
       }
       <${Brand} compact=${!home} />

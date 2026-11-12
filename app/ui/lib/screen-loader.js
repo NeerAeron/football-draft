@@ -1,12 +1,17 @@
-// Lazy screen modules, loaded once and cached. The shell's outlet uses loadScreen(); screens
-// can warm likely next screens with preloadRoutes(['/play/:mode']) when idle.
+// Lazy screens, loaded once and cached: a route's module and its stylesheets (lib/styles.js)
+// together, so a screen never renders before its CSS applies. The shell's outlet uses
+// loadScreen(); screens can warm likely next screens with preloadRoutes(['/play/:mode']) when
+// idle.
 import { routeTable } from './router.js';
+import { loadStyles } from './styles.js';
 
 const modules = new Map();
 
 export function loadScreen(route) {
   if (!modules.has(route)) {
-    const pending = route.load();
+    const pending = Promise.all([route.load(), loadStyles(route.styles)]).then(
+      ([module]) => module,
+    );
     modules.set(route, pending);
     pending.catch(() => modules.delete(route)); // allow a retry after a failed load
   }

@@ -8,6 +8,10 @@ and app/gallery.html). Files are copied unmodified from the npm registry tarball
   htm 3.1.1       (Apache-2.0)  npm pack htm@3.1.1
     htm/htm.module.js           <- package/dist/htm.module.js
     htm/LICENSE
+  lucide 1.50.0   (ISC)         npm pack lucide-static@1.50.0
+    lucide/icons.js             <- the icons the UI names, taken from package/icon-nodes.json
+                                   ({ name: [[tag, attrs], …] }; the list is the file's keys)
+    lucide/LICENSE
 
 Import map specifiers: "preact", "preact/hooks", "htm".
 To upgrade: npm pack the new version in a scratch directory, copy the same files,

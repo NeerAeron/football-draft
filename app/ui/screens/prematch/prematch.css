@@ -268,17 +268,9 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.tactics__style {
-  display: grid;
-  gap: var(--space-2);
-}
 .tactics__hint {
   color: var(--text-3);
   font-size: var(--text-xs);
-}
-.tactics__sliders {
-  display: grid;
-  gap: var(--space-3);
 }
 
 /* Opponent */

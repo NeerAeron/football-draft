@@ -34,7 +34,7 @@ export const TYPE_INFO = [
     value: 'nations',
     label: 'Nations',
     icon: 'flag',
-    text: 'Spin one of 64 nations, pick from its best 23 call-ups.',
+    text: 'Spin a nation, pick from its best 30 players.',
   },
   {
     value: 'leagues',
@@ -104,9 +104,7 @@ export function setupDefaults(mode, { query = {}, saved = {}, prefs = {} } = {})
   const type = mode === 'run' || !TYPE_INFO.some(t => t.value === asked) ? 'nations' : asked;
   const seed = parseSeed(query.seed);
   const difficulty =
-    pick(query.difficulty, DIFFICULTIES) ||
-    pick(saved.difficulty, DIFFICULTIES) ||
-    (mode === 'versus' ? 'pro' : 'pro');
+    pick(query.difficulty, DIFFICULTIES) || pick(saved.difficulty, DIFFICULTIES) || 'pro';
   const formation =
     (FORMATIONS[query.formation] && query.formation) ||
     (FORMATIONS[saved.formation] && saved.formation) ||
@@ -135,7 +133,6 @@ export const savedChoices = state => ({
   difficulty: state.difficulty,
   formation: state.formation,
   uniqueNations: state.uniqueNations,
-  budget: !!state.budget,
   names: state.names,
   kits: state.kits,
 });

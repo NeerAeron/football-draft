@@ -51,11 +51,9 @@ const CREDITS = [
   {
     title: 'Player data',
     body: [
-      '"FC 26 (FIFA 26) player data" by rovnez on ',
-      a('https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data', 'Kaggle'),
-      ', licensed ',
-      a('https://creativecommons.org/licenses/by/4.0/', 'CC BY 4.0'),
-      '. Upstream data from SoFIFA / EA SPORTS FC. Ratings are converted by the catalog compiler, never invented.',
+      'EA SPORTS FC 27 player ratings as published by EA on 12 September 2026, from the copy in ',
+      a('https://github.com/LakshmiKanth11/EA_FC_ANALYSIS', 'EA_FC_ANALYSIS'),
+      ' by Lakshmi Kanth. Player data belongs to Electronic Arts. Ratings are converted by the catalog compiler, never invented.',
     ],
   },
   {
@@ -64,6 +62,12 @@ const CREDITS = [
       'Past versions of players (FIFA 15–23, career mode) from the ',
       a('https://huggingface.co/datasets/jsulz/FIFA23', 'FIFA23 dataset'),
       ' by jsulz on Hugging Face, MIT licence. Upstream data from SoFIFA / EA SPORTS FIFA; compiled like the current players.',
+      ' The versions of 1997–2013 (FIFA 98–14) were extracted from the games’ own databases (',
+      a(
+        'https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/',
+        'soccergaming.com archive',
+      ),
+      ').',
     ],
   },
   {
@@ -201,7 +205,17 @@ function GameplayPanel() {
 function DataPanel() {
   const [keys, setKeys] = useState(ownKeys);
   const [confirm, setConfirm] = useState(false);
-  const reset = () => {
+  const reset = async () => {
+    // The draft, pre-match and match also live in memory: forget them first, or the next
+    // action would write the cleared keys back.
+    const [draft, prematch, match] = await Promise.all([
+      import('../../lib/draft-store.js'),
+      import('../../lib/prematch-store.js'),
+      import('../../lib/match-store.js'),
+    ]);
+    draft.clearDraft();
+    prematch.clearPrematch();
+    match.clearMatch();
     clearOwnKeys();
     reloadPrefs();
     resetSound();

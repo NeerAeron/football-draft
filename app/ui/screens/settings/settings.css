@@ -72,59 +72,6 @@
   color: var(--text-3);
   font-size: var(--text-sm);
 }
-.settings__links {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.settings-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: 64px;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line-1);
-  background: rgb(4 7 15 / 0.35);
-  color: var(--text-1);
-  text-decoration: none;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
-}
-.settings-link:hover {
-  color: var(--text-1);
-  border-color: var(--line-2);
-  background: var(--surface-2);
-}
-.settings-link__icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-3);
-  color: var(--volt-300);
-}
-.settings-link__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-.settings-link__title {
-  font-weight: var(--weight-semibold);
-}
-.settings-link__desc {
-  color: var(--text-3);
-  font-size: var(--text-sm);
-}
-.settings-link__go {
-  flex: none;
-  color: var(--text-3);
-}
 .settings__keys {
   display: flex;
   flex-direction: column;

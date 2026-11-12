@@ -2,7 +2,7 @@
 // link chem) relative to the typical XI the player drafts in that mode (MODE_BASELINES,
 // measured by tools/calibration/draft-baselines.mjs). Real club and national XIs are fully
 // linked (+1 chem or more), so they are matched on effective rating, not raw OVR.
-// Candidates: national best XIs (Nations), club XIs (Leagues, Clubs), both (Club & Country),
+// Candidates: national best XIs (Nations), club XIs (Leagues, Clubs),
 // plus two bosses: the World XI (best XI in the catalog) and the All-Stars (the best XI
 // without the World XI players). Deterministic for a seed.
 import { CONFIG } from '../config/config.js';
@@ -22,22 +22,20 @@ import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session
 
 /**
  * Typical drafted XI per mode: solo, positional policy (best slot rating), smart re-roll below
- * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 300 drafts per cell (240 for Club & Country),
- * v3 catalog (15,378 players). `effective[r]` = OVR + chem (the mates boosts) with r
- * re-rolls (0, 1, 2).
+ * 78, formations 4-3-3/4-2-3-1/4-4-2/3-5-2/3-4-3, 200 drafts per cell, the FC 27 catalog
+ * (15,788 players, picks from 65). `ovr`/`sd`/`chem` with one re-roll; `effective[r]` = OVR +
+ * chem (the mates boosts) with r re-rolls (0, 1, 2).
  */
 export const MODE_BASELINES = {
-  nations: { ovr: 83.72, sd: 1.16, chem: 0.88, effective: [84.07, 84.6, 84.95] },
-  leagues: { ovr: 82.33, sd: 1.93, chem: 1.45, effective: [82.97, 83.78, 84.44] },
-  clubs: { ovr: 78.49, sd: 1.93, chem: 0.7, effective: [78.64, 79.18, 79.59] },
-  clubAndCountry: { ovr: 82.3, sd: 1.46, chem: 0.41, effective: [82.17, 82.71, 83.24] },
+  nations: { ovr: 83.15, sd: 1.14, chem: 0.89, effective: [83.58, 84.04, 84.18] },
+  leagues: { ovr: 82.72, sd: 1.87, chem: 1.21, effective: [83.08, 83.93, 84.57] },
+  clubs: { ovr: 78.82, sd: 1.77, chem: 0.57, effective: [78.92, 79.4, 79.76] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
 const KINDS_BY_MODE = {
   nations: ['nation', 'boss'],
   leagues: ['club', 'boss'],
   clubs: ['club', 'boss'],
-  clubAndCountry: ['nation', 'club', 'boss'],
 };
 export const BOSSES = {
   'world-xi': { name: 'World XI', color: '#d2ae53', secondary: '#0b1426' },
@@ -57,17 +55,29 @@ export function ladderTarget(mode, level, { offset = 0, rules = CONFIG.draft, re
 
 // ---- candidates ---------------------------------------------------------------------------
 const candidateCache = new WeakMap();
+// Sorting the whole catalog is the cost of a boss: once per index (and rating refresh).
+const bossPoolCache = new WeakMap();
 function bossPools(index) {
+  const stamp = clubLineupStamp(),
+    cached = bossPoolCache.get(index);
+  if (cached?.stamp === stamp) return cached.pool;
   // The world's best 120 outfield players and 12 keepers by natural rating cover every slot.
   const sorted = [...index.players].sort((a, b) => naturalRating(b) - naturalRating(a));
-  return [
+  const pool = [
     ...sorted.filter(p => !isKeeper(p)).slice(0, 120),
     ...sorted.filter(isKeeper).slice(0, 12),
   ];
+  bossPoolCache.set(index, { stamp, pool, world: null });
+  return pool;
 }
 function bossXI(index, id, exclude = new Set()) {
-  const pool = bossPools(index).filter(p => !exclude.has(p.profileId));
-  const world = bestEleven(pool, { minimumFit: BOSS_FIT });
+  const all = bossPools(index),
+    cache = bossPoolCache.get(index),
+    pool = exclude.size ? all.filter(p => !exclude.has(p.profileId)) : all;
+  // The World XI of the untouched pool is shared by both bosses.
+  const world = exclude.size
+    ? bestEleven(pool, { minimumFit: BOSS_FIT })
+    : (cache.world ??= bestEleven(pool, { minimumFit: BOSS_FIT }));
   if (id === 'world-xi' || !world) return world;
   const taken = new Set(world.players.map(p => p.profileId));
   return bestEleven(
@@ -171,13 +181,17 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
       );
     if (++clubs % 12 === 0) yield;
   }
-  for (const [id, b] of Object.entries(BOSSES))
+  yield;
+  bossPools(index); // the sort of the whole catalog: a step of its own, like each boss XI
+  for (const [id, b] of Object.entries(BOSSES)) {
+    yield;
     add(
       'boss',
       id,
       { name: b.name, code: null, flag: null, color: b.color, secondary: b.secondary },
       bossXI(index, id),
     );
+  }
   list.sort((a, b) => b.effective - a.effective || (a.key < b.key ? -1 : 1));
   // Someone needed it synchronously meanwhile: keep theirs, so there is one list.
   const raced = candidateCache.get(catalog);

@@ -3,9 +3,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { compilePlayer, parseCSV, COMPILER_VERSION, SOURCE_URL } from './compile-players.mjs';
+import { compilePlayer, parseCSV, COMPILER_VERSION } from './compile-players.mjs';
 import { ATTRS } from '../app/core/players/ratings.js';
-import { PATHS } from './data/paths.mjs';
+import { PATHS, SOURCE } from './data/paths.mjs';
 
 /**
  * The reviewed Captain list (data/captains.json) → Map(sofifa id → entry) of its first `size`
@@ -34,9 +34,9 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     seen.add(row.player_id);
   }
   // Selection policy: every player of every available league (no caps), in reference league
-  // order, best source overall first. Then, when the reference enables it, club-less players
-  // with a national-team call-up (real players whose clubs are outside the dataset): they get
-  // no club or league, so they can join nation pools but never league or club pools.
+  // order, best source overall first. Then the players whose club has no reviewed entry in
+  // the reference (leagues the game does not carry), from the overall the reference sets:
+  // they get no club or league, so they can join nation pools but never league or club pools.
   const indexed = rows.map((row, index) => ({ row, index })),
     byOverall = (a, b) => Number(b.row.overall) - Number(a.row.overall) || a.index - b.index,
     selected = [],
@@ -49,9 +49,11 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     selected.push(...chosen);
     leagues.push({ ...definition, playerCount: chosen.length });
   }
-  const clubless = reference.selection?.clublessNationalTeamPlayers
-    ? indexed.filter(({ row }) => !row.club_team_id && !row.league_id && row.nation_team_id)
-    : [];
+  const minimum = reference.selection?.clublessMinimumOverall,
+    clubless =
+      minimum != null
+        ? indexed.filter(({ row }) => !row.club_team_id && Number(row.overall) >= minimum)
+        : [];
   selected.push(...clubless.sort(byOverall));
   const players = selected.map(({ row, index }) => {
     const p = compilePlayer(row, index + 1);
@@ -69,7 +71,7 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     if (!clubs.has(id)) {
       const rating = ratings.get(id),
         color = colors.get(id);
-      if (!rating) throw Error(`Missing verified club rating: ${p.source.club}`);
+      if (!rating) throw Error(`No reference entry for club ${p.source.club}`);
       clubs.set(id, {
         id,
         name: p.source.club,
@@ -91,11 +93,11 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     schemaVersion: 2,
     compilerVersion: COMPILER_VERSION,
     source: {
-      url: SOURCE_URL,
-      author: 'rovnez',
-      upstream: 'SoFIFA / EA SPORTS FC 26',
-      license: 'CC BY 4.0',
-      licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+      url: SOURCE.page,
+      author: SOURCE.author,
+      upstream: SOURCE.upstream,
+      license: SOURCE.license,
+      licenseUrl: SOURCE.licenseUrl,
       sha256: hash,
       asOf: reference.rosterDate,
       optaAsOf: reference.optaDate,
@@ -109,14 +111,13 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
       : null,
     selection: {
       sourceRows: rows.length,
-      policy:
-        'Every player of every available league, no caps; plus club-less players with a national-team call-up (no club or league: nation pools only)',
+      policy: `Every player of every reviewed club of an available league, no caps; plus the players rated ${minimum}+ whose club has no reviewed entry (no club or league: nation pools only)`,
       leaguePlayers: selected.length - clubless.length,
-      clublessNationalTeamPlayers: clubless.length,
+      clublessPlayers: clubless.length,
+      clublessMinimumOverall: minimum ?? null,
       order:
         'Leagues in reference order, then club-less players; each by source overall descending, original row order breaking ties',
-      excluded:
-        'Leagues absent from the reference or unavailable (including the generic Brazilian Série A identities), players at clubs outside those leagues (no reviewed club metadata), and club-less players without a national-team call-up',
+      excluded: `Women's football, and players rated under ${minimum} at clubs without a reviewed entry (leagues absent from the reference or unavailable)`,
     },
     attributeKeys: Object.keys(ATTRS),
     leagues,

@@ -2,7 +2,8 @@
 // the match/pre-match stores give national sides their kit instead of the generic default.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fmt1, fmt2, int, signed1, pct } from '../app/ui/lib/format.js';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fmt1, fmt2, int, signed1, pct, fmtDate } from '../app/ui/lib/format.js';
 import {
   nationKit,
   sideColors,
@@ -29,6 +30,58 @@ test('format: fixed "." decimals and "," thousands whatever the locale', () => {
   assert.equal(signed1(-0.8), '−0.8');
   assert.equal(signed1(0), '+0.0');
   assert.equal(pct(0.734), '73%');
+});
+
+test('dates: one fixed format whatever the locale, and no locale formatting in the app', () => {
+  // A day id is that calendar day as written, in any time zone.
+  assert.equal(fmtDate('2026-11-12'), '12 Nov 2026');
+  assert.equal(fmtDate('2026-01-01'), '1 Jan 2026');
+  assert.equal(fmtDate('2027-12-31'), '31 Dec 2027');
+  // A Date, a timestamp or an ISO string: the device's day, or the UTC day.
+  const late = new Date(Date.UTC(2026, 10, 12, 23, 30));
+  assert.equal(fmtDate(late, { utc: true }), '12 Nov 2026');
+  assert.equal(fmtDate(late.getTime(), { utc: true }), '12 Nov 2026');
+  assert.equal(fmtDate('2026-11-12T23:30:00.000Z', { utc: true }), '12 Nov 2026');
+  assert.equal(fmtDate(new Date(2026, 1, 3, 9, 0)), '3 Feb 2026');
+  // Nothing readable: the fallback.
+  for (const bad of [null, undefined, '', 'soon', NaN, new Date('x'), '2026-13-01'])
+    assert.equal(fmtDate(bad), '–', String(bad));
+  assert.equal(fmtDate(null, { fallback: null }), null);
+  // The same text under other locales and time zones (the helper never asks the runtime).
+  const { TZ, LANG } = process.env;
+  for (const [tz, lang] of [
+    ['America/Los_Angeles', 'en_US.UTF-8'],
+    ['Asia/Tokyo', 'ja_JP.UTF-8'],
+    ['Europe/Berlin', 'de_DE.UTF-8'],
+  ]) {
+    process.env.TZ = tz;
+    process.env.LANG = lang;
+    assert.equal(fmtDate('2026-11-12'), '12 Nov 2026');
+    assert.equal(fmtDate(late, { utc: true }), '12 Nov 2026');
+  }
+  if (TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = TZ;
+  if (LANG === undefined) delete process.env.LANG;
+  else process.env.LANG = LANG;
+  // No screen formats a date or a number through the locale (vendored code aside).
+  const sources = [];
+  const walk = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (entry.name !== 'vendor') walk(path);
+      } else if (entry.name.endsWith('.js')) sources.push(path);
+    }
+  };
+  walk(new URL('../app', import.meta.url).pathname);
+  assert.ok(sources.length > 100);
+  for (const path of sources) {
+    const code = readFileSync(path, 'utf8').replace(/^\s*(\/\/|\*|\/\*).*$/gm, '');
+    assert.ok(
+      !/toLocale(Date|Time)?String\s*\(|Intl\.(DateTimeFormat|NumberFormat)/.test(code),
+      `${path} formats through the locale: use ui/lib/format.js`,
+    );
+  }
 });
 
 test('kits: nations by flag code, clubs keep their colours, stable fallbacks', () => {

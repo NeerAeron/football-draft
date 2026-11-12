@@ -1,5 +1,5 @@
 # Local dependencies and caches
-node_modules/
+node_modules
 .npm/
 .cache/
 coverage/
@@ -15,10 +15,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
-
-# Original hosting helper state
-.sites-checkout/
-.sites-runtime/
 
 # app/ is the complete editable game and is served as-is.
 

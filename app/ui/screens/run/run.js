@@ -19,14 +19,8 @@ import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { toast } from '../../components/toast.js';
 import { completedDraft, clearDraft, loadDraft } from '../../lib/draft-store.js';
-import { openPrematch, engineCompetition } from '../../lib/prematch-store.js';
-import {
-  buildMatchConfig,
-  readMatchResult,
-  runResultFor,
-  clearMatch,
-  matchStore,
-} from '../../lib/match-store.js';
+import { openPrematch, prematchStore } from '../../lib/prematch-store.js';
+import { readMatchResult, runResultFor, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
   createRunFromDraft,
   loadRun,
@@ -34,6 +28,9 @@ import {
   patchRunState,
   clearRun,
   matchSideFor,
+  fixtureConfig,
+  fixtureLineup,
+  applyLineup,
   fixtureId,
   fixtureOdds,
   groupStakes,
@@ -60,6 +57,7 @@ import {
   opponentTeam,
   teamOf,
   wonResult,
+  elsewhereOf,
 } from './run-parts.js';
 import { RunEnd } from './run-end.js';
 import { xiViews, nationList, modeLabel, levelLabel } from './team-view.js';
@@ -88,23 +86,8 @@ function matchInProgress(pending) {
     (state.request.id === pending.id || state.request.seed === pending.seed)
   );
 }
-/** Engine config for a run fixture (auto-sim; the match screen builds the same via prematch). */
-export function fixtureConfig(m, difficulty, tuning) {
-  return buildMatchConfig({
-    sides: [matchSideFor(m.home, { kind: 'user' }), matchSideFor(m.away)],
-    // Same engine competition as the pre-match screen builds (AI coach level by difficulty).
-    competition: engineCompetition({
-      sides: [{ kind: 'user' }, { kind: 'ai' }],
-      competition: { mode: 'ai', difficulty, knockout: m.knockout },
-    }),
-    ...(tuning ? { tuning } : {}),
-  });
-}
 const positions = snapshot =>
   Object.fromEntries(snapshot.group.table.map(r => [r.key, r.position]));
-/** The other group fixture of a matchday (AI v AI). */
-const elsewhereOf = (snapshot, md) =>
-  snapshot.group.fixtures.find(f => f.md === md && f.home !== 'user' && f.away !== 'user');
 const scorerLine = (entry, side = 0) =>
   (entry?.goals || [])
     .filter(g => g.team === side)
@@ -136,7 +119,7 @@ function RunHeader({ snapshot, meta, nations }) {
                   meta.links?.total != null
                     ? html`<b class="num" key="l">+${meta.links.total}</b>`
                     : '',
-                  ` · ${formationLabel(meta.formation || '433')}`,
+                  ` · ${formationLabel(snapshot.user.formation || meta.formation || '433')}`,
                 ]
           }
         </p>
@@ -243,7 +226,9 @@ function ResultBanner({ snapshot, before, round, entry }) {
     data-testid="result-banner"
   >
     <div class="ft">
-      <p class="eyebrow">${`Full time · ${roundLabel(r)}`}</p>
+      <p class="eyebrow">
+        ${`${res.extraTime && !res.shootout ? 'After extra time' : 'Full time'} · ${roundLabel(r)}`}
+      </p>
       <h2 class="run-flash__title" id="ft-title">${headline}</h2>
       <div class="ft__score">
         <span class="ft__team"
@@ -410,7 +395,7 @@ function FixtureCard({ snapshot, meta, onPlay, onSim, onResume, busy, inProgress
   </section>`;
 }
 
-function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
+function SimPanel({ snapshot, sim, single, onSkip, onStop, onProceed }) {
   const done = sim.items.filter(i => i.status === 'done').length;
   return html`<section
     class="sim card card--hero card--pad-md"
@@ -432,12 +417,20 @@ function SimPanel({ snapshot, sim, single, onSkip, onStop }) {
       <span style=${{ width: `${Math.round(sim.progress * 100)}%` }}></span>
     </div>
     <${ResultsTicker} items=${sim.items} snapshot=${snapshot} />
-    ${
-      sim.milestone &&
-      html`<p class="sim__milestone" data-testid="sim-milestone" aria-hidden="true">
-        <${Icon} name="circle-check" size=${20} /> ${sim.milestone}
-      </p>`
-    }
+    <${Modal}
+      open=${!!sim.milestone}
+      onClose=${onProceed}
+      title=${sim.milestone || ''}
+      size="sm"
+      class="sim__milestone"
+      data-testid="sim-milestone"
+      footer=${html`<${Button} variant="ghost" onClick=${onStop} data-testid="sim-stop"
+          >Stop simming<//
+        >
+        <${Button} variant="primary" onClick=${onProceed} data-testid="sim-keep">Keep simming<//>`}
+    >
+      <${Icon} name="circle-check" size=${36} class="sim__milestone-icon" />
+    <//>
     <p class="visually-hidden" aria-live="polite">${sim.announce}</p>
     <div class="sim__actions">
       ${
@@ -522,14 +515,21 @@ export default function RunScreen() {
           setState({ phase: 'empty', last: readSavedRun() });
           return;
         }
+        // What was set up before the pending match — positions, mentality and, after the group
+        // stage, the formation — stays for the rest of the run (auto-sims included).
+        if (saved.pending && !saved.run.complete && saved.run.round === saved.pending.round) {
+          const lineup = fixtureLineup(saved.pending.id, {
+            prematch: prematchStore.get(),
+            request: matchStore.get()?.request,
+          });
+          if (applyLineup(saved.run, lineup)) saveRun(saved.run, saved.meta);
+        }
         if (saved.pending && !saved.run.complete) {
           const result = pendingResult(saved.pending);
           if (result && saved.run.round === saved.pending.round) {
             const before = saved.run.snapshot();
             const round = saved.pending.round;
             const input = runResultFor(result, 0);
-            if (!input.shootout && result.winner != null && input.goalsFor === input.goalsAgainst)
-              input.shootout = { winner: result.winner === 0 ? 'user' : 'opponent', score: null };
             saved.run.recordResult(input);
             const entry = logEntry(round, result);
             saved.log = withLog(saved.log, entry);
@@ -582,11 +582,11 @@ export default function RunScreen() {
       id,
       seed: m.seed,
       sides: [
-        // The formation chosen before the draft is played in the first match; it can change
-        // from the second one on.
+        // The formation chosen before the draft stays for the group stage; it can change from
+        // the Round of 32 on. The side is the run's line-up as it was last set up.
         {
           ...matchSideFor(m.home, { kind: 'user', editable: true }),
-          formationLocked: m.round === 0,
+          formationLocked: m.formationLocked,
         },
         matchSideFor(m.away, { kind: 'ai', editable: false }),
       ],
@@ -615,6 +615,7 @@ export default function RunScreen() {
     try {
       await ticker.start(c.run, {
         limit: single ? 1 : Infinity,
+        milestones: !single,
         configFor: m => fixtureConfig(m, c.run.difficulty),
         idFor: m => fixtureId(c.meta, m.round),
         onDone: (m, result, snapshot) => {
@@ -719,7 +720,7 @@ export default function RunScreen() {
     </div>
     <${GroupTable} snapshot=${snapshot} moves=${moves} />
     <p class="run-group__rule text-3 text-xs">${THIRD_PLACE_RULE}</p>
-    <${MatchdayList} snapshot=${snapshot} live=${sim ? null : null} />
+    <${MatchdayList} snapshot=${snapshot} />
   </section>`;
 
   return html`<div class="screen container run" data-screen="run" data-phase=${state.phase}>
@@ -735,6 +736,7 @@ export default function RunScreen() {
                 single=${state.single}
                 onSkip=${ticker.skip}
                 onStop=${ticker.stop}
+                onProceed=${ticker.proceed}
               />`
             : html`
                 ${flash?.kind === 'draw' && html`<${DrawBanner} snapshot=${snapshot} hideRatings=${meta.hideRatings} />`}

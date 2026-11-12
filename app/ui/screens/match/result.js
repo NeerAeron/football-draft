@@ -37,6 +37,9 @@ function verdict(r) {
   return { tone: 'loss', text: r.shootout ? 'Out on penalties' : 'Defeat' };
 }
 
+/** "Full time", or "After extra time" for a match that went the 120 minutes. */
+const finalWhistle = r => (r.extraTime ? 'After extra time' : 'Full time');
+
 function Scorers({ r }) {
   if (!r.goals.length) return html`<p class="res-scorers__none">No goals — a goalless draw.</p>`;
   return html`<div class="res-scorers">
@@ -69,6 +72,10 @@ function Timeline({ r }) {
   return html`<div class="res-timeline" aria-hidden="true">
     <span class="res-timeline__line"></span>
     <span class="res-timeline__ht" style=${{ left: `${(2700 / end) * 100}%` }}>HT</span>
+    ${
+      r.extraTime &&
+      html`<span class="res-timeline__ht" style=${{ left: `${(5400 / end) * 100}%` }}>FT</span>`
+    }
     ${items.map(
       e =>
         html`<span
@@ -197,7 +204,7 @@ export function ResultView({ result: r, momentum, onContinue, onRematch, onHome 
     </header>
     <section class="res-hero" aria-labelledby="res-title">
       <p class=${cx('res-hero__ft eyebrow', v && `is-${v.tone}`)}>
-        ${v ? `Full time · ${v.text}` : 'Full time'}
+        ${v ? `${finalWhistle(r)} · ${v.text}` : finalWhistle(r)}
       </p>
       <h1 id="res-title" class="res-hero__title">${headline(r)}</h1>
       <${ScoreBug}
@@ -211,7 +218,6 @@ export function ResultView({ result: r, momentum, onContinue, onRematch, onHome 
       ${
         r.shootout &&
         html`<${ShootoutPanel}
-          fixed
           teams=${r.teams}
           shootout=${{
             ...r.shootout,

@@ -21,13 +21,18 @@ ui/
   routes.js               route table — one line per screen
   vendor/                 Preact 10.29.8, htm 3.1.1, Lucide subset (+ licences, README.txt)
   styles/
-    app.css               the ONE stylesheet entry: @layer order + @import of every CSS file
+    app.css               the ONE stylesheet entry: @layer order + @import of what the first
+                          screen paints with (tokens, base, every component, shell, Home);
+                          the other screens' sheets load with their screen (lib/styles.js)
     fonts.css tokens.css base.css
   lib/                    framework-free helpers (no JSX, no DOM except motion/audio/router)
     html.js               html`` (htm bound to Preact), cx(), nextId()
     store.js              createStore, useStore, shallowEqual
-    router.js             hash router: startRouter, useRoute, href, navigate, back
-    screen-loader.js      lazy screen modules: loadScreen, preloadRoutes
+    create-store.js       the store without the hook (framework-free modules and Node tests import it here)
+    random.js             randomSeed, randomId — UI-side randomness only, never in core
+    router.js             hash router: startRouter, useRoute, href, navigate, back, leave, rewrite
+    screen-loader.js      lazy screens (module + stylesheets): loadScreen, preloadRoutes
+    styles.js             lazy screen stylesheets: SCREEN_SHEETS (cascade order), loadStyles
     prefs.js              UI preferences (motion, hideRatings, onboarded, draftType)
     motion.js             isReducedMotion(), useReducedMotion()
     audio.js              soundStore, toggleSound, setVolume, playCue (wraps services/sound.js)
@@ -36,7 +41,7 @@ ui/
                           Normal 74+ · Bench); teamStyle/readableOn/contrastRatio
     kits.js               nation home kits (NATION_KITS, nationKit, sideColors, kitColors) — use
                           them wherever a national side is shown; never a generic default colour
-    format.js             fmt1/fmt2/int/signed1/pct/boost — the ONLY number formatting for display
+    format.js             fmt1/fmt2/int/signed1/pct/boost and fmtDate ("12 Nov 2026") — the ONLY number and date formatting for display
                           ('.' decimals, ',' thousands; never toLocaleString for numbers)
     saved.js storage.js   saved run/daily/draft readers; safe localStorage helpers
     catalog-warm.js       loadWarmCatalog()/warmCatalog()/warmOpponents(): fill core's rating cache
@@ -44,7 +49,8 @@ ui/
                           its own task — use it (not bare loadCatalog) wherever a screen drafts,
                           builds a run or lists opponents (no main-thread task > 200 ms)
     offline.js            registerOffline(routes): registers app/sw.js (network first); the
-                          installed app's first launch caches every screen, font, worker, the
+                          installed app's first launch — and the first after each deploy (a new
+                          stamp in app/build.json) — caches every screen, font, worker, the
                           catalog, flags and logos, then sets <html data-offline-ready>. Add new
                           module workers to its WORKERS list. Off on localhost unless ?sw=1.
   components/             shared components: <name>.js + <name>.css, props documented on top
@@ -121,10 +127,13 @@ export function Counter({ start = 0 }) {
    }
    ```
 
-2. Add `app/ui/screens/<name>/<name>.css` and one line in `styles/app.css`:
-   `@import url('../screens/<name>/<name>.css') layer(screens);`
-3. Point the route's `load` in `app/ui/routes.js` at it (replace the placeholder):
-   `{ path: '/draft', title: 'Draft', back: '/', load: () => import('./screens/draft/draft.js') }`
+2. Add `app/ui/screens/<name>/<name>.css` and its name to `SCREEN_SHEETS` in
+   `app/ui/lib/styles.js` (the list is the cascade order inside the `screens` layer).
+3. Point the route's `load` in `app/ui/routes.js` at it and name its stylesheets:
+   `{ path: '/draft', title: 'Draft', back: '/', styles: ['draft'], load: () => import('./screens/draft/draft.js') }`
+   `styles` lists every screen sheet whose classes the screen's markup uses: its own, and
+   another screen's when it renders that screen's parts (Daily shows the run's bracket:
+   `['run', 'daily']`). `tests/styles.test.mjs` fails when one is missing.
 4. Add/extend your flow in `tests/browser/flows.mjs`; screenshot desktop + mobile; iterate.
 
 Screen anatomy: root `div.screen` (+ `container` / `container-narrow`), exactly one `h1`. The shell
@@ -137,7 +146,8 @@ from 960 px. Primary action on phones: `div.action-bar` (sticky bottom, safe-are
 ## 5. Routing
 
 Hash routes (static hosting, back button works). Table in `app/ui/routes.js`:
-`{ path, title, load, back?, immersive? }`; `'*'` is the not-found route.
+`{ path, title, load, styles?, back?, leave?, immersive? }`; `'*'` is the not-found route. `leave: true`
+(the draft): the top-bar back arrow always goes to `back` (Home), however many screens ago that was.
 
 | Route         | Owner (P2)   | Meaning                                                         |
 | ------------- | ------------ | --------------------------------------------------------------- |
@@ -157,6 +167,8 @@ import { href, navigate, back, useRoute } from '../../lib/router.js';
 href('/play/:mode', { mode: 'run' }, { type: 'clubs' }); // '#/play/run?type=clubs'
 navigate('/draft');            // push;  navigate('/', { replace: true })
 back('/');                     // history back inside the app, else replace with fallback
+leave('/');                    // out of a flow: back to that screen, however many steps it is
+rewrite('/play/run');          // new URL for the current entry, no navigation (spends ?go=1)
 const { path, params, query, direction } = useRoute();
 ```
 
@@ -230,7 +242,8 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `ErrorBoundary` | wraps each screen in the shell; `fallback(error, reset)` |
 
 Import from `components/index.js`. New shared component → `components/<name>.js` + `.css`, a line
-in `styles/app.css` and in `components/index.js`, a gallery section, and a row here.
+in `styles/app.css` (then `npm run preload`) and in `components/index.js`, a gallery section,
+and a row here.
 
 **PitchView fit flow (draft):** when a player is selected, compute per-slot fit in `core/` and pass
 `highlights`: `best` (auto-place target), `ok` (natural), `penalty { from, to }` (OVR after
@@ -262,6 +275,13 @@ Use custom properties only — no raw hex, px font sizes or durations in screen 
   `.visually-hidden`, `.sr-only-mobile`. Breakpoints: 560 (large phone), 720 (tablet), 960 (two-pane).
 - **Cascade layers** (`app.css`): `tokens < base < components < shell < screens < overrides`.
   Screen CSS wins over component CSS regardless of specificity — no `!important` needed.
+- **What loads when.** `app.css` (render-blocking, its imports preloaded by `index.html`) is
+  the first screen's CSS: tokens, base, all shared components, the shell and Home. Every other
+  screen sheet is loaded by `loadScreen()` together with the screen's module, before the
+  screen renders (no unstyled flash), as `<style data-sheet="<name>">@import … layer(screens)`.
+  Once loaded a sheet stays, and the elements keep the order of `SCREEN_SHEETS` whatever order
+  screens are opened in — so screen CSS is still global: prefix classes with the screen's
+  name. The gallery page links only `app.css` (it shows components, no screen).
 
 ## 10. Accessibility rules
 

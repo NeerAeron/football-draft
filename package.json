@@ -3,7 +3,7 @@
   "version": "0.44.0",
   "private": true,
   "type": "module",
-  "description": "Football Draft Challenge: draft an XI and play a continuous 11v11 football simulation.",
+  "description": "World Cup Draft: draft an XI from real players and take it through a World Cup in a continuous 11v11 football simulation.",
   "engines": {
     "node": ">=22"
   },
@@ -21,6 +21,7 @@
     "verify": "npm run format:check && npm run lint && npm test && npm run test:browser",
     "sim:fingerprint": "node scripts/dev/sim-fingerprint.mjs",
     "data:fetch": "node scripts/data/fetch-source.mjs",
+    "data:reconcile": "node scripts/data/reconcile.mjs",
     "data:build": "node scripts/data/build.mjs",
     "preload": "node scripts/dev/preload.mjs"
   },

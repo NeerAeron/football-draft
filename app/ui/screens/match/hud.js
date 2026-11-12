@@ -49,7 +49,11 @@ export function MomentumChart({
 }) {
   const n = Math.max(90, samples.length),
     w = 100 / n,
-    mid = height / 2;
+    mid = height / 2,
+    // Half-time sits in the middle of the ninety minutes (and their added time); with extra
+    // time on the axis a second line marks the end of them.
+    regular = Math.min(n, 96),
+    extraTime = n > 105;
   const home = teamStyle(teamColors(teams[0]))['--team'],
     away = teamStyle(teamColors(teams[1]))['--team'];
   const lead = (final ? samples : samples.slice(-5)).reduce((a, b) => a + b, 0);
@@ -71,7 +75,23 @@ export function MomentumChart({
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <line x1="50" x2="50" y1="0" y2=${height} class="momentum__half" />
+      <line
+        x1=${(regular / 2) * w}
+        x2=${(regular / 2) * w}
+        y1="0"
+        y2=${height}
+        class="momentum__half"
+      />
+      ${
+        extraTime &&
+        html`<line
+          x1=${regular * w}
+          x2=${regular * w}
+          y1="0"
+          y2=${height}
+          class="momentum__half"
+        />`
+      }
       <line x1="0" x2="100" y1=${mid} y2=${mid} class="momentum__axis" />
       ${samples.map((v, i) => {
         const h = Math.min(1, Math.abs(v) * 1.6) * (mid - 2);
@@ -212,29 +232,32 @@ export function Ticker({ line, fallback }) {
   </div>`;
 }
 
-function KickDots({ kicks, team, total }) {
+function KickDots({ kicks, team, total, next }) {
   const mine = kicks.filter(k => k.team === team);
   const slots = Math.max(5, total);
   return html`<ol class="pens__dots" aria-hidden="true">
     ${Array.from({ length: slots }, (_, i) => {
       const k = mine[i];
-      return html`<li key=${i} class=${cx('pens__dot', k && (k.scored ? 'is-goal' : 'is-miss'))}>
+      const state = k ? (k.scored ? 'is-goal' : 'is-miss') : next && i === mine.length && 'is-next';
+      return html`<li key=${i} class=${cx('pens__dot', state)}>
         ${k && html`<${Icon} name=${k.scored ? 'check' : 'x'} size=${12} strokeWidth=${3} />`}
       </li>`;
     })}
   </ol>`;
 }
 
-/** Penalty shootout scoreboard: kick-by-kick dots, the taker and the keeper. */
-export function ShootoutPanel({ shootout, teams = [], fixed = false }) {
+/**
+ * Penalty shootout scoreboard: a ✓ / ✗ per kick and the running score. Live (the controller's
+ * `pensInfo`) it fills in kick by kick — `taker` is the player on the spot, `verdict` his mark
+ * once the kick is taken; a stored result shows the finished shootout.
+ */
+export function ShootoutPanel({ shootout, teams = [] }) {
   if (!shootout) return null;
-  const rounds = Math.max(5, ...[0, 1].map(t => shootout.kicks.filter(k => k.team === t).length));
+  const count = t => shootout.kicks.filter(k => k.team === t).length;
+  const rounds = Math.max(5, ...[0, 1].map(t => count(t) + (shootout.kicking === t ? 1 : 0)));
   const decided = shootout.winner != null;
   const label = `Penalties ${shootout.score[0]}–${shootout.score[1]}`;
-  return html`<section
-    class=${cx('pens', decided && 'is-decided', fixed && 'pens--static')}
-    aria-label=${label}
-  >
+  return html`<section class=${cx('pens', decided && 'is-decided')} aria-label=${label}>
     <header class="pens__head">
       <span class="eyebrow"
         >${shootout.suddenDeath && !decided ? 'Sudden death' : 'Penalty shootout'}</span
@@ -253,7 +276,12 @@ export function ShootoutPanel({ shootout, teams = [], fixed = false }) {
               >${teams[t]?.short || teams[t]?.name}</span
             ></span
           >
-          <${KickDots} kicks=${shootout.kicks} team=${t} total=${rounds} />
+          <${KickDots}
+            kicks=${shootout.kicks}
+            team=${t}
+            total=${rounds}
+            next=${shootout.kicking === t}
+          />
         </div>`,
     )}
     <p class="pens__now">
@@ -261,12 +289,21 @@ export function ShootoutPanel({ shootout, teams = [], fixed = false }) {
         decided
           ? html`<strong>${teams[shootout.winner]?.name}</strong> win on penalties`
           : shootout.taker
-            ? [
-                html`<strong>${shootout.taker}</strong>`,
-                html`<span class="text-3"> vs </span>`,
-                shootout.keeper || 'the keeper',
-              ]
-            : html`<span class="text-3">Next kick…</span>`
+            ? html`<span
+                key=${`${shootout.kicks.length}${shootout.verdict || ''}`}
+                class=${cx('pens__taker', shootout.verdict && `is-${shootout.verdict}`)}
+              >
+                ${
+                  shootout.verdict &&
+                  html`<${Icon}
+                    name=${shootout.verdict === 'goal' ? 'check' : 'x'}
+                    size=${14}
+                    strokeWidth=${3}
+                  />`
+                }
+                <strong>${shootout.taker}</strong>
+              </span>`
+            : '\u00a0'
       }
     </p>
   </section>`;
@@ -296,19 +333,16 @@ export function GoalOverlay({ goal, teams = [], replay = false, onSkip }) {
             <span class="goal__replay-who">${goal.scorer || team.name} ${goal.minute}</span>
           </div>`
         : html`<div class="goal__banner">
-            <span class="goal__word"
-              >${goal.kind === 'shootout' ? 'Winners' : goal.ownGoal ? 'Own goal' : 'Goal'}</span
-            >
+            <span class="goal__word">${goal.ownGoal ? 'Own goal' : 'Goal'}</span>
             <div class="goal__line">
               <${TeamMark} team=${team} size=${28} />
               <span class="goal__score num"
                 >${goal.score[0]}<span class="goal__dash">–</span>${goal.score[1]}</span
               >
-              ${goal.kind === 'shootout' && html`<span class="goal__pens">pens</span>`}
             </div>
             <p class="goal__who">
               <strong>${goal.scorer || team.name}</strong>
-              <span class=${goal.kind === 'shootout' ? 'goal__how' : 'num'}>${goal.minute}</span>
+              <span class="num">${goal.minute}</span>
               ${goal.penalty && html`<span class="goal__pen">(pen)</span>`}
             </p>
             ${goal.assist && html`<p class="goal__assist">Assist ${goal.assist}</p>`}

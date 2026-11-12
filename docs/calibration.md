@@ -23,6 +23,76 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 8: the whistle waits for the attack
+
+Owner's note: "sometimes the game ends on an attack, so let attacks finish, and corners".
+`sim/whistle.js` holds the whistle while an attack is on when time runs out (rules and caps in
+docs/engine-events.md, _The final whistle_; `periods.holdRange` 30 m, `holdAttack` 4 s,
+`holdCorners` 1, `holdMaximum` 10 s). Held time is the most dangerous time there is — every
+second of it is an attack near goal — so it scores three times as fast as ordinary play, and
+the announced added time was trimmed to pay for it: `periods.firstHalfMean` 2 → 1.5 and
+`secondHalfMean` 3 → 2 (1.6 and 2.1 minutes once rounded, with the minimum of one; 2.0 and 3.0
+before). Club fixtures of `tools/calibration/lib/fixtures.mjs`, 180 s, before → after:
+
+| | before | after |
+| --- | --- | --- |
+| first 24 fixtures: goals a match | 2.33 | 2.33 |
+| first 24: periods with the whistle held · mean held · held time a match | — | 17 of 48 · 3.1 s · 2.2 s |
+| 960 fixtures: goals a match | 2.10 | 2.07 |
+| 960: periods with the whistle held · mean held · longest | (6%: a shot in flight) | 28% · 3.1 s · 13.5 s |
+| 960: goals from shots struck after time was up, a match | 0.010 | 0.080 |
+| 960: real seconds a match | 189.5 | 189.2 |
+
+How the trim was sized: held time alone (old added time) adds 0.052–0.07 goals a match
+(+2.5–3.4%, counted directly: shots struck after the deadline; the totals of two runs differ by
+±2% of noise at 960 matches). A minute of added time is worth 0.025 goals (960 fixtures of the
+old engine: 0.027 a first-half minute, 0.025 a second-half one, against 0.022 a regular minute),
+and the trim takes 1.4 minutes: −0.034, about −1.6%. Net: within a percent of where it was, and
+the measured totals say 2.10 → 2.07. A wider range (35 m, 5 s) held the whistle in 32% of
+periods and added 3.4% before any trim; a tighter one (20–25 m, 3 s) still added 2%, because
+the goals come from the attacks that are closest when time runs out — so the range was set for
+what reads right (an attack within shooting or crossing distance), not to save goals.
+`blunders.mjs --compare` on the 24 fixtures: no finding moved by more than its noise (giveaways
+0.46 → 0.42, pass-out 0.46 → 0.38, loose-long 0.63 → 0.54, swarm 0.75 → 0.85 s).
+
+With the old added-time means, the 18 of 48 fixtures in which no whistle was held are identical
+to the old engine's, step for step (score, clock, events, stats, every player's position).
+
+## Phase 7: tight angles, a few goals fewer
+
+Owner's notes: "angles seem to score more than expected" and "a little too many goals".
+Measured on the first 288 club fixtures of `tools/calibration/lib/fixtures.mjs` (180 s, the
+FC 26 catalog, team 1 AI-coached), before → after:
+
+| | before | after |
+| --- | --- | --- |
+| goals / match | 2.42 | 2.25 (−7%) |
+| non-penalty shots / match · scored | 8.6 · 25.8% | 8.5 · 24.3% |
+| shots seeing under 12° of goal, inside 20 m: per match · scored | 0.17 · 30% (15 of 50) | 0.11 · 3% (1 of 31) |
+| shots 60°+ off the centre line, 5–16.5 m: per match · scored | 0.17 · 38% (18 of 48) | 0.16 · 17% (8 of 46) |
+| shots within 30° of the centre line, 5–16.5 m: scored | 46.6% | 46.2% |
+| shots from 22–30 m: scored | 8.6% | 8.2% |
+
+(Shots are bucketed by where they were struck; the 60°+ row includes point-blank finishes just
+outside a post, where the goal is still wide open.)
+
+What was wrong: the aim of a shot is a point on the goal line and its scatter was the same
+length of goal line from any angle, so a ball struck from the byline, along the line, landed
+between the posts as surely as one from the penalty spot — and the keeper stood 2.5 m off his
+line with the ball on the byline, so it rolled in behind him. What changed (docs/engine-events.md,
+_Tight angles_): scatter × 1 / sin(angle to the goal line) (at most 4); the keeper at his near
+post, close to his line, when the ball is (or is being passed) wide within 5.5 m of the line; a
+tight-angle shot within his reach is kept out more surely; a carrier's urge to shoot fades from
+50° off the centre line (he cuts back or crosses); `xg` fades the same way. That is 6 of the 7
+points; the rest is `gameplay.saveAbility` 1 → 1.02. Long shots, take-ons and the save model
+for shots from in front are untouched.
+
+`blunders.mjs --compare` (24 fixtures) shows nothing new: hopeless shots 0.79 → 0.75 a match,
+soft goals 0.38 → 0.38, free in the box 0.05 → 0.11 s; giveaways 0.42 → 0.67 and long loose
+balls 0.63 → 0.88 are within what 24 different matches vary by (neither is touched by the
+change). The fast rating model's `goals` (competition/model.js) was scaled by the same 7%
+(1.84 → 1.71), not refitted; `CUP_TUNING` is as it was.
+
 ## Phase 6: saves that do what they say, penalties, ten men, xG of this engine
 
 Measured on 1,600 deterministic club fixtures (`tools/calibration/lib/fixtures.mjs`, 180 s, even

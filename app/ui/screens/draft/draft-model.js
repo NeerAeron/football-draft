@@ -135,7 +135,9 @@ export const POOR_FIT_DROP = 7;
 /**
  * PitchView highlights for placementOptions(id): the Auto slot 'best', natural slots 'ok',
  * small out-of-position drops 'penalty' (natural → in-slot rating), big drops a muted
- * 'neutral' tag with the in-slot rating (still selectable), closed slots 'blocked'.
+ * 'neutral' tag with the in-slot rating (still selectable), closed slots 'blocked'. Every open
+ * slot carries `role` and `rating` — his overall there — which the pitch writes into the slot
+ * (not with hidden ratings), so two positions compare at a glance.
  */
 export function slotHighlights(options = [], auto = null, { hideRatings = false } = {}) {
   const out = {};
@@ -144,11 +146,19 @@ export function slotHighlights(options = [], auto = null, { hideRatings = false 
       ? { state: 'neutral', label: hideRatings ? 'Poor' : String(o.rating), from: o.natural }
       : { state: 'penalty', label: o.role, from: o.natural, to: o.rating };
   for (const o of options) {
-    if (!o.allowed) out[o.slot] = { state: 'blocked', label: o.reason };
-    else if (auto && o.slot === auto.slot)
-      out[o.slot] = o.familiarity >= NATURAL_FIT ? { state: 'best', label: 'Best' } : off(o);
-    else if (o.familiarity >= NATURAL_FIT) out[o.slot] = { state: 'ok', label: o.role };
-    else out[o.slot] = off(o);
+    if (!o.allowed) {
+      out[o.slot] = { state: 'blocked', label: o.reason };
+      continue;
+    }
+    const fit =
+      auto && o.slot === auto.slot
+        ? o.familiarity >= NATURAL_FIT
+          ? { state: 'best', label: 'Best' }
+          : off(o)
+        : o.familiarity >= NATURAL_FIT
+          ? { state: 'ok', label: o.role }
+          : off(o);
+    out[o.slot] = hideRatings ? fit : { ...fit, role: o.role, rating: o.rating };
   }
   return out;
 }
@@ -163,9 +173,21 @@ const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 /** The six summary stats with the position's key stats first (pool rows). */
 export const rowStats = (stats, position) => keyStatsFirst(stats, position);
 
-/** "Prime 94 · ’19": what a Prime boost would make a player (entry/slot `primeVersion`). */
-export const primeNote = version =>
-  version ? `Prime ${version.ovr} · ${editionLabel(version.edition)}` : '';
+/**
+ * "Prime 94 +8": a Prime boost is available for this player — what it makes him and what it
+ * adds to the rating on his card (`ovr`). Short on purpose: a pool row must never cut it.
+ */
+export const primeNote = (version, ovr) =>
+  version ? `Prime ${version.ovr}${ovr != null ? ` +${version.ovr - ovr}` : ''}` : '';
+/** The same for the pick sheet, with the year: { era: '’19', ovr: 94, gain: 8 } | null. */
+export const primeLine = (version, ovr) =>
+  version
+    ? { era: editionLabel(version), ovr: version.ovr, gain: ovr != null ? version.ovr - ovr : null }
+    : null;
+
+/** The Legend spin's one line: which years the legends' versions are from. */
+export const legendYearsLine = years =>
+  years ? `Best versions, ${years[0] === years[1] ? years[0] : `${years[0]}–${years[1]}`}` : '';
 
 /** PitchView link lines from mates pairs: nation mates 3 (gold), club mates 2 (volt). */
 export function linkLines(pairs = []) {

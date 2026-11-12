@@ -6,6 +6,7 @@
 import { clamp, lerp } from '../util/math.js';
 import { W, H, GOAL, hypot } from './constants.js';
 import { PERIOD_START } from './periods.js';
+import { coachAI } from './coach.js';
 
 const SETUP = 1.7; // real seconds from the cut to the kicker until he strikes it
 const RUN_UP = 0.8; // … the last of which he spends running at the ball
@@ -53,7 +54,9 @@ export class ShootoutMethods {
     this.presser = [null, null];
     this.ballTrail = [];
   }
-  // Two 15-minute halves, no pause between them; ends swap like a normal half.
+  // Two 15-minute halves (a sixth of the match length each, plus a minute of added time):
+  // the first starts out of the break at 90' (resumeHalf), the second follows it at once —
+  // the sides only change ends. Tired legs get a little back at the break, cards stand.
   startExtraHalf(half) {
     this.half = half;
     this.periodStart = this.elapsed;
@@ -69,6 +72,7 @@ export class ShootoutMethods {
       }
     }
     this.clearTransient();
+    if (this.competition?.mode === 'ai') coachAI(this, true);
     const team = half === 3 ? this.kickoffTeam : 1 - this.kickoffTeam;
     this.addEvent(
       half === 3 ? 'Level after 90 minutes. Extra time.' : 'Extra time · second half.',

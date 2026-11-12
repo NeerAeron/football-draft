@@ -242,6 +242,24 @@ export class PlanningMethods {
     // Narrow the angle, but stay inside the frame: a keeper outside his near
     // post leaves the far post empty. Shade toward a cross's landing point.
     y = clamp(34 + ((b.y - 34) * x) / Math.max(br, 6), 34 - GOAL / 2 + 0.6, 34 + GOAL / 2 - 0.6);
+    // The ball wide and near his goal line (or an opponent's pass on its way there): there is
+    // no angle to narrow from out there, a shot can only come along the line or across him.
+    // He drops to his near post and back towards his line, a quarter of the ball's own
+    // distance from it (standing 2.5 m out he watched byline shots roll in behind him).
+    const to =
+        b.kind === 'pass' &&
+        b.destination &&
+        !b.missedReceiver &&
+        this.players[b.kicker]?.team !== t
+          ? b.destination
+          : b,
+      deep = Math.min(br, this.rel(to.x, t)),
+      side = to.y - 34;
+    if (deep < 5.5 && Math.abs(side) > GOAL / 2 + 1) {
+      const tight = clamp((5.5 - deep) / 3, 0, 1);
+      x = lerp(x, Math.max(0.5, deep * 0.25), tight);
+      y = lerp(y, 34 + Math.sign(side) * (GOAL / 2 - 0.6), tight);
+    }
     if (b.kind === 'pass' && b.z > 0.8 && b.destination && this.rel(b.destination.x, t) < 17)
       y = lerp(y, clamp(b.destination.y, 30.5, 37.5), 0.45);
     if (b.kind === 'shot' && b.shotTeam !== t && p.penaltyDive?.until > this.elapsed) {

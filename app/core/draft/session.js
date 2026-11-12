@@ -12,10 +12,10 @@ import {
   legendIndex,
   catalogStamp,
   draftRules,
-  callUps,
   roleRating,
   roleFit,
   naturalRating,
+  selectable,
   isKeeper,
   LINE_OF,
 } from './pools.js';
@@ -26,22 +26,21 @@ export const DRAFT_MODES = {
   nations: { label: 'Nations', categories: ['nation'] },
   leagues: { label: 'Leagues', categories: ['league'] },
   clubs: { label: 'Clubs', categories: ['club'] },
-  clubAndCountry: { label: 'Club & Country', categories: ['nation', 'league'] },
 };
+/** A draft mode id from a query, a link or a setting: anything unknown reads as 'nations'. */
+export const draftModeOf = id => (Object.hasOwn(DRAFT_MODES, id) ? id : 'nations');
 export const DIFFICULTIES = ['pro', 'worldclass', 'legendary'];
 export const DIFFICULTY_LABELS = {
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',
 };
-/**
- * A difficulty id from a save or a link: the removed levels ('amateur', 'semipro') and anything
- * unknown read as 'pro'.
- */
-export const difficultyOf = id => (DIFFICULTIES.includes(id) ? id : 'pro');
 /** Familiarity at or above this counts as a natural position (auto placement prefers it). */
 export const NATURAL_FIT = 0.95;
-export const SESSION_FORMAT = 1;
+// Format 2: the rules of this version (a nation's draft squad, the pick minimum, the three
+// difficulties, the named tiers, mates and the Captain). A session saved in anything older is
+// not a saved draft session: there is one cut-off and no conversion.
+export const SESSION_FORMAT = 2;
 const DEFAULT_TEAMS = [
   { name: 'You', color: '#d9f580', secondary: '#16213a' },
   { name: 'Player 2', color: '#baaff0', secondary: '#16213a' },
@@ -84,9 +83,7 @@ function normalizeOptions(o = {}) {
     (_, i) => o.formations?.[i] ?? o.formations?.[0] ?? o.formation ?? '433',
   );
   for (const f of formations) if (!FORMATIONS[f]) throw Error('Unknown formation: ' + f);
-  // Saves and links from before the three difficulties: the removed levels play as Pro.
-  const difficulty =
-    o.difficulty === 'amateur' || o.difficulty === 'semipro' ? 'pro' : (o.difficulty ?? 'pro');
+  const difficulty = o.difficulty ?? 'pro';
   if (!DIFFICULTIES.includes(difficulty)) throw Error('Unknown difficulty: ' + difficulty);
   if (o.schedule && sides !== 1) throw Error('A scheduled (daily) draft has one side');
   const teams = Array.from({ length: sides }, (_, i) => ({
@@ -143,6 +140,8 @@ export class DraftSession {
     // slots (`bands`, null when off).
     this.tiers = budgetBands(this.rules.budget);
     this.bands = this.options.budget ? this.tiers : null;
+    // Only players shown at this rating or more are offered (0: everyone).
+    this.pickMinimum = this.rules.pickMinimum;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
     this.primesPerSide =
       this.options.primes === true
@@ -165,11 +164,11 @@ export class DraftSession {
       this.turn = this.first;
       this.picks = Array.from({ length: this.sides }, () => Array(11).fill(null));
       this.rerollsLeft = Array(this.sides).fill(this.rerollsPerSide);
+      this.primesLeft = Array(this.sides).fill(this.primesPerSide);
       this.history = [];
       this.current = null;
       this.seen = [];
     }
-    this.primesLeft ??= Array(this.sides).fill(this.primesPerSide);
     this.used = new Set(this.picks.flat().filter(Boolean));
     for (const id of [...this.used]) {
       const p = this.player(id);
@@ -213,11 +212,22 @@ export class DraftSession {
     return this.options.legendSpin && this.round(side) === 0;
   }
   // ---- availability and the dead-end guard ---------------------------------------------
+  /** Drafted already — he, or another version of him (his prime or legend version). */
+  #taken(p) {
+    return this.used.has(p.profileId) || this.used.has(baseProfileId(p));
+  }
+  /**
+   * This draft may offer him: selectable (rules.pickMinimum), not drafted, not excluded. Every
+   * pool and every guard of a spin goes through here, so nobody under the minimum is ever
+   * listed and a spin never lands where only such players are left.
+   */
   available(p) {
     const s = p.source || {};
     return (
-      !this.used.has(p.profileId) &&
+      selectable(p, this.pickMinimum) &&
+      !this.#taken(p) &&
       !this.excluded.players.has(p.profileId) &&
+      !this.excluded.players.has(baseProfileId(p)) &&
       !this.excluded.nations.has(s.nationality) &&
       !this.excluded.clubs.has(String(s.clubId))
     );
@@ -257,9 +267,9 @@ export class DraftSession {
     });
     return { gk, out };
   }
-  // The guard: some available (Budget mode: affordable) player of the group can fill an open
-  // slot class. Call-ups always include the best available keepers and outfield players, so
-  // the whole group is checked.
+  // The guard: some available (Budget mode: affordable) player the spin would offer can fill an
+  // open slot class. A nation offers its draft squad only (pools.js draftSquad), a league or a
+  // club everyone a draft may offer.
   #fills(category, id, side, legend = false) {
     const ix = this.#index,
       group = legend
@@ -277,7 +287,7 @@ export class DraftSession {
         const band = bandIndex(this.bands, this.#price(p));
         return band < 0 || used[band] < this.bands[band].slots;
       };
-    return group.players.some(
+    return (category === 'nation' && !legend ? group.squad : group.players).some(
       p => (isKeeper(p) ? open.gk : open.out) && this.available(p) && afford(p),
     );
   }
@@ -285,21 +295,10 @@ export class DraftSession {
     const ix = this.#index;
     if (category === 'nation') {
       if (legend) return this.#legendPool(id);
+      // The nation's draft squad, less whoever is taken or excluded: it does not refill. Budget
+      // mode lists the players a full tier closes too (the guard asked for one that is not).
       const nation = ix.nations.get(id);
-      if (!nation) return [];
-      const squad = callUps(nation, p => this.available(p), this.rules.nations);
-      if (!this.bands) return squad;
-      // Budget mode: the squad as always (stars you cannot afford are shown, closed) plus the
-      // best call-ups you can afford, so a spin always offers a full choice.
-      const side = this.turn,
-        seen = new Set(squad);
-      for (const p of callUps(
-        nation,
-        q => this.available(q) && this.affordable(q, side),
-        this.rules.nations,
-      ))
-        if (!seen.has(p)) squad.push(p);
-      return squad;
+      return nation ? nation.squad.filter(p => this.available(p)) : [];
     }
     const group = category === 'league' ? ix.leagueById.get(id) : ix.clubs.get(id);
     return group ? group.players.filter(p => this.available(p)) : [];
@@ -505,7 +504,7 @@ export class DraftSession {
         ? 'Not this side’s turn'
         : !this.current
           ? 'Spin first'
-          : this.used.has(p.profileId)
+          : this.#taken(p)
             ? 'Already drafted'
             : !this.#inPool(p)
               ? 'Not in this pool'
@@ -574,6 +573,8 @@ export class DraftSession {
     if (!option.allowed) return { ok: false, reason: option.reason };
     this.picks[side][slot] = p.profileId;
     this.used.add(p.profileId);
+    // A catalog player's legend version: his current version is taken with it.
+    this.used.add(baseProfileId(p));
     const spin = this.current;
     this.history.push({
       side,
@@ -693,7 +694,7 @@ export class DraftSession {
         ovr,
         rating: Math.round(roleRating(prime, role)),
         edition: prime.edition,
-        year: editionYear(prime.edition),
+        year: editionYear(prime),
         position: prime.primaryPosition,
         tier: tierOfRating(ovr, this.tiers),
       },
@@ -755,14 +756,14 @@ export class DraftSession {
       legend: !!p.legend,
       prime: !!p.prime,
       edition: p.edition ?? null,
-      // The year of a legend's or prime version's edition (FIFA 19 came out in 2018).
-      year: editionYear(p.edition),
+      // The year of a legend's or prime version's ratings (FIFA 19 came out in 2018).
+      year: editionYear(p),
       // His stored prime version (drafts with Prime boosts): what a boost would make him.
       primeVersion: prime && {
         profileId: prime.profileId,
         ovr: Math.round(naturalRating(prime)),
         edition: prime.edition,
-        year: editionYear(prime.edition),
+        year: editionYear(prime),
         position: prime.primaryPosition,
       },
     };
@@ -924,6 +925,8 @@ export class DraftSession {
       uniqueNations: this.options.uniqueNations,
       budget: this.options.budget,
       legendSpin: this.options.legendSpin,
+      // [first, last] year of the legends' versions (the Legend spin's one line), or null.
+      legendYears: this.options.legendSpin ? (this.#legends?.years ?? null) : null,
       // The spin to make (or the current one) is the side's Legend spin.
       legendRound: this.current ? !!this.current.legend : !this.complete && this.legendRound(side),
       primes: this.primesPerSide
@@ -1090,7 +1093,12 @@ export function createDraftSession(catalog, options = {}) {
 }
 /** Rebuild a session from serialize() output (throws if it does not fit the catalog). */
 export function restoreDraftSession(catalog, data) {
-  if (data?.type !== 'draft-session' || data.format !== SESSION_FORMAT)
+  if (
+    data?.type !== 'draft-session' ||
+    data.format !== SESSION_FORMAT ||
+    !data.rules ||
+    typeof data.rules !== 'object'
+  )
     throw Error('Not a saved draft session');
   return new DraftSession(catalog, data.options, { rules: data.rules, state: data.state });
 }

@@ -20,14 +20,29 @@ import { matchClock } from './core/sim/periods.js';
 | `new Match(seed, duration)` | `duration` (real seconds): `180` — `MATCH_SECONDS`, the one length the game plays (live, highlights, instant, auto-sims) — or `300`, a profile kept for tests and tools (`DURATION_PROFILES`). 90 match minutes are compressed into it; physics is never scaled. |
 | `m.importConfig(config)` / `m.exportConfig()` | `{ tuning, competition, teams, players }`. Import resets the match. Export is a full snapshot (tactics incl. mentality, every player profile incl. `chem`). |
 | `m.step(1 / 60)` | Advance one fixed step. Call at 60 Hz (or faster for instant results). No-op once `finished`. |
-| `m.pauseAtHalf = true` | Stop in `mode === 'halftime'` until `m.resumeHalf()`; otherwise half-time passes automatically. |
+| `m.pauseAtHalf = true` | Stop in `mode === 'halftime'` until `m.resumeHalf()`; otherwise the break passes automatically. Two breaks use it: half-time (`half === 1`) and, in a knockout match with extra time that is level after 90 minutes, the break before extra time (`half === 2`; `resumeHalf()` starts extra time). Tactics, the formation and the line-up can be changed in both. |
 | `m.setTactic(team, key, value)` | See _Tactics_. `true` applied · `false` locked (formation in AI/PvP) · `undefined` invalid. |
 | `m.swapLineup(a, b)`, `m.setPlayerProfile(id, profile)`, `m.setTags(id, tags)` | Pre-match / half-time lineup edits (unchanged). |
 | `m.winner()` | `0` / `1` once decided (score, shootout, or the opponent of an abandoned side), `null` for a draw or while running. |
 
 `config.competition`: `{ mode: 'sandbox' | 'ai' | 'pvp', difficulty, knockout?: boolean,
-extraTime?: boolean }`. `mode: 'ai'` lets `coach.js` run team 1's tactics. `knockout: true`
-decides a level match by a penalty shootout (see below).
+extraTime?: boolean, edge?: false }`. `mode: 'ai'` lets `coach.js` run team 1's tactics.
+`knockout: true` decides a level match by a penalty shootout (see below); with `extraTime:
+true` it plays extra time first (see _Extra time_). The engine only does what the config says;
+the game's rule — every knockout match plays extra time — is `buildMatchConfig`'s
+(docs/ui-match.md).
+
+**The player's side as favourite** (`tuning.userEdge`, `m.edge`). In `mode: 'ai'` team 0 is
+the player's side. When its XI has the higher overall at kick-off (mean `overallRating` of the
+eleven in their roles, without chemistry), `m.edge[0]` = lead × `perPoint` (0.006), at most
+`cap` (0.05); otherwise `[0, 0]` — never for the weaker side, never for team 1, never in
+`'pvp'` or `'sandbox'`, and not when `competition.edge === false` (the match screen sets that
+for an Exhibition, where both sides are the player's pick). Its one effect is in `keeperSave`:
+every save chance is multiplied by `1 + edge[keeper's team] − edge[other team]`, so a 5-point
+favourite's keeper is 3% surer and the keeper facing it 3% less sure — about +3% / −3% on the
+two sides' conversion. `m.edge` is `null` until the first step, is worked out once there and
+then travels with the match (worker halves, half-time): no RNG, nothing re-read later. The fast
+rating model (`competition/model.js`) does not include it.
 
 ### Tactics (`team.tactics`)
 
@@ -78,9 +93,10 @@ plus **`chem`**: links/chemistry bonus, a number clamped to 0–2 (default 0), a
 | `teams[t]` | `{ name, short, color, tactics }` — team 0 is home |
 | `elapsed` | real seconds simulated |
 | `time`, `half` | match clock in seconds (`0…2700` first half, `2700…5400` second, extra time `5400…6300` half 3 and `6300…7200` half 4; beyond a period's end = added time). Display with `matchClock(time, half)` → `"45+01:12"`. `PERIOD_START` / `PERIOD_END` in `periods.js`. The clock stops during a shootout. |
-| `addedMinutes` | `[firstHalf, secondHalf]` stoppage minutes (announced by an `added` event) |
+| `addedMinutes` | `[firstHalf, secondHalf]` stoppage minutes (announced by an `added` event; 1.6 and 2.1 on average, `tuning.periods`) |
+| `heldTime` | real seconds each period ran past its deadline because the whistle was held (`[0, 0, 0, 0]`, filled in as the periods end), see _The final whistle_ |
 | `periodDeadline()`, `expectedDuration()` | real-second end of this period / of the whole match (progress bars) |
-| `mode` | `'restart'` (dead ball, players setting up) · `'play'` · `'halftime'` · `'fulltime'` · `'shootout'` |
+| `mode` | `'restart'` (dead ball, players setting up) · `'play'` · `'halftime'` (a break: half-time when `half === 1`, the one before extra time when `half === 2`) · `'fulltime'` · `'shootout'` |
 | `phase` | short label: `'Build-up'`, `'In transition'`, `'Final third'`, `'Keeper possession'`, `'Shot on goal'`, `'Moving the ball'`, `'Ball in dispute'`, a restart type, `'Half-time'`, `'Full time'`, `'Penalty shootout'`, `'Match abandoned'` |
 | `restart` | `{ type, team, x, y, timer, taker }` while `mode === 'restart'`. Types: `Kickoff`, `Goal`, `Second half`, `Extra time`, `Goal kick`, `Corner`, `Throw-in`, `Free kick`, `Indirect free kick`, `Offside`, `Penalty` |
 | `finished`, `abandonedTeam` | match over; `abandonedTeam` set when a side drops below 7 players |
@@ -131,11 +147,43 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `reshape` | after a red card, when the side closed the hole: `playerIds` (who moved) and `roles` (their new positions). See _Ten men_ |
 | `added` | `minutes` |
 | `half` | half-time |
-| `full` | full time (also: match abandoned). In a knockout that goes to penalties, `shootout: true` (the match is not `finished` yet) |
-| `extra-time` | `period: 1 | 2` — start of each extra-time half |
+| `full` | a final whistle (also: match abandoned). `extraTime: true`: the whistle at 90 minutes of a level knockout tie that goes on to extra time (not `finished`: the break follows). `shootout: true`: it goes to penalties (not `finished` yet). `afterExtraTime: true`: the whistle that ends extra time (with `shootout: true` when it is still level) |
+| `extra-time` | `period: 1 | 2` — start of each extra-time period |
 | `shootout-start` | `first` (team taking the first kick) |
 | `shootout` | one kick, at its outcome: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive`, `kickedAt` (elapsed of the strike) |
 | `shootout-end` | `winner` (team), `shootoutScore` |
+
+### The final whistle
+
+The referee does not blow for half-time or full time (or the end of an extra-time period) in
+the middle of an attack (`sim/whistle.js`, `whistleHeld`). When the clock, added time included,
+runs out, play goes on while
+
+* the attacking side has the ball within `periods.holdRange` (30 m) of the goal line — once the
+  whistle is held, anywhere in the attacking third — or its pass, cross or through ball is on
+  its way there, its shot is in flight, or a loose ball is in the box it attacks (or anywhere in
+  that third while the whistle is held);
+* its corner, or its free kick in the attacking third, has been awarded and is being set up;
+* a penalty has been awarded: it is always taken and the kick decided (as before).
+
+The whistle goes as soon as that is over: a goal (after its celebration), the keeper holding
+the ball (at once), the ball out for a goal kick or a throw-in, a free kick or offside against
+the attackers (at once), or the attackers without the ball for half a second (cleared, a
+defender on it, a pass gone astray). Caps, all in `match.tuning.periods` (real seconds of play —
+2 s are a minute on the match clock): an attack gets `holdAttack` (4 s), counted again from the
+delivery of a set piece it wins, and is not cut while its cross is in the air towards the box;
+of the corners awarded after time was up `holdCorners` (1) are taken (one already awarded when
+time ran out does not count); a new set piece is only waited for when it can be delivered and
+played for 2 s before `holdMaximum` (10 s); beyond `holdMaximum` only a struck shot and the goal
+it scores are allowed to finish (4 s more). Nothing here draws RNG and no state is added to the
+clock: `time` simply runs on as added time (`"45+03:10"` with two minutes announced) and
+`heldTime[half − 1]` records how long. A match in which nothing is on at any whistle is, step
+for step, the match it was before. The whole thing happens inside `step()`, so Full, Key
+Moments, Instant and the auto-sim worker get the same match; a goal scored in held time is a
+goal of that half (`story` has `stoppage`) and is in its reel like any other.
+
+Measured on 960 club fixtures (`tools/calibration/lib/fixtures.mjs`): the whistle is held in
+28% of the periods, for 3.1 s on average (docs/calibration.md, Phase 8).
 
 ### Penalties (in the match)
 
@@ -143,13 +191,27 @@ A foul in the box → `penalty` event, then `restart.type === 'Penalty'` for abo
 is immediate (`setupPenalty`, the UI cuts to it): the keeper on his line in the middle of the goal,
 the taker 3.4 m behind the ball, everyone else outside the box and the arc and behind the ball
 (spread along the edge, two of the taker's defenders and one opposing forward up the pitch). The
-taker runs up in the last 0.8 s and strikes; at the strike the keeper commits
+taker runs up in the last second, through the ball (he arrives as he strikes it); at the strike the keeper commits
 (`startPenaltyDive`: left 45% / right 45% / stays 10%, independent of the taker's side) and
 `players[keeper].penaltyDive` (`{ at, until, x0, y0, x, y }`) moves him ~2 m in a third of a second
 (`movement.js stepDive`). The save model then works from where the dive put him: only a keeper who
 went the right way can reach it. Play is live after the kick (rebounds count). Measured over
 1,600 fixtures (347 penalties): 76% scored, 18% saved, 5% off target or woodwork (before: 82% /
 3% / 16%) — a shootout (every taker, not only the best) is 74% / 17% / 10%.
+
+### Tight angles
+
+A shot's accuracy is an angle off the boot, its aim a point on the goal line: the scatter is
+multiplied by 1 / the sine of the angle the shot makes with the line (1 from in front, 1.4 from
+45°, 2 from 60°, at most 4), so a ball struck along the goal line rarely lands between the
+posts. A carrier's urge to shoot fades from 50° off the centre line and is gone by 78° (he cuts
+back or crosses, `decide`). With the ball wide and within 5.5 m of his goal line — or an
+opponent's pass on its way there — the keeper drops to his near post, a quarter of the ball's
+own distance off his line (`planKeeper`), and a shot from more than 60° off the centre line
+that comes within his reach is kept out more surely the tighter the angle (`keeperSave`). `xg`
+fades the same way beyond 53°. Measured over 288 club fixtures: shots seeing less than 12° of
+goal from inside 20 m scored 30% before and 3% after; shots from in front (within 30° of the
+centre line, 5–16.5 m) 47% before and after (docs/calibration.md).
 
 ### Ten men
 
@@ -189,13 +251,38 @@ the ball in the final third plus 0.7 × xG of its shots in the minute, exponenti
 Draw `home − away` for a momentum bar. Cheap: updated in `step()`, no allocation except one
 sample object per match minute.
 
+## Extra time (knockout)
+
+With `competition.knockout` and `competition.extraTime`, a match level after 90 minutes (added
+and held time included) does not end: `finishPeriod` adds a `full` event with `extraTime: true`
+and puts the match in a **break** — `mode: 'halftime'`, `half: 2`, `phase: 'Extra time'` —
+which behaves like half-time: with `pauseAtHalf` the match waits for `resumeHalf()` (tactics,
+formation and line-up can change), without it the next step goes on. Then two periods of a
+sixth of the match length each (30 s of the 180 s match: 15 match minutes, a third of the
+ninety in all) with one minute of added time each (`addedMinutes[2..3]`), `half` 3 and 4, clock
+`5400…6300` and `6300…7200`; the second follows the first at once — an `extra-time` event, a
+kick-off, the sides change ends, no break. Both are always played. Everything carries over:
+the score, cards and sendings-off, the tactics, the stamina — legs get a third of half-time's
+recovery at the break (`stamina.halftimeRecovery × 0.3`) and tire 20% faster than in the first
+half. `'auto'` mentality and the AI coach read the score from the first minute of extra time
+(a side behind pushes, a side ahead holds; the coach chases or shuts up shop as after 75').
+The whistle is held for an attack at the end of each period like any other (`heldTime[2..3]`).
+If one side leads after the second period the match is `finished` (`full` with
+`afterExtraTime: true`, `winner()` by the score); still level, it goes to the shootout.
+
+Measured on 480 club fixtures made level at 90 minutes: 0.61 goals in extra time (0.69 in 30
+ordinary minutes), 45% decided there and 55% on penalties; mean outfield energy 0.59 at 90
+minutes and 0.39 at the end.
+
 ## Penalty shootout (knockout)
 
 With `competition.knockout === true`, a match level after regulation (incl. stoppage; after
 extra time when `competition.extraTime === true`) goes to a shootout: `mode` becomes
 `'shootout'`, then `finished` once a winner is known. Kicks alternate, five each then sudden
 death; takers are ordered by penalties + composure (keeper last); each kick is simulated
-physically (keeper dive, ball flight; no follow-ups), so live play and replays show it. All kicks
+physically (keeper dive, ball flight; no follow-ups). The UI does not show that: it steps the
+match to the end and lists the kicks as marks (docs/ui-match.md), and recordings stop at the
+final whistle. All kicks
 are taken at the x = 105 goal (`m.direction()` follows the kicking side). Each kick is set up at
 once (no walking between kicks: the kicker 3.4 m behind the ball, the keeper on his line in the
 middle, the other keeper beside the goal, both teams lined up on halfway) and takes about
@@ -219,10 +306,10 @@ m.shootout = {
 | API | Notes |
 | --- | --- |
 | `simulateComplete(config, seed, record, onProgress, cancelled)` | Runs a full match (`MATCH_SECONDS`) → `{ result, frames, clips }` (`frames`/`clips` only when `record`). Pure: can run in a Web Worker. |
-| `simulateHalf(match, onProgress, cancelled)` | Records one half of a live match → `{ result, frames, clips, viewDuration: 30, viewOffset }` |
+| `simulateHalf(match, onProgress, cancelled)` | Records one stretch of a live match between two breaks → `{ result, frames, clips, viewDuration, viewOffset }`: the first half, the second (to the end, or to the break before extra time) — 30 s of clips each — or the whole of extra time (both periods; `EXTRA_TIME_REEL` = 20 s of clips, `viewOffset` 60). `result.mode === 'halftime'` means another stretch follows |
 | `RECORD_STEP` | frames are stored every 3 steps (20 per second) |
-| `snapshot(m)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout` |
-| `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved), `momentum` (samples up to the frame) and `shootout`. Returns the 1-based clip number. |
-| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. |
+| `snapshot(m, previous?)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout`. Given the frame before it, the parts that did not change (most players' states, a side's stats, the restart) are shared with it, not copied — a recorded half is a third of the size to hand from the worker to the page. Frames are read-only |
+| `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved) and `momentum` (samples up to the frame). A reel plays at 60 fps from 20 frames a second: when the display match already shows the frame, only the interpolated parts (positions, ball, clock, events) are written again. Between the last frame before a goal and the next (ball back on the centre spot) the ball runs on along its path, into the net. Returns the 1-based clip number. |
+| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. A penalty shootout is never in a reel: clips end at the `shootout-start` event, and `simulateHalf` / `simulateComplete` record no frames after it (`result.shootout` has the kicks). |
 | `highlightScore(event)` | Interest of a non-goal moment: xG and big chances for shots, near misses and woodwork, save difficulty, red cards and penalties, delivery/take-on strength. `0` = never a highlight. |
 | `performanceRating(player, match)` | 3–10 match rating |

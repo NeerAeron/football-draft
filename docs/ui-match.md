@@ -52,8 +52,12 @@ if (result) {
   `draft.matchSide(i).players` (their `chem` is kept). A `draft.matchSide(i)` object can be
   passed as-is. `tactics` may set `style tempo width press fluidity mentality`.
 - `competition`: merged over `{ mode: 'ai', difficulty: 'medium' }`. `mode: 'ai'` lets the
-  engine's coach run side 1's tactics; use `'pvp'` for Versus. `knockout: true` → a level score
-  goes to a penalty shootout (`extraTime: true` plays 30 minutes first).
+  engine's coach run side 1's tactics; use `'pvp'` for Versus. `knockout: true` → the match
+  must have a winner: a level score after 90 minutes goes to **extra time** and, still level,
+  to a penalty shootout. `buildMatchConfig` sets `extraTime: true` for every knockout config
+  (`extraTime: false` to go straight to penalties), so the run's knockouts, the Daily's and
+  their auto-sims all play it; Quick Match, Versus and Exhibition are not knockouts and may
+  end level, as before.
 - `tuning`: config snapshot, default the live `CONFIG` (Daily/challenges: `DEFAULT_CONFIG`).
 - Kit clash: the away side wears its secondary colour (same rule as `matchSetup`). A side
   without `colors` but with a nation `code`/`flagCode` wears its home kit from `lib/kits.js`
@@ -75,7 +79,7 @@ Views:
 
 | `view` | What the user sees | Engine |
 | --- | --- | --- |
-| `key` | Key Moments: ~30 s of highlights per half, half-time talk (mentality/tactics), second half simulated after the edits; while the first half simulates the stage shows the line-ups walking out (team sheet + progress) | `simulateHalf` twice in a Web Worker on `new Match(seed, 180)` |
+| `key` | Key Moments: ~30 s of highlights per half, half-time talk (mentality/tactics), second half simulated after the edits; while the first half simulates the stage shows the line-ups walking out (team sheet + progress). Extra time: the break, then one more reel of ~20 s | `simulateHalf` per stretch (twice, three times with extra time) in a Web Worker on `new Match(seed, 180)` |
 | `full` | the whole match live (3 min), 1× / 2× / 4×, skip to next moment, live mentality + tactics | `new Match(seed, duration)` stepped on the main thread |
 | `instant` | a short "simulating" beat, then the result | `simulateComplete` in a Web Worker |
 
@@ -93,12 +97,14 @@ Stored when the match finishes (and persisted, so a refresh shows it again):
   context, title,
   teams: [{ name, short, color, secondary, formation, flagCode, kind }],   // home first
   userSides: [0],
-  score: [h, a],                         // incl. extra time; never the shootout
+  score: [h, a],                         // the final score, incl. extra time; never the shootout
   shootout: null | { score: [h, a], winner: 0 | 1, first,
                      kicks: [{ team, playerId, name, keeperId, round, suddenDeath, outcome, scored }] },
   winner: 0 | 1 | null,                  // null = draw (non-knockout only)
-  outcomes: ['W' | 'D' | 'L', …],        // per side by the score: a shootout win is a 'D'
-  extraTime: false, abandoned: null | team,
+  outcomes: ['W' | 'D' | 'L', …],        // per side by the score: a win in extra time is a
+                                         // 'W', a shootout win a 'D'
+  extraTime: false,                      // true: the match went to extra time ("AET")
+  abandoned: null | team,
   xg: [h, a],
   momentum: [0.12, -0.3, …],             // per match minute, home − away (−1…1)
   stats: [{ possession /* % */, shots, onTarget, xg, bigChances, passes, completed,
@@ -123,8 +129,10 @@ Stored when the match finishes (and persisted, so a refresh shows it again):
 ```
 
 `runResultFor(result, side)` converts it to `CupRun.recordResult` input (`goalsFor`,
-`goalsAgainst`, `shootout: { winner: 'user' | 'opponent', score: [for, against] }`, `players:
-[{ profileId, rating, goals, assists }]` of that side) plus `outcome`.
+`goalsAgainst`, `extraTime`, `shootout: { winner: 'user' | 'opponent', score: [for, against] }`,
+`players: [{ profileId, rating, goals, assists }]` of that side) plus `outcome` — by the final
+score, so a tie won in extra time is a `'W'`. The share line ends such a score with `(aet)`
+("2–1 Real Madrid (aet)"; "1–1 Real Madrid (4–3 pens)" after a shootout).
 
 Other helpers: `currentRequest()`, `matchStore` (`{ request, status: 'ready' | 'live' | 'done',
 result }`, works with `useStore`), `rematch()` (same request, new seed), `clearMatch(id?)`,
@@ -136,11 +144,14 @@ from kickoff (same seed); a refresh after full time shows the result again.
 
 ## Demo and tests
 
-`#/match?demo=1[&view=key|full|instant][&knockout=1][&pens=1][&auto=1][&seed=n]` builds a request from
+`#/match?demo=1[&view=key|full|instant][&knockout=1][&et=1][&auto=1][&seed=n]` builds a request from
 two real club XIs (`loadCatalog()` → `clubSquads` → best XI; `buildDemoRequest` in
-`screens/match/demo.js`). `pens=1` sets `meta.forceShootout`: the match jumps straight to a
-level knockout's penalty shootout (`forceShootout`, demo/test only — never in real requests). Browser flows: `match-key`,
-`match-full`, `match-camera`, `match-instant`, `match-auto`, `match-pens` in
+`screens/match/demo.js`). `et=1` (alias `pens=1`) sets `meta.forceLevel`: a knockout tie that is
+level at 90 minutes — the match opens on the break before extra time (`forceLevel`, demo/test
+only — never in real requests) and the seed decides whether extra time settles it or it goes to
+penalties. Browser flows: `match-key`, `match-full`, `match-camera`, `match-instant`,
+`match-auto`, `match-pens` (a seed whose extra time ends level) and `match-aet` (a seed with a
+winner in extra time; both seeds are found with the engine in the page, `demoSeed`) in
 `tests/browser/flows.mjs`. The flows emulate reduced motion, which hides every animation;
 `match-camera` turns motion back on (`football-draft-ui` → `{ motion: 'full' }`) to exercise the
 action camera. To judge motion by eye, open the demo with normal motion and take bursts of
@@ -178,18 +189,41 @@ while the reel plays: commentary lines never say "winner", and the goal banner's
 the `winner` / `late winner` tags (`storyTag(story, final)`; the engine only knows them at full
 time, but a recorded reel carries the finished match's events).
 
+**Extra time.** A knockout tie level at 90 minutes stops on the half-time panel again — "Level
+after 90 minutes", the score and stats, the team talk (mentality, tactics, formation) and an
+**Extra time** button (`[data-testid="extra-time"]`; `hud.halftime.extraTime`,
+`MatchController.onHalftime` / `secondHalf`). That is the only break: Full then plays the two
+periods live (the second kicks off straight after the first, a cut and a change of ends), Key
+Moments show one more reel of about 20 s for both, Instant and auto-sims pass straight through.
+The score bug reads `FT` at the break, `ET1` / `ET2` with the clock running to 105 and 120
+(`105+01:10` in added time) and `AET` once it is over (`periodLabel`); the full-time panel and
+the result's header say "After extra time", the result's timeline marks FT beside HT, the
+momentum chart grows to 120 minutes with a second line at 90, and commentary calls the three
+whistles apart. Goals in extra time are ordinary goals (`102'`, in the scorers, the reel and
+the share line).
+
+**The penalty shootout is never animated.** The engine takes the kicks (so the result is the
+one an Instant match or an auto-sim gets) and the stage shows the shootout panel over the final
+whistle's picture (`MatchController.startPens`, `ShootoutPanel` in `hud.js`): a ✓ / ✗ per kick
+and the running score, one kick at a time — the taker's name (0.35 s), then his mark (0.5 s) —
+then the winner (2.2 s) and straight on to the result, which shows the finished panel again.
+Playback speed scales the pauses, pause holds it, "Next" shows the rest at once; reduced motion
+shows every kick and the winner at once. A side the player controls gets confetti for a win. In
+Full the live match is stepped to the end a few milliseconds per frame while the panel opens; a
+Key Moments reel never contains the shootout (`selectHighlights`).
+
 **Cards.** A side with a player sent off shows a red card by its name in the score bug (one per
 dismissal, `ScoreBug` `home.reds` / `away.reds`, from `stats[t].redCards`; also in the result
 header). Every red card is a Key Moments clip (`selectHighlights`), with the RED CARD caption on
 the pitch; the side reshapes at once (docs/engine-events.md, _Ten men_).
 
 Controls: Space play/pause, ←/→ (or ↓/↑) speed 1×/2×/4×, N next moment (Full) / next clip (Key
-Moments), C camera. Mentality is just the four options — Auto / Push / Balanced / Hold, no helper
+Moments; the rest of a shootout), C camera. Mentality is just the four options — Auto / Push / Balanced / Hold, no helper
 text under them anywhere (pre-match, half-time, live controls). It is live in Full and at half-time
 in Key Moments: Auto is the default (`tactics.mentality === 'auto'`), the control marks the
 mentality in effect (`match.mentality(team)` → HUD `effective`), and picking one of the other
 three overrides it until Auto is picked again. The tactics sheet follows `tacticAccess`
-(formation only at half-time in AI/Versus matches). Goals (and the deciding penalty) get a
+(formation only at half-time in AI/Versus matches). Goals get a
 celebration banner, team-colour confetti and a slow-motion replay (reduced motion: a static
 banner, no confetti, no replay, no camera moves). Screen readers hear goals only (`aria-live`,
 never per tick).
@@ -203,7 +237,11 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
   is painted once per size (`paintPitch`): a 1:1 copy for the full-pitch view and a 1.25×
   copy that CSS moves (`translate3d … scale`) when the camera zooms. A frame clears and redraws
   only the transparent players' canvas. Backing stores are capped at DPR 2 (measured: DPR 3 on
-  a phone cost a third of the frames without making tokens easier to read).
+  a phone cost a third of the frames without making tokens easier to read). The stage's height
+  is set in `svh`, never `dvh`: it must not change while the page scrolls and a phone's URL bar
+  slides away (each resize repaints both pitch layers — replays stuttered). A stage that does
+  keep changing size (rotation, a dragged window) is resized once it has been still for 140 ms
+  (`MatchController.resized`); until then CSS stretches the picture.
 - **No per-frame allocations** in `draw()` or the controller's `render()`: the view/scene
   objects are reused, positions, crowd scales, the ball trail and label boxes live in typed
   arrays (`createRenderState()`), font strings and text widths are cached (cleared when web
@@ -220,18 +258,22 @@ camera are Node-tested for that in `tests/match-ui-renderer.test.mjs`).
 - **Camera** (`ActionCamera`): `'wide'` is the whole pitch; `'follow'` tracks the ball at
   1.5× (1.7× in goal replays, wider at 2× / 4× speed, tighter on stages much wider than the
   pitch), easing out for long passes, shots (the goal stays in frame) and set pieces, and wide
-  for kick-offs and goal kicks; the ball can never leave the frame. Key Moments default to the
+  for kick-offs and goal kicks; the ball can never leave the frame. A penalty has one framing
+  from the set-up until the kick is decided (`aimPenalty`: the run-up, the spot and the goal,
+  closer than open play — it does not ease out when the ball is struck). Key Moments default to the
   action camera, Full to the whole pitch; the toggle in the controls (C) stores the choice per
-  view. Goal replays are always the close-up. The shootout close-up (`SHOOTOUT_CAMERA`: the
-  goal, the six-yard box and the spot fill the stage, so the keeper's dive is readable on a
-  phone) goes through the same camera. Reduced motion: no camera at all (the toggle is hidden; the shootout view is set
-  without easing).
+  view. Goal replays are always the close-up. Reduced motion: no camera at all (the toggle is
+  hidden).
 - **Cuts.** When a restart repositions four or more players at once (corners, kick-offs,
   penalties) or places the ball outside the zoomed view, the controller shows a cut — a short
   fade (`.stage-cut`) and a camera snap — instead of tokens sliding across the pitch. Clip
   changes and replays cut the same way.
 - **Moments.** Engine effects are drawn with their labels (shot type, SAVED / PARRIED / TIPPED
-  OVER, FOUL, OFFSIDE, cards, PENALTY; SCORED / SAVED / MISSED in a shootout). The controller
+  OVER, FOUL, OFFSIDE, cards, PENALTY; a card sits a line above the FOUL / PENALTY it came with). While a
+  penalty is set up its captions are drawn over the spot, on the goal side, without the
+  whistle's ring (the players have left the place of the foul), and the strike itself gets no
+  second PENALTY caption over the ball. A ball in the net is drawn where it lies, not lifted
+  by its height. The controller
   adds captions from events: OFF THE POST! / OFF THE BAR!, JUST WIDE! / JUST OVER!, GREAT SAVE!
   (save `difficulty` ≥ 0.3) / WHAT A SAVE! (≥ 0.6), CHANCE MISSED! (a big chance off target).
   A keeper's `dive` animation is drawn as a save: the token stretches into an ellipse along the

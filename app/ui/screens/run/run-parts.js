@@ -12,6 +12,10 @@ import { Prize } from '../../components/cup.js';
 import { Trophy } from './trophy.js';
 
 // ---- teams ---------------------------------------------------------------------------------
+/** The other group fixture of a matchday (AI v AI). */
+export const elsewhereOf = (snapshot, md) =>
+  snapshot.group.fixtures.find(f => f.md === md && f.home !== 'user' && f.away !== 'user');
+
 /** { key, name, code, colors, user, kind, rating, pot } for a group key or a round's opponent. */
 export function teamOf(snapshot, key) {
   if (key === 'user')
@@ -78,7 +82,7 @@ export function FlagMosaic({ nations = [], size = 28, max = 6, class: className 
 // ---- results -------------------------------------------------------------------------------
 const OUTCOME_LABEL = { W: 'Won', D: 'Drew', L: 'Lost' };
 export const scoreText = r =>
-  r ? `${r.goalsFor}–${r.goalsAgainst}${r.shootout ? ' (p)' : ''}` : '';
+  r ? `${r.goalsFor}–${r.goalsAgainst}${r.shootout ? ' (p)' : r.extraTime ? ' (aet)' : ''}` : '';
 /** W/D/L chip (a knockout draw won on penalties reads as a win "on pens"). */
 /** Did the user get through this result: a win, or a knockout draw won on penalties. */
 export const wonResult = result =>
@@ -91,7 +95,7 @@ export function OutcomeChip({ result, size = 'md' }) {
     result.outcome === 'W' ? 'w' : result.outcome === 'L' ? 'l' : pens ? (won ? 'w' : 'l') : 'd';
   return html`<span
     class=${cx('outcome', `outcome--${tone}`, `outcome--${size}`)}
-    title=${pens ? (won ? 'Won on penalties' : 'Lost on penalties') : OUTCOME_LABEL[result.outcome]}
+    title=${pens ? (won ? 'Won on penalties' : 'Lost on penalties') : OUTCOME_LABEL[result.outcome] + (result.extraTime ? ' after extra time' : '')}
     >${result.outcome}</span
   >`;
 }
@@ -299,10 +303,8 @@ export function GroupTable({ snapshot, moves = {}, compact = false, label = 'Gro
 }
 
 // ---- matchday results ----------------------------------------------------------------------------
-/**
- * Fixtures by matchday. hidden: Set of 'md:home:away' keys whose score is still "ticking in".
- */
-export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
+/** Fixtures by matchday. */
+export function MatchdayList({ snapshot }) {
   const byMd = [1, 2, 3].map(md => snapshot.group.fixtures.filter(f => f.md === md));
   return html`<div class="matchdays">
     ${byMd.map(
@@ -312,9 +314,7 @@ export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
           <ul class="matchday__list" role="list">
             ${fixtures.map(f => {
               const key = `${f.md}:${f.home}:${f.away}`;
-              const pending = hidden.has(key);
-              const isLive = live && live.key === key;
-              const score = isLive ? live.score : !pending ? f.score : null;
+              const score = f.score;
               const home = teamOf(snapshot, f.home),
                 away = teamOf(snapshot, f.away);
               return html`<li
@@ -322,17 +322,15 @@ export function MatchdayList({ snapshot, hidden = new Set(), live = null }) {
                 class=${cx(
                   'fixture-row',
                   (home.user || away.user) && 'is-user',
-                  pending && 'is-pending',
-                  isLive && 'is-live',
-                  !pending && f.score && 'is-final',
+                  f.score && 'is-final',
                 )}
               >
                 <span class="fixture-row__team is-home">
                   <span class="truncate">${home.name}</span>
                   <${TeamMark} team=${home} size=${20} />
                 </span>
-                <span class="fixture-row__score num" aria-live=${isLive ? 'off' : undefined}
-                  >${score ? `${score[0]}–${score[1]}` : isLive ? '0–0' : 'v'}</span
+                <span class="fixture-row__score num"
+                  >${score ? `${score[0]}–${score[1]}` : 'v'}</span
                 >
                 <span class="fixture-row__team is-away">
                   <${TeamMark} team=${away} size=${20} />

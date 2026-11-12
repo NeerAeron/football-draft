@@ -1,7 +1,7 @@
 // Test runner wrapper around `node --test`.
 //
 //   node scripts/dev/test.mjs                 # every tests/**/*.test.mjs, all cores
-//   node scripts/dev/test.mjs --fast          # skip the full-match simulation tests (~5 s)
+//   node scripts/dev/test.mjs --fast          # skip the slowest tests (~10 s)
 //   node scripts/dev/test.mjs draft session   # only files whose path contains a word
 //   node scripts/dev/test.mjs --grep "offside" # only tests whose name matches
 //
@@ -13,8 +13,8 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-// Tests that simulate one or more complete matches. They dominate the suite's
-// run time; --fast skips them. Keep this list short and name-based.
+// The slowest tests (complete matches, hundreds of drafts, data rebuilds). They dominate the
+// suite's run time; --fast skips them. Keep this list short and name-based.
 const SLOW = [
   'recorded, instant, and direct full simulations',
   'highlight halves preserve authoritative state',
@@ -25,7 +25,11 @@ const SLOW = [
   'every formation pairing draws',
   'formation variations have eleven usable roles',
   'same seed and inputs produce the same match state',
+  'however it is played: complete, by halves, stepped',
   'event contract over a full match',
+  'a budget draft never exceeds a band',
+  'precomputed values match the live configuration',
+  'stale configuration stamps recompute',
   // Recompiles the 91 MB legacy CSV (~20 s; only where data/raw has the pinned files).
   'the pinned CSVs give this exact file',
 ];

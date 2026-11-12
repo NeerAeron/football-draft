@@ -92,7 +92,7 @@ function TeamTactics({ team, name, tactics, effective, access, onSet }) {
       ${
         !access?.formation &&
         html`<span class="tactics__hint field__hint"
-          >${access?.formationLocked ? 'Your draft formation is locked for the first match.' : 'Formation changes only at half-time.'}</span
+          >${access?.formationLocked ? 'Your draft formation stays for the group stage.' : 'Formation changes only at half-time.'}</span
         >`
       }
     </label>

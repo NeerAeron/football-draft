@@ -1,15 +1,24 @@
 name: CI
 
+# One run per change: a push to main, a pull request (so a push to a PR branch runs once, not
+# twice), or a manual run of any branch (Actions -> CI -> Run workflow).
+# On main, a green `check` deploys the game to GitHub Pages: nothing is published that did not
+# pass. Enable once in the repository: Settings -> Pages -> Build and deployment -> Source:
+# GitHub Actions.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer commit cancels the running check of the same pull request. Runs on main are never
+# cancelled (one may be deploying): they queue, and only the newest waiting run is kept.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -30,3 +39,34 @@ jobs:
           npm i --no-save playwright@1
           npx playwright install --with-deps chromium
           npm run test:browser
+
+  # Publishes app/ as it is (no build step), from the commit `check` just passed.
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # The component gallery is a development page: nothing in the game links to it and the
+      # offline warm-up does not list it. `rm` fails the deploy if it ever moves.
+      # build.json is the build stamp: a new one makes installed apps refresh their offline
+      # copy (app/sw.js).
+      - name: Stage the site
+        run: |
+          cp -R app _site
+          rm -r _site/gallery.html _site/ui/gallery
+          printf '{ "build": "%s" }\n' "$GITHUB_SHA" > _site/build.json
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

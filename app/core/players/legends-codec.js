@@ -1,5 +1,6 @@
-// Legends file format v1 (app/data/legends.v1.json): the Legends (players of past editions who
-// are not in the catalog) and the Prime versions of catalog players, columnar like the catalog
+// Legends file format v1 (app/data/legends.v1.json): the Legends (best past versions,
+// FIFA 98–23: of players who are not in the catalog, and of catalog players who were better
+// then) and the Prime versions of catalog players, columnar like the catalog
 // (catalog-codec.js). Pure: no DOM, no fetch, no CONFIG. `encodeLegends` writes the layout,
 // `decodeLegends` rebuilds the same objects; players/legends.js attaches them to a catalog.
 //
@@ -10,13 +11,18 @@
 //   attributeKeys[K], tendencyKeys[T], dictionaries { positions[], badges[] }
 //   precomputed { badges }                 config stamp of the normalised badges
 //   nations[]                              nation names (catalog spelling) legends.nation indexes
-//   legends { count, sourceId[], edition[], name[], fullName[], club[] (catalog team id,
-//             0 = none), nation[], position, secondary[], foot, weakFoot[], sourceOverall[],
-//             attrs[K*N], tendencies[T*N], tags[], evidence[], evidenceConfidence[] }
-//   primes  { count, sourceId[] (the catalog player's id), edition[], position, … } — the same
-//             columns without name, club and nation (those are the catalog player's)
-// profileId = 'ea:<sourceId>:fc<edition>:legend' | ':prime'; a prime's `primeOf` is the catalog
-// player's profileId (prefix + sourceId + suffix).
+//   legends { count, sourceId[] (EA's player id), edition[] (the title's number: 98, 99,
+//             0–23), year[] (the year of that version's ratings), name[], fullName[], club[]
+//             (catalog team id, 0 = none), nation[],
+//             current[] (1 = the player is in the catalog: `legendOf`), position, secondary[],
+//             foot, weakFoot[], sourceOverall[], attrs[K*N], tendencies[T*N], tags[],
+//             evidence[], evidenceConfidence[] }
+//   primes  { count, sourceId[] (the catalog player's id), edition[], year[], position, … } —
+//             the same columns without name, club, nation and current (the catalog player's)
+// profileId = 'ea:<sourceId>:fc<edition>:legend' | ':prime'; a prime's `primeOf` and a current
+// player's legend's `legendOf` are the catalog player's profileId (prefix + sourceId + suffix).
+// `year` and `current` came later: a file without them decodes with no year (the game then
+// takes the edition's release year) and no `legendOf`.
 import { CODE_ALPHABET, stamp } from './catalog-codec.js';
 
 export const LEGENDS_FORMAT = 'football-draft-legends';
@@ -38,6 +44,7 @@ function encodeTable(players, { attributeKeys, tendencyKeys, positions, badges }
     count: players.length,
     sourceId: [],
     edition: [],
+    year: [],
     ...extra.columns(),
     position: '',
     secondary: [],
@@ -58,6 +65,8 @@ function encodeTable(players, { attributeKeys, tendencyKeys, positions, badges }
       throw Error(`Unsupported ${kind} id ${p.profileId}`);
     out.sourceId.push(Number(m[1]));
     out.edition.push(p.edition);
+    if (!Number.isInteger(p.year)) throw Error(`${p.profileId}: no year`);
+    out.year.push(p.year);
     extra.push(out, p);
     out.position += index(positions, p.primaryPosition, 'position');
     out.secondary.push(p.secondaryPositions.map(s => index(positions, s, 'position')).join(''));
@@ -119,12 +128,16 @@ export function encodeLegends(data) {
     precomputed: { ...data.precomputed },
     nations,
     legends: encodeTable(data.legends, keys, 'legend', {
-      columns: () => ({ name: [], fullName: [], club: [], nation: [] }),
+      columns: () => ({ name: [], fullName: [], club: [], nation: [], current: [] }),
       push(out, p) {
         out.name.push(p.name);
         out.fullName.push(p.fullName);
         out.club.push(p.source.clubId == null ? 0 : Number(p.source.clubId));
         out.nation.push(nations.indexOf(p.source.nationality));
+        const id = prefix + out.sourceId[out.sourceId.length - 1] + suffix;
+        if (p.legendOf != null && p.legendOf !== id)
+          throw Error(`${p.profileId}: legend of ${p.legendOf}, not ${id}`);
+        out.current.push(p.legendOf != null ? 1 : 0);
       },
     }),
     primes: encodeTable(data.primes, keys, 'prime', {
@@ -163,6 +176,7 @@ function decodeTable(file, table, kind, extra) {
       tags: codes(table.tags[i], badges),
       sourceOverall: table.sourceOverall[i],
       edition: table.edition[i],
+      ...(table.year ? { year: table.year[i] } : {}),
       inference: {
         badges: codes(table.evidence[i], badges).map(tag => ({
           tag,
@@ -177,8 +191,8 @@ function decodeTable(file, table, kind, extra) {
 /**
  * The file → { ...summary, legends[], primes[] }. A legend: { profileId, name, fullName,
  * primaryPosition, secondaryPositions, attrs, foot, weakFoot, tendencies, tags, sourceOverall,
- * edition, source: { clubId, nationality }, inference }; a prime has `primeOf` instead of the
- * name and source.
+ * edition, year, source: { clubId, nationality }, inference } (+ `legendOf` when the player is
+ * in the catalog); a prime has `primeOf` instead of the name and source.
  */
 export function decodeLegends(file) {
   if (file?.format !== LEGENDS_FORMAT || file.version !== LEGENDS_VERSION)
@@ -204,6 +218,7 @@ export function decodeLegends(file) {
         clubId: l.club[i] ? String(l.club[i]) : null,
         nationality: file.nations[l.nation[i]],
       },
+      ...(l.current?.[i] ? { legendOf: prefix + l.sourceId[i] + suffix } : {}),
     })),
     primes: decodeTable(file, p, 'prime', i => ({ primeOf: prefix + p.sourceId[i] + suffix })),
   };

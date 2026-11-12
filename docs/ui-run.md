@@ -9,7 +9,7 @@ render. Follow `docs/ui-guide.md` for components, tokens and flows.
 | `#/run` | World Cup Run hub + end screen | `screens/run/run.js`, `run-parts.js`, `run-end.js`, `run.css` |
 | `#/daily` | Daily Challenge | `screens/daily/daily.js`, `daily.css` |
 | `#/exhibition` | Exhibition picker | `screens/exhibition/exhibition.js`, `exhibition.css` |
-| `#/challenge?c=…&r=…` | challenge link landing (`#c=…` short links are redirected here by `routes.js`) | `screens/run/challenge.js` |
+| `#/challenge?c=…&r=…` | challenge link landing | `screens/run/challenge.js` |
 
 Shared pieces: `lib/run-store.js` (persistence, Home summary, prematch sides, stakes,
 links, daily record), `lib/share-image.js` (1080 × 1350 share card), `screens/run/auto-sim.js`
@@ -30,17 +30,36 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
      'run:<runId>:<round>', seed: run.matchSeed(round), sides, view: 'key' | 'full',
      competition: { mode: 'ai', difficulty, knockout }, meta: { context: 'run', title,
      returnTo: '/run', fixture: id } })`: the pre-match opens with that view selected (it can
-     still be changed there). The pending fixture `{ id, round, seed }` is saved first. In the
-     first match (round 0) the user side carries `formationLocked: true`: the formation chosen
-     before the draft cannot change before kick-off or during the match (`changeFormation`
-     refuses it; the request's `meta.formationLocked` lists the side); from the second match on
-     it can.
+     still be changed there). A knockout fixture (`knockout: true`) plays extra time before
+     penalties: `buildMatchConfig` adds it, for the watched match and the auto-sim alike. The pending fixture `{ id, round, seed }` is saved first. In the
+     **group stage** (rounds 0–2, `m.formationLocked` from `run.nextMatch()`) the user side
+     carries `formationLocked: true`: the formation chosen before the draft cannot change
+     before kick-off or during the match (`changeFormation` refuses it; the request's
+     `meta.formationLocked` lists the side; `CupRun.setLineup` refuses it too); from the Round
+     of 32 on it can.
    * **Simulate this match** → `useSimTicker().start(run, { limit: 1, … })`: the engine plays
      just the next fixture (live clock + score), then the hub shows its "Full time" banner.
    * **Simulate the whole cup** → the same ticker without a limit (step 4).
    A match in progress adds "Resume match" above them.
+   **The line-up stays.** What is set up in a pre-match — player positions, mentality and,
+   once allowed, the formation — is kept with the run for the matches that follow, watched or
+   simulated: when the hub loads with a pending fixture it reads that fixture's pre-match as
+   it was left (not kicked off yet), else the kick-off config of its match request (a
+   pre-match is forgotten once its match has a result) —
+   `fixtureLineup(id, { prematch, request })` → `applyLineup(run, lineup)` →
+   `run.setLineup(…)` → `saveRun`. The run's user side (`run.user`: `formation`, `players` in
+   slot order, `tactics`) is then what `nextMatch().home`, the next pre-match
+   (`matchSideFor` passes the tactics), `fixtureConfig()` (auto-sims) and the XI panels use;
+   the team OVR follows the new slots. Changes made during a match (the in-match tactics
+   panel) are not kept. The Daily never opens a pre-match — its XI plays every match as
+   drafted, in the day's formation.
 3. **Return.** `readMatchResult(id)` (fallback: the stored result with the same seed and
    `context: 'run'`) → `run.recordResult(runResultFor(result, 0))` → `clearMatch(id)` → save.
+   A tie that went to extra time carries `extraTime: true` (so does `runSide(result)` for
+   auto-sims): the score is the one after 120 minutes, the outcome a win or a defeat unless
+   penalties decided it, and the screens write it `2–1 (aet)` (`scoreText`; the banner's
+   eyebrow reads "After extra time", the W/L chip's title "Won after extra time"). The ticker's
+   clock runs on to 105' and 120'. (`runResultFor` is the one conversion of a result to `recordResult` input — the auto-sim's `runSide(result)` calls it — and carries the winner of a level match that had no shootout; the fixture's pre-match was forgotten when its result was stored.)
    The hub shows a "Full time" banner, the other group match ticking in, table moves. A lost
    semi-final does not end the run: the next fixture is the third-place play-off (the path's
    last node reads "3rd").
@@ -49,6 +68,13 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    and records it; live clock + score per match, the other group result after each matchday,
    Skip (no pauses) and Stop (after the current match). Knockout opponents stay hidden until
    their tie starts.
+   **Replacing a run in progress.** A new World Cup draft asks first, wherever it starts —
+   the setup's Start (Home's two buttons lead there), "Play again" (`?go=1`), a challenge
+   link's Accept: `useReplaceRun()` (`screens/run/replace-run.js`) shows one small dialog
+   ("Start a new World Cup? Your run in progress will be lost." — Keep run / Start new) when
+   `runInProgress()` (a resumable, unfinished run). "Start new" forgets the run (`clearRun`)
+   and starts the draft; "Keep run" does nothing. A finished run is replaced without a
+   question, and the hub's own "Abandon this run" keeps its dialog.
 5. **End.** The headline is where the run finished — World Champions (gold cup + confetti),
    Runners-up (silver medal), Third place (bronze), Fourth place, or "Out in the …" — with the
    record W–D–L, Player of the Tournament, Held you back, XI, share text + image, Challenge a
@@ -79,18 +105,31 @@ schedule: day.schedule, seed: day.seed, formation, rerolls, daily: id,
 useDefaultRules: true, returnTo: '/daily' })` → back on `#/daily`: `createCupRun(catalog,
 { ...day.cup, user })`, `perfectXI` (in a module Worker: `screens/daily/perfect-xi.js`, ~250 ms
 of best-XI search off the main thread; main-thread fallback) / `perfectPercent`,
-`beginDailyAttempt()` (the day is used
-from here on) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
+`beginDailyAttempt()` (the streak counts from here) → engine auto-sim with `DEFAULT_CONFIG` tuning (everyone with the same XI gets the
 same results) → `dailyScore` → `finishDailyAttempt()` → result card (points, where it finished
 with its cup or medal, % of perfect, streak, share, replays of each match via `requestMatch(…, view 'key')`).
+
+**One attempt, from the first pick.** As soon as a Daily draft has a pick, the draft store
+keeps it with the Daily record too (`lockDailyDraft(saved)` after every action →
+`football-draft-daily.draft`). From then on the day can only be resumed, never started again:
+the intro's button reads "Resume today's draft" (`data-testid="resume-daily"`) and reopens the
+board — the one in memory, or the kept copy (`resumeDraft(locked)`) when another draft took the
+draft slot meanwhile; a completed XI that was left on the completion sheet starts its
+tournament from the kept copy (`restoreSaved`). Home's Daily card says "Started" and "Resume"
+(`readDailyStatus().inProgress`). Before the first pick (the first spin only) nothing is kept.
+The streak and `lastPlayed` still move when the XI is complete (`beginDailyAttempt`, which
+drops the kept draft): a day whose draft is never finished is used, and does not count for the
+streak. The next day the kept draft is dropped; one that no longer fits the player database is
+dropped too and the day can start again.
 
 ## Persistence (`localStorage`, all keys start with `football-draft`)
 
 | Key | Shape |
 | --- | --- |
-| `football-draft-run-state` | `{ format: 1, run: CupRun.serialize(), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation, seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
+| `football-draft-run-state` | `{ format: 1, run: CupRun.serialize() (its `user` holds the line-up: `formation`, `players` in slot order, `tactics?`), meta, pending: { id, round, seed } \| null, log: [{ round, score, shootout, goals: [{ team, name, minute, ownGoal, penalty }], motm, view }] }` — `meta = { id, kind: 'run', type, mode, difficulty, formation (the draft's, for the challenge link), seed, hideRatings, uniqueNations, defaultRules, budget, challenge: { by, token } \| null, links, startedAt, celebrated? }` |
 | `football-draft-run` | Home summary: `{ format: 3, mode: 'run', type, stage: 'G1' \| 'G2' \| 'G3' \| 'R32' \| 'R16' \| 'QF' \| 'SF' \| 'F' \| '3P' (the play-off), record: { w, d, l }, team, status, complete, place, placeLabel, medal, perfect, budget, stageLabel, difficulty, rounds: 8, updatedAt }` |
-| `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, place, placeLabel, medal, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
+| `football-draft-daily` | `{ streak, best, lastPlayed: UTC day, lastResult: 'w-d-l', streakState: { current, best, last }, results: { [day]: { id, number, record, results, stage, stageLabel, status, place, placeLabel, medal, points, parts, rating, perfect, formation, hideRatings, run?, finishedAt } }, draft: { id, context, session, savedAt } \| null (the day's draft from its first pick, as the draft store saves it), current: { id, number, run, rating, perfect, formation, hideRatings, log, startedAt } \| null }` — 40 days kept, full `run` only for the latest 7 |
+| `football-draft-draft` | `{ format: 2, context, session: DraftSession.serialize() (format 2), savedAt }` (`docs/ui-draft.md`) |
 | `football-draft-records` | `{ format: 3, levels: { pro \| worldclass \| legendary: { runs, gold, silver, bronze, perfect, best } }, budget: { the same per level, for Budget-mode runs }, ultimate: { count, first: ISO date \| null }, seen: [run ids, last 24], last: { id, level, budget, news: ['title' \| 'perfect' \| 'best' \| 'cabinet' \| 'ultimate'] } }` — `best` is the index of the best place (0 group stage, 1 R32, 2 R16, 3 QF, 4 fourth, 5 third, 6 runners-up, 7 champions); World Cup Runs only (the Daily keeps its own streak) |
 | `football-draft-exhibition` | `{ home: key, away: key }` (`nation:…`, `club:…`, `boss:…`, `random:<seed>`) |
 | `football-draft-dev` | `{ fastSim: true }` — dev/test only: auto-sims use the fast rating model |
@@ -98,44 +137,53 @@ with its cup or medal, % of perfect, streak, share, replays of each match via `r
 Readers are tolerant (`lib/saved.js` and `lib/records.js` for Home, `readRunState()` / `readDaily()`): unknown or
 broken data reads as "nothing saved".
 
-**Older saves** (cup formats 1 and 2: before the Round of 32, before the third-place play-off
-and the three difficulties):
+**One cut-off for older saves and links.** The game reads today's formats only: cup format 3,
+cabinet format 3, draft format 2 (the session's rules of this version), the three
+difficulties, the three draft modes, the two link kinds. Nothing older is converted — it
+reads as "nothing saved" or "link not valid" through the same tolerant readers, never a crash:
 
-* A **run in progress** cannot be resumed — `readRunState()` returns null (so does a run on a
-  removed difficulty), the hub shows "No run in progress", and Home ignores a playing summary
-  without `format: 3`; a finished run's summary still shows as the last run (by its stage
-  label; its grade is not shown).
-* A **Daily attempt** being simulated restarts from matchday 1 with the same XI against the
-  day's opponents; finished Daily entries keep their record, stage and points (the grade is no
-  longer shown; their match replays no longer rebuild).
-* The **trophy cabinet** migrates when read (`records.js`): on Pro, World Class and Legendary
-  titles become golds, perfect runs and run counts carry over, a best of "lost final" becomes
-  one silver, a lost semi-final reads as fourth place (there was no play-off) and earlier
-  rounds keep their round (format 1's knockout rounds move up by one first); entries of the
-  removed Amateur and Semi-pro are dropped. The next finished run writes format 3.
-* **Draft sessions, setup choices and links** on a removed difficulty read as Pro
-  (`difficultyOf`, `decodeChallenge`).
+* a **run** in an older cup format, on a removed difficulty or mode, or with rules of an older
+  shape: `readRunState()` / `loadRun()` return null, the hub shows "No run in progress", and
+  Home shows no run for a summary without `format: 3` (finished ones too);
+* a **draft** in the slot with an older `format`: `readSavedDraft()` and `loadDraft()` return
+  null (status `empty`); today's slot with a session that does not restore (an older session
+  format, unknown mode or difficulty, a missing player) is the draft screen's error state;
+* the **trophy cabinet** in formats 1–2 reads as empty; the next finished run writes format 3;
+* a **Daily** attempt being simulated that does not restore reads as no attempt (the day stays
+  used); an entry without a place shows no place;
+* **links**: a token with a removed difficulty (`a`, `s`), Club & Country (`x`), a Quick Match
+  or Versus kind (`q`, `v`), the two-sides flag (`2`) or the short `#c=` form is not a link
+  (the challenge screen's "broken link" card, or Not found for `#c=`); a result with a letter
+  grade where the place goes reads as no result.
+
+Kept on purpose: `ui/main.js` still deletes the old `football-draft-settings-v1` key, and a
+setup query or saved choice with an unknown difficulty or type falls back to Pro / Nations
+(input normalisation, not a conversion).
 
 ## Share text and challenge links
 
 `shareText(snapshot, …)` from core, with the link `challengeLink(challenge, { record, place })`
 → `<page origin + path>#/challenge?c=<encodeChallenge token>&r=<w>-<d>-<l>.<place>` (place
 tokens: `ch` champions, `ru` runners-up, `th` third, `fo` fourth, `qf`, `rs` Round of 16, `rt`
-Round of 32, `gs` group stage). A link from before the places carried a letter grade there
-(`sp`, `b`, …): it still opens, the record shows and the grade is ignored. The landing shows the
+Round of 32, `gs` group stage). The landing shows the
 friend's result (with its cup or medal) and starts the same draft:
 `startDraft({ kind, type, difficulty, formation, seed, options, useDefaultRules: true,
 challenge: { token, by }, returnTo })`; "Review the settings first" opens
-`#/play/<mode>?type=…&difficulty=…&formation=…&seed=…&challenge=1`. Daily links point to
+`#/play/<mode>?type=…&difficulty=…&formation=…&seed=…&hide=…&unique=…[&budget=1]`. A **Budget
+run's link** carries the flag (`runChallenge(meta)` → `budget: meta.budget === true` → flag
+`b` in the token): the landing shows a "Budget" chip and both ways in start a Budget draft
+(`options.budget`). Daily links point to
 `#/daily`.
 
 ## Tests
 
 - `tests/run-ui-store.test.mjs` — persistence round trips, tolerant readers, the cabinet (medals,
-  Budget, the ultimate, migration), the play-off summary, stakes, links, daily record + streak,
-  share image layout.
+  Budget, the ultimate), the cut-off for older formats and the readers' tolerance of junk, the play-off summary, stakes, links, daily record + streak,
+  the Daily's lock from the first pick, share image layout.
 - `tests/browser/flows.mjs` — `run` (the four ways to play), `run-end` (every finish, seeded),
-  `home-cabinet` (empty, partly filled, migrated, complete), `daily`, `exhibition`,
+  `run-lineup` (a new formation and mentality after the group stage, kept for the next match),
+  `run-replace` (the question before a run in progress is replaced, from every entry),
+  `home-cabinet` (empty, partly filled, an older format, complete), `daily`, `exhibition`,
   `challenge-link` (seeded, fast sims). Drafts finish on the real board via `#/draft?auto=1` + the completion sheet's
   Continue; matches kick off from the real pre-match (`[data-testid="kick-off"]`), and
   `finishMatch()` presses Instant and Continue on the match screen.

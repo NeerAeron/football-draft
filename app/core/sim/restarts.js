@@ -4,6 +4,10 @@ import { clamp } from '../util/math.js';
 import { H, dist, hypot } from './constants.js';
 
 const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
+// A penalty taker starts his run this long before the strike and runs through the ball: from
+// 3.4 m behind it he arrives as he hits it (starting at 0.8 s and stopping short of the ball
+// he was still 1.5 m away at the strike, and jumped onto it).
+const PENALTY_RUN_UP = 1.0;
 
 export class RestartMethods {
   startRestart(type, team, x, y, timer) {
@@ -296,8 +300,8 @@ export class RestartMethods {
     const taker = this.players[r.taker],
       kickoff = KICKOFFS.has(r.type);
     // Penalty run-up: the taker stands over it, then comes at the ball in the last moments.
-    if (r.type === 'Penalty' && r.timer < 0.8) {
-      taker.tx = r.x - this.direction(r.team) * 0.5;
+    if (r.type === 'Penalty' && r.timer < PENALTY_RUN_UP) {
+      taker.tx = r.x + this.direction(r.team) * 1.2; // through the ball, not slowing for it
       taker.ty = r.y;
     }
     for (const p of this.activePlayers) this.move(p, dt, true);

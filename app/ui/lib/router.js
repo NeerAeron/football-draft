@@ -7,11 +7,15 @@
 //   navigate('/settings');              // push;  navigate('/', { replace: true })
 //   href('/play/:mode', { mode: 'run' }, { type: 'nations' }) → '#/play/run?type=nations'
 //   back('/')                           // history back when we came from inside the app
+//   leave('/')                          // out of a flow (the draft's back arrow): to that screen,
+//                                       // however many steps back it is
+//   rewrite('/play/run?type=nations')   // change the current entry's URL, nothing else
 import { createStore, useStore } from './store.js';
 
 let table = [];
 const visited = []; // in-app stack of paths, for direction + back()
 let replacing = false;
+let leaving = null; // leave(): the index in `visited` a history.go() is heading for
 
 export function parseHash(hash = globalThis.location?.hash || '') {
   const raw = hash.replace(/^#/, '') || '/';
@@ -29,8 +33,13 @@ export function matchPath(pattern, path) {
   if (want.length !== have.length) return null;
   const params = {};
   for (let i = 0; i < want.length; i++) {
-    if (want[i].startsWith(':')) params[want[i].slice(1)] = decodeURIComponent(have[i]);
-    else if (want[i] !== have[i]) return null;
+    if (want[i].startsWith(':')) {
+      try {
+        params[want[i].slice(1)] = decodeURIComponent(have[i]);
+      } catch {
+        return null; // a truncated %-escape in a pasted link
+      }
+    } else if (want[i] !== have[i]) return null;
   }
   return params;
 }
@@ -70,7 +79,15 @@ function onHashChange() {
   const { path, query } = parseHash();
   const full = path + (Object.keys(query).length ? `?${new URLSearchParams(query)}` : '');
   let direction = 'forward';
-  if (replacing) {
+  if (leaving !== null) {
+    const at = leaving;
+    leaving = null;
+    const target = visited[at];
+    visited.length = at + 1;
+    // The browser's history did not match ours (it can after a reload): go there directly.
+    if (full !== target) return navigate(target, { replace: true });
+    direction = 'back';
+  } else if (replacing) {
     replacing = false;
     visited[Math.max(0, visited.length - 1)] = full;
     direction = 'none';
@@ -110,6 +127,34 @@ export function navigate(to, { replace = false } = {}) {
     url.hash = target;
     globalThis.location.replace(url);
   } else globalThis.location.hash = target;
+}
+
+const fullPath = to => {
+  const { path, query } = parseHash(to.startsWith('#') ? to : `#${to}`);
+  return path + (Object.keys(query).length ? `?${new URLSearchParams(query)}` : '');
+};
+
+/**
+ * Leave a flow for `path` (the draft's back arrow → Home): step back to it when it is in the
+ * in-app history — however many screens ago (setup sits between Home and the draft) — else
+ * replace the current entry with it.
+ */
+export function leave(path = '/') {
+  const target = fullPath(path);
+  const at = visited.lastIndexOf(target, visited.length - 2);
+  if (at < 0) return navigate(target, { replace: true });
+  leaving = at;
+  globalThis.history.go(at - (visited.length - 1));
+}
+
+/**
+ * Rewrite the URL of the current history entry without navigating (no hashchange, no render):
+ * a one-shot query parameter such as ?go=1 must not act again when the entry is revisited.
+ */
+export function rewrite(to) {
+  const target = to.startsWith('#') ? to : `#${to.startsWith('/') ? to : `/${to}`}`;
+  globalThis.history.replaceState(globalThis.history.state, '', target);
+  visited[Math.max(0, visited.length - 1)] = fullPath(target);
 }
 
 /** Back within the app if possible, otherwise replace with the fallback path. */

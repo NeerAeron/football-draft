@@ -29,6 +29,3 @@ export function resolveTier(tier, ovr) {
   if (typeof tier === 'string' && BY_NAME[tier.toLowerCase()]) return BY_NAME[tier.toLowerCase()];
   return tierOf(ovr);
 }
-
-/** CSS class for tier-coloured text: 'tier-text-star' etc. (defined in base.css). */
-export const tierTextClass = (tier, ovr) => `tier-text-${resolveTier(tier, ovr).id}`;

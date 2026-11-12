@@ -21,8 +21,10 @@ import {
   roleRating,
   roleFit,
   naturalRating,
+  isKeeper,
 } from '../draft/pools.js';
 import { buildSide, seedValue, mixSeed, DIFFICULTIES } from '../draft/session.js';
+import { validLinks } from '../draft/links.js';
 import {
   chooseOpponent,
   buildOpponent,
@@ -127,8 +129,8 @@ export const BEST_THIRD = { points: 4 };
 export const thirdQualifies = row => row.points >= BEST_THIRD.points;
 /** Whether a row of the final group table goes through: top two, or a qualifying third. */
 const advances = (row, index) => index < 2 || (index === 2 && thirdQualifies(row));
-// Format 3: the third-place play-off (nine opponents) and three difficulties. Older runs
-// (format 2: no play-off; format 1: seven rounds) do not restore.
+// Format 3: the third-place play-off (nine opponents) and three difficulties. Anything older
+// is not a saved run.
 export const CUP_FORMAT = 3;
 const USER = 'user';
 const round2 = x => Math.round(x * 100) / 100;
@@ -240,6 +242,17 @@ const sideRef = s => ({
   target: s.target ?? null,
   pot: s.pot ?? null,
 });
+/** The group stage: three matches, played in the formation the XI was drafted in. */
+const GROUP_MATCHES = 3;
+// A side's tactics as the UI keeps them ({ mentality: 'push', tempo: 3, … }): a few short
+// strings and numbers, nothing else.
+function plainTactics(tactics) {
+  const out = {};
+  if (!tactics || typeof tactics !== 'object') return out;
+  for (const [key, value] of Object.entries(tactics).slice(0, 12))
+    if (typeof value === 'string' ? value.length <= 24 : Number.isFinite(value)) out[key] = value;
+  return out;
+}
 /** A recorded match the user got through: won, or won on penalties. */
 const wonMatch = m => m.outcome === 'W' || m.shootout?.winner === 'user';
 
@@ -266,15 +279,53 @@ export class CupRun {
   #players(ids) {
     return ids.map(id => this.#player(id));
   }
-  /** Engine-ready user side (buildSide). */
+  /** Engine-ready user side (buildSide), with the tactics set for the run (setLineup), if any. */
   userSide() {
-    const u = this.user;
-    return buildSide({
+    const { tactics, ...u } = this.user;
+    const side = buildSide({
       ...u,
       players: this.#players(u.players),
       links: this.rules.links,
       kind: 'draft',
     });
+    return tactics ? { ...side, tactics: { ...tactics } } : side;
+  }
+  /**
+   * The formation the XI was drafted in is played through the group stage: it can change from
+   * the Round of 32 on.
+   */
+  get formationLocked() {
+    return !this.complete && this.matches.length < GROUP_MATCHES;
+  }
+  /**
+   * The user's line-up for the matches to come — what was set up before a match stays for the
+   * next ones: { formation?, players? (the same eleven, ids or players, in the new slot
+   * order), tactics? ({ mentality, … }) }. Team OVR and effective rating follow the new slots.
+   * Returns false, changing nothing, when it is not this XI, a keeper is not in goal (or an
+   * outfield player is), the formation is unknown, or it would change during the group stage.
+   */
+  setLineup({ formation = this.user.formation, players = this.user.players, tactics } = {}) {
+    if (this.complete || !FORMATIONS[formation]) return false;
+    if (formation !== this.user.formation && this.formationLocked) return false;
+    if (!Array.isArray(players) || players.length !== 11) return false;
+    const ids = players.map(p => (typeof p === 'string' ? p : String(p?.profileId))),
+      mine = new Set(this.user.players);
+    if (new Set(ids).size !== 11 || ids.some(id => !mine.has(id))) return false;
+    const rows = FORMATIONS[formation],
+      xi = this.#players(ids);
+    if (xi.some((p, slot) => (rows[slot][2] === 'GK') !== isKeeper(p))) return false;
+    const { tactics: kept, ...u } = this.user,
+      side = buildSide({ ...u, formation, players: xi, links: this.rules.links, kind: 'draft' });
+    const next = tactics === undefined ? kept : plainTactics(tactics);
+    this.user = {
+      ...u,
+      formation,
+      players: ids,
+      rating: side.rating,
+      effective: side.effective,
+      ...(next && Object.keys(next).length ? { tactics: next } : {}),
+    };
+    return true;
   }
   /** The semi-final was lost: the eighth match is the third-place play-off. */
   #playoff() {
@@ -309,6 +360,8 @@ export class CupRun {
       round,
       ...info,
       seed: this.matchSeed(round),
+      // Group matches are played in the formation the XI was drafted in.
+      formationLocked: this.formationLocked,
       opponent: this.#opponentSummary(round),
       home: this.userSide(),
       away: this.opponentSide(round),
@@ -332,12 +385,14 @@ export class CupRun {
     return this.aiRng / LCG_RANGE;
   }
   /**
-   * Report the user's match: { goalsFor, goalsAgainst, shootout?, players? }.
+   * Report the user's match: { goalsFor, goalsAgainst, extraTime?, shootout?, players? }.
+   * The goals are the final score: a knockout tie that went to extra time (`extraTime: true`)
+   * reports the score after it, and counts as a win or a defeat when that decided it.
    * shootout (knockout draws only): { winner: 'user' | 'opponent', score?: [for, against] }.
    * players: [{ profileId, rating (engine performance 3–10), goals?, assists? }] for the
    * Player of the Tournament / Held you back helpers.
    */
-  recordResult({ goalsFor, goalsAgainst, shootout = null, players = [] }) {
+  recordResult({ goalsFor, goalsAgainst, extraTime = false, shootout = null, players = [] }) {
     if (this.complete) throw Error('The run is over');
     for (const v of [goalsFor, goalsAgainst])
       if (!Number.isInteger(v) || v < 0) throw Error('Goals must be whole numbers');
@@ -356,6 +411,8 @@ export class CupRun {
       opponent: this.#opponent(round).key,
       goals: [goalsFor, goalsAgainst],
       outcome,
+      // Knockouts only: the tie went to extra time (the goals include it).
+      extraTime: info.knockout && !!extraTime,
       shootout: pens,
       players: players.map(p => ({
         profileId: String(p.profileId),
@@ -397,13 +454,17 @@ export class CupRun {
     return this.recordResult({
       goalsFor: r.goals[0],
       goalsAgainst: r.goals[1],
+      extraTime: r.extraTime,
       shootout: r.shootout && {
         winner: r.shootout.winner ? 'opponent' : 'user',
         score: r.shootout.score,
       },
     });
   }
-  /** W-D-L by the 90-minute score (a knockout decided on penalties counts as a draw). */
+  /**
+   * W-D-L by the final score — after extra time in a knockout tie that needed it (a tie decided
+   * on penalties counts as a draw).
+   */
   record() {
     const r = { w: 0, d: 0, l: 0, gf: 0, ga: 0, played: this.matches.length };
     for (const m of this.matches) {
@@ -534,7 +595,12 @@ export class CupRun {
       placeLabel: place ? PLACE_LABELS[place] : null,
       medal: (place && MEDALS[place]) ?? null,
       perfect: place === 'champion' && record.w === CUP_ROUNDS.length,
-      user: { name: this.user.name, rating: this.user.rating, effective: this.user.effective },
+      user: {
+        name: this.user.name,
+        rating: this.user.rating,
+        effective: this.user.effective,
+        formation: this.user.formation,
+      },
       // The eighth round is the final, or the play-off once the semi-final is lost.
       rounds: CUP_ROUNDS.map((_, round) => {
         const m = this.matches[round],
@@ -547,6 +613,7 @@ export class CupRun {
                 goalsFor: m.goals[0],
                 goalsAgainst: m.goals[1],
                 outcome: m.outcome,
+                extraTime: !!m.extraTime,
                 shootout: m.shootout,
               }
             : null,
@@ -688,13 +755,13 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
  * strongest first. The strongest `nations.fieldCore` are always in; the other seats are drawn
  * without replacement from the rest, a nation's odds halving every `nations.fieldHalving`
  * rating points below the last core nation — so a lower-rated nation sometimes makes it, like
- * real qualification. Rules without those numbers (saved before them) take the strongest 48.
+ * real qualification.
  */
 function qualify(catalog, random, rules) {
   const index = catalogIndex(catalog, draftRules(rules)),
     { fieldSize, fieldCore, fieldHalving } = rules.nations,
     playable = index.playable;
-  if (!(fieldCore >= 0) || !(fieldHalving > 0) || playable.length <= fieldSize) return index.field;
+  if (playable.length <= fieldSize) return index.field;
   const core = Math.min(fieldCore, fieldSize),
     chosen = playable.slice(0, core),
     rest = playable.slice(core),
@@ -746,7 +813,7 @@ export function createCupRun(catalog, options) {
     avoid = [...(field?.keys ?? [])];
   const candidates = opponentCandidates(catalog, { rules }),
     byKey = new Map(candidates.map(c => [c.key, c])),
-    pots = field?.pots ?? new Map(index.field.map(n => ['nation:' + n.id, n.pot]));
+    pots = field?.pots;
   const build = ref => buildOpponent(catalog, ref, { excludePlayers: taken, rules });
   while (opponents.length <= CUP_ROUNDS.length) {
     const round = opponents.length,
@@ -843,7 +910,13 @@ export function createCupRun(catalog, options) {
 export function restoreCupRun(catalog, data) {
   if (data?.type !== 'cup-run' || data.format !== CUP_FORMAT) throw Error('Not a saved run');
   const { type, format, catalog: stamp, ...state } = data;
-  if (!DIFFICULTIES.includes(state.difficulty) || state.opponents?.length !== CUP_ROUNDS.length + 1)
+  // A run of a draft mode the game no longer has does not restore either.
+  if (
+    !DIFFICULTIES.includes(state.difficulty) ||
+    !MODE_BASELINES[state.mode] ||
+    state.opponents?.length !== CUP_ROUNDS.length + 1 ||
+    !validLinks(state.rules?.links)
+  )
     throw Error('Not a saved run');
   return new CupRun(catalog, state);
 }

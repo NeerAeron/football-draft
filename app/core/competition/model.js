@@ -13,15 +13,28 @@
 // points; it was 0.4 before `gameplay.qualityImpact` 1.25 made rating gaps count more); the
 // model stays symmetric and the cup's own edges (cup.js) are measured on top of it. The AI
 // coach's level moves the user's edge by at most ±1 rating point, with no trend.
+// `goals` was 1.84 in that fit; it is scaled by the 7% the engine's scoring came down with the
+// tight-angle fix and `saveAbility` 1.02 (288 club fixtures: 2.42 → 2.25 goals a match) — not
+// refitted, and the win/draw/loss table above is the old fit's. The engine's small edge for
+// the player's side as favourite (tuning.userEdge) is not in this model.
+// Extra time (a level knockout match, before penalties): the same two Poisson rates over a third
+// of the match at EXTRA_RATE of its scoring rate — tired legs. Engine, 480 club fixtures level
+// at 90 minutes: 0.61 goals in extra time against 0.69 for 30 ordinary minutes (2.07 a match),
+// 45% of the ties decided there and 55% on penalties (docs/competition-api.md).
 // Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
 // rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 
+const EXTRA_RATE = 0.88;
+const EXTRA_TIME_SHARE = Math.round((EXTRA_RATE / 3) * 1000) / 1000;
+
 export const MATCH_MODEL = {
-  goals: 1.84,
+  goals: 1.71,
   slope: 0.0525,
   maxGoals: 9,
   kick: 0.75,
   kickSlope: 0.005,
+  // Goals in extra time as a share of the ninety minutes' (30 of 90 minutes × EXTRA_RATE).
+  extraTime: EXTRA_TIME_SHARE,
 };
 
 /** Expected goals [a, b] for two effective ratings. */
@@ -83,20 +96,27 @@ export function simulateShootout(ratingA, ratingB, random, model = MATCH_MODEL) 
   return { winner: score[0] > score[1] ? 0 : 1, score };
 }
 /**
- * One result: { goals: [a, b], shootout: null | { winner, score } }. A knockout draw is
- * settled by a shootout.
+ * One result: { goals: [a, b], extraTime: boolean, shootout: null | { winner, score } }.
+ * A knockout draw goes to extra time (`extraTime: false` skips it) — `goals` then include its
+ * goals — and, still level, to a shootout.
  */
 export function simulateResult(
   ratingA,
   ratingB,
   random,
-  { knockout = false, model = MATCH_MODEL } = {},
+  { knockout = false, extraTime = knockout, model = MATCH_MODEL } = {},
 ) {
   const [a, b] = expectedGoals(ratingA, ratingB, model),
     goals = [poisson(a, random, model.maxGoals), poisson(b, random, model.maxGoals)];
-  return {
-    goals,
-    shootout:
-      knockout && goals[0] === goals[1] ? simulateShootout(ratingA, ratingB, random, model) : null,
-  };
+  let extra = false,
+    shootout = null;
+  if (knockout && goals[0] === goals[1]) {
+    if (extraTime && model.extraTime > 0) {
+      extra = true;
+      goals[0] += poisson(a * model.extraTime, random, model.maxGoals);
+      goals[1] += poisson(b * model.extraTime, random, model.maxGoals);
+    }
+    if (goals[0] === goals[1]) shootout = simulateShootout(ratingA, ratingB, random, model);
+  }
+  return { goals, extraTime: extra, shootout };
 }

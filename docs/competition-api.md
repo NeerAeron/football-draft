@@ -9,7 +9,7 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 | `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `worldCupDraw`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `THIRD_ROUND`, `CUP_TUNING`, `FIELD_LEVEL`, `FIELD_TYPICAL`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `PLACES`, `PLACE_LABELS`, `MEDALS` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
 | `daily.js` | `dailyId`, `dailyNumber`, `dailyIdFromNumber`, `previousDay`, `nextDay`, `dailyChallenge`, `perfectXI`, `perfectPercent`, `dailyScore`, `canPlayDaily`, `updateStreak`, `currentStreak`, `DAILY_EPOCH`, `DAILY_RULES`, `DAILY_POINTS` |
-| `share.js` | `shareText`, `resultEmoji`, `isUltimate`, `ULTIMATE`, `encodeChallenge`, `decodeChallenge`, `challengeUrl`, `parseChallengeUrl`, `challengeDraftOptions` |
+| `share.js` | `shareText`, `resultEmoji`, `isUltimate`, `ULTIMATE`, `encodeChallenge`, `decodeChallenge` |
 
 ## World Cup Run
 
@@ -113,12 +113,13 @@ const run = createCupRun(catalog, {
 
 for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   // m = { round 0–7, id: 'group1'…'sf', then 'final' or 'third', label, stage, knockout, seed,
-  //       opponent, home, away }
+  //       formationLocked (the group stage), opponent, home, away }
   // Engine: new Match(m.seed, 180) + applyMatchSetup(…, matchSetup(m.home, m.away), …).
-  // knockout: a draw goes to the engine's penalty shootout.
+  // knockout: level after 90 minutes → extra time, then the engine's penalty shootout.
   run.recordResult({
-    goalsFor: 2, goalsAgainst: 1,
-    shootout: null,                    // knockout draws: { winner: 'user' | 'opponent', score: [5, 4] }
+    goalsFor: 2, goalsAgainst: 1,      // the final score (after extra time when it was played)
+    extraTime: false,                  // knockouts: true when the tie went to extra time
+    shootout: null,                    // still level: { winner: 'user' | 'opponent', score: [5, 4] }
     players: [{ profileId, rating, goals, assists }], // user XI; rating = performanceRating (3–10)
   });
   // run.simulateNext() plays it with the fast model instead (tests, the fastSim dev switch).
@@ -133,21 +134,33 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   stageLabel,
   place: null | 'group' | 'r32' | 'r16' | 'qf' | 'fourth' | 'third' | 'final' | 'champion',
   placeLabel: 'Third place' …, medal: 'gold' | 'silver' | 'bronze' | null, perfect: bool (8–0),
-  user: { name, rating, effective },
+  user: { name, rating, effective, formation },
   rounds: [{ id, label, stage, knockout,           // 8; the last is the final, or the play-off
              opponent: { key, kind, id, name, code, flag, color, secondary, formation, rating,
                          effective, nominal, target, pot },
-             result: { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L', shootout } | null }],
+             result: { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L', extraTime, shootout } | null }],
   group: { teams, fixtures: [{ md, home, away, score }], table: [{ key, name, user, position,
            played, won, drawn, lost, gf, ga, gd, points, decidedBy, qualifies }] },
   results: ['W', 'D', …], record: { w, d, l, gf, ga, played } }
 ```
 
+* **The line-up** (`run.user`: `formation`, `players` in slot order, `rating`, `effective`,
+  `tactics?`) can change between matches: `run.setLineup({ formation?, players?, tactics? })`
+  takes the same eleven in a new slot order (ids or players; the keeper in goal), a formation
+  — only once the group stage is over: `run.formationLocked` is true for the three group
+  matches, which are played in the formation the XI was drafted in — and tactics as plain
+  data (`{ mentality: 'push', … }`, handed back on `userSide().tactics`). It returns false and
+  changes nothing when the line-up is not this XI or the formation is locked. Rating and
+  effective rating follow the new slots, so `simulateNext()`, the awards ("Out of position at
+  LB") and the snapshot (`user.formation`) read the line-up as it stands. Opponents were drawn
+  at creation and do not move. Serialised with the run (format unchanged).
 * **Status**: `'eliminated'` is every finished run without the title (a third place included);
   read `place` for where it finished. A lost semi-final keeps the run `'playing'`: the eighth
   round becomes `THIRD_ROUND` (`id: 'third'`) against `run.opponents[8]`.
-* **Record** is W-D-L by the 90-minute score: a knockout won on penalties is a D (and the run
-  continues). Perfect = 8-0.
+* **Record** is W-D-L by the final score. A knockout tie that is level after 90 minutes goes
+  to extra time (`result.extraTime`): won or lost there it is a W or an L like any other
+  (`2–1 (aet)`); only a tie that is still level and goes to penalties is a D (and the run
+  continues when the shootout is won). Perfect = 8-0, extra-time wins included.
 * **Standings** (`standings(keys, fixtures, lots)`): points, goal difference, goals scored;
   for teams still level, head-to-head points, GD, goals; then a seeded drawing of lots.
   `decidedBy` tells the UI why a team is above the next ('points' | 'goalDifference' |
@@ -162,8 +175,9 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   place) }` — a seeded 300-run Monte-Carlo (~5 ms) for the live meter.
 * Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~5 KB) and
   `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 3 (the
-  play-off: nine opponents; three difficulties); an older run (format 2 without the play-off,
-  format 1 with seven rounds) or one on a removed difficulty throws 'Not a saved run'.
+  play-off: nine opponents; three difficulties); anything else — an older format, a removed
+  difficulty or draft mode, link rules that are not the three numbers — throws 'Not a saved
+  run' (one cut-off, no conversion).
 
 ### Fast rating model (`model.js`)
 
@@ -182,9 +196,23 @@ to 1.74 / 0.0500 on the same matches; the earlier 1.6 / 0.0575 was fitted to an 
 No home or coach constant in the model: the user's drafted XI does a little better than its
 rating says (worth about 0.8 rating points, 0.4 before), which the cup's own measured edges
 sit on top of, and the AI coach's level moves the user's edge by at most ±1 rating point with
-no trend. Shootouts: five kicks each then sudden
+no trend. **Extra time**: `simulateResult(a, b, random, { knockout: true })` plays it when
+the 90 minutes end level (`extraTime: false` skips it): the same two rates × `MATCH_MODEL
+.extraTime` (0.293 = 30 of 90 minutes at 0.88 of the scoring rate, as the engine's extra time
+has: 0.61 goals against 0.69 for 30 ordinary minutes over 480 level club fixtures), `goals`
+then include them and the result has `extraTime: true`. Every AI-vs-AI knockout tie of the
+real field (`worldCupDraw`), `projectRun` and `simulateNext` (the fastSim switch) go through
+it. At equal ratings 53% of the model's level ties are decided in extra time (engine, club
+fixtures, which score less: 45%). Shootouts, when it is still level: five kicks each then sudden
 death, each scored with p = 0.75 ± 0.005 per rating point (340 engine shootouts: a side 6 points
 stronger wins 62%, 6 weaker 41%; `MATCH_MODEL`).
+
+Title odds of the fast model before → after extra time (`cup-calibration.mjs runs --runs 400`,
+`CUP_TUNING` unchanged; ±2 points of noise at 400 runs): Pro 15.3% → 16.5%, World Class 10.0% →
+10.5%, Legendary 3.8% → 4.0%; out in the group 4.5 / 10.0 / 21.0% both times. `projectRun` for
+the baseline XI over 80,000 runs: 17 / 6 / 4% before and after. Extra time is a longer look at
+the two sides than five kicks each, so it helps whoever is stronger in a tie — the user in the
+early rounds, the opponent in a World Class or Legendary final — and the two nearly cancel.
 
 ## Daily Challenge
 
@@ -209,9 +237,10 @@ const points = dailyScore(run.snapshot(), { rating: draft.matchSide(0).rating, p
   date (DEFAULT_CONFIG rules; the device's config cannot change them). Opponent XIs still
   drop the players you drafted.
 * **Perfect XI**: the exact hindsight optimum — one player per round from that round's
-  call-ups (repeat nations refill), using the alternate in at most `rerolls` rounds, distinct
+  nation (its draft squad of 30, `nation.squad`: a repeated nation offers the same squad
+  again, less the players taken), using the alternate in at most `rerolls` rounds, distinct
   players and slots. A positional drafter averages ≈ 97.7% of it.
-* **Points** (`DAILY_POINTS`): W 100 · D 40 · shootout won +20 · place R32 10 / R16 20 / QF 40 /
+* **Points** (`DAILY_POINTS`): W 100 (a knockout won in extra time is a win) · D 40 · shootout won +20 · place R32 10 / R16 20 / QF 40 /
   fourth 80 / third 100 / runners-up 120 / champions 200 · 10 per team-OVR point above 70 · 10 per % of perfect above 80.
 * One attempt per day: `canPlayDaily(lastPlayedId, today)`. Streaks:
   `updateStreak(streak, today)` after a finished attempt → `{ current, best, last }`;
@@ -221,16 +250,16 @@ const points = dailyScore(run.snapshot(), { rating: draft.matchSide(0).rating, p
 ## Share text and challenge links
 
 ```js
-import { shareText, challengeUrl, parseChallengeUrl, challengeDraftOptions } from './core/competition/share.js';
+import { shareText, encodeChallenge, decodeChallenge } from './core/competition/share.js';
 
 shareText(run.snapshot(), { daily: day, rating, perfectPct, points, hideRatings, uniqueNations, budget,
-                            url: challengeUrl(location.href, { kind: 'daily', daily: day.number }) });
+                            url: page + '#/challenge?c=' + encodeChallenge({ kind: 'daily', daily: day.number }) });
 // ⚽ World Cup Draft · Daily #7
 // 🟩🟨🟩 🟨🟥
 // 2-2-1 · Quarter-finals
 // XI 82.9 · 98.4% of perfect · 1,104 pts
 // Nations · Pro · 🙈 Ratings hidden
-// https://…#c=c1.d.n.442.p.0.7
+// https://…#/challenge?c=c1.d.n.442.p.0.7
 ```
 
 Without `daily` the title reads "World Cup Run". Group results, a space, knockout results; the
@@ -239,16 +268,20 @@ top three end with 🏆 / 🥈 / 🥉. The second line of text is the record and
 a perfect Legendary run in Budget mode (`isUltimate(snapshot, budget)`, the ultimate
 achievement, `ULTIMATE.name` = Immortals) adds "👑 Immortals: Legendary · Budget · 8-0-0".
 
-Challenge links: `challengeUrl(base, { kind: 'cup' | 'quick' | 'versus' | 'daily', mode, seed,
-formation, difficulty, hideRatings, uniqueNations, sides, catalog })` →
-`base#c=c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`;
-level `p` / `w` / `l`; an old link's `a` or `s` — Amateur, Semi-pro — decodes as Pro).
-On load: `const c = parseChallengeUrl(location.href)` (null if absent/invalid; never throws),
-then `createDraftSession(catalog, challengeDraftOptions(c))` replays the same spins (and
-`createCupRun(catalog, { mode: c.mode, difficulty: c.difficulty, seed: c.seed, rules:
-DEFAULT_CONFIG.draft, user })` the same opponents and AI results). Daily links carry the
-challenge number: `dailyIdFromNumber(c.daily)`. Pass `catalog: catalogStamp(catalog)` to detect
-a friend on a different player database.
+Challenge links — two kinds, the ones the game makes: a World Cup run (`cup`) and the Daily.
+`encodeChallenge({ kind: 'cup' | 'daily', mode, seed, formation, difficulty, hideRatings,
+uniqueNations, budget, catalog })` →
+`c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`; kind `c`
+/ `d`; mode `n` / `l` / `c`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a
+World Cup run's only — or `0`; level `p` / `w` / `l`). The UI puts the token in `#/challenge?c=<token>&r=…`
+(`challengeLink`, `docs/ui-run.md`). `decodeChallenge(token)` gives the challenge back, or
+null for anything else — never throws; then
+`createDraftSession(catalog, { mode: c.mode, seed: c.seed, formation: c.formation,
+difficulty: c.difficulty, hideRatings, uniqueNations, budget, useDefaultRules: true })` replays
+the same spins (and `createCupRun(catalog, { mode: c.mode, difficulty: c.difficulty, seed:
+c.seed, rules: DEFAULT_CONFIG.draft, user })` the same opponents and AI results). Daily links
+carry the challenge number: `dailyIdFromNumber(c.daily)`. Pass `catalog:
+catalogStamp(catalog)` to detect a friend on a different player database.
 
 ## Title odds after the Phase 5 engine (three levels, Budget mode)
 

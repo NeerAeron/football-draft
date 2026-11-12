@@ -14,6 +14,7 @@ import {
   Segmented,
   Tabs,
   Meter,
+  Confetti,
 } from '../../components/index.js';
 import {
   MomentumChart,
@@ -170,13 +171,15 @@ function Halftime({ controller, teams, onTactics }) {
   if (h.phase !== 'halftime' || !h.halftime) return null;
   const users = controller.userSides;
   const st = h.halftime.stats;
+  // The same panel serves the break before extra time (a team talk, then 30 more minutes)
+  const extra = !!h.halftime.extraTime;
   return html`<div
     class="stage-panel halftime"
     role="dialog"
     aria-labelledby="ht-title"
     data-testid="halftime"
   >
-    <p class="eyebrow">Half-time</p>
+    <p class="eyebrow">${extra ? 'Level after 90 minutes' : 'Half-time'}</p>
     <h2 id="ht-title" class="halftime__score num">
       <span class="truncate">${teams[0].short}</span> ${h.halftime.score[0]}–${h.halftime.score[1]}
       <span class="truncate">${teams[1].short}</span>
@@ -225,9 +228,9 @@ function Halftime({ controller, teams, onTactics }) {
         variant="primary"
         size="lg"
         icon="whistle"
-        data-testid="second-half"
+        data-testid=${extra ? 'extra-time' : 'second-half'}
         onClick=${() => controller.secondHalf()}
-        >Second half<//
+        >${extra ? 'Extra time' : 'Second half'}<//
       >
     </div>
   </div>`;
@@ -508,7 +511,7 @@ function FullTime({ controller, teams }) {
   if (h.phase !== 'fulltime' || !h.result) return null;
   const r = h.result;
   return html`<div class="stage-panel fulltime" role="status">
-    <p class="eyebrow">Full time</p>
+    <p class="eyebrow">${r.extraTime ? 'After extra time' : 'Full time'}</p>
     <p class="fulltime__score num">
       <span>${teams[0].short}</span> ${r.score[0]}–${r.score[1]} <span>${teams[1].short}</span>
     </p>
@@ -521,9 +524,23 @@ function Cut({ controller }) {
   return cut ? html`<span key=${cut} class="stage-cut" aria-hidden="true"></span>` : null;
 }
 
+/** The shootout is not played on the pitch: the panel fills in kick by kick over the stage. */
 function Shootout({ controller, teams }) {
   const shootout = useStore(controller.hud, s => s.shootout);
-  return html`<${ShootoutPanel} shootout=${shootout} teams=${teams} />`;
+  if (!shootout) return null;
+  const won = shootout.winner != null && controller.userSides.includes(shootout.winner);
+  return html`<div class="stage-panel pens-stage" data-testid="shootout">
+    <${ShootoutPanel} shootout=${shootout} teams=${teams} />
+    ${
+      won &&
+      html`<${Confetti}
+        fire=${1}
+        count=${140}
+        colors=${[...teamColors(teams[shootout.winner]), '#ffffff', '#cdf545'].filter(Boolean)}
+        origin=${{ x: 0.5, y: 0.35 }}
+      />`
+    }
+  </div>`;
 }
 
 function TickerLine({ controller }) {
@@ -543,7 +560,7 @@ function TickerLine({ controller }) {
     : h.rewind
       ? 'The build-up…'
       : h.clip
-        ? `${h.period === '1H' ? 'First-half' : h.period === 'PENS' ? 'Shootout' : 'Second-half'} highlights`
+        ? `${h.period === '1H' ? 'First-half' : 'Second-half'} highlights`
         : '';
   return html`<${Ticker} line=${h.skipping ? null : h.ticker} fallback=${fallback} />`;
 }

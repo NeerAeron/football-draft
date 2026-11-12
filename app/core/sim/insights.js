@@ -118,7 +118,12 @@ export class InsightMethods {
         : distance < 24
           ? clamp((segment(g, p, { x: goalX, y: 34 }).d - 2) / 4, 0, 1)
           : 0;
-    const xg = shotXg(distance, spatial.angle, header, blockers, pressure, exposed);
+    // From the side the mouth closes: beyond about 53° off the centre line the chance fades
+    // (to a fifth of it at 78°), as the shot model and the keeper at his post now make it.
+    const face = spatial.depth / (distance || 1),
+      xg =
+        shotXg(distance, spatial.angle, header, blockers, pressure, exposed) *
+        clamp((face - 0.1) / 0.5, 0.1, 1);
     return {
       xg,
       bigChance: xg >= BIG_CHANCE || (oneOnOne && xg >= BIG_ONE_ON_ONE),

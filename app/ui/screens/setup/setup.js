@@ -4,7 +4,7 @@
 // first spin, so Home → Start → the reel is already spinning.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
-import { navigate } from '../../lib/router.js';
+import { navigate, rewrite, href } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
 import { readJSON, writeJSON } from '../../lib/storage.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
@@ -32,6 +32,7 @@ import {
 } from '../../components/index.js';
 import { FormationMini } from './formation-mini.js';
 import { useMedia } from '../draft/use-media.js';
+import { useReplaceRun } from '../run/replace-run.js';
 import {
   SETUP_KEY,
   SETUP_MODES,
@@ -331,7 +332,10 @@ function Setup({ mode, query }) {
     setPref('draftType', type);
   };
 
-  const start = async () => {
+  // A World Cup draft replaces the run in progress: ask first (every way to start goes here).
+  const replace = useReplaceRun();
+  const start = () => (mode === 'run' ? replace.ask(begin) : begin());
+  const begin = async () => {
     if (busy) return;
     setBusy(true);
     const all = readJSON(SETUP_KEY, {}) || {};
@@ -355,6 +359,9 @@ function Setup({ mode, query }) {
   useEffect(() => {
     if (query.go !== '1' || went.current || mode === 'versus') return;
     went.current = true;
+    // One shot: going back to this entry must show the setup, not start another draft.
+    const { go: _go, ...rest } = query;
+    rewrite(href('/play/:mode', { mode }, rest));
     start();
   }, []);
 
@@ -455,7 +462,7 @@ function Setup({ mode, query }) {
           onChange=${v => update({ formation: v })}
           hint=${
             mode === 'run'
-              ? 'You play it in your first match. From the second match on you can change it.'
+              ? 'It stays for the group stage.'
               : 'You can still change it before kick-off.'
           }
         />
@@ -495,5 +502,6 @@ function Setup({ mode, query }) {
       }
       ${!wide && html`<div class="action-bar setup__bar">${cta}</div>`}
     </div>
+    ${replace.dialog}
   </div>`;
 }

@@ -9,7 +9,7 @@ import { Segmented } from '../../components/segmented.js';
 import { href } from '../../lib/router.js';
 import { Icon } from '../../components/icon.js';
 import { Prize, Cup } from '../../components/cup.js';
-import { int } from '../../lib/format.js';
+import { int, fmtDate } from '../../lib/format.js';
 
 const MAIN = 'legendary';
 const plural = (n, one, many = `${one}s`) => `${int(n)} ${n === 1 ? one : many}`;
@@ -72,11 +72,7 @@ function Slot({ level, budget }) {
 
 function Ultimate({ ultimate }) {
   const done = ultimate.done;
-  const first = ultimate.first ? new Date(ultimate.first) : null;
-  const when =
-    first && !Number.isNaN(first.getTime())
-      ? first.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-      : null;
+  const when = fmtDate(ultimate.first, { fallback: null });
   return html`<div
     class=${cx('cabinet__ultimate', done ? 'is-done' : 'is-locked')}
     data-testid="ultimate"

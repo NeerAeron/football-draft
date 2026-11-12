@@ -5,6 +5,7 @@ import {
   chemValues,
   linkBoosts,
   captainSlot,
+  validLinks,
   LINK_KINDS,
 } from '../app/core/draft/links.js';
 import { DEFAULT_CONFIG } from '../app/core/config/config.js';
@@ -122,28 +123,39 @@ test('a Captain gives every player +1 on top of the mates boosts; two do not sta
   assert.equal(captainSlot(two), 0);
   assert.equal(captainSlot([loner(1, { captain: true }), loner(2, { captain: true })]), 0);
   assert.equal(captainSlot([loner(1), null]), null);
-  // No captain, no boost; a rule saved while the game had no Captain keeps playing without.
+  // No captain, no boost; a Captain worth 0 gives none.
   assert.equal(teamLinks([loner(1), loner(2)], rules).captainBoost, 0);
-  assert.deepEqual(chemValues(xi, { nation: 1.5, club: 1 }), [0, 0, 0, 2.5, 2.5]);
-  assert.deepEqual(linkBoosts({ nation: 1.5, club: 1 }), { nation: 1.5, club: 1, captain: 0 });
+  assert.deepEqual(chemValues(xi, { nation: 1.5, club: 1, captain: 0 }), [0, 0, 0, 2.5, 2.5]);
   assert.deepEqual(Object.keys(linkBoosts(rules)), ['nation', 'club', 'captain']);
 });
 
-test('rules saved before the mates rule (thresholds per kind) read as the defaults', () => {
-  const old = {
-    club: { level1: 2, level2: 5, level3: 8 },
-    nation: { level1: 2, level2: 5, level3: 8 },
-    league: { level1: 3, level2: 5, level3: 8 },
-    maxChem: 2,
-    captain: 1,
-  };
-  assert.deepEqual(linkBoosts(old), { nation: 1.5, club: 1, captain: 1 });
-  const xi = [player('a', 'X', 'l'), player('b', 'X', 'l')];
-  assert.deepEqual(chemValues(xi, old), [1.5, 1.5]);
+test('the mates rules are three numbers: older shapes are not rules', () => {
+  assert.deepEqual(linkBoosts(), DEFAULT_CONFIG.draft.links);
+  assert.deepEqual(linkBoosts({ nation: 2, club: 0.5, captain: 0 }), {
+    nation: 2,
+    club: 0.5,
+    captain: 0,
+  });
+  assert.equal(validLinks(DEFAULT_CONFIG.draft.links), true);
+  assert.equal(validLinks({ nation: 0, club: 2.5, captain: 0 }), true);
+  // Thresholds per kind (before the mates rule), no Captain (before him), junk: one cut-off —
+  // a saved run with such rules is not a saved run (competition/cup.js restoreCupRun).
+  for (const old of [
+    { club: { level1: 2, level2: 5, level3: 8 }, nation: { level1: 2 }, captain: 1 },
+    { nation: 1.5, club: 1 },
+    { nation: '1.5', club: 1, captain: 1 },
+    { nation: NaN, club: 1, captain: 1 },
+    {},
+    null,
+    undefined,
+    7,
+  ])
+    assert.equal(validLinks(old), false, JSON.stringify(old));
   // Custom numbers are honoured; a kind worth 0 makes no mates.
   const custom = teamLinks([player('a', 'X', 'l'), player('a', 'X', 'l')], {
     nation: 0,
     club: 2.5,
+    captain: 0,
   });
   assert.equal(custom.players[0].boost, 2.5);
   assert.equal(custom.pairs[0].kind, 'club');

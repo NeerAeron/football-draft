@@ -20,6 +20,8 @@ import { nationKit, nationTrigram, teamCode } from './kits.js';
 
 export { teamCode };
 import { readJSON, writeJSON, removeKey } from './storage.js';
+import { createStore } from './create-store.js';
+import { randomSeed } from './random.js';
 
 export const MATCH_KEY = 'football-draft-match';
 export const MATCH_ROUTE = '#/match';
@@ -34,26 +36,6 @@ const DEFAULT_KITS = [
   ['#baaff0', '#16213a'],
 ];
 const TACTIC_KEYS = ['style', 'tempo', 'width', 'press', 'fluidity', 'mentality'];
-
-// ---------- A tiny observable (same get/set/subscribe shape as lib/store.js) ----------
-
-function observable(initial) {
-  let state = initial;
-  const listeners = new Set();
-  return {
-    get: () => state,
-    set(next) {
-      const value = typeof next === 'function' ? next(state) : next;
-      if (Object.is(value, state)) return;
-      state = value;
-      for (const listener of [...listeners]) listener(state);
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
 
 function load() {
   const saved = readJSON(MATCH_KEY, null);
@@ -70,7 +52,7 @@ function load() {
  * The current match hand-off: `null` or `{ request, status: 'ready' | 'live' | 'done', result }`.
  * Persisted under `football-draft-match`; `useStore(matchStore)` works with it.
  */
-export const matchStore = observable(load());
+export const matchStore = createStore(load(), { merge: false });
 matchStore.subscribe(state => {
   if (state) writeJSON(MATCH_KEY, state);
   else removeKey(MATCH_KEY);
@@ -110,7 +92,9 @@ function normalizeSide(side, i) {
  *                   players: 11 profiles in formation slot order (catalog players or
  *                   draft.matchSide(i).players — `chem` is kept), kind?, id?, code? }]
  *   competition  { mode: 'ai' | 'pvp' | 'sandbox', difficulty, knockout, extraTime }
- *                (default { mode: 'ai', difficulty: 'medium' }: the AI coach runs side 1)
+ *                (default { mode: 'ai', difficulty: 'medium' }: the AI coach runs side 1).
+ *                A knockout match — one that must have a winner — plays extra time before
+ *                penalties unless `extraTime: false` says otherwise.
  *   tuning       config snapshot (default: the live CONFIG)
  * Kit clash: the away side wears its secondary colour (draft matchSetup rules). The result is
  * round-tripped through a Match (importConfig → exportConfig), so it is exactly what the engine
@@ -122,11 +106,9 @@ export function buildMatchConfig({ sides, competition = {}, tuning } = {}) {
   const [home, away] = sides.map(normalizeSide);
   const match = new Match(1, FULL_DURATION);
   if (tuning) match.tuning = structuredClone(tuning);
-  const config = applyMatchSetup(match.exportConfig(), matchSetup(home, away), {
-    mode: 'ai',
-    difficulty: 'medium',
-    ...competition,
-  });
+  const rules = { mode: 'ai', difficulty: 'medium', ...competition };
+  if (rules.knockout) rules.extraTime = rules.extraTime !== false;
+  const config = applyMatchSetup(match.exportConfig(), matchSetup(home, away), rules);
   config.tuning = structuredClone(tuning || CONFIG);
   config.teams = config.teams.map((team, i) => {
     // A side that did not choose a mentality plays the game state ('auto': push when
@@ -156,13 +138,6 @@ function validRequest(r) {
     Array.isArray(r.config?.players) &&
     r.config.players.length === 22
   );
-}
-
-export function randomSeed() {
-  const buf = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0; // presentation-side only, never sim RNG
-  return buf[0] >>> 0;
 }
 
 /**
@@ -271,8 +246,10 @@ export function clearMatch(id) {
 
 /**
  * A result from one side's point of view, in the shape CupRun.recordResult takes:
- *   { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L' (90/120-minute score),
- *     shootout: null | { winner: 'user' | 'opponent', score: [for, against] },
+ *   { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L' (the final score: after extra time when
+ *     the match went there), extraTime: boolean,
+ *     shootout: null | { winner: 'user' | 'opponent', score: [for, against] | null (a level
+ *               match with a winner and no shootout: abandoned) },
  *     players: [{ profileId, rating, goals, assists }] }   // that side's XI
  */
 export function runResultFor(result, side = 0) {
@@ -280,16 +257,23 @@ export function runResultFor(result, side = 0) {
   const o = 1 - side,
     goalsFor = result.score[side],
     goalsAgainst = result.score[o];
+  // A level match decided otherwise (abandoned: a side fell below seven) has a winner but no
+  // shootout: the winner is carried, so a knockout can still be recorded.
+  const decided =
+    goalsFor === goalsAgainst && !result.shootout && (result.winner === 0 || result.winner === 1);
   return {
     goalsFor,
     goalsAgainst,
     outcome: goalsFor > goalsAgainst ? 'W' : goalsFor < goalsAgainst ? 'L' : 'D',
+    extraTime: !!result.extraTime,
     shootout: result.shootout
       ? {
           winner: result.shootout.winner === side ? 'user' : 'opponent',
           score: [result.shootout.score[side], result.shootout.score[o]],
         }
-      : null,
+      : decided
+        ? { winner: result.winner === side ? 'user' : 'opponent', score: null }
+        : null,
     players: result.players
       .filter(p => p.team === side)
       .map(p => ({

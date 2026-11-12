@@ -234,8 +234,8 @@ export function* decodeCatalogSteps(file) {
   });
   const players = new Array(n);
   let evidenceIndex = 0;
-  // Captains: indices of the players with the Captain tag (missing in older files).
-  const captains = new Set(c.captains || []);
+  // Captains: indices of the players with the Captain tag.
+  const captains = new Set(c.captains);
   for (let i = 0; i < n; i++) {
     const attrs = {},
       tendencies = {};
@@ -299,6 +299,7 @@ export function* decodeCatalogSteps(file) {
 
 // Lookup Maps: byId (profileId → player), byNation (nationality name → players),
 // byLeague (league id → players), byClub (club id → players). Lists keep catalog order.
+// The game reads byId; the three group Maps are built on first use (tests, tools), not at load.
 export function indexCatalog(catalog) {
   const group = key => {
     const map = new Map();
@@ -310,9 +311,19 @@ export function indexCatalog(catalog) {
     }
     return map;
   };
+  const lazy = (name, key) =>
+    Object.defineProperty(catalog, name, {
+      configurable: true,
+      enumerable: true,
+      get() {
+        const value = group(key);
+        Object.defineProperty(catalog, name, { value, writable: true, enumerable: true });
+        return value;
+      },
+    });
   catalog.byId = new Map(catalog.players.map(p => [p.profileId, p]));
-  catalog.byNation = group(p => p.source.nationality);
-  catalog.byLeague = group(p => (p.source.leagueId == null ? null : String(p.source.leagueId)));
-  catalog.byClub = group(p => (p.source.clubId == null ? null : String(p.source.clubId)));
+  lazy('byNation', p => p.source.nationality);
+  lazy('byLeague', p => (p.source.leagueId == null ? null : String(p.source.leagueId)));
+  lazy('byClub', p => (p.source.clubId == null ? null : String(p.source.clubId)));
   return catalog;
 }

@@ -5,17 +5,17 @@
 //
 //   const ticker = useSimTicker();
 //   await ticker.start(run, { configFor, idFor, onDone: async (m, result, snapshot) => persist() });
+//   milestones: true — the screen shows state.milestone as a pop-up and calls ticker.proceed();
+//   without it (the Daily) a cleared stage is only a short breath.
 //   ticker.state → { items, progress, skip, stop, finished, announce } | null
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { isReducedMotion } from '../../lib/motion.js';
 import { playCue } from '../../lib/audio.js';
 import { roundShort } from '../../lib/run-store.js';
 import { simulateRemaining, fastSimEnabled } from './auto-sim.js';
-import { scoreText } from './run-parts.js';
+import { scoreText, elsewhereOf } from './run-parts.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const elsewhereOf = (snapshot, md) =>
-  snapshot.group.fixtures.find(f => f.md === md && f.home !== 'user' && f.away !== 'user');
 const shortName = name => String(name || '').replace(/^(?:\p{L}\.\s*)+/u, '');
 /** "Kane 23', Saka 67'" for one side of a result. */
 export const scorersOf = (result, side = 0) =>
@@ -27,15 +27,20 @@ export const scorersOf = (result, side = 0) =>
 export function useSimTicker() {
   const [state, setState] = useState(null);
   const flags = useRef({ skip: false, stop: false, abort: false });
+  const proceed = useRef(null);
   useEffect(
     () => () => {
       flags.current.stop = true;
       flags.current.abort = true;
+      proceed.current?.();
     },
     [],
   );
 
-  async function start(run, { configFor, idFor, onDone, pace = 900, limit = Infinity }) {
+  async function start(
+    run,
+    { configFor, idFor, onDone, pace = 900, limit = Infinity, milestones = false },
+  ) {
     flags.current = { skip: isReducedMotion(), stop: false, abort: false };
     const pause = ms => sleep(flags.current.skip ? 0 : ms);
     let current = {
@@ -124,10 +129,13 @@ export function useSimTicker() {
                   : id === 'sf' && won
                     ? 'Into the final'
                     : null;
-          if (milestone) {
+          // A stage cleared: the sim waits on a pop-up until the player taps on (keep simming)
+          // or stops. Skipping (or reduced motion) passes straight through.
+          if (milestones && milestone && !flags.current.skip) {
             push({ milestone, announce: `${milestone}.` });
-            if (!flags.current.skip) playCue('pick-star');
-            await pause(1700);
+            playCue('pick-star');
+            await new Promise(resolve => (proceed.current = resolve));
+            proceed.current = null;
             push({ milestone: null });
           } else if (m.round >= 3 && snapshot.status === 'playing') await pause(600);
         }
@@ -148,10 +156,16 @@ export function useSimTicker() {
     skip() {
       flags.current.skip = true;
       setState(s => s && { ...s, skip: true });
+      proceed.current?.();
     },
     stop() {
       flags.current.stop = true;
       setState(s => s && { ...s, stop: true });
+      proceed.current?.();
+    },
+    /** Close a stage pop-up and carry on simulating. */
+    proceed() {
+      proceed.current?.();
     },
     clear: () => setState(null),
   };

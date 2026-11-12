@@ -15,16 +15,12 @@ import { EmptyState } from '../../components/empty-state.js';
 import { startDraft } from '../../lib/draft-store.js';
 import { readChallengeQuery, typeOf, todayDailyId } from '../../lib/run-store.js';
 import { modeLabel, levelLabel } from './team-view.js';
-
-const KIND = {
-  cup: { title: 'World Cup Run', draft: 'run', mode: 'run', returnTo: '/run' },
-  quick: { title: 'Quick Match', draft: 'quick', mode: 'quick', returnTo: '/' },
-  versus: { title: 'Versus', draft: 'versus', mode: 'versus', returnTo: '/' },
-};
+import { useReplaceRun } from './replace-run.js';
 
 export default function ChallengeScreen({ query }) {
   const { challenge: c, score } = readChallengeQuery(query);
   const [busy, setBusy] = useState(false);
+  const replace = useReplaceRun();
   useEffect(() => {
     loadWarmCatalog().catch(() => {}); // warm up for the draft
   }, []);
@@ -73,18 +69,22 @@ export default function ChallengeScreen({ query }) {
     </div>`;
   }
 
-  const kind = KIND[c.kind] || KIND.cup;
+  // The other kind of link: a World Cup run.
   const type = typeOf(c.mode);
   const accept = async () => {
     setBusy(true);
     try {
       await startDraft({
-        kind: kind.draft,
+        kind: 'run',
         type,
         difficulty: c.difficulty,
         formation: c.formation,
         seed: c.seed,
-        options: { hideRatings: c.hideRatings, uniqueNations: c.uniqueNations },
+        options: {
+          hideRatings: c.hideRatings,
+          uniqueNations: c.uniqueNations,
+          ...(c.budget ? { budget: true } : {}),
+        },
         useDefaultRules: true,
         // draft-store keeps `meta` as is; the run reads meta.challenge (createRunFromDraft).
         meta: {
@@ -95,7 +95,7 @@ export default function ChallengeScreen({ query }) {
               : null,
           },
         },
-        returnTo: kind.returnTo,
+        returnTo: '/run',
       });
     } catch (error) {
       console.error('[challenge] could not start the draft', error);
@@ -104,8 +104,16 @@ export default function ChallengeScreen({ query }) {
   };
   const setup = href(
     '/play/:mode',
-    { mode: kind.mode },
-    { type, difficulty: c.difficulty, formation: c.formation, seed: c.seed, challenge: 1 },
+    { mode: 'run' },
+    {
+      type,
+      difficulty: c.difficulty,
+      formation: c.formation,
+      seed: c.seed,
+      hide: c.hideRatings ? 1 : 0,
+      unique: c.uniqueNations ? 1 : 0,
+      ...(c.budget ? { budget: 1 } : {}),
+    },
   );
   return html`<div class="screen container-narrow challenge" data-screen="challenge">
     <section class="challenge-card card card--hero card--pad-lg" aria-labelledby="challenge-title">
@@ -113,7 +121,7 @@ export default function ChallengeScreen({ query }) {
         <${Icon} name="swords" size=${30} />
       </div>
       <p class="eyebrow">You've been challenged</p>
-      <h1 class="challenge-card__title" id="challenge-title">${kind.title}</h1>
+      <h1 class="challenge-card__title" id="challenge-title">World Cup Run</h1>
       ${
         score
           ? html`<${FriendScore} score=${score} />`
@@ -129,14 +137,14 @@ export default function ChallengeScreen({ query }) {
         <li><${Chip} icon="layout-grid">${formationLabel(c.formation)}<//></li>
         ${c.hideRatings && html`<li><${Chip} icon="eye-off" tone="holo">Ratings hidden<//></li>`}
         ${c.uniqueNations && html`<li><${Chip} icon="flag">One per nation<//></li>`}
-        ${c.sides === 2 && html`<li><${Chip} icon="users">Two players<//></li>`}
+        ${c.budget && html`<li data-testid="challenge-budget"><${Chip} icon="gem">Budget<//></li>`}
       </ul>
       <${Button}
         variant="primary"
         size="xl"
         block
         iconEnd="arrow-right"
-        onClick=${accept}
+        onClick=${() => replace.ask(accept)}
         loading=${busy}
         data-testid="accept-challenge"
         >Accept challenge<//
@@ -149,6 +157,7 @@ export default function ChallengeScreen({ query }) {
         Not now
       </button>
     </p>
+    ${replace.dialog}
   </div>`;
 }
 

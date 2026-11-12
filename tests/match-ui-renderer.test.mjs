@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
 import {
   WORLD,
-  SHOOTOUT_CAMERA,
   makeTransform,
   fullView,
   toWorld,
@@ -112,19 +111,19 @@ test('the camera is presentation only: the match plays out the same with it', ()
   assert.equal(b.eventId, a.eventId);
 });
 
-test('snap jumps to the target; the shootout close-up frames the goal and the spot', () => {
+test('snap jumps to the target; a penalty is framed with the spot, the taker and the goal', () => {
   const m = new Match(3, 180);
+  m.mode = 'restart';
+  m.restart = { type: 'Penalty', team: 0, x: 94, y: 34, timer: 2, taker: 9 };
   for (const size of [PHONE, DESKTOP]) {
     const cam = new ActionCamera();
     cam.resize(...size);
     cam.update(1 / 60, m, 'wide');
     cam.snap();
-    const r = cam.update(1 / 60, m, 'shootout');
+    const r = cam.update(1 / 60, m, 'follow');
     assert.ok(cam.zoomed && cam.settled);
-    assert.ok(r.x0 < 92 && r.x1 >= 105 + 2, 'penalty spot and net');
+    assert.ok(r.x0 < 94 - 4 && r.x1 >= 105 + 2, 'the run-up, the spot and the net');
     assert.ok(r.y0 < 34 - 3.66 && r.y1 > 34 + 3.66, 'both posts');
-    const s = SHOOTOUT_CAMERA[size[2]];
-    assert.ok(r.x1 - r.x0 >= s.x1 - s.x0 - 1e-6);
     // Eased, not cut, without a snap
     const before = cam.zoom;
     cam.update(1 / 60, m, 'wide');

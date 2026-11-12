@@ -5,15 +5,17 @@ import { stoppageMinutes, matchClock } from '../app/core/sim/periods.js';
 import { simulateHalf, applyReplayFrame } from '../app/core/sim/replay.js';
 
 test('seeded added time varies around a bell curve without consuming match randomness', () => {
+  // Means of 1.5 and 2 minutes (the whistle is held for attacks instead, whistle.test.mjs),
+  // never under the minimum of one: 1.6 and 2.1 once rounded and clamped.
   const samples = Array.from({ length: 4000 }, (_, i) => stoppageMinutes(i));
   for (const half of [0, 1]) {
     const values = samples.map(s => s[half]),
       mean = values.reduce((a, b) => a + b, 0) / values.length;
-    assert.ok(Math.abs(mean - (half ? 3 : 2)) < 0.1);
+    assert.ok(Math.abs(mean - (half ? 2.08 : 1.61)) < 0.1, `mean ${mean}`);
     assert.ok(values.every(n => Number.isInteger(n) && n >= 1 && n <= (half ? 6 : 5)));
     assert.ok(
-      values.filter(n => n === (half ? 3 : 2)).length >
-        values.filter(n => n === (half ? 5 : 4)).length * 2,
+      values.filter(n => n === (half ? 2 : 1)).length >
+        values.filter(n => n === (half ? 4 : 3)).length * 2,
     );
   }
   assert.deepEqual(stoppageMinutes(912), stoppageMinutes(912));

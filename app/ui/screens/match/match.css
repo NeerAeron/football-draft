@@ -404,7 +404,10 @@
 @media (max-width: 959px) and (orientation: portrait) {
   .match-stage {
     aspect-ratio: 75.6 / 113.8;
-    max-height: calc(100dvh - 210px);
+    /* svh, not dvh: the stage must not change size while the page scrolls and the browser's
+       URL bar slides away (every resize repaints the pitch layers: a replay stuttered). */
+    max-height: calc(100vh - 210px); /* browsers without svh */
+    max-height: calc(100svh - 210px);
     margin-inline: auto;
   }
 }
@@ -910,31 +913,22 @@
   }
 }
 
-/* Penalty shootout */
+/* Penalty shootout: never played on the pitch — the panel fills in kick by kick over the
+   stage (controller.startPens) and is shown again, complete, in the result. */
+.pens-stage {
+  z-index: 4;
+  padding: var(--space-3);
+}
 .pens {
-  position: absolute;
-  left: var(--space-2);
-  right: var(--space-2);
-  bottom: var(--space-2);
-  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: min(420px, 100%);
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: rgb(4 8 18 / 0.86);
   border: 1px solid var(--line-2);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-@media (min-width: 720px) {
-  .pens {
-    top: var(--space-3);
-    bottom: auto;
-    left: var(--space-3);
-    right: auto;
-    width: 300px;
-  }
+  text-align: left;
 }
 .pens__head {
   display: flex;
@@ -996,10 +990,48 @@
   background: var(--coral-400);
   color: var(--ink-950);
 }
+.pens__dot.is-goal,
+.pens__dot.is-miss {
+  animation: pens-mark var(--dur-base) var(--ease-spring) both;
+}
+.pens__dot.is-next {
+  border-color: var(--volt-400);
+}
+@keyframes pens-mark {
+  from {
+    opacity: 0.4;
+    transform: scale(0.5);
+  }
+}
 .pens__now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 0.3em;
+  min-height: 28px;
   margin: 2px 0 0;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--text-1);
+  text-align: center;
+}
+.pens__taker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pens-name var(--dur-base) var(--ease-out) both;
+}
+.pens__taker.is-goal {
+  color: var(--green-400);
+}
+.pens__taker.is-miss {
+  color: var(--coral-400);
+}
+@keyframes pens-name {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 /* Ticker (lower third under the pitch) */
@@ -1186,17 +1218,6 @@
   margin: 0;
   color: var(--gold-300);
   font-weight: var(--weight-semibold);
-}
-.goal__pens {
-  font-family: var(--font-display);
-  font-size: var(--display-xs);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  opacity: 0.8;
-}
-.goal__how {
-  font-size: var(--text-sm);
-  opacity: 0.85;
 }
 @media (min-width: 720px) {
   .match-controls__mentality {
@@ -1797,13 +1818,6 @@
   }
 }
 
-.pens--static {
-  position: static;
-  width: min(420px, 100%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  text-align: left;
-}
 @media (max-width: 559px) {
   .res-actions .btn--ghost {
     display: none;
@@ -1818,7 +1832,8 @@
   }
   .match-stage {
     aspect-ratio: auto;
-    height: calc(100dvh - 132px);
+    height: calc(100vh - 132px);
+    height: calc(100svh - 132px);
   }
   .match-ticker {
     display: none;

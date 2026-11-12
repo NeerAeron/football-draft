@@ -222,6 +222,47 @@ async function skipClips(page, until, limit = 80) {
   await visible(page, until, 20000);
 }
 
+/**
+ * A seed for the demo's level knockout tie (`et=1`) whose extra time ends the way a flow needs:
+ * 'pens' (still level, a shootout) or 'aet' (a winner in extra time). Found with the engine in
+ * the page, so the flows keep working when the engine changes.
+ */
+async function demoSeed(page, step, base, want) {
+  let seed = null;
+  await step(`find a seed: ${want}`, async () => {
+    await page.goto(base);
+    seed = await page.evaluate(async want => {
+      const { loadCatalog } = await import('./services/catalog.js');
+      const { buildDemoRequest, forceLevel } = await import('./ui/screens/match/demo.js');
+      const { Match } = await import('./core/sim/engine.js');
+      const catalog = await loadCatalog();
+      for (let seed = 1; seed <= 80; seed++) {
+        const request = buildDemoRequest(catalog, { et: '1', seed: String(seed) });
+        const m = new Match(request.seed, request.duration);
+        m.importConfig(request.config);
+        forceLevel(m);
+        while (!m.finished) m.step(1 / 60);
+        if (!!m.shootout === (want === 'pens')) return seed;
+      }
+      return null;
+    }, want);
+    if (seed == null) throw new Error(`no demo seed ends in ${want}`);
+  });
+  return seed;
+}
+
+/** The break at 90 minutes: the score, a team talk, then "Extra time". */
+async function extraTimeBreak(page, step, view, shot) {
+  await step(`${view}: the break before extra time`, async () => {
+    await visible(page, '[data-testid="halftime"]', 30000);
+    const text = await page.textContent('[data-testid="halftime"]');
+    if (!/Level after 90 minutes/.test(text)) throw new Error(`break reads "${text}"`);
+    await visible(page, '[data-testid="halftime"] .segmented');
+  });
+  if (shot) await shot('break');
+  await step(`${view}: extra time`, () => page.click('[data-testid="extra-time"]'));
+}
+
 /** The controller's own frame-time counter (window.__matchPerf). */
 async function framePerf(page) {
   return page.evaluate(() => {
@@ -382,16 +423,95 @@ const matchFlows = [
     },
   },
   {
+    // A knockout tie that is level at 90 minutes (demo `et=1`): the break, extra time, and —
+    // with a seed whose extra time ends level — the shootout.
     name: 'match-pens',
     async run({ page, shot, step, base }) {
-      await page.goto(`${base}${MATCH}&view=full&pens=1`);
-      await kickOff(page, step);
-      await step('shootout panel', () => visible(page, '.pens', 20000));
-      await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
-      await page.waitForTimeout(3000);
-      await shot('shootout');
-      await step('shootout decided', () => visible(page, '[data-testid="match-result"]', 90000));
-      await shot('result');
+      const seed = await demoSeed(page, step, base, 'pens');
+      // The shootout is a list of marks, never played on the pitch. Reduced motion (emulated
+      // here) shows every kick and the winner at once; with motion they come one by one.
+      for (const view of ['full', 'key']) {
+        await page.goto(`${base}${MATCH}&view=${view}&et=1&seed=${seed}`);
+        await kickOff(page, step);
+        await extraTimeBreak(page, step, view, view === 'full' ? shot : null);
+        if (view === 'full') {
+          await step('full: extra time is played, first period then second', async () => {
+            await page.click('.match-speed label:has-text("4×")');
+            for (const period of ['ET1', 'ET2'])
+              await page.waitForFunction(
+                label =>
+                  document.querySelector('.match-bug')?.getAttribute('aria-label')?.includes(label),
+                period,
+                { timeout: 60000 },
+              );
+          });
+          await shot('extra-time');
+        } else
+          await step('key: the extra-time reel shows minutes after the ninetieth', async () => {
+            await visible(page, '[data-testid="clip-minute"]', 30000);
+            const minute = parseInt(await page.textContent('[data-testid="clip-minute"]'), 10);
+            if (!(minute > 90 && minute <= 125)) throw new Error(`clip minute ${minute}`);
+          });
+        await step(`${view}: every kick and the winner`, async () => {
+          const decided = '[data-testid="shootout"] .pens.is-decided';
+          if (view === 'key') await skipClips(page, decided);
+          await visible(page, decided, 90000);
+          const marks = await page.locator('.pens__dot.is-goal, .pens__dot.is-miss').count();
+          if (marks < 6) throw new Error(`only ${marks} kicks shown`);
+          await visible(page, '.pens__row.is-winner');
+        });
+        if (view === 'full') await shot('shootout');
+        await step(`${view}: result`, () => visible(page, '[data-testid="match-result"]', 30000));
+        await step(`${view}: the result keeps the shootout`, () =>
+          visible(page, '[data-testid="match-result"] .pens.is-decided'),
+        );
+        if (view === 'full') await shot('result');
+        await page.evaluate(() => localStorage.removeItem('football-draft-match'));
+      }
+    },
+  },
+  {
+    // The same tie with a seed whose extra time has a winner: no shootout, "AET".
+    name: 'match-aet',
+    async run({ page, shot, step, base, viewport }) {
+      const seed = await demoSeed(page, step, base, 'aet');
+      for (const view of ['key', 'instant']) {
+        await page.goto(`${base}${MATCH}&view=${view}&et=1&seed=${seed}`);
+        await kickOff(page, step);
+        if (view === 'key') {
+          await extraTimeBreak(page, step, view, shot);
+          await step('key: extra time plays', () =>
+            visible(page, '[data-testid="clip-minute"]', 30000),
+          );
+          await shot('extra-time');
+          await step('key: skip to the end', () => skipClips(page, '[data-testid="match-result"]'));
+        }
+        await step(`${view}: decided after extra time, without penalties`, async () => {
+          await visible(page, '[data-testid="match-result"]', 60000);
+          const label = await page.getAttribute(
+            '[data-testid="match-result"] .scorebug',
+            'aria-label',
+          );
+          if (!/, AET$/.test(label || '')) throw new Error(`score bug reads "${label}"`);
+          const hero = await page.textContent('.res-hero__ft');
+          if (!/After extra time/.test(hero)) throw new Error(`result reads "${hero}"`);
+          if (await page.locator('[data-testid="match-result"] .pens').count())
+            throw new Error('a shootout panel on a match decided in extra time');
+          const score = label.match(/ (\d+), .* (\d+), AET$/);
+          if (!score || score[1] === score[2]) throw new Error(`no winner in "${label}"`);
+        });
+        if (view === 'key') {
+          await page.evaluate(() => document.fonts.ready);
+          await shot('result');
+          if (viewport === 'mobile') await shot('result-full', { fullPage: true });
+          await step('the stored result says extra time', async () => {
+            const saved = await page.evaluate(() => localStorage.getItem('football-draft-match'));
+            if (!/"extraTime":true/.test(saved || '')) throw new Error('extraTime not stored');
+            if (!/\(aet\)/.test(saved || '')) throw new Error('share line without (aet)');
+          });
+        }
+        await page.evaluate(() => localStorage.removeItem('football-draft-match'));
+      }
     },
   },
 ];
@@ -599,7 +719,7 @@ export const flows = [
           await page.goto(`${base}#/play/quick?type=nations&difficulty=amateur&seed=5`);
           await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
           if (!(await page.isChecked('input[name="setup-difficulty"][value="pro"]')))
-            throw new Error('a removed difficulty does not fall back to Pro');
+            throw new Error('an unknown difficulty does not fall back to Pro');
         },
       );
       await shot('quick-challenge');
@@ -638,10 +758,18 @@ export const flows = [
           const count = await rows.count();
           if (count < 1 || count > 10) throw new Error(`${count} legends shown, expected 1–10`);
           const eras = await page.locator('[data-testid="pool"] .prow__era').allTextContents();
-          if (eras.length !== count || !eras.every(t => /^’(1[4-9]|2[0-2])$/.test(t)))
+          // A year of 1997–2022, two digits.
+          if (eras.length !== count || !eras.every(t => /^’(9[7-9]|[01]\d|2[0-2])$/.test(t)))
             throw new Error('legend rows without a year: ' + eras.join(' '));
           const text = await page.textContent('[data-screen="draft"]');
           if (/FIFA \d\d/.test(text)) throw new Error('an edition name is on screen');
+          // One line says which years the legends come from.
+          const years = await page.textContent('.stage [data-testid="legend-years"]');
+          if (!/^\s*Best versions, 1997–2022\s*$/.test(years))
+            throw new Error('no years line on the Legend stage: ' + years);
+          // Nobody under 85 is offered.
+          const ovrs = await page.locator('[data-testid="pool"] .prow__ovr').allTextContents();
+          if (!ovrs.every(t => Number(t) >= 85)) throw new Error('a legend under 85: ' + ovrs);
           // The file is fetched for the draft only.
           const fetched = await page.evaluate(() =>
             performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1.json')),
@@ -668,6 +796,26 @@ export const flows = [
           .first()
           .textContent();
         if (!/^’\d\d$/.test(era)) throw new Error('no year on the legend card');
+        const standing = await page
+          .locator('[data-testid="pick-standing"]:visible')
+          .first()
+          .textContent();
+        if (!/(Superstar|Star)\s*·\s*Legend ’\d\d/.test(standing))
+          throw new Error('the sheet does not say his tier and year: ' + standing);
+      });
+      await step('every open slot shows his overall there; the best one is marked', async () => {
+        const pitch = page.locator('.pitch--interactive:visible').first();
+        const open = await pitch.locator('.pitch-slot.is-empty:not(.is-fit-blocked)').count();
+        const numbers = await pitch.locator('.pitch-slot__rating').allTextContents();
+        if (numbers.length !== open || !numbers.every(t => /^\d\d$/.test(t)))
+          throw new Error(`${numbers.length} ratings on ${open} open slots: ${numbers}`);
+        const best = await pitch
+          .locator('.pitch-slot.is-fit-best .pitch-slot__rating')
+          .first()
+          .textContent();
+        if (Number(best) < 85) throw new Error('the best slot shows ' + best);
+        const line = await page.locator('[data-testid="pick-slot"]:visible').first().textContent();
+        if (!line.includes(best)) throw new Error(`the sheet says "${line}", not ${best}`);
       });
       await shot('legend-pick');
       await step('pick 1 (other slot, then Auto)', async () => {
@@ -681,6 +829,8 @@ export const flows = [
       await step('the second spin is an ordinary nation spin', async () => {
         if (await page.locator('.stage.is-legend').count())
           throw new Error('the Legend stage stays after the legend pick');
+        if (await page.locator('[data-testid="legend-years"]').count())
+          throw new Error('the years line stays after the legend pick');
         await visible(page, '[data-testid="prime-open"]');
       });
       await shot('after-first-pick');
@@ -690,6 +840,26 @@ export const flows = [
           await picksMade(page, pick);
         });
         if (pick === 5) await shot('mid-draft', viewport === 'mobile' ? { fullPage: true } : {});
+        if (pick === 4 || pick === 8)
+          await step('pool rows cut no tag: boost and Prime are whole', async () => {
+            const spin = page.locator('[data-testid="spin"]');
+            if (await spin.isVisible().catch(() => false))
+              await spin.click({ timeout: 6000 }).catch(() => {});
+            await page.waitForSelector('[data-testid="pool"] button.prow', { timeout: 10000 });
+            const cut = await page.evaluate(() => {
+              const bad = [];
+              for (const row of document.querySelectorAll('[data-testid="pool"] .prow')) {
+                const box = row.getBoundingClientRect();
+                for (const tag of row.querySelectorAll('.prow__cost, .prow__boost, .prow__prime')) {
+                  const r = tag.getBoundingClientRect();
+                  if (tag.scrollWidth > tag.clientWidth + 1 || r.right > box.right - 4 || !r.width)
+                    bad.push(row.getAttribute('aria-label'));
+                }
+              }
+              return bad;
+            });
+            if (cut.length) throw new Error('rows with a cut tag: ' + cut.slice(0, 3).join(' | '));
+          });
       }
       await step('completion sheet', () => visible(page, 'dialog.complete-sheet[open]'));
       await shot('complete');
@@ -732,6 +902,24 @@ export const flows = [
         if (picks.filter(id => /:legend$/.test(id)).length !== 1)
           throw new Error('no legend in the XI');
       });
+      await step(
+        'the sheet stays open and shows the boost; a second tap does nothing',
+        async () => {
+          await visible(page, 'dialog.draft-prime[open] [data-testid="prime-done"]');
+          const button = page.locator('[data-testid="prime-confirm"]');
+          if (!/Done/.test(await button.textContent())) throw new Error('the button is not Done');
+          // An impatient second tap must not fall through to "On to the World Cup".
+          await button.click();
+          await page.waitForTimeout(100);
+          if ((await page.evaluate(() => location.hash)) !== '#/draft')
+            throw new Error('the second tap left the draft');
+          await shot('prime-done');
+          await page.waitForTimeout(500);
+          if (await page.locator('dialog.draft-prime[open]').count()) await button.click();
+          await page.waitForSelector('dialog.draft-prime[open]', { state: 'detached' });
+          await page.waitForTimeout(450);
+        },
+      );
       await shot('primed');
       await step('continue to the run with the legend and the prime', async () => {
         await page.click('[data-testid="draft-continue"]');
@@ -743,6 +931,47 @@ export const flows = [
         });
       });
       await shot('run');
+    },
+  },
+  {
+    name: 'draft-back',
+    async run({ page, step, base }) {
+      await seed(page, ONBOARDED);
+      const saved = () =>
+        page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-draft') || 'null');
+          return d && `${d.context.seed}:${d.session.state.current?.option.id}`;
+        });
+      let draft = null;
+      await step('"Play again" (?go=1) starts a draft at once', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await visible(page, '[data-screen="draft"][data-phase]');
+        draft = await saved();
+        if (!draft) throw new Error('no draft was saved');
+      });
+      await step('the device back button shows the setup: ?go=1 is spent', async () => {
+        await page.goBack();
+        await visible(page, '[data-screen="setup"] .setup-resume');
+        await page.waitForTimeout(300);
+        if ((await saved()) !== draft) throw new Error('going back started another draft');
+        await page.goForward();
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+      });
+      await step('the back arrow leaves for Home and keeps the draft', async () => {
+        await page.click('.topbar__back');
+        await visible(page, '[data-screen="home"] [data-testid="resume-draft"]');
+        await page.waitForTimeout(300);
+        if (!/^(#\/)?$/.test(await page.evaluate(() => location.hash)))
+          throw new Error('not on Home');
+        if ((await saved()) !== draft) throw new Error('the draft changed: it was started again');
+      });
+      await step('Resume shows the same spin', async () => {
+        await page.click('[data-testid="resume-draft"]');
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+        if ((await saved()) !== draft) throw new Error('the draft changed on resume');
+      });
     },
   },
   {
@@ -1101,7 +1330,11 @@ export const flows = [
           await page.click('[data-testid="play-fixture"]');
           await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
           if (!(await page.isDisabled('[data-testid="formation-select"]')))
-            throw new Error('the formation can change before the first match');
+            throw new Error('the formation can change in the group stage');
+          // What is set up here stays for the run: push. (Back to the top: on a phone the
+          // Kick off bar would otherwise cover the view radios finishMatch() presses.)
+          await page.click('.tactics__mentality label:has-text("Push")');
+          await page.evaluate(() => scrollTo(0, 0));
           if ((await prematchView()) !== 'key') throw new Error(`view is ${await prematchView()}`);
         },
       );
@@ -1119,6 +1352,16 @@ export const flows = [
         await page.click('[data-testid="continue-run"]');
         await visible(page, '[data-testid="next-fixture"]');
       });
+      await step('matchday 2: still the draft formation, and the mentality was kept', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+        if (!(await page.isDisabled('[data-testid="formation-select"]')))
+          throw new Error('the formation can change before matchday 2');
+        if (!(await page.isChecked('.tactics__mentality input[value="push"]')))
+          throw new Error('the mentality of matchday 1 was not kept');
+        await page.goBack();
+        await visible(page, '[data-testid="next-fixture"]');
+      });
       await step('"Simulate this match" plays one fixture and shows its result', async () => {
         const before = await page.getAttribute('[data-testid="next-fixture"]', 'data-round');
         await page.click('[data-testid="sim-match"]');
@@ -1133,8 +1376,22 @@ export const flows = [
       });
       await shot('after-sim-match');
       await step('"Simulate the whole cup" plays to the end', async () => {
+        // With motion on, a cleared stage stops the sim on a pop-up until the player taps on.
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
         await page.click('[data-testid="sim-rest"]');
-        await visible(page, '[data-testid="run-end"]', 120000);
+        const end = page.locator('[data-testid="run-end"]'),
+          keep = page.locator('[data-testid="sim-keep"]');
+        let popups = 0;
+        for (const until = Date.now() + 120000; !(await end.count());) {
+          if (Date.now() > until) throw new Error('the cup sim did not finish');
+          if (await keep.count()) {
+            await keep.click();
+            popups++;
+          } else await page.waitForTimeout(150);
+        }
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        const groupCleared = (await page.locator('.run-path-strip .is-played').count()) > 3;
+        if (groupCleared && !popups) throw new Error('no stage pop-up after the group');
         const place = await page.getAttribute('[data-testid="run-end"]', 'data-place');
         const title = await page.textContent('.run-end__title');
         if (!place || /\b[SABCDF][+-]?\b grade/i.test(title)) throw new Error(`end: ${place}`);
@@ -1165,6 +1422,155 @@ export const flows = [
         if (/Not played/.test(status)) throw new Error('the Pro slot ignores the run');
       });
       await shot('home-cabinet', { fullPage: true });
+    },
+  },
+  {
+    // A new World Cup draft asks before it replaces a run in progress — from the setup's
+    // Start, "Play again" (?go=1), Budget mode and a challenge link alike; a finished run is
+    // replaced without a question.
+    name: 'run-replace',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      await savedRun(page, { difficulty: 'pro', results: [[2, 0]] });
+      const run = () => page.evaluate(() => localStorage.getItem('football-draft-run-state'));
+      const dialog = 'dialog.replace-run[open]';
+      const asked = async how => {
+        await visible(page, `${dialog} [data-testid="replace-run"]`);
+        if (!(await run())) throw new Error(`${how}: the run was dropped before the answer`);
+      };
+      const kept = async how => {
+        await page.click(`${dialog} [data-testid="keep-run"]`);
+        await page.waitForSelector(dialog, { state: 'detached', timeout: 5000 }).catch(() => {});
+        if (await page.locator(dialog).count()) throw new Error(`${how}: the dialog stayed open`);
+        await page.waitForTimeout(200);
+        if (!(await run())) throw new Error(`${how}: "Keep run" lost the run`);
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-draft')))
+          throw new Error(`${how}: a draft started anyway`);
+      };
+      await step('Start on the setup asks first', async () => {
+        await page.goto(base);
+        await page.click('[data-testid="start-run"]');
+        await visible(page, '[data-screen="setup"][data-mode="run"]');
+        await page.locator('[data-testid="start-draft"]:visible').click();
+        await asked('setup');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('ask');
+      await step('"Keep run" changes nothing', () => kept('setup'));
+      await step('Budget mode asks the same', async () => {
+        await page.goto(base);
+        await page.click('[data-testid="start-budget"]');
+        await visible(page, '[data-screen="setup"] [data-testid="setup-budget"]');
+        await page.locator('[data-testid="start-draft"]:visible').click();
+        await asked('budget');
+        await kept('budget');
+      });
+      await step('"Play again" (?go=1) asks instead of starting', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await asked('go=1');
+        await kept('go=1');
+        if (!(await page.evaluate(() => location.hash.startsWith('#/play/run'))))
+          throw new Error('left the setup');
+      });
+      await step('a challenge link asks, and "Start new" replaces the run', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await page.click('[data-testid="accept-challenge"]');
+        await asked('challenge');
+        await kept('challenge');
+        await page.click('[data-testid="accept-challenge"]');
+        await asked('challenge');
+        await page.click(`${dialog} [data-testid="replace-run"]`);
+        await visible(page, '[data-screen="draft"][data-phase]');
+        if (await run()) throw new Error('the old run is still saved');
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-run')))
+          throw new Error('Home would still show the old run');
+      });
+      await step('a finished run is replaced without a question', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => localStorage.removeItem('football-draft-draft'));
+        await savedRun(page, {
+          difficulty: 'pro',
+          results: [
+            [0, 1],
+            [0, 1],
+            [0, 1],
+          ],
+        });
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await visible(page, '[data-screen="draft"][data-phase]');
+        if (await page.locator(dialog).count()) throw new Error('asked about a finished run');
+      });
+    },
+  },
+  {
+    // The line-up of a run: after the group stage the formation can change, and what is set
+    // up before a match (formation, mentality) is kept for the next ones and for auto-sims.
+    name: 'run-lineup',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      // Up to the semi-final: whatever its result, a match follows (the final or the play-off).
+      await savedRun(page, { difficulty: 'pro', results: Array(6).fill([2, 0]) });
+      const lineup = () =>
+        page.evaluate(() => {
+          const user = JSON.parse(localStorage.getItem('football-draft-run-state')).run.user;
+          return `${user.formation}:${user.tactics?.mentality ?? '-'}:${user.players.join()}`;
+        });
+      let before = null,
+        chosen = null;
+      await step('after the group stage the formation can change', async () => {
+        await page.goto(`${base}#/run`);
+        await visible(page, '[data-testid="next-fixture"][data-round="sf"]');
+        before = await lineup();
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-select"]');
+        if (await page.locator('[data-testid="formation-locked"]').count())
+          throw new Error('the formation is still locked after the group stage');
+        if (await page.isDisabled('[data-testid="formation-select"]'))
+          throw new Error('the formation cannot change in a knockout match');
+        chosen = before.startsWith('442:') ? '4231' : '442';
+        await page.selectOption('[data-testid="formation-select"]', chosen);
+        await page.click('.tactics__mentality label:has-text("Hold")');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('prematch-new-formation', { fullPage: true });
+      await step('left without kicking off: the hub keeps the set-up', async () => {
+        await page.goBack();
+        await visible(page, '[data-testid="next-fixture"][data-round="sf"]');
+        const now = await lineup();
+        if (!now.startsWith(`${chosen}:hold:`)) throw new Error(`the run has ${now}`);
+        const head = await page.textContent('.run-head__meta');
+        const label = chosen === '442' ? '4–4–2' : '4–2–3–1';
+        if (!head.includes(label)) throw new Error(`header reads "${head}", expected ${label}`);
+      });
+      await step('the match is played with it, and the next pre-match starts from it', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await page.inputValue('[data-testid="formation-select"]')) !== chosen)
+          throw new Error('the pre-match forgot the formation');
+        await finishMatch(page);
+        await visible(page, '[data-testid="result-banner"]', 60000);
+        const now = await lineup();
+        if (!now.startsWith(`${chosen}:hold:`)) throw new Error(`after the match: ${now}`);
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-prematch')))
+          throw new Error('the pre-match of a finished match is still stored');
+        await page.reload();
+        await visible(page, '[data-testid="next-fixture"]');
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await page.inputValue('[data-testid="formation-select"]')) !== chosen)
+          throw new Error('the next pre-match was rebuilt from the draft');
+        if (!(await page.isChecked('.tactics__mentality input[value="hold"]')))
+          throw new Error('the next pre-match forgot the mentality');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('next-prematch', { fullPage: true });
     },
   },
   {
@@ -1341,7 +1747,7 @@ export const flows = [
         await page.click('.cabinet__mode label:has-text("Classic")');
       });
       await shot('partly');
-      await step('an old cabinet migrates: titles become golds, removed levels go', async () => {
+      await step('a cabinet saved in an older format reads as empty', async () => {
         await show({
           format: 2,
           levels: {
@@ -1352,11 +1758,9 @@ export const flows = [
           seen: [],
         });
         const count = await page.getAttribute('.cabinet__count', 'aria-label');
-        if (!/^1 of 3/.test(count)) throw new Error(`count: ${count}`);
-        const legendary = await page.textContent('.cabinet__slot[data-level="legendary"]');
-        if (!/Runners-up/.test(legendary)) throw new Error(`legendary: ${legendary}`);
-        if (!/^7 runs/.test((await page.textContent('.cabinet__foot')).trim()))
-          throw new Error('the removed level is still counted');
+        if (!/^0 of 3/.test(count)) throw new Error(`count: ${count}`);
+        if ((await page.locator('.cabinet__slot', { hasText: 'Not played' }).count()) !== 3)
+          throw new Error('an old cabinet still shows something');
       });
       await step('everything won: the ultimate slot unlocked', async () => {
         await show({
@@ -1398,9 +1802,51 @@ export const flows = [
       await step('intro', () => visible(page, '[data-testid="start-daily"]', 30000));
       await page.evaluate(() => document.fonts.ready);
       await shot('intro', { fullPage: true });
-      await step('draft with auto picks', async () => {
+      const dailyDraft = () =>
+        page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-daily') || '{}').draft;
+          return d ? d.session.state.picks.flat().filter(Boolean).join() : null;
+        });
+      let picked = null;
+      await step('the first pick locks the day: the draft is kept with the Daily', async () => {
         await page.click('[data-testid="start-daily"]');
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+        if (await dailyDraft()) throw new Error('locked before a pick was made');
+        await page.click('[data-testid="auto-pick"]');
+        await page.waitForFunction(
+          () => !!JSON.parse(localStorage.getItem('football-draft-daily') || '{}').draft,
+        );
+        picked = await dailyDraft();
+        if (!picked) throw new Error('no pick was kept');
+      });
+      await step('left mid-draft: Home and the Daily offer to resume, not to start', async () => {
+        await page.click('.topbar__back');
+        await visible(page, '[data-screen="home"] .home-daily');
+        const card = await page.textContent('.home-daily');
+        if (!/Started/.test(card) || !/Resume/.test(card)) throw new Error(`Daily card: ${card}`);
+        // Another draft takes the one draft slot meanwhile.
+        await page.evaluate(async () => {
+          const store = await import('./ui/lib/draft-store.js');
+          await store.startDraft({ kind: 'quick', type: 'clubs', seed: 5 }, { go: false });
+        });
+        await page.goto(`${base}#/daily`);
+        await visible(page, '[data-testid="resume-daily"]', 30000);
+        if (await page.locator('[data-testid="start-daily"]').count())
+          throw new Error('the Daily can be started again after a pick');
+        if ((await dailyDraft()) !== picked) throw new Error('the kept draft changed');
+      });
+      await shot('resume', { fullPage: true });
+      await step('resume: the same draft with its pick, then auto picks', async () => {
+        await page.click('[data-testid="resume-daily"]');
+        await visible(page, '[data-screen="draft"][data-phase]');
+        const state = await page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-draft'));
+          return [d.context.kind, d.session.state.picks.flat().filter(Boolean).join()];
+        });
+        if (state[0] !== 'daily' || !state[1].startsWith(picked))
+          throw new Error(`resumed ${state.join(' ')}, kept ${picked}`);
         await completeDraft(page, '[data-testid="daily-sim"], [data-testid="daily-result"]');
+        if (await dailyDraft()) throw new Error('the kept draft outlived the draft');
       });
       await step('auto-sim to the result', () =>
         visible(page, '[data-testid="daily-result"]', 120000),
@@ -1462,16 +1908,27 @@ export const flows = [
     name: 'challenge-link',
     async run({ page, shot, step, base }) {
       await seed(page, { ...ONBOARDED, ...FAST_SIM });
-      await step('short link lands on the challenge', async () => {
-        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+      await step('links of older formats are not valid: no crash, the way Home', async () => {
+        // A removed difficulty (a), Club & Country (x), a Quick Match link (q).
+        for (const token of ['c1.c.n.433.a.0.16', 'c1.c.x.433.p.0.16', 'c1.q.n.433.p.0.16']) {
+          await page.goto(`${base}#/challenge?c=${token}&r=5-1-1.bp`);
+          await visible(
+            page,
+            '[data-screen="challenge"] .empty-state, [data-screen="challenge"] h1',
+          );
+          if (await page.locator('[data-testid="accept-challenge"]').count())
+            throw new Error(`${token} can be accepted`);
+        }
+        // A letter grade where the place goes: the challenge opens, without a result.
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=5-1-1.bp`);
         await visible(page, '[data-screen="challenge"] [data-testid="accept-challenge"]');
+        if (await page.locator('.friend-score').count())
+          throw new Error('a grade read as a result');
+        // The short '#c=' form is gone: not a route.
+        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+        await visible(page, '[data-screen="placeholder"] h1');
       });
       await step('shared link with a result', async () => {
-        // An old link: a letter grade after the record (ignored) on a removed difficulty (Pro).
-        await page.goto(`${base}#/challenge?c=c1.c.n.433.a.0.16&r=5-1-1.bp`);
-        await visible(page, '[data-screen="challenge"] .friend-score');
-        const old = await page.textContent('[data-screen="challenge"]');
-        if (!/5–1–1/.test(old) || !/Pro/.test(old)) throw new Error('old link does not read');
         await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
         await visible(page, '[data-screen="challenge"] .friend-score .medal');
         const label = await page.textContent('.friend-score__label');
@@ -1479,6 +1936,32 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('landing');
+      await step('a Budget run’s link says Budget and starts a Budget draft', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.b.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] [data-testid="challenge-budget"]');
+        const review = await page.getAttribute('.challenge-card__setup', 'href');
+        if (!/budget=1/.test(review)) throw new Error(`the review link reads ${review}`);
+        await page.evaluate(() => document.fonts.ready);
+        await shot('landing-budget');
+        await page.click('.challenge-card__setup');
+        await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
+        await page.goBack();
+        await page.click('[data-testid="accept-challenge"]');
+        await visible(page, '[data-screen="draft"][data-phase]');
+        const draft = await page.evaluate(() =>
+          JSON.parse(localStorage.getItem('football-draft-draft')),
+        );
+        if (!draft.context.options.budget || !draft.session.options.budget)
+          throw new Error('the friend’s draft is not a Budget draft');
+        if (draft.context.seed !== 42 || !draft.session.options.useDefaultRules)
+          throw new Error('not the same draft');
+        // A link without the flag is no Budget draft.
+        await page.evaluate(() => localStorage.removeItem('football-draft-draft'));
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] .friend-score');
+        if (await page.locator('[data-testid="challenge-budget"]').count())
+          throw new Error('a normal link says Budget');
+      });
       await step('accept → same draft → run', async () => {
         await page.click('[data-testid="accept-challenge"]');
         await completeDraft(page, '[data-testid="next-fixture"]');

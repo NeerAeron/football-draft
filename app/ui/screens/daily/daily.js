@@ -1,6 +1,7 @@
 // Daily Challenge (#/daily): today's rules, group and streak → the scheduled Nations draft
 // (DRAFT-UI, returns here) → the whole World Cup simulated with the engine, live ticker + Skip
-// → result card (points, where it finished, % of the perfect XI, streak, share). One attempt per UTC day;
+// → result card (points, where it finished, % of the perfect XI, streak, share). One attempt per UTC day,
+// from the first pick of the draft (it can be left and resumed, never started again);
 // afterwards the day's result, a countdown and replays of your matches.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
@@ -23,10 +24,21 @@ import { PitchView } from '../../components/pitch-view.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { Confetti } from '../../components/confetti.js';
-import { completedDraft, clearDraft, startDraft, loadDraft } from '../../lib/draft-store.js';
+import { toast } from '../../components/toast.js';
+import {
+  completedDraft,
+  currentDraft,
+  clearDraft,
+  startDraft,
+  loadDraft,
+  restoreSaved,
+  resumeDraft,
+} from '../../lib/draft-store.js';
 import { buildMatchConfig, requestMatch, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
   readDaily,
+  lockedDailyDraft,
+  dropDailyDraft,
   beginDailyAttempt,
   saveDailyProgress,
   finishDailyAttempt,
@@ -55,15 +67,10 @@ import {
 } from '../run/run-parts.js';
 import { SharePanel } from '../run/share-panel.js';
 import { xiViews, shareCardFor } from '../run/team-view.js';
-import { fmt1, int } from '../../lib/format.js';
+import { fmt1, int, fmtDate } from '../../lib/format.js';
 
-const dateLabel = id =>
-  new Date(id + 'T12:00:00Z').toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
+/** The day of a Daily (its UTC day id): "12 Nov 2026". */
+const dateLabel = id => fmtDate(id);
 
 /** Daily engine config: DEFAULT_CONFIG tuning so every device plays the same matches. */
 function dailyConfig(m) {
@@ -106,7 +113,7 @@ function Streak({ state, today, bump = false }) {
 }
 
 // ---- intro ------------------------------------------------------------------------------------
-function Intro({ catalog, day, state, today, onStart, starting }) {
+function Intro({ catalog, day, state, today, onStart, starting, resume = false }) {
   const group = day.opponents.slice(0, 3).map(key => {
     const [, id] = key.split(':');
     const n = catalog.nations?.find(x => x.name === id);
@@ -159,8 +166,8 @@ function Intro({ catalog, day, state, today, onStart, starting }) {
         iconEnd="arrow-right"
         onClick=${onStart}
         loading=${starting}
-        data-testid="start-daily"
-        >Start today's draft<//
+        data-testid=${resume ? 'resume-daily' : 'start-daily'}
+        >${resume ? 'Resume today’s draft' : 'Start today’s draft'}<//
       >
     </section>
     <aside class="daily-side stack stack-md">
@@ -271,7 +278,7 @@ function CountUp({ value, duration = 1200 }) {
 
 function Result({ catalog, day, entry, state, today, fresh }) {
   const hide = !!entry.hideRatings;
-  const run = useMemo(() => rebuildRun(catalog, day, entry), [catalog, day, entry]);
+  const run = useMemo(() => rebuildRun(catalog, entry), [catalog, entry]);
   const snapshot = useMemo(() => run?.snapshot() ?? null, [run]);
   const views = useMemo(() => (run ? xiViews(catalog, run.userSide()) : []), [run]);
   const link = challengeLink(
@@ -321,8 +328,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
   useEffect(() => {
     if (fresh && snapshot?.status === 'champion') setFire(1);
   }, []);
-  // The medal of the finish (entries from before the places: a title is still a gold).
-  const medal = entry.medal ?? (entry.status === 'champion' ? 'gold' : null);
+  const medal = entry.medal ?? null;
   const watch = round => {
     const m = matchFor(run, round);
     requestMatch({
@@ -354,7 +360,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
         <div class="daily-card__finish" data-place=${entry.place || ''}>
           <${Prize} medal=${medal} size=${72} glow=${medal === 'gold'} />
           <div class="daily-card__finish-text">
-            <span class="daily-card__place">${entry.placeLabel || entry.stageLabel}</span>
+            <span class="daily-card__place">${entry.placeLabel}</span>
             <span class="daily-card__record num"
               >${`${entry.record.w}–${entry.record.d}–${entry.record.l}`}</span
             >
@@ -386,7 +392,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
           link=${link}
           heading="Share your Daily"
           title=${`Daily #${day.number}`}
-          filename=${`football-draft-daily-${day.number}.png`}
+          filename=${`world-cup-draft-daily-${day.number}.png`}
         />
         ${
           snapshot &&
@@ -438,30 +444,13 @@ function Result({ catalog, day, entry, state, today, fresh }) {
 }
 
 /** Rebuild a finished daily run from the stored XI (deterministic: same opponents and results). */
-function rebuildRun(catalog, day, entry) {
+function rebuildRun(catalog, entry) {
   try {
     if (entry.run) return restoreCupRun(catalog, entry.run);
   } catch {
     /* fall through */
   }
   return null;
-}
-/**
- * Today's attempt being simulated. One saved in an older cup format (before the third-place
- * play-off) does not restore: it starts again with the same XI against today's opponents.
- */
-function resumeAttempt(catalog, day, saved) {
-  try {
-    return restoreCupRun(catalog, saved);
-  } catch (error) {
-    const u = saved?.user;
-    if (!u || !Array.isArray(u.players)) throw error;
-    const { name, color, secondary, formation, players } = u;
-    return createCupRun(catalog, {
-      ...day.cup,
-      user: { name, color, secondary, formation, players },
-    });
-  }
 }
 function matchFor(run, round) {
   const home = run.userSide(),
@@ -539,15 +528,23 @@ export default function DailyScreen() {
         const held = matchStore.get()?.request;
         if (held?.id?.startsWith('daily:')) clearMatch(held.id);
         const ctx = { catalog, day, today, state };
+        const mine = d => d?.context?.kind === 'daily' && (d.context.daily ?? today) === today;
         // In memory right after the draft; restored from storage after a reload.
-        const draft = completedDraft() ?? (await loadDraft());
-        if (
-          draft?.session?.complete &&
-          draft.context?.kind === 'daily' &&
-          (draft.context.daily ?? today) === today &&
-          !state.results[today] &&
-          state.current?.id !== today
-        ) {
+        const slot = completedDraft() ?? currentDraft() ?? (await loadDraft());
+        // Today's draft is kept with the Daily record from its first pick (one attempt): when
+        // another draft took the slot meanwhile, it is rebuilt from there.
+        let locked = lockedDailyDraft(state, today),
+          draft = mine(slot) ? slot : null;
+        if (!draft && locked) {
+          draft = await restoreSaved(locked).catch(() => null);
+          if (!live()) return;
+          // It no longer fits the player database: the day starts again.
+          if (!draft) {
+            state = ctx.state = dropDailyDraft(state);
+            locked = null;
+          }
+        }
+        if (draft?.session.complete && !state.results[today] && state.current?.id !== today) {
           const user = draft.session.matchSide(0);
           const run = createCupRun(catalog, { ...day.cup, user });
           // The perfect XI tries every re-roll combination (~250 ms): in a worker.
@@ -566,28 +563,37 @@ export default function DailyScreen() {
             ...ctx.state,
             current: { ...ctx.state.current, hideRatings: !!draft.session.options?.hideRatings },
           };
-          clearDraft();
+          if (draft === slot) clearDraft();
           simulate(ctx, run);
           return;
         }
-        if (draft?.session?.complete && draft.context?.kind === 'daily') clearDraft();
-        if (state.current?.id === today) {
-          const run = resumeAttempt(catalog, day, state.current.run);
-          // A restarted attempt (see resumeAttempt) drops the log of the old format's matches.
-          if (!run.matches.length && state.current.log?.length)
-            ctx.state = { ...ctx.state, current: { ...ctx.state.current, log: [] } };
+        // A Daily draft in the slot that is over (another day's, or today's once played).
+        if (
+          slot?.context?.kind === 'daily' &&
+          (!mine(slot) || !!state.results[today] || state.current?.id === today)
+        )
+          clearDraft();
+        if (state.draft && !locked) state = ctx.state = dropDailyDraft(state);
+        // Today's attempt being simulated; one that does not restore reads as none.
+        const run = state.current?.id === today ? rebuildRun(catalog, state.current) : null;
+        if (run) {
           if (run.complete) finish(ctx, run);
           else simulate(ctx, run);
           return;
         }
         if (state.results[today])
           return setS({ ...ctx, phase: 'result', entry: state.results[today], fresh: false });
-        if (state.current && state.current.id !== today) {
-          // An unfinished attempt from another day cannot be resumed: drop it.
+        if (state.current) {
+          // An unfinished attempt from another day (or an unreadable one) cannot be resumed.
           state = { ...state, current: null };
           ctx.state = state;
         }
-        setS({ ...ctx, phase: state.lastPlayed === today ? 'used' : 'intro' });
+        // A draft with a pick made can only be resumed.
+        setS({
+          ...ctx,
+          phase: locked ? 'intro' : state.lastPlayed === today ? 'used' : 'intro',
+          resume: !!locked,
+        });
       } catch (error) {
         console.error('[daily] could not load', error);
         if (live()) setS({ phase: 'error', error });
@@ -604,8 +610,30 @@ export default function DailyScreen() {
 
   const start = async () => {
     setS(prev => ({ ...prev, starting: true }));
-    const { day } = s;
-    await startDraft({
+    const { day, today } = s;
+    try {
+      const locked = lockedDailyDraft(readDaily(), today),
+        open = currentDraft();
+      if (!locked) await startDailyDraft(day);
+      // The board still holds it (left with the back arrow), or it is rebuilt from the record.
+      else if (open?.context.kind === 'daily' && open.context.daily === today)
+        globalThis.location.hash = '#/draft';
+      else await resumeDraft(locked);
+    } catch (error) {
+      console.error('[daily] could not start the draft', error);
+      toast({
+        title: 'Could not start the draft',
+        message: String(error.message || error),
+        tone: 'danger',
+      });
+      if (alive.current) setS(prev => ({ ...prev, starting: false }));
+      return;
+    }
+    // A draft that finishes without leaving this route (no draft screen in between): reload.
+    if (alive.current && globalThis.location.hash.startsWith('#/daily')) boot();
+  };
+  const startDailyDraft = day =>
+    startDraft({
       kind: 'daily',
       type: 'nations',
       difficulty: day.difficulty,
@@ -618,9 +646,6 @@ export default function DailyScreen() {
       options: { hideRatings, uniqueNations: false },
       returnTo: '/daily',
     });
-    // A draft that finishes without leaving this route (no draft screen in between): reload.
-    if (alive.current && globalThis.location.hash.startsWith('#/daily')) boot();
-  };
 
   let body;
   if (s.phase === 'loading')
@@ -636,7 +661,12 @@ export default function DailyScreen() {
       action=${html`<${Button} variant="primary" onClick=${() => location.reload()}>Retry<//>`}
     />`;
   else if (s.phase === 'intro')
-    body = html`<${Intro} ...${s} onStart=${start} starting=${!!s.starting} />`;
+    body = html`<${Intro}
+      ...${s}
+      onStart=${start}
+      starting=${!!s.starting}
+      resume=${!!s.resume}
+    />`;
   else if (s.phase === 'sim')
     body = html`<${SimView} day=${s.day} snapshot=${s.snapshot} ticker=${ticker} />`;
   else if (s.phase === 'result') body = html`<${Result} ...${s} />`;

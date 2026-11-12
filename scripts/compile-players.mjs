@@ -12,8 +12,9 @@ import { makeIdentity } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';
 import { compileBadges } from '../app/core/players/badges.js';
 
-export const COMPILER_VERSION = '1.9.0';
-export const SOURCE_URL = 'https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data';
+import { SOURCE } from './data/paths.mjs';
+
+export const COMPILER_VERSION = '2.0.0';
 const bound = (v, a = 0.05, b = 0.95) => Math.max(a, Math.min(b, v));
 const fields = {
   pace: 'movement_sprint_speed',
@@ -34,44 +35,74 @@ const fields = {
   stamina: 'power_stamina',
   strength: 'power_strength',
 };
-export function parseCSV(text) {
-  text = text.replace(/^\uFEFF/, '');
-  const records = [];
-  let row = [],
-    field = '',
-    quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      if (quoted && text[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (quoted || field === '') quoted = !quoted;
+/**
+ * Walk a CSV text record by record without keeping it: `onRecord(fields, header, line)` gets
+ * each data record as an array of strings (reused: copy what you keep) — a 91 MB file never
+ * becomes 160,000 objects. Handles quotes, escaped quotes, embedded newlines and a BOM.
+ */
+export function scanCSV(text, onRecord) {
+  let header = null,
+    row = [],
+    quoted = false,
+    wasQuoted = false,
+    start = text.charCodeAt(0) === 0xfeff ? 1 : 0,
+    line = 0;
+  const n = text.length;
+  const field = end => {
+    let value = text.slice(start, end);
+    if (wasQuoted) value = value.slice(1, -1).replaceAll('""', '"');
+    row.push(value);
+    wasQuoted = false;
+  };
+  const record = () => {
+    line++;
+    if (!row.some(v => v !== '')) return void (row = []);
+    if (!header) {
+      header = row;
+      if (new Set(header).size !== header.length)
+        throw new Error('Missing or duplicate CSV headers');
+    } else {
+      if (row.length !== header.length)
+        throw new Error(`CSV row ${line}: expected ${header.length} fields, got ${row.length}`);
+      onRecord(row, header, line);
+    }
+    row = [];
+  };
+  for (let i = start; i < n; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 34) {
+      if (quoted && text.charCodeAt(i + 1) === 34) i++;
+      else if (quoted) quoted = false;
+      else if (i === start) quoted = wasQuoted = true;
       else throw new Error('Unexpected quote in CSV field');
-    } else if (c === ',' && !quoted) {
-      row.push(field);
-      field = '';
-    } else if ((c === '\n' || c === '\r') && !quoted) {
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(field);
-      if (row.some(v => v !== '')) records.push(row);
-      row = [];
-      field = '';
-    } else field += c;
+    } else if (quoted) continue;
+    else if (c === 44) {
+      field(i);
+      start = i + 1;
+    } else if (c === 10 || c === 13) {
+      field(i);
+      if (c === 13 && text.charCodeAt(i + 1) === 10) i++;
+      start = i + 1;
+      record();
+    }
   }
   if (quoted) throw new Error('Unclosed quoted CSV field');
-  if (field !== '' || row.length) {
-    row.push(field);
-    records.push(row);
+  if (start < n || row.length) {
+    field(n);
+    record();
   }
-  const header = records.shift();
-  if (!header || new Set(header).size !== header.length)
-    throw new Error('Missing or duplicate CSV headers');
-  return records.map((r, i) => {
-    if (r.length !== header.length)
-      throw new Error(`CSV row ${i + 2}: expected ${header.length} fields, got ${r.length}`);
-    return Object.fromEntries(header.map((k, j) => [k, r[j]]));
+  if (!header) throw new Error('Missing or duplicate CSV headers');
+  return header;
+}
+/** The whole CSV as one object per record (header name → string). */
+export function parseCSV(text) {
+  const records = [];
+  scanCSV(text, (fields, header) => {
+    const record = {};
+    for (let j = 0; j < header.length; j++) record[header[j]] = fields[j];
+    records.push(record);
   });
+  return records;
 }
 function number(row, key, min = 1, max = 99) {
   const raw = row[key],
@@ -88,7 +119,7 @@ function number(row, key, min = 1, max = 99) {
   return n;
 }
 const roleAlias = { CDM: 'DM', CAM: 'AM', CF: 'ST', LWB: 'LB', RWB: 'RB' };
-function positions(row) {
+export function positions(row) {
   const p = [
     ...new Set(
       row.player_positions
@@ -161,14 +192,11 @@ const labelMap = {
 // Past editions capitalise the same labels differently ('#Clinical Finisher').
 const labelLookup = new Map(Object.entries(labelMap).map(([k, v]) => [k.toLowerCase(), v]));
 /**
- * One source row → a compiled player. `options` (past editions, scripts/compile-legends.mjs):
- * `suffix` of the profile id (default `u<update>`), `source` ({ url, license }) and
- * `inference` notes to record.
+ * The game's attributes of a source row (before normalizeAttributes): the columns of `fields`,
+ * awareness from two of them, and goalkeeping — a keeper's is EA's overall.
  */
-export function compilePlayer(row, sourceRow, options = {}) {
-  if (!/^\d+$/.test(row.player_id || '')) throw new Error('Invalid player ID');
-  const [primaryPosition, ...secondaryPositions] = positions(row),
-    attrs = {};
+export function sourceAttributes(row, primaryPosition) {
+  const attrs = {};
   for (const [key, source] of Object.entries(fields)) attrs[key] = number(row, source);
   attrs.awareness = Math.round(
     number(row, 'defending_marking_awareness') * 0.7 + number(row, 'movement_reactions') * 0.3,
@@ -182,6 +210,17 @@ export function compilePlayer(row, sourceRow, options = {}) {
             0,
           ) / 5,
         );
+  return attrs;
+}
+/**
+ * One source row → a compiled player. `options` (past editions, scripts/compile-legends.mjs):
+ * `suffix` of the profile id (default `u<update>`), `source` ({ url, license }) and
+ * `inference` notes to record.
+ */
+export function compilePlayer(row, sourceRow, options = {}) {
+  if (!/^\d+$/.test(row.player_id || '')) throw new Error('Invalid player ID');
+  const [primaryPosition, ...secondaryPositions] = positions(row),
+    attrs = sourceAttributes(row, primaryPosition);
   const foot = row.preferred_foot?.toLowerCase();
   if (!['left', 'right'].includes(foot)) throw new Error(`${row.player_id}: invalid foot`);
   const weakFoot = [0, 15, 35, 60, 82, 100][number(row, 'weak_foot', 1, 5)];
@@ -261,8 +300,8 @@ export function compilePlayer(row, sourceRow, options = {}) {
     sourceOverall: number(row, 'overall'),
     source: {
       compilerVersion: COMPILER_VERSION,
-      url: options.source?.url ?? SOURCE_URL,
-      license: options.source?.license ?? 'CC BY 4.0',
+      url: options.source?.url ?? SOURCE.page,
+      license: options.source?.license ?? SOURCE.license,
       row: sourceRow,
       edition: `${Number(row.fifa_version) >= 24 ? 'FC' : 'FIFA'} ${row.fifa_version}`,
       update: row.fifa_update,
@@ -313,11 +352,11 @@ export function compileRows(rows, { first = 1000, goalkeepers = 100, sourceHash 
     schemaVersion: 1,
     compilerVersion: COMPILER_VERSION,
     source: {
-      url: SOURCE_URL,
-      author: 'rovnez',
-      upstream: 'SoFIFA / EA SPORTS FC 26',
-      license: 'CC BY 4.0',
-      licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+      url: SOURCE.page,
+      author: SOURCE.author,
+      upstream: SOURCE.upstream,
+      license: SOURCE.license,
+      licenseUrl: SOURCE.licenseUrl,
       sha256: sourceHash,
       asOf: players[0]?.source.asOf,
     },

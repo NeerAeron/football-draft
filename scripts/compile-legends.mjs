@@ -1,23 +1,51 @@
-// Legends and Prime versions from the past editions (FIFA 15–23, the legacy source), compiled
-// through the same compiler as the current players (compilePlayer: attribute mapping,
-// tendencies, badges).
-//   * Best version of a player = his highest overall; ties → the latest edition.
-//   * Legend = a player who is NOT in the current catalog, best overall >= LEGEND_MINIMUM. He
-//     keeps the nationality and positions of that edition, and its club when that club is in the
-//     catalog (same sofifa team id), so he links with club mates; otherwise he has no club.
-//   * Prime version of a current catalog player: stored when his best past overall is at least
-//     PRIME_GAP above his current one, or is PRIME_MINIMUM or more (and higher than now).
-// Composure does not exist before FIFA 17: a FIFA 15/16 version takes the player's composure
-// from his nearest later edition; a player who never got one takes his reactions (EA's closest
-// mental attribute) — recorded in inference.composure. Deterministic; nothing is invented.
-import { compilePlayer } from './compile-players.mjs';
+// Legends and Prime versions from 26 past titles: FIFA 15–23 (the legacy CSV) and FIFA 98–14
+// (data/legacy-titles.json), compiled through the same compiler as the current players
+// (compilePlayer: attribute mapping, tendencies, badges).
+//   * A past version has an overall on EA's modern scale: the one EA printed (FIFA 09–23), or
+//     for the titles that printed none (FIFA 98–08) the one the chain of shared players gives
+//     it (scripts/legends-calibration.mjs). Its card has the skills of that year, moved
+//     together by the few points that make the game's own rating model show that overall —
+//     so every threshold below is in the rating a card shows.
+//   * FC 27 is the baseline of the scale: a title whose best players EA rated lower than it
+//     rates today's (FIFA 09–16, and FIFA 98–08 through the chain) is lifted at the top by
+//     that difference; no title is lowered.
+//   * One person, all his versions: EA's player id ties FIFA 2000–23 and the catalog together;
+//     FIFA 98/99 rows join by name and team. Best version = the highest overall; ties → the
+//     latest title (the richer data).
+//   * Legend = a best version shown at LEGEND_MINIMUM or more, of
+//       – a player who is NOT in the current catalog, or
+//       – a catalog player whose card today shows less and whom EA rates lower today
+//         (`legendOf` = his catalog profileId).
+//     He has today's name of his nation and the positions of that title, and its club when
+//     that club is in the catalog (EA's team id), so he links with club mates; otherwise he
+//     has no club. A catalog player's legend carries his catalog name.
+//   * Prime version of a current catalog player: his best version, whenever EA's overall of
+//     it is above today's and its card shows more than today's card — any gain.
+//   * The year of a version is the year of its ratings: `fifa_update_date` (FIFA 15–23), the
+//     year before the title's number for the launch databases (FIFA 98 → 1997 … 14 → 2013).
+//   * What a title lacks comes from the player's nearest version that has it — composure
+//     (FIFA 11–16; else his reactions), the preferred foot and the weak foot (the early
+//     titles; else right and 3) — and is recorded in the provenance. Nothing is invented.
+// Deterministic.
+import { compilePlayer, positions as rowPositions } from './compile-players.mjs';
 import { overallRating } from '../app/core/players/ratings.js';
 import { normalizeBadges } from '../app/core/players/badges.js';
 import { explicitEvidence } from '../app/core/players/catalog-derived.js';
+import { foldDiacritics } from '../app/core/util/text.js';
+import { SKILL_FIELDS } from './data/legacy-titles.mjs';
+import {
+  calibrateTitles,
+  cardFields,
+  secondStrikerRoles,
+  teamWords,
+  POOL_YEARS,
+} from './legends-calibration.mjs';
 
 export const LEGEND_MINIMUM = 85;
-export const PRIME_GAP = 3;
-export const PRIME_MINIMUM = 88;
+// The lift of a stingy title (see `lifts` below): measured on the title's LIFT_TOP best,
+// nothing under LIFT_FROM, in full from the level of those best.
+export const LIFT_TOP = 30;
+export const LIFT_FROM = 84;
 export const LEGACY = {
   url: 'https://huggingface.co/datasets/jsulz/FIFA23',
   author: 'jsulz',
@@ -25,12 +53,46 @@ export const LEGACY = {
   license: 'MIT',
   licenseUrl: 'https://huggingface.co/datasets/jsulz/FIFA23/blob/main/README.md',
 };
+export const TITLES = {
+  upstream: "EA SPORTS FIFA 98–14, the games' own PC databases",
+  license: 'No licence stated (community archive; player data © Electronic Arts)',
+};
+/** The rules in words, for the file's `selection` block. */
+export const SELECTION = {
+  overall:
+    'EA’s printed overall (FIFA 09–23); FIFA 98–08 print none and are chain-linked to the next title through the players both have',
+  lift: `A title whose ${LIFT_TOP} best are rated lower on average than FC 27's is lifted by the difference (never lowered): in full from the level of those best, fading to nothing at ${LIFT_FROM}; FIFA 98–08 carry the lift of FIFA 09, whose scale they are linked to`,
+  card: 'The skills of that year, moved together until the game shows that overall',
+  bestVersion: 'Highest overall; ties: the latest title',
+  legends: `Best versions shown ${LEGEND_MINIMUM}+: players who are not in the catalog, and catalog players whose card today shows less; of a catalog nation; the club of that title when it is in the catalog`,
+  primes: 'Catalog players whose best version shows more than their card today: any gain',
+  year: 'The year of the ratings: the snapshot date (FIFA 15–23), the year before the title’s number (FIFA 98–14)',
+  borrowed:
+    'Composure (FIFA 11–16), foot and weak foot (early titles): the player’s nearest version that has one',
+  legendMinimum: LEGEND_MINIMUM,
+};
 
-const int = (row, key) => Number(row[key]);
-const better = (a, b) =>
-  int(a, 'overall') > int(b, 'overall') ||
-  (int(a, 'overall') === int(b, 'overall') && int(a, 'fifa_version') > int(b, 'fifa_version'));
 const shown = p => overallRating(p, true, p.primaryPosition);
+const KEEPING = ['diving', 'handling', 'kicking', 'positioning', 'reflexes'].map(
+  k => `goalkeeping_${k}`,
+);
+const words = text =>
+  foldDiacritics(String(text ?? ''))
+    .toLowerCase()
+    .replace(/[^a-z]+/g, ' ')
+    .trim();
+// An unlicensed stand-in ("No 9", "No. 11") is not a name.
+const PLACEHOLDER = /^no\.?\s*\d+$/i;
+
+/** The year of a legacy row's ratings snapshot; the build fails without one. */
+function snapshotYear(row) {
+  const m = /^(\d{4})-\d{2}-\d{2}/.exec(row.fifa_update_date || '');
+  if (!m)
+    throw Error(
+      `${row.short_name} (FIFA ${row.fifa_version}): no snapshot date (fifa_update_date "${row.fifa_update_date}"), so the year of this version is unknown`,
+    );
+  return Number(m[1]);
+}
 
 /** The fields the game uses of a compiled profile (as toRuntimeCatalog keeps them). */
 function runtimePlayer(p, extra) {
@@ -57,85 +119,461 @@ function runtimePlayer(p, extra) {
 /**
  * @param legacyRows parsed rows of the legacy CSV (every edition of every player)
  * @param catalog the compiled current catalog (compileLeagueCatalog output)
- * @param currentRows parsed rows of the current CSV (nationality ids → today's nation names)
  * @param hash SHA-256 of the legacy CSV
- * @returns {{ legends, primes, stats }} runtime players; a prime carries `primeOf` (the current
- *   player's profileId) and no name, club or nation (those are the current player's)
+ * @param older the decoded FIFA 98–14 titles ({ titles, sha256 }, scripts/data/legacy-titles.mjs)
+ * @returns {{ legends, primes, stats, calibration, notes }} runtime players, each with
+ *   `edition` and `year`; a catalog player's legend carries `legendOf`, a prime `primeOf` (the
+ *   current player's profileId) and no name, club or nation (those are the current player's).
+ *   `calibration` and `notes` (per card: where its numbers come from) are the provenance.
  */
-export function compileLegends(legacyRows, catalog, currentRows, hash = null) {
-  const best = new Map(),
-    composure = new Map(); // player id → [[edition, composure]] of the editions that have one
-  legacyRows.forEach((row, index) => {
-    const id = row.player_id,
-      held = best.get(id);
-    if (!held || better(row, held.row)) best.set(id, { row, index });
-    if (row.mentality_composure !== '') {
-      if (!composure.has(id)) composure.set(id, []);
-      composure.get(id).push([int(row, 'fifa_version'), row.mentality_composure]);
-    }
-  });
-  // Nation names as today's catalog spells them (Türkiye, Czechia…), by sofifa nationality id.
-  const nationNames = new Map(currentRows.map(r => [r.nationality_id, r.nationality_name]));
-  const teams = new Map(catalog.teams.map(t => [String(t.id), t])),
-    current = new Map(catalog.players.map(p => [String(p.sourcePlayerId), p]));
-  // A legend needs a nation of the catalog (its flag ships, its players can be his mates).
-  const nations = new Set(catalog.players.map(p => p.source.nationality));
-  const stats = { composureFromLaterEdition: 0, composureFromReactions: 0, otherNations: [] };
-  const compile = ({ row, index }, suffix) => {
-    let source = row,
-      note = null;
-    if (row.mentality_composure === '') {
-      const version = int(row, 'fifa_version'),
-        later = (composure.get(row.player_id) || [])
-          .filter(([v]) => v > version)
-          .sort((a, b) => a[0] - b[0])[0];
-      source = { ...row, mentality_composure: later ? later[1] : row.movement_reactions };
-      note = later
-        ? `FIFA ${later[0]} (no composure before FIFA 17)`
-        : 'reactions (no composure before FIFA 17)';
-      stats[later ? 'composureFromLaterEdition' : 'composureFromReactions']++;
-    }
-    const p = compilePlayer(source, index + 1, {
-      suffix,
-      source: LEGACY,
-      inference: note ? { composure: note } : {},
-    });
-    p.source.sha256 = hash;
-    return p;
+export function compileLegends(legacyRows, catalog, hash = null, older = { titles: [] }) {
+  const calibration = calibrateTitles(older.titles),
+    teams = new Map(catalog.teams.map(t => [String(t.id), t])),
+    current = new Map(catalog.players.map(p => [String(p.sourcePlayerId), p])),
+    nations = new Set(catalog.players.map(p => p.source.nationality));
+  // ---- persons: every version of everyone ------------------------------------------------
+  const persons = new Map(); // key → { key, legacy: [{ row, index }], old: [rows] }
+  const person = key => {
+    if (!persons.has(key)) persons.set(key, { key, legacy: [], old: [] });
+    return persons.get(key);
   };
-  const legends = [],
-    primes = [];
-  for (const [id, entry] of best) {
-    const overall = int(entry.row, 'overall'),
-      now = current.get(id);
-    if (!now) {
-      if (overall < LEGEND_MINIMUM) continue;
-      const nationality = nationNames.get(entry.row.nationality_id) ?? entry.row.nationality_name;
-      if (!nations.has(nationality)) {
-        stats.otherNations.push(`${entry.row.short_name} ${overall} (${nationality})`);
+  legacyRows.forEach((row, index) => person(row.player_id).legacy.push({ row, index }));
+  const stats = {
+    pureLegends: 0,
+    currentLegends: 0,
+    composureBorrowed: 0,
+    composureFromReactions: 0,
+    footBorrowed: 0,
+    footUnknown: 0,
+    shownOffOverall: 0,
+    otherNations: [],
+    dropped: [...calibration.dropped],
+    merged: calibration.merged,
+  };
+  for (const one of calibration.persons.values()) {
+    const key = String(one.id),
+      known = persons.get(key);
+    if (known?.legacy.length) {
+      // The same EA id in FIFA 15–23: the same man when a name word or the birthday agrees.
+      const names = new Set(
+          known.legacy.flatMap(({ row }) =>
+            `${words(row.short_name)} ${words(row.long_name)}`.split(' ').filter(w => w.length > 1),
+          ),
+        ),
+        same = one.rows.some(
+          p =>
+            (p.born && known.legacy.some(({ row }) => row.dob === p.born)) ||
+            `${words(p.name)} ${words(p.fullName)}`.split(' ').some(w => names.has(w)),
+        );
+      if (!same) {
+        stats.dropped.push(
+          `${one.rows.at(-1).name} (FIFA 98–14, id ${key}): not the ${known.legacy.at(-1).row.short_name} of FIFA 15–23`,
+        );
         continue;
       }
-      const p = compile(entry, 'legend'),
-        team = teams.get(String(entry.row.club_team_id));
-      legends.push(
-        runtimePlayer(p, {
-          source: { clubId: team ? team.id : null, nationality },
-        }),
-      );
-    } else if (
-      overall >= now.sourceOverall + PRIME_GAP ||
-      (overall >= PRIME_MINIMUM && overall > now.sourceOverall)
+    }
+    person(key).old.push(...one.rows);
+  }
+  // ---- nations --------------------------------------------------------------------------
+  // Today's catalog name of a past nationality id (Türkiye, Czechia…): the nation most
+  // catalog players of that id have today (the current source carries no ids).
+  const nationVotes = new Map();
+  for (const one of persons.values()) {
+    const now = current.get(one.key);
+    if (!now || !one.legacy.length) continue;
+    const id = one.legacy.at(-1).row.nationality_id;
+    if (!nationVotes.has(id)) nationVotes.set(id, new Map());
+    const votes = nationVotes.get(id);
+    votes.set(now.source.nationality, (votes.get(now.source.nationality) || 0) + 1);
+  }
+  const winner = votes => [...votes].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+  const nationNames = new Map([...nationVotes].map(([id, votes]) => [id, winner(votes)[0]]));
+  // Nation names as the old titles spell them: the catalog's own, EA's of FIFA 06–23 (through
+  // the nationality id), and the national teams of the early titles, which are named after
+  // their nation ("Holland", "Czech Rep") — a team counts as one when its name is a nation's.
+  const nationByName = new Map();
+  for (const name of nations) nationByName.set(teamWords(name).join(' '), name);
+  const spell = (name, id) => {
+    const nation = nationNames.get(String(id)),
+      key = teamWords(name).join(' ');
+    if (nation && key && !nationByName.has(key)) nationByName.set(key, nation);
+  };
+  for (const row of legacyRows) spell(row.nationality_name, row.nationality_id);
+  for (const t of older.titles)
+    if (t.edition >= 5 && t.edition < 90)
+      for (const p of t.players) if (p.nationName) spell(p.nationName, p.nationCode);
+  const teamNation = name => nationByName.get(teamWords(name).join(' ')) ?? null;
+  // A person's nation from his own rows: FIFA 15–23, else EA's nationality id (FIFA 2005–14),
+  // else the national team he is in.
+  const ownNation = one => {
+    if (one.legacy.length) {
+      const row = one.legacy.at(-1).row;
+      return nationNames.get(row.nationality_id) ?? row.nationality_name;
+    }
+    for (const p of [...one.old].reverse())
+      if (p.edition >= 5 && p.edition < 90 && p.nationCode != null) {
+        const nation = nationNames.get(String(p.nationCode)) ?? teamNation(p.nationName ?? '');
+        if (nation) return nation;
+      }
+    for (const p of [...one.old].reverse())
+      for (const team of p.clubs) if (teamNation(team)) return teamNation(team);
+    return null;
+  };
+  // The nationality codes of FIFA 98–2003 differ per title: a code is the nation most of its
+  // players with a known nation have (at least three, four in five agreeing).
+  const byOldRow = new Map();
+  for (const one of persons.values()) for (const p of one.old) byOldRow.set(p, one);
+  const codeNation = new Map(); // title → Map(code → nation)
+  for (const t of older.titles) {
+    if (!(t.edition <= 3 || t.edition >= 90)) continue;
+    const votes = new Map();
+    for (const p of t.players) {
+      const one = byOldRow.get(p),
+        nation = one && ownNation(one);
+      if (!nation || p.nationCode == null) continue;
+      if (!votes.has(p.nationCode)) votes.set(p.nationCode, new Map());
+      votes.get(p.nationCode).set(nation, (votes.get(p.nationCode).get(nation) || 0) + 1);
+    }
+    const codes = new Map();
+    for (const [code, list] of votes) {
+      const [nation, count] = winner(list),
+        total = [...list.values()].reduce((s, v) => s + v, 0);
+      if (count >= 3 && count >= 0.8 * total) codes.set(code, nation);
+    }
+    codeNation.set(t.edition, codes);
+  }
+  const nationOf = one => {
+    const own = ownNation(one);
+    if (own) return own;
+    for (const p of [...one.old].reverse()) {
+      const nation = codeNation.get(p.edition)?.get(p.nationCode);
+      if (nation) return nation;
+    }
+    return null;
+  };
+  // ---- clubs of the early titles (names only): the EA team id a later title gives that name
+  const teamIds = new Map();
+  for (const t of older.titles)
+    for (const p of t.players)
+      p.clubs.forEach((name, i) => {
+        const key = teamWords(name).join(' ');
+        if (p.clubIds[i] != null && key && !/^team \d+$/i.test(name) && !teamIds.has(key))
+          teamIds.set(key, String(p.clubIds[i]));
+      });
+  for (const t of catalog.teams) {
+    const key = teamWords(t.name).join(' ');
+    if (key && !teamIds.has(key)) teamIds.set(key, String(t.id));
+  }
+  const clubOf = p => {
+    for (let i = 0; i < p.clubs.length; i++) {
+      const id = p.clubIds[i] ?? teamIds.get(teamWords(p.clubs[i]).join(' '));
+      if (id != null && teams.has(String(id))) return teams.get(String(id));
+    }
+    return null;
+  };
+  // ---- the lift ---------------------------------------------------------------------------
+  // EA printed lower numbers for its best players in some years than it does today (FIFA
+  // 09–16: one to two points at the top), and the chain hands FIFA 09's scale down to FIFA
+  // 98–08. FC 27 is the baseline: a title whose LIFT_TOP best average less than FC 27's is
+  // lifted by the difference — one constant per title, never a lowering (FIFA 17–23 stay as
+  // printed). The lift is for the top: in full from the level of the title's best, fading to
+  // nothing at LIFT_FROM, so the ordinary players of a lifted year do not become legends.
+  const topMean = list => {
+    const best = [...list].sort((a, b) => b - a).slice(0, LIFT_TOP);
+    return best.reduce((sum, v) => sum + v, 0) / best.length;
+  };
+  const baseline = topMean(catalog.players.map(p => p.sourceOverall)),
+    printed = new Map(); // edition → the printed overalls of the title
+  for (const row of legacyRows) {
+    const edition = Number(row.fifa_version);
+    if (!printed.has(edition)) printed.set(edition, []);
+    printed.get(edition).push(Number(row.overall));
+  }
+  const official = older.titles.filter(t => t.players[0].overall != null);
+  for (const t of official)
+    printed.set(
+      t.edition,
+      t.players.filter(p => p.given != null).map(p => p.overall),
+    );
+  const lifts = new Map();
+  for (const [edition, list] of printed) {
+    const top = topMean(list);
+    lifts.set(edition, { lift: Math.max(0, Math.round((baseline - top) * 100) / 100), full: top });
+  }
+  // The chain titles are on the scale of the first official title: its lift, not a second one.
+  for (const t of older.titles)
+    if (!lifts.has(t.edition) && official.length)
+      lifts.set(t.edition, lifts.get(official[0].edition));
+  const lifted = (edition, overall) => {
+    const { lift, full } = lifts.get(edition) ?? { lift: 0 };
+    if (!lift) return overall;
+    const share = Math.max(0, Math.min(1, (overall - LIFT_FROM) / (full - LIFT_FROM)));
+    return overall + lift * share;
+  };
+  // ---- versions --------------------------------------------------------------------------
+  const versions = one => [
+    ...one.old
+      .filter(p => p.given != null)
+      .map(p => ({
+        old: p,
+        year: p.year,
+        edition: p.edition,
+        printed: Math.round(p.given),
+        overall: Math.round(lifted(p.edition, p.given)),
+      })),
+    ...one.legacy.map(entry => ({
+      entry,
+      year: snapshotYear(entry.row),
+      edition: Number(entry.row.fifa_version),
+      printed: Number(entry.row.overall),
+      overall: Math.round(lifted(Number(entry.row.fifa_version), Number(entry.row.overall))),
+    })),
+  ];
+  const bestVersion = one => {
+    let best = null;
+    for (const v of versions(one))
+      if (!best || v.overall > best.overall || (v.overall === best.overall && v.year > best.year))
+        best = v;
+    return best;
+  };
+  // What a version lacks, from the nearest version of the same person that has it (a tie in
+  // years → the later one).
+  const nearest = (one, year, value) => {
+    let best = null;
+    for (const v of versions(one).concat(
+      one.old.filter(p => p.given == null).map(p => ({ old: p, year: p.year })),
+    )) {
+      const found = value(v),
+        gap = Math.abs(v.year - year);
+      if (found == null) continue;
+      if (!best || gap < best.gap || (gap === best.gap && v.year > best.year))
+        best = { found, gap, year: v.year };
+    }
+    return best;
+  };
+  const nativeComposure = new Set(
+    older.titles
+      .filter(t => t.fields.mentality_composure[0] === 'playercomposure')
+      .map(t => t.edition),
+  );
+  const composureOf = v =>
+    v.entry
+      ? v.entry.row.mentality_composure === ''
+        ? null
+        : Number(v.entry.row.mentality_composure)
+      : nativeComposure.has(v.old.edition)
+        ? v.old.native.mentality_composure
+        : null;
+  const footOf = v => (v.entry ? v.entry.row.preferred_foot.toLowerCase() : v.old.foot);
+  const weakFootOf = v => (v.entry ? Number(v.entry.row.weak_foot) : v.old.weakFoot);
+  // The name of a player the older titles alone know, in the style of today's cards
+  // ("Z. Boban", "Hagi"): from his latest title that has the parts of a name, else the latest
+  // with the surname alone, else a whole name as one string; never a stand-in ("No 9").
+  // His real name is the one most of his rows agree on (a word in common): an invented name
+  // under his own id for a year or two ("Petrovici Teodor" for Mutu) is outvoted.
+  const real = one => {
+    const groups = [];
+    for (const q of one.old) {
+      if (q.standIn) continue;
+      const own = words(`${q.name} ${q.fullName}`)
+          .split(' ')
+          .filter(w => w.length > 1),
+        group = groups.find(g => own.some(w => g.words.has(w)));
+      if (!group) groups.push({ words: new Set(own), rows: [q] });
+      else {
+        group.rows.push(q);
+        for (const w of own) group.words.add(w);
+      }
+    }
+    groups.sort((a, b) => b.rows.length - a.rows.length); // a tie: the earlier name
+    return [...(groups[0]?.rows ?? [])].reverse();
+  };
+  const nameSource = one =>
+    ['parts', 'short', 'whole'].map(kind => real(one).find(q => q.named === kind)).find(Boolean);
+  const fullNameSource = one => real(one).find(q => /\s/.test(q.fullName));
+  const notes = {};
+  // The compiled card of a version: its skills moved to show its overall.
+  const card = (one, v, suffix, count) => {
+    const inference = {},
+      note = { overall: v.overall };
+    if (v.overall !== v.printed) note.lifted = v.overall - v.printed;
+    let row, position, skills, index;
+    if (v.entry) {
+      row = { ...v.entry.row };
+      index = v.entry.index + 1;
+      skills = {};
+      for (const f of SKILL_FIELDS) skills[f] = row[f] === '' ? null : Number(row[f]);
+      const list = row.player_positions.split(',').map(s => s.trim());
+      if (list[0] === 'CF') {
+        const roles = secondStrikerRoles({
+          ...skills,
+          mentality_composure: skills.mentality_composure ?? skills.movement_reactions,
+        });
+        row.player_positions = [...roles, ...list.slice(1)].join(', ');
+        note.position = `CF → ${roles[0]}`;
+      }
+      position = rowPositions(row)[0];
+      note.title = `FIFA ${row.fifa_version}`;
+    } else {
+      const p = v.old,
+        legacy = one.legacy.at(-1)?.row,
+        named = nameSource(one) ?? p,
+        club = clubOf(p),
+        foot = p.foot ? null : nearest(one, v.year, footOf),
+        weak = p.weakFoot ? null : nearest(one, v.year, weakFootOf);
+      if (!p.foot) {
+        inference.foot = foot ? `from his ${foot.year} version` : 'unknown: right';
+        if (count) stats[foot ? 'footBorrowed' : 'footUnknown']++;
+      }
+      if (!p.weakFoot) inference.weakFoot = weak ? `from his ${weak.year} version` : 'unknown: 3';
+      skills = { ...p.skills };
+      position = p.positions[0];
+      index = p.rank;
+      row = {
+        player_id: one.key,
+        fifa_version: String(p.edition),
+        fifa_update: '1',
+        fifa_update_date: '',
+        short_name: legacy?.short_name ?? named.name,
+        long_name: legacy?.long_name ?? fullNameSource(one)?.fullName ?? named.fullName,
+        player_positions: p.positions.join(', '),
+        preferred_foot: p.foot ?? foot?.found ?? 'right',
+        weak_foot: p.weakFoot ?? weak?.found ?? 3,
+        player_traits: p.traits.join(', '),
+        player_tags: '',
+        club_name: club?.name ?? p.clubs[0] ?? '',
+        club_team_id: club ? String(club.id) : '',
+        nationality_name: p.nationName ?? '',
+      };
+      const keeping = position === 'GK' ? v.overall : Math.max(1, Math.round(p.outfieldKeeping));
+      for (const k of KEEPING) row[k] = keeping;
+      note.title = older.titles.find(t => t.edition === p.edition).title;
+      if (p.overall == null)
+        note.overallFrom = p.backing ? `chain, pooled with ${p.backing.join(', ')}` : 'chain';
+    }
+    if (
+      skills.mentality_composure == null ||
+      (v.old && !nativeComposure.has(v.old.edition) && v.old.edition >= 11 && v.old.edition < 90)
     ) {
-      const p = compile(entry, 'prime');
-      // The rating the game shows must go up too (it weighs the attributes itself).
-      if (shown(p) <= shown(now)) continue;
-      const { name, fullName, ...prime } = runtimePlayer(p, { primeOf: now.profileId });
-      primes.push(prime);
+      const donor = nearest(one, v.year, composureOf);
+      skills.mentality_composure = donor ? donor.found : skills.movement_reactions;
+      inference.composure = donor ? `from his ${donor.year} version` : 'his reactions';
+      if (count) stats[donor ? 'composureBorrowed' : 'composureFromReactions']++;
+    }
+    const moved = cardFields(skills, position, v.overall);
+    Object.assign(row, moved.fields, { overall: v.overall });
+    note.shift = moved.shift;
+    const p = compilePlayer(row, index, {
+      suffix,
+      source: v.entry ? LEGACY : { url: older.source?.archive, license: TITLES.license },
+      inference,
+    });
+    p.source.sha256 = v.entry ? hash : older.sha256;
+    if (v.old) p.source.edition = note.title;
+    if (Object.keys(inference).length) note.borrowed = inference;
+    notes[p.profileId] = note;
+    if (count && shown(p) !== v.overall) stats.shownOffOverall++;
+    return p;
+  };
+  // ---- selection -------------------------------------------------------------------------
+  const legends = [],
+    primes = [];
+  const legend = (one, v, p, extra, nationality) => {
+    const team = v.entry ? teams.get(String(v.entry.row.club_team_id)) : clubOf(v.old);
+    legends.push(
+      runtimePlayer(p, {
+        ...extra,
+        year: v.year,
+        source: { clubId: team ? team.id : null, nationality },
+      }),
+    );
+  };
+  for (const one of persons.values()) {
+    const now = current.get(one.key),
+      best = bestVersion(one);
+    if (!best) continue;
+    if (!now) {
+      if (best.overall < LEGEND_MINIMUM) continue;
+      const nationality = nationOf(one),
+        p = card(one, best, 'legend', true);
+      if (shown(p) < LEGEND_MINIMUM) continue;
+      if (PLACEHOLDER.test(p.name)) {
+        stats.dropped.push(`${p.name} ${shown(p)} (${p.source.edition}, id ${one.key}): no name`);
+        continue;
+      }
+      if (!nations.has(nationality)) {
+        stats.otherNations.push(`${p.name} ${shown(p)} (${nationality ?? 'nation unknown'})`);
+        continue;
+      }
+      legend(one, best, p, {}, nationality);
+      stats.pureLegends++;
+      continue;
+    }
+    // A current player: only a version EA itself rated above today's, shown above today's card.
+    const today = shown(now);
+    if (best.overall <= now.sourceOverall || best.overall <= today) continue;
+    const prime = card(one, best, 'prime', true);
+    if (shown(prime) <= today) continue;
+    const { name, fullName, ...rest } = runtimePlayer(prime, {
+      year: best.year,
+      primeOf: now.profileId,
+    });
+    primes.push(rest);
+    if (shown(prime) >= LEGEND_MINIMUM) {
+      // His best version is a Legend-spin option: the same player, so the same name and nation.
+      legend(
+        one,
+        best,
+        card(one, best, 'legend', false),
+        { name: now.name, fullName: now.fullName, legendOf: now.profileId },
+        now.source.nationality,
+      );
+      stats.currentLegends++;
     }
   }
   const id = p => Number(p.profileId.split(':')[1]);
-  legends.sort((a, b) => b.sourceOverall - a.sourceOverall || id(a) - id(b));
+  const rated = new Map(legends.map(p => [p, shown(p)]));
+  // Best first as the game shows them, then the latest version, then the id.
+  legends.sort((a, b) => rated.get(b) - rated.get(a) || b.year - a.year || id(a) - id(b));
+  // One person once, whatever the ids say: of two legends of one nation with the same name
+  // the lower-rated (else the older) goes, and is listed.
+  const seen = new Map();
+  for (const p of [...legends]) {
+    const key = `${p.source.nationality}|${words(p.fullName)}`,
+      first = seen.get(key);
+    if (!first) seen.set(key, p);
+    else {
+      legends.splice(legends.indexOf(p), 1);
+      stats.dropped.push(
+        `${p.name} ${rated.get(p)} (’${String(p.year % 100).padStart(2, '0')}, id ${id(p)}): same name and nation as ${first.name} ${rated.get(first)} (id ${id(first)})`,
+      );
+      stats[p.legendOf ? 'currentLegends' : 'pureLegends']--;
+    }
+  }
   const order = new Map(catalog.players.map((p, i) => [p.profileId, i]));
   primes.sort((a, b) => order.get(a.primeOf) - order.get(b.primeOf));
-  return { legends, primes, stats };
+  const { yardstick, links, pool } = calibration;
+  return {
+    legends,
+    primes,
+    stats,
+    calibration: {
+      yardstick,
+      links,
+      pool,
+      poolYears: POOL_YEARS,
+      lift: {
+        baseline: Math.round(baseline * 100) / 100,
+        top: LIFT_TOP,
+        from: LIFT_FROM,
+        titles: Object.fromEntries(
+          [...lifts].map(([edition, l]) => [
+            edition >= 90 ? `FIFA ${edition}` : `FIFA ${String(edition).padStart(2, '0')}`,
+            l.lift,
+          ]),
+        ),
+      },
+    },
+    notes,
+  };
 }

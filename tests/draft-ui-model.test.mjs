@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
-import { createDraftSession } from '../app/core/draft/session.js';
+import { createDraftSession, NATURAL_FIT } from '../app/core/draft/session.js';
 import {
   filterPool,
   poolCounts,
@@ -14,6 +14,9 @@ import {
   rowBoost,
   mateLines,
   rowStats,
+  primeNote,
+  primeLine,
+  legendYearsLine,
   slotHighlights,
   linkLines,
   reelItems,
@@ -103,11 +106,41 @@ test('rowFit and slotHighlights show natural fit, small drops, poor fits and clo
   assert.equal(Object.keys(hl).length, 11);
   assert.equal(hl[0].state, 'blocked', 'an outfielder cannot play in goal');
   assert.ok(['best', 'penalty', 'neutral'].includes(hl[auto.slot].state));
-  for (const o of options.filter(o => o.allowed && o.natural - o.rating > POOR_FIT_DROP))
+  // (A slot he is natural in stays 'ok' even when the role's weights cost him more.)
+  for (const o of options.filter(
+    o => o.allowed && o.familiarity < NATURAL_FIT && o.natural - o.rating > POOR_FIT_DROP,
+  ))
     assert.equal(hl[o.slot].state, 'neutral');
+  // Every open slot carries his overall there (the number the pitch writes into the slot),
+  // closed slots none.
+  for (const o of options) {
+    const h = hl[o.slot];
+    if (o.allowed) assert.deepEqual([h.role, h.rating], [o.role, o.rating]);
+    else assert.deepEqual([h.state, h.rating], ['blocked', undefined]);
+  }
+  assert.ok(
+    options.some(o => o.allowed && o.rating !== auto.rating),
+    'numbers to compare',
+  );
   const hidden = slotHighlights(options, auto, { hideRatings: true });
-  for (const h of Object.values(hidden))
+  for (const h of Object.values(hidden)) {
     if (h.state === 'neutral') assert.equal(h.label, 'Poor', 'no rating leaks when hidden');
+    assert.equal(h.rating, undefined, 'no rating leaks when hidden');
+  }
+});
+
+test('the Prime tag of a row says the bump; the Legend spin says its years in one line', () => {
+  const version = { profileId: 'ea:1:fc20:prime', ovr: 94, edition: 20, year: 2019 };
+  assert.equal(primeNote(version, 86), 'Prime 94 +8');
+  assert.equal(primeNote(version), 'Prime 94');
+  assert.equal(primeNote(null, 86), '');
+  assert.deepEqual(primeLine(version, 86), { era: '’19', ovr: 94, gain: 8 });
+  // The year is the stored one (the snapshot's), not worked out from the edition.
+  assert.equal(primeLine({ ...version, year: 2020 }, 86).era, '’20');
+  assert.equal(primeLine(null, 86), null);
+  assert.equal(legendYearsLine([2014, 2022]), 'Best versions, 2014–2022');
+  assert.equal(legendYearsLine([2019, 2019]), 'Best versions, 2019');
+  assert.equal(legendYearsLine(null), '');
 });
 
 test('pool rows say the boost a player would get in the XI', () => {
@@ -191,7 +224,8 @@ test('oddsSummary reports uniform nation odds and tiered league odds honestly', 
   const nations = createDraftSession(catalog, { mode: 'nations', seed: 2 });
   const [n] = oddsSummary(nations.spin());
   assert.equal(n.uniform, true);
-  assert.equal(n.eligible, 64);
+  assert.equal(n.eligible, n.total); // every nation of the reel, each as likely as the next
+  assert.ok(n.eligible >= 56);
   const clubs = createDraftSession(catalog, { mode: 'clubs', seed: 2 });
   const [league, club] = oddsSummary(clubs.spin());
   assert.equal(league.uniform, false);
@@ -436,7 +470,7 @@ test('difficulty levels explain opponents and re-rolls', () => {
     [2, 1, 1],
   );
   assert.ok(levels.every(l => l.text.length > 20));
-  // A removed level in a link or a saved choice falls back to Pro.
+  // An unknown level in a link or a saved choice (a removed one too) falls back to Pro.
   assert.equal(setupDefaults('run', { query: { difficulty: 'amateur' } }).difficulty, 'pro');
   assert.equal(setupDefaults('run', { saved: { difficulty: 'semipro' } }).difficulty, 'pro');
   // Versus picks its re-rolls itself (None / One / Two), whatever the levels give.
