@@ -1,7 +1,10 @@
 /* Stylesheet entry for app/index.html and app/gallery.html — one <link>, no build.
    Cascade layers make precedence explicit: later layers win regardless of selector
    specificity, so a screen can restyle a component without !important.
-   Add new files here (one line each): components in `components`, screens in `screens`. */
+   This file is what the first screen paints with: tokens, base, every shared component,
+   the shell and Home. The other screens' sheets load with their screen, into the same
+   `screens` layer (ui/lib/styles.js: SCREEN_SHEETS; a route names its sheets in ui/routes.js).
+   Add a new component here (one line, layer `components`); a new screen there. */
 @layer tokens, base, components, shell, screens, overrides;
 
 @import url('./fonts.css');
@@ -35,12 +38,3 @@
 
 @import url('../screens/home/home.css') layer(screens);
 @import url('../screens/home/cabinet.css') layer(screens);
-@import url('../screens/settings/settings.css') layer(screens);
-@import url('../screens/placeholder/placeholder.css') layer(screens);
-@import url('../screens/setup/setup.css') layer(screens);
-@import url('../screens/draft/draft.css') layer(screens);
-@import url('../screens/prematch/prematch.css') layer(screens);
-@import url('../screens/run/run.css') layer(screens);
-@import url('../screens/daily/daily.css') layer(screens);
-@import url('../screens/exhibition/exhibition.css') layer(screens);
-@import url('../screens/match/match.css') layer(screens);

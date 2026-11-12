@@ -1,12 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../app/core/sim/engine.js';
-import {
-  DEFAULT_CONFIG,
-  loadConfig,
-  normalizeConfig,
-  saveConfig,
-} from '../app/core/config/config.js';
 
 function scene() {
   const m = new Match(27, 300);
@@ -180,38 +174,4 @@ test('team character strengthens preferences without changing players abilities 
   const skill = p.skill('shortPassing');
   m.tuning.gameplay.teamCharacter = 2;
   assert.equal(p.skill('shortPassing'), skill);
-});
-
-test('unchanged reception defaults upgrade once; custom values and explicit replay settings survive', () => {
-  const old = structuredClone(DEFAULT_CONFIG);
-  old._settingsVersion = 6;
-  old.gameplay.receptionError = 0.75;
-  old.gameplay.difficultReceptionError = 1.05;
-  const prior = globalThis.localStorage;
-  let stored = JSON.stringify(old);
-  globalThis.localStorage = {
-    getItem: () => stored,
-    setItem: (k, v) => {
-      stored = v;
-    },
-  };
-  try {
-    assert.equal(loadConfig().gameplay.receptionError, DEFAULT_CONFIG.gameplay.receptionError);
-    assert.equal(
-      loadConfig().gameplay.difficultReceptionError,
-      DEFAULT_CONFIG.gameplay.difficultReceptionError,
-    );
-    assert.equal(normalizeConfig(old).gameplay.receptionError, 0.75);
-    old.gameplay.receptionError = 0.4;
-    old.gameplay.difficultReceptionError = 0.8;
-    stored = JSON.stringify(old);
-    assert.equal(loadConfig().gameplay.receptionError, 0.4);
-    assert.equal(loadConfig().gameplay.difficultReceptionError, 0.8);
-    const current = structuredClone(DEFAULT_CONFIG);
-    current.gameplay.receptionError = 0.75;
-    saveConfig(current);
-    assert.equal(loadConfig().gameplay.receptionError, 0.75);
-  } finally {
-    globalThis.localStorage = prior;
-  }
 });

@@ -25,7 +25,8 @@ modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dep
 | `npm run data:fetch` / `npm run data:build` | pinned source CSVs / rebuild the catalog and legends (see below) | ~30 s |
 | `npm run data:reconcile` | tie a new source snapshot's club, league and nation names to the reference (`data/source-map.json`) | ~1 s |
 | `node tools/og/render.mjs` | re-render the link-preview card and app icons | — |
-| `npm run preload` | regenerate the preload block of `app/index.html` after adding/removing an import or stylesheet of the first screen (a test fails until you do) | — |
+| `npm run preload` | regenerate the preload block of `app/index.html` after adding/removing an import of the first screen or a stylesheet in `app.css` (a test fails until you do) | — |
+| `node scripts/dev/offline-deploy.mjs` | simulated deploys against the service worker: install, deploy, go offline (run after touching `app/sw.js` or `ui/lib/offline.js`) | ~40 s |
 | `node tools/calibration/blunders.mjs` | count frustrating plays over 24 club fixtures (`--compare`, `--list <type>`) | ~15 s |
 | `node tools/calibration/watch.mjs --fixture 3 --at 81.4` | contact sheet (PNG) of what the engine did around a moment — view it with the Read tool | ~3 s |
 
@@ -39,13 +40,16 @@ app/                     served statically (deploy = publish this folder); runti
   index.html             the game: import map (preact, htm), fonts → ui/main.js
   gallery.html           component gallery (design review, screenshot QA)
   manifest.webmanifest   install metadata (icons, shortcuts); og/twitter preview tags live in index.html
-  sw.js                  offline service worker, network first (registered by ui/lib/offline.js)
+  sw.js                  offline service worker, network first (registered by ui/lib/offline.js):
+                         one cache per build, the last complete copy answers offline
+  build.json             build stamp ("dev" here; the Pages deploy writes the commit): a new
+                         stamp makes the installed app cache the whole game again
   core/                  pure logic: no DOM, no storage, Node-testable
     sim/                 match engine, rules, cards, periods, replay, shootout, in-match AI coach
     players/             ratings, badges, formations, club lineups, catalog codec + derived data
     draft/               draft session, catalog pools, Links, opponent ladder, nation codes
     competition/         World Cup Run (cup), fast rating model, Daily Challenge, share/links
-    config/              DEFAULT_CONFIG, live CONFIG, saved overrides, normalizeConfig
+    config/              DEFAULT_CONFIG, live CONFIG, normalizeConfig, CONFIG_FIELDS
     util/                rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey)
   services/              browser services any UI can use: catalog, sim client/worker, sound, playback
   ui/                    the UI (Preact + htm, no build) — read docs/ui-guide.md before touching it
@@ -55,7 +59,8 @@ app/                     served statically (deploy = publish this folder); runti
     components/          shared components (<name>.js + <name>.css), exported from index.js
     screens/<name>/      home, setup, draft, prematch, match, run, daily, exhibition, settings,
                          placeholder (not found) — one folder per screen
-    styles/              app.css (the one stylesheet entry, cascade layers), tokens, base, fonts
+    styles/              app.css (the one stylesheet entry: cascade layers + the first screen's
+                         CSS; other screens' sheets load with their route), tokens, base, fonts
     gallery/             gallery page + generated fixture (make-fixture.mjs)
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
   data/catalog.v3.json   compiled columnar catalog (decode via services/catalog.js)
@@ -71,7 +76,8 @@ scripts/                 catalog compiler (compile-league-catalog.mjs + compile-
                          compile-legends.mjs (Legends and Prime versions from the legacy CSV)
 scripts/data/            data:fetch / data:reconcile / data:build pipeline (ea-source.mjs adapts the
                          source rows); catalog-file.mjs = loadRuntimeCatalog() for Node
-scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
+scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs, preload.mjs,
+                         offline-deploy.mjs
 tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
 tools/calibration/       manual calibration runners (write to /tmp; not run by npm test), incl.
@@ -83,7 +89,9 @@ tools/calibration/       manual calibration runners (write to /tmp; not run by n
 tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json
 tools/og/                og-image.html + render.mjs: re-renders og-image.png and the app icons
 docs/                    contracts, guides and calibration notes — index in docs/README.md
-.github/workflows/       ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
+.github/workflows/       ci.yml: format, lint, tests, browser smoke — once per change (pull requests,
+                         pushes to main, manual); on main a green run deploys app/ to Pages
+                         (stamps build.json, leaves the gallery out)
 ```
 
 **Contracts** (keep them current when you change the code they describe): `docs/ui-guide.md`
@@ -144,8 +152,8 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
   club-XI fit + coach, gameplay, the favourite's edge (`userEdge`: a slightly better save balance for the user's side when it is the stronger team, AI matches only), discipline, stamina, periods, formats, ratings, badges), live
-  `CONFIG` (a copy of the defaults; `setRuntimeConfig` for tools), `loadConfig`/`saveConfig`
-  (diff-only storage, kept for tools and tests; unknown keys are ignored), `normalizeConfig`, `CONFIG_FIELDS`; `v8-defaults.js` (old-save migration). Each
+  `CONFIG` (a copy of the defaults; `setRuntimeConfig` for tools and tests — nothing is stored),
+  `normalizeConfig` (validates a patch; unknown keys are ignored), `CONFIG_FIELDS`. Each
   `Match` snapshots it into `match.tuning`; a draft session snapshots `CONFIG.draft`.
 - **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
   uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
@@ -162,7 +170,8 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   ultimate achievement; `recordRun`, `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
   `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
   only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
-  `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
+  `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `screen-loader.js`
+  + `styles.js` (a lazy screen = its module and its stylesheets, `SCREEN_SHEETS`), `offline.js`
   (`registerOffline`: service worker + one-time warm-up of the installed app).
   The match stage (`ui/screens/match/renderer/`): the pitch is a DOM layer (`pitch.js`) under a
   transparent token canvas (`draw.js`), framed by `camera.js` (action camera: follows the ball,
@@ -174,8 +183,8 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   XI is computed in `ui/screens/daily/perfect-xi-worker.js` the same way. A new module worker
   must also be listed in `WORKERS` in `ui/lib/offline.js` (so the installed app caches it).
 - **Tuning** is for developers only: edit `DEFAULT_CONFIG` (and rebuild data / recalibrate as
-  the invariants say); tools take `--tuning` patches. Players cannot tune: the game ignores
-  saved overrides (`CONFIG` is a copy of `DEFAULT_CONFIG`) and `ui/main.js` deletes the old
+  the invariants say); tools take `--tuning` patches. Players cannot tune: `CONFIG` is a copy
+  of `DEFAULT_CONFIG`, nothing reads saved settings, and `ui/main.js` deletes the old
   `football-draft-settings-v1` key.
 
 ### localStorage keys (all start with `football-draft`; Settings → Reset clears exactly those)
@@ -312,8 +321,12 @@ real squads. Never invent ratings or club metadata: a club without a sourced col
   desktop; keep animations on transform/opacity, the match frame loop allocation-free and 60 fps
   with the CPU throttled ×4 (Chrome DevTools / CDP `Emulation.setCPUThrottlingRate`), and no
   main-thread task over ~50 ms (heavy work goes to a worker or a step-wise generator).
-- Screen CSS is global (every stylesheet is imported by `styles/app.css`): prefix screen classes
-  with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names like `.stage` collided.
+- Screen CSS is global: `styles/app.css` imports what the first screen paints with (tokens,
+  base, every shared component, the shell, Home), and each other screen's sheet is loaded with
+  its route (`styles` in `ui/routes.js`, `ui/lib/styles.js`) and then stays for the session.
+  Prefix screen classes with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names
+  like `.stage` collided — and when a screen renders another screen's parts, name that sheet in
+  its route too (`tests/styles.test.mjs` checks).
 - Displayed numbers go through `ui/lib/format.js` ('.' decimals everywhere, whatever the locale).
 - After UI changes: `npm run shots -- --only <flow>` and look at the PNGs; update
   `tests/browser/flows.mjs` when selectors or flows change; `npm run test:browser` must pass.

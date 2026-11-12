@@ -7,8 +7,9 @@
 // it has arrived, and every stylesheet only when app.css has. On a phone that is one network
 // round trip per import level (about ten of them). The block lists the whole static import
 // graph of the first screen (ui/main.js + the Home screen) as <link rel="modulepreload"> and
-// the stylesheets app.css imports as <link rel="preload" as="style">, so everything is
-// requested at once. Lazy screens are not listed; Home warms the next ones when idle.
+// the stylesheets app.css imports (the first screen's: tokens, base, components, shell, Home)
+// as <link rel="preload" as="style">, so everything is requested at once. Lazy screens and
+// their stylesheets (ui/lib/styles.js) are not listed; Home warms the next ones when idle.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +32,8 @@ function staticImports(source) {
   return found;
 }
 
-export function buildBlock(html = readFileSync(INDEX, 'utf8')) {
+/** The static import graph of `entries` (paths under app/), in breadth-first order. */
+export function moduleGraph(entries, html = readFileSync(INDEX, 'utf8')) {
   const importMap = JSON.parse(html.match(/<script type="importmap">([\s\S]*?)<\/script>/)[1]);
   const locate = (specifier, from) => {
     if (importMap.imports[specifier]) return posix.normalize(importMap.imports[specifier]);
@@ -40,7 +42,7 @@ export function buildBlock(html = readFileSync(INDEX, 'utf8')) {
   };
   const modules = [],
     seen = new Set(),
-    queue = [...ENTRIES];
+    queue = [...entries];
   while (queue.length) {
     const file = queue.shift();
     if (seen.has(file)) continue;
@@ -50,10 +52,20 @@ export function buildBlock(html = readFileSync(INDEX, 'utf8')) {
     for (const specifier of staticImports(readFileSync(`${APP}/${file}`, 'utf8')))
       queue.push(locate(specifier, file));
   }
-  const sheet = 'ui/styles/app.css',
-    styles = [...readFileSync(`${APP}/${sheet}`, 'utf8').matchAll(/@import url\('([^']+)'\)/g)].map(
-      m => posix.normalize(posix.join(dirname(sheet), m[1])),
-    );
+  return modules;
+}
+
+/** The stylesheets app.css imports (paths under app/): what the first screen paints with. */
+export function entryStyles() {
+  const sheet = 'ui/styles/app.css';
+  return [...readFileSync(`${APP}/${sheet}`, 'utf8').matchAll(/@import url\('([^']+)'\)/g)].map(m =>
+    posix.normalize(posix.join(dirname(sheet), m[1])),
+  );
+}
+
+export function buildBlock(html = readFileSync(INDEX, 'utf8')) {
+  const modules = moduleGraph(ENTRIES, html),
+    styles = entryStyles();
   const lines = [
     START,
     ...styles.map(href => `<link rel="preload" as="style" href="./${href}" />`),
