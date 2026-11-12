@@ -197,9 +197,9 @@ export const DEFAULT_CONFIG = {
     movementSpeed: 1.28,
     acceleration: 1.1,
     shotFrequency: 2,
-    shotScatter: 1.08,
+    shotScatter: 0.92,
     shotPower: 1,
-    saveAbility: 1.02,
+    saveAbility: 0.97,
     passCompletion: 1,
     passError: 1,
     routinePassError: 0.6,
@@ -225,6 +225,17 @@ export const DEFAULT_CONFIG = {
     runsInBehind: 1,
     crossWillingness: 1.5,
     keeperRange: 1,
+    // The level of the match (sim/match.js kickoffLevel: the mean overall of the 22 at
+    // kick-off, against 78): a fixture between two star XIs used to score half as much again
+    // as one between two modest clubs — better finishers hit the target far more often and
+    // nothing answered it. Shots scatter a little more and keepers hold a little more the
+    // higher the level of the match, the same for both sides (so who is better, and by how
+    // much, counts as before). 0 switches either off.
+    levelScatter: 1.5,
+    levelSaves: 1,
+    // … and a mismatch counts as a higher level: this many points per point of overall
+    // between the two sides (a one-sided match used to be the highest-scoring of all).
+    levelGap: 0.8,
   },
   // The player's side as favourite. Against the AI (competition.mode 'ai'), when the player's
   // XI (team 0) has the higher overall, its shots are saved a little less and the shots it
@@ -822,6 +833,9 @@ const labels = {
   runsInBehind: 'Runs in behind the defensive line',
   crossWillingness: 'Crossing willingness',
   keeperRange: 'Keeper rating influence',
+  levelScatter: 'Match level: shot scatter',
+  levelSaves: 'Match level: keeper saves',
+  levelGap: 'Match level: points per point between the sides',
   minimumLeaguePlayers: 'Minimum league player pool',
   minimumFit: 'Club XI minimum position fit',
   halftimeRecovery: 'Half-time stamina recovery',
@@ -946,6 +960,9 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
       'markingLapses',
       'deliveryDeflections',
       'runsInBehind',
+      'levelScatter',
+      'levelSaves',
+      'levelGap',
     ].includes(f.key)
   )
     [min, max, step] = [0, 2, 0.01];

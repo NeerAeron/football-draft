@@ -395,6 +395,7 @@ export class Match {
     this.shootoutState = null;
     this.penaltyEnd = null;
     this.edge = null; // [team 0, team 1]: set at kick-off (kickoffEdge)
+    this.level = null; // points of overall the match is above 78: set at kick-off (kickoffLevel)
     this.resetInsights();
   }
   addEvent(text, team, type = 'play', extra = {}) {
@@ -816,9 +817,25 @@ export class Match {
     if (lead > 0) edge[0] = Math.min(lead * rule.perPoint, rule.cap);
     return edge;
   }
+  // The level of the match (tuning.gameplay.levelScatter / levelSaves): the mean overall of
+  // the two line-ups at kick-off, in points above 78, plus levelGap points for every point
+  // between them. Read once, like the edge; both sides play under the same level, so it
+  // moves how many goals a match has and not who scores them.
+  kickoffLevel() {
+    const overall = [0, 0],
+      count = [0, 0];
+    for (const p of this.players) {
+      overall[p.team] += overallRating(p, false);
+      count[p.team]++;
+    }
+    const a = overall[0] / (count[0] || 1),
+      b = overall[1] / (count[1] || 1);
+    return clamp((a + b) / 2 - 78 + Math.abs(a - b) * this.tuning.gameplay.levelGap, -14, 14);
+  }
   stepInner(dt) {
     if (this.finished) return;
     if (this.edge === null) this.edge = this.kickoffEdge();
+    if (this.level === null) this.level = this.kickoffLevel();
     if (this.mode === 'halftime') {
       if (!this.pauseAtHalf) this.resumeHalf();
       return;
