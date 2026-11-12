@@ -351,7 +351,14 @@ export class DraftSession {
   #eraReel(weightOf) {
     return this.#reel(
       'era',
-      eraList(this.#catalog).map(e => ({ id: e.id, name: e.label, from: e.from, to: e.to })),
+      // `name` is the era's full label, `short` the one for a reel or a tight spot (ERAS).
+      eraList(this.#catalog).map(e => ({
+        id: e.id,
+        name: e.label,
+        short: e.short ?? e.label,
+        from: e.from,
+        to: e.to,
+      })),
       o => (weightOf(o.id) ? 1 : 0),
     );
   }

@@ -155,14 +155,14 @@ test('a World Cup draft: two reels, a headline with both names, three token butt
   // The era reel has text items, the nation reel flags; both land where the session decided.
   const [era, nation] = spin.reels.map(r => reelItems(r));
   assert.equal(era.items.length, 8);
-  assert.deepEqual(era.items[era.landIndex], { id: spin.era.id, label: spin.era.name, sub: '' });
+  assert.deepEqual(era.items[era.landIndex], { id: spin.era.id, label: spin.era.short, sub: '' });
   assert.equal(nation.items[nation.landIndex].id, spin.option.id);
   assert.ok(nation.items.every(i => i.flag && i.sub === ''));
   // The headline: the nation, with the era beside it; the pool's size; never odds.
   const head = spinHeadline(spin, snap.pool.length);
   assert.deepEqual(
     [head.title, head.era, head.meta],
-    [spin.option.name, spin.era.name, `${snap.pool.length} players`],
+    [spin.option.name, spin.era.short, `${snap.pool.length} players`],
   );
   assert.equal(spinTitle(spin), `${spin.option.name} · ${spin.era.name}`);
   assert.equal(landedAnnouncement(spin, 26), `${spin.option.name} · ${spin.era.name}. 26 players.`);

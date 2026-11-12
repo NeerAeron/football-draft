@@ -234,7 +234,7 @@ export function reelItems(reel, { league = null } = {}) {
   const landed = reel.options[reel.landing];
   const live = reel.options.filter(o => o.weight > 0);
   const items = live.map(o => {
-    if (reel.category === 'era') return { id: o.id, label: o.name, sub: '' };
+    if (reel.category === 'era') return { id: o.id, label: o.short ?? o.name, sub: '' };
     if (reel.category === 'nation')
       return {
         id: o.id,
@@ -309,7 +309,7 @@ export function spinHeadline(spin, poolSize = 0) {
     return {
       title: o.name,
       kind: 'nation',
-      era: spin.era.name,
+      era: spin.era.short ?? spin.era.name,
       flag: { code: o.code, name: o.name, src: o.flag || undefined },
       meta: players,
       big: false,

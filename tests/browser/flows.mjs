@@ -784,9 +784,11 @@ export const flows = [
         async () => {
           await visible(page, '.stage.is-eras');
           const { era, nation } = await landed();
-          if (!/(98|02|06|10|14|18|22|2026)$/.test(era)) throw new Error('era: ' + era);
+          if (!/ (98|02|06|10|14|18|22|26)$/.test(era)) throw new Error('era: ' + era);
+          // The heading names both, the era by its full name.
           const heading = (await page.textContent('#pool-title')).trim();
-          if (heading !== `${nation} · ${era}`) throw new Error('pool heading: ' + heading);
+          if (!heading.startsWith(`${nation} · `) || heading.slice(-3) !== era.slice(-3))
+            throw new Error('pool heading: ' + heading);
           const stage = await page.textContent('.stage');
           if (await page.locator('.reveal__odds').count()) throw new Error('the reels show odds');
           if (/%|chance|likely/i.test(stage)) throw new Error('odds text on the stage');

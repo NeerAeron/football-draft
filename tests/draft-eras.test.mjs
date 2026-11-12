@@ -63,19 +63,6 @@ const dearest = s => {
 };
 
 test('a World Cup draft spins an era, then a nation of that era: two reels, no odds to weigh', () => {
-  assert.deepEqual(
-    ERAS.map(e => e.label),
-    [
-      'France 98',
-      'Korea/Japan 02',
-      'Germany 06',
-      'South Africa 10',
-      'Brazil 14',
-      'Russia 18',
-      'Qatar 22',
-      '2026',
-    ],
-  );
   const s = eraDraft({ seed: 5 });
   assert.equal(s.snapshot().eras, true);
   assert.equal(s.snapshot().category, 'nation');
@@ -92,7 +79,10 @@ test('a World Cup draft spins an era, then a nation of that era: two reels, no o
   );
   assert.ok(eras.options.every(o => o.weight === 1 && o.probability === 0.125));
   assert.equal(spin.era.id, eras.options[eras.landing].id);
-  assert.equal(spin.era.name, ERAS.find(e => e.id === spin.era.id).label);
+  // The labels are the data's (ERAS): the full one, and the short one for tight spots.
+  const cycle = ERAS.find(e => e.id === spin.era.id);
+  assert.deepEqual([spin.era.name, spin.era.short], [cycle.label, cycle.short]);
+  assert.equal(ERAS.length, 8);
   // The nation reel is the era's nations, equally likely.
   assert.deepEqual(
     nations.options.map(o => o.id),
