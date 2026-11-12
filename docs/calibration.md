@@ -23,6 +23,41 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 7: tight angles, a few goals fewer
+
+Owner's notes: "angles seem to score more than expected" and "a little too many goals".
+Measured on the first 288 club fixtures of `tools/calibration/lib/fixtures.mjs` (180 s, the
+FC 26 catalog, team 1 AI-coached), before → after:
+
+| | before | after |
+| --- | --- | --- |
+| goals / match | 2.42 | 2.25 (−7%) |
+| non-penalty shots / match · scored | 8.6 · 25.8% | 8.5 · 24.3% |
+| shots seeing under 12° of goal, inside 20 m: per match · scored | 0.17 · 30% (15 of 50) | 0.11 · 3% (1 of 31) |
+| shots 60°+ off the centre line, 5–16.5 m: per match · scored | 0.17 · 38% (18 of 48) | 0.16 · 17% (8 of 46) |
+| shots within 30° of the centre line, 5–16.5 m: scored | 46.6% | 46.2% |
+| shots from 22–30 m: scored | 8.6% | 8.2% |
+
+(Shots are bucketed by where they were struck; the 60°+ row includes point-blank finishes just
+outside a post, where the goal is still wide open.)
+
+What was wrong: the aim of a shot is a point on the goal line and its scatter was the same
+length of goal line from any angle, so a ball struck from the byline, along the line, landed
+between the posts as surely as one from the penalty spot — and the keeper stood 2.5 m off his
+line with the ball on the byline, so it rolled in behind him. What changed (docs/engine-events.md,
+_Tight angles_): scatter × 1 / sin(angle to the goal line) (at most 4); the keeper at his near
+post, close to his line, when the ball is (or is being passed) wide within 5.5 m of the line; a
+tight-angle shot within his reach is kept out more surely; a carrier's urge to shoot fades from
+50° off the centre line (he cuts back or crosses); `xg` fades the same way. That is 6 of the 7
+points; the rest is `gameplay.saveAbility` 1 → 1.02. Long shots, take-ons and the save model
+for shots from in front are untouched.
+
+`blunders.mjs --compare` (24 fixtures) shows nothing new: hopeless shots 0.79 → 0.75 a match,
+soft goals 0.38 → 0.38, free in the box 0.05 → 0.11 s; giveaways 0.42 → 0.67 and long loose
+balls 0.63 → 0.88 are within what 24 different matches vary by (neither is touched by the
+change). The fast rating model's `goals` (competition/model.js) was scaled by the same 7%
+(1.84 → 1.71), not refitted; `CUP_TUNING` is as it was.
+
 ## Phase 6: saves that do what they say, penalties, ten men, xG of this engine
 
 Measured on 1,600 deterministic club fixtures (`tools/calibration/lib/fixtures.mjs`, 180 s, even

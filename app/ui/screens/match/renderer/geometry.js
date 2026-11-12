@@ -5,11 +5,6 @@
 
 /** Whole pitch plus the goals and a small margin. */
 export const WORLD = Object.freeze({ x0: -4.4, x1: 109.4, y0: -3.8, y1: 71.8 });
-/** Penalty-shootout close-up of the x = 105 goal, framed for each orientation. */
-export const SHOOTOUT_CAMERA = Object.freeze({
-  landscape: Object.freeze({ x0: 68, x1: 109.4, y0: 20.3, y1: 47.7 }),
-  portrait: Object.freeze({ x0: 76, x1: 109.4, y0: 22.8, y1: 45.2 }),
-});
 
 export const worldAspect = (camera = WORLD, orientation = 'landscape') => {
   const w = camera.x1 - camera.x0,

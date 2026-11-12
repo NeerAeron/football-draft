@@ -14,6 +14,7 @@ import {
   Segmented,
   Tabs,
   Meter,
+  Confetti,
 } from '../../components/index.js';
 import {
   MomentumChart,
@@ -521,9 +522,23 @@ function Cut({ controller }) {
   return cut ? html`<span key=${cut} class="stage-cut" aria-hidden="true"></span>` : null;
 }
 
+/** The shootout is not played on the pitch: the panel fills in kick by kick over the stage. */
 function Shootout({ controller, teams }) {
   const shootout = useStore(controller.hud, s => s.shootout);
-  return html`<${ShootoutPanel} shootout=${shootout} teams=${teams} />`;
+  if (!shootout) return null;
+  const won = shootout.winner != null && controller.userSides.includes(shootout.winner);
+  return html`<div class="stage-panel pens-stage" data-testid="shootout">
+    <${ShootoutPanel} shootout=${shootout} teams=${teams} />
+    ${
+      won &&
+      html`<${Confetti}
+        fire=${1}
+        count=${140}
+        colors=${[...teamColors(teams[shootout.winner]), '#ffffff', '#cdf545'].filter(Boolean)}
+        origin=${{ x: 0.5, y: 0.35 }}
+      />`
+    }
+  </div>`;
 }
 
 function TickerLine({ controller }) {
@@ -543,7 +558,7 @@ function TickerLine({ controller }) {
     : h.rewind
       ? 'The build-up…'
       : h.clip
-        ? `${h.period === '1H' ? 'First-half' : h.period === 'PENS' ? 'Shootout' : 'Second-half'} highlights`
+        ? `${h.period === '1H' ? 'First-half' : 'Second-half'} highlights`
         : '';
   return html`<${Ticker} line=${h.skipping ? null : h.ticker} fallback=${fallback} />`;
 }

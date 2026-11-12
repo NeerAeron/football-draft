@@ -48,7 +48,17 @@ const JUMP_PLAYERS = 4;
 const JUMP_SPEED = 13; // m/s no player reaches: anything faster is a reposition
 const JUMP_BALL_SPEED = 50; // … and no ball
 const FF_BUDGET_MS = 6; // fast-forward steps per frame: leaves room to draw at 60 fps on a phone
+// The penalty shootout is never animated: the engine takes the kicks (exactly as in an Instant
+// match) and the panel fills in kick by kick — the taker's name, then his ✓ / ✗.
+const PENS_LEAD = 0.9; // seconds before the first taker is named
+const PENS_NAME = 0.35; // a taker's name on its own …
+const PENS_VERDICT = 0.5; // … then with his mark, before the next taker
+const PENS_WINNER = 2.2; // the winner, before the result
 const SPEEDS = [1, 2, 4];
+// A stage that keeps changing size (a phone's URL bar sliding away while the page scrolls, a
+// rotation, a window being dragged) is resized once it has been still for this long: until
+// then the picture is stretched by CSS instead of both pitch layers being repainted per frame.
+const RESIZE_SETTLE_MS = 140;
 
 let sharedSim = null;
 const simClient = () => (sharedSim ??= createSimClient());
@@ -57,7 +67,7 @@ const simClient = () => (sharedSim ??= createSimClient());
 export function periodLabel(m) {
   if (!m) return '';
   if (m.finished) return 'FT';
-  if (m.mode === 'shootout' || m.penaltyEnd != null) return 'PENS';
+  if (m.mode === 'shootout') return 'PENS';
   if (m.mode === 'halftime') return 'HT';
   return ['1H', '2H', 'ET1', 'ET2'][m.half - 1] || '';
 }
@@ -78,8 +88,6 @@ function shotStop(e) {
       return 0.6;
     case 'save':
       return (e.difficulty ?? 0) >= 0.5 ? 0.6 : null;
-    case 'shootout':
-      return 0.3;
     default:
       return null;
   }
@@ -142,6 +150,7 @@ export class MatchController {
     this.rw = null;
     this.rp = null;
     this.ff = null;
+    this.pens = null; // the shootout reveal (startPens)
     this.jobs = { half1: null, half2: null, instant: null };
     this.lastEventId = 0;
     this.pendingShots = new Map();
@@ -198,8 +207,13 @@ export class MatchController {
   // ---------- setup ----------
 
   makeMatch(view) {
-    const m = new Match(this.request.seed, viewDuration(view, this.request));
-    m.importConfig(structuredClone(this.request.config));
+    const m = new Match(this.request.seed, viewDuration(view, this.request)),
+      config = structuredClone(this.request.config);
+    // An exhibition is two sides the player picked: nobody is "the player's side" there, so
+    // the favourite's edge (tuning.userEdge) stays off although the AI coaches side 1.
+    if (this.request.meta?.context === 'exhibition')
+      config.competition = { ...config.competition, edge: false };
+    m.importConfig(config);
     m.pauseAtHalf = true;
     return m;
   }
@@ -404,6 +418,7 @@ export class MatchController {
       clip: { n: 1 },
       progress: 1,
     });
+    if (!rec.clips.length) return this.onReelEnd(); // nothing was played (straight to penalties)
     this.applyReel();
     this.refreshTactics();
     this.kick();
@@ -431,6 +446,7 @@ export class MatchController {
       this.endCelebration(true);
       return;
     }
+    if (this.presenting === 'pens') return this.skipPens();
     if (!r || this.presenting !== 'reel') return;
     const next = r.rec.clips[r.clip]; // clips are 1-based in r.clip
     r.t = next ? next.offset + 1e-4 : r.length;
@@ -439,6 +455,7 @@ export class MatchController {
 
   skipToEnd() {
     if (this.presenting === 'celebrate' || this.presenting === 'replay') this.endCelebration(true);
+    if (this.presenting === 'pens') this.skipPens();
     if (this.reel) {
       this.reel.t = this.reel.length;
       this.kick();
@@ -452,6 +469,7 @@ export class MatchController {
       this.endCelebration(true);
       return;
     }
+    if (this.presenting === 'pens') return this.skipPens();
     if (this.presenting !== 'live') return;
     this.ff = { from: this.live.elapsed, stopAt: null, trigger: null, lastId: this.live.eventId };
     this.presenting = 'ff';
@@ -488,7 +506,143 @@ export class MatchController {
     const m = this.live;
     if (m.finished) this.onLiveFinished();
     else if (m.mode === 'halftime') this.onHalftime(m);
+    else if (m.mode === 'shootout') this.startPens(m);
     else this.presentLive();
+  }
+
+  // ---------- penalty shootout ----------
+
+  /**
+   * A level knockout match: the stage holds the final whistle and the shootout panel fills in
+   * one kick at a time. `m` is the authoritative match — the Full-mode live match (its kicks
+   * are simulated here, a few milliseconds per frame) or a reel's finished result.
+   */
+  startPens(m) {
+    if (m === this.live) {
+      // Hold the picture of the final whistle (the engine lines everybody up for the kicks)
+      let last = null;
+      for (let i = this.ring.length - 1; i >= 0 && !last; i--)
+        if (this.ring[i].mode !== 'shootout') last = this.ring[i];
+      if (last) {
+        const clips = [{ start: last.elapsed, end: last.elapsed, offset: 0 }];
+        applyReplayFrame(this.display, { frames: [last], clips, result: m }, 0);
+      }
+    }
+    this.pens = {
+      match: m,
+      shown: 0,
+      named: false,
+      decided: false,
+      wait: isReducedMotion() ? 0 : PENS_LEAD,
+      events: null,
+    };
+    this.presenting = 'pens';
+    this.scorerId = null;
+    this.flair.on = false;
+    this.resetScene();
+    this.clock.setPaused(this.hud.get().paused, performance.now());
+    const whistle = m.events.find(e => e.type === 'full');
+    if (whistle) this.handleEvent(whistle, m, true);
+    this.hud.set({
+      presenting: 'pens',
+      skipping: false,
+      replay: false,
+      goal: null,
+      clip: null,
+      clock: 'PENS',
+      period: 'PENS',
+      minute: 'PENS',
+      pens: [0, 0],
+      shootout: this.pensInfo(),
+    });
+    this.kick();
+  }
+
+  updatePens(dt) {
+    const s = this.pens,
+      m = s.match;
+    if (!m.finished) {
+      const until = performance.now() + FF_BUDGET_MS;
+      while (!m.finished && performance.now() < until) m.step(1 / 60);
+    }
+    s.wait -= dt;
+    if (s.wait > 0 || !m.finished) return;
+    if (s.decided) return this.finish(m, true);
+    const kicks = m.shootout.kicks;
+    s.events ??= m.events.filter(e => e.type === 'shootout').reverse();
+    // Reduced motion: no sequence, the whole shootout at once
+    if (isReducedMotion()) while (s.shown < kicks.length) this.revealKick();
+    if (s.named) {
+      this.revealKick();
+      s.wait = PENS_VERDICT;
+    } else if (s.shown < kicks.length) {
+      s.named = true;
+      s.wait = PENS_NAME;
+    } else {
+      s.decided = true;
+      s.wait = isReducedMotion() ? CELEBRATE_REDUCED : PENS_WINNER;
+      playCue('full');
+    }
+    this.showPens();
+  }
+
+  /** The next kick's verdict: its mark, commentary line and sound. */
+  revealKick() {
+    const s = this.pens,
+      m = s.match,
+      k = m.shootout.kicks[s.shown],
+      e = s.events[s.shown];
+    s.named = false;
+    s.shown++;
+    if (e) this.handleEvent(e, m, true);
+    if (!isReducedMotion()) playCue(k.scored ? 'shot' : k.outcome === 'saved' ? 'save' : 'post');
+  }
+
+  showPens() {
+    const info = this.pensInfo();
+    this.hud.set({ shootout: info, pens: info.score });
+  }
+
+  /** "Next": the rest of the shootout at once, then the winner. */
+  skipPens() {
+    const s = this.pens;
+    if (!s || s.decided) return;
+    const m = s.match;
+    while (!m.finished) m.step(1 / 60);
+    s.events ??= m.events.filter(e => e.type === 'shootout').reverse();
+    while (s.shown < m.shootout.kicks.length) this.revealKick();
+    s.decided = true;
+    s.wait = CELEBRATE_REDUCED;
+    playCue('full');
+    this.showPens();
+    this.kick();
+  }
+
+  /** What the shootout panel shows: the kicks revealed so far and the taker on the spot. */
+  pensInfo() {
+    const s = this.pens,
+      m = s.match,
+      sh = m.shootout,
+      kicks = [],
+      score = [0, 0];
+    for (let i = 0; i < s.shown; i++) {
+      const k = sh.kicks[i];
+      kicks.push({ team: k.team, scored: !!k.scored, outcome: k.outcome, round: k.round });
+      if (k.scored) score[k.team]++;
+    }
+    const next = s.named ? sh.kicks[s.shown] : null,
+      last = !next && s.shown > 0 ? sh.kicks[s.shown - 1] : null,
+      shown = next || last;
+    return {
+      first: sh.first,
+      kicks,
+      score,
+      winner: s.decided ? sh.winner : null,
+      suddenDeath: (shown?.round ?? 0) > 5,
+      kicking: next ? next.team : null,
+      taker: shown ? (m.players[shown.playerId]?.name ?? null) : null,
+      verdict: last ? (last.scored ? 'goal' : 'miss') : null, // of the taker's kick, once taken
+    };
   }
 
   celebrate(goal) {
@@ -497,7 +651,7 @@ export class MatchController {
     this.presenting = 'celebrate';
     this.celebrateLeft = isReducedMotion() ? CELEBRATE_REDUCED : CELEBRATE;
     this.celebrateGoal = goal;
-    this.scorerId = goal.type === 'goal' && !goal.ownGoal ? (goal.playerId ?? null) : null;
+    this.scorerId = goal.ownGoal ? null : (goal.playerId ?? null);
     this.flair.on = false;
     this.flash = isReducedMotion() ? 0 : 1;
     this.hud.set({ presenting: 'celebrate', goal: this.goalInfo(goal), replay: false });
@@ -547,7 +701,7 @@ export class MatchController {
     } else if (this.live) {
       this.presenting = 'live';
       this.sounds.reset(this.live);
-      if (this.live.finished || this.live.mode === 'halftime') {
+      if (this.live.finished || this.live.mode === 'halftime' || this.live.mode === 'shootout') {
         this.afterLive();
         return;
       }
@@ -559,18 +713,6 @@ export class MatchController {
   goalInfo(e) {
     const m = this.presented();
     const name = id => (id != null ? m.players[id]?.name : null);
-    if (e.type === 'shootout') {
-      const winner = e.outcome === 'goal' ? e.team : 1 - e.team;
-      return {
-        id: e.id,
-        kind: 'shootout',
-        team: winner,
-        scorer: name(e.outcome === 'goal' ? e.playerId : e.keeperId),
-        story: [],
-        minute: e.outcome === 'goal' ? 'scores the decisive kick' : 'makes the decisive save',
-        score: [...(e.shootoutScore || [0, 0])],
-      };
-    }
     return {
       id: e.id,
       team: e.team,
@@ -632,7 +774,8 @@ export class MatchController {
     if (result.mode === 'halftime' && !result.finished) {
       this.htMatch = result;
       this.onHalftime(result);
-    } else this.finish(result);
+    } else if (result.shootout) this.startPens(result);
+    else this.finish(result);
   }
 
   onLiveFinished() {
@@ -640,8 +783,10 @@ export class MatchController {
     this.finish(this.live);
   }
 
-  finish(m) {
+  /** `direct`: straight to the result (Instant, or a shootout that already named the winner). */
+  finish(m, direct = this.request.view === 'instant') {
     this.presenting = 'idle';
+    this.pens = null;
     this.catchUp(m);
     this.updateHud(m, true);
     playCue('full');
@@ -652,9 +797,8 @@ export class MatchController {
     this.scorerId = null;
     this.flair.on = false;
     this.flash = 0;
-    const instant = this.request.view === 'instant';
     this.hud.set({
-      phase: instant ? 'finished' : 'fulltime',
+      phase: direct ? 'finished' : 'fulltime',
       presenting: 'idle',
       result,
       goal: null,
@@ -663,7 +807,7 @@ export class MatchController {
       shootout: null,
     });
     this.requestDraw();
-    if (!instant)
+    if (!direct)
       this.fulltimeTimer = setTimeout(
         () => !this.disposed && this.hud.set({ phase: 'finished' }),
         isReducedMotion() ? 1200 : 2200,
@@ -680,6 +824,7 @@ export class MatchController {
       case 'reel':
       case 'rewind':
       case 'replay':
+      case 'pens':
         return this.display;
       case 'celebrate':
         return this.resumeTo === 'live' ? this.live : this.display;
@@ -689,16 +834,15 @@ export class MatchController {
   }
 
   /** New events of the primary presentation → commentary, moments, score, goal overlay. */
-  processEvents(m, { live = true } = {}) {
-    const fresh = [];
-    for (const e of m.events) {
-      if (e.id <= this.lastEventId) break;
-      fresh.push(e);
-    }
-    if (fresh.length) this.lastEventId = fresh[0].id;
+  processEvents(m, live = true) {
+    // Runs every frame (every step in Full): no arrays or option objects here
+    const events = m.events;
+    let fresh = 0;
+    while (fresh < events.length && events[fresh].id > this.lastEventId) fresh++;
+    if (fresh) this.lastEventId = events[0].id;
     let goal = null;
-    for (let i = fresh.length - 1; i >= 0; i--) {
-      const e = fresh[i];
+    for (let i = fresh - 1; i >= 0; i--) {
+      const e = events[i];
       if (e.type === 'shot' && (e.outcome === 'in flight' || e.outcome == null)) {
         this.pendingShots.set(e.id, e.elapsed);
         if (live && m.elapsed - e.elapsed < 0.2) this.impact('shot', m.ball.strength ?? 0.4);
@@ -708,7 +852,8 @@ export class MatchController {
       if (g) goal = g;
     }
     if (this.pendingShots.size) {
-      for (const e of m.events.slice(0, 40)) {
+      for (let i = 0; i < events.length && i < 40; i++) {
+        const e = events[i];
         if (!this.pendingShots.has(e.id) || e.outcome === 'in flight') continue;
         this.pendingShots.delete(e.id);
         this.handleEvent(e, m, live);
@@ -743,8 +888,7 @@ export class MatchController {
         });
       }
     }
-    const celebrated = e.type === 'goal' || (e.type === 'shootout' && e.decisive);
-    if (celebrated && recent && !this.seenGoals.has(e.id)) {
+    if (e.type === 'goal' && recent && !this.seenGoals.has(e.id)) {
       this.seenGoals.add(e.id);
       return e;
     }
@@ -824,11 +968,10 @@ export class MatchController {
 
   /** What the camera should do for the match on screen. */
   cameraMode(m) {
-    if (m.mode === 'shootout' || m.penaltyEnd != null) return 'shootout';
     if (isReducedMotion()) return 'wide';
     const p = this.presenting;
     if (p === 'replay') return 'follow'; // the replay is always the close-up
-    if (p === 'idle' || p === 'ff') return 'wide';
+    if (p === 'idle' || p === 'ff' || p === 'pens') return 'wide';
     return this.hud.get().camera === 'action' ? 'follow' : 'wide';
   }
 
@@ -885,7 +1028,7 @@ export class MatchController {
 
   /** Process everything up to now without ticker/overlays (cuts, half-time, instant). */
   catchUp(m) {
-    this.processEvents(m, { live: false });
+    this.processEvents(m, false);
     for (const id of this.pendingShots.keys()) {
       const e = m.events.find(x => x.id === id);
       if (e) this.handleEvent(e, m, false);
@@ -944,7 +1087,7 @@ export class MatchController {
     this.viewState.pitch = !this.layered;
     this.ctx = canvas.getContext('2d', { alpha: this.layered });
     this.resize();
-    this.ro = new ResizeObserver(() => this.resize());
+    this.ro = new ResizeObserver(() => this.resized());
     this.ro.observe(canvas);
     this.io = new IntersectionObserver(entries => {
       this.visible = entries.some(e => e.isIntersecting);
@@ -961,10 +1104,19 @@ export class MatchController {
     this.requestDraw();
   }
 
+  /** The stage's box changed: size the canvases once it has settled (at once the first time). */
+  resized() {
+    clearTimeout(this.resizeTimer);
+    if (!this.sized) this.resize();
+    else this.resizeTimer = setTimeout(() => !this.disposed && this.resize(), RESIZE_SETTLE_MS);
+  }
+
   resize() {
     const c = this.canvas;
     if (!c) return;
     const rect = c.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    this.sized = true;
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.round(rect.width * dpr)),
       h = Math.max(1, Math.round(rect.height * dpr));
@@ -1122,6 +1274,10 @@ export class MatchController {
         if (p.t >= p.length) this.endCelebration();
         break;
       }
+      case 'pens':
+        this.updatePens(real * speed);
+        if (this.presenting !== 'pens') return; // straight to the result
+        break;
     }
     this.flash = Math.max(0, this.flash - real * 1.6);
     const m = this.presented(),
@@ -1139,7 +1295,7 @@ export class MatchController {
     if (isReducedMotion()) this.camera.snap();
     // The camera holds still under the goal banner. Live, it keeps match time (it tracks as
     // tightly at 2× / 4×, from a wider view).
-    if (p !== 'celebrate' || mode === 'shootout')
+    if (p !== 'celebrate')
       this.camera.update(
         replay ? dt : dt * speed,
         m,
@@ -1173,11 +1329,11 @@ export class MatchController {
     const m = this.live;
     m.step(1 / 60);
     this.steps++;
-    if (this.steps % RECORD_STEP === 0) {
-      this.ring.push(snapshot(m));
+    if (this.steps % RECORD_STEP === 0 && m.mode !== 'shootout') {
+      this.ring.push(snapshot(m, this.ring.at(-1)));
       if (this.ring.length > RING_SIZE) this.ring.splice(0, this.ring.length - RING_SIZE);
     }
-    return m.finished || m.mode === 'halftime';
+    return m.finished || m.mode === 'halftime' || m.mode === 'shootout';
   }
 
   updateFastForward() {
@@ -1231,13 +1387,14 @@ export class MatchController {
     const now = performance.now();
     this.flushLists();
     if (!force && now - this.hudAt < 110) return;
-    // A replay shows the past: keep the live clock, stats and momentum on screen.
-    if (this.presenting === 'replay' && !force) return;
+    // A replay shows the past: keep the live clock, stats and momentum on screen. The shootout
+    // reveal writes its own panel and score.
+    if ((this.presenting === 'replay' || this.presenting === 'pens') && !force) return;
     this.hudAt = now;
     const patch = {
-      clock: m.mode === 'shootout' || m.penaltyEnd != null ? 'PENS' : matchClock(m.time, m.half),
+      clock: matchClock(m.time, m.half),
       period: periodLabel(m),
-      minute: m.mode === 'shootout' || m.penaltyEnd != null ? 'PENS' : minuteLabel(m.time, m.half),
+      minute: minuteLabel(m.time, m.half),
       score: this.score,
       xg: [m.stats[0].xg || 0, m.stats[1].xg || 0],
     };
@@ -1255,64 +1412,12 @@ export class MatchController {
       // 'auto' follows the game state: keep the control's "in effect" mark current
       if (this.live) patch.effective = this.effectiveMentality(this.live);
     }
-    patch.shootout = m.shootout ? this.shootoutInfo(m) : null;
-    if (
-      cur.shootout &&
-      patch.shootout &&
-      cur.shootout.kicks.length === patch.shootout.kicks.length &&
-      cur.shootout.takerId === patch.shootout.takerId
-    )
-      patch.shootout = cur.shootout;
-    patch.pens = m.shootout ? [...m.shootout.score] : null;
-    if (cur.pens && patch.pens && cur.pens[0] === patch.pens[0] && cur.pens[1] === patch.pens[1])
-      patch.pens = cur.pens;
     if (
       cur.xg[0].toFixed(2) === patch.xg[0].toFixed(2) &&
       cur.xg[1].toFixed(2) === patch.xg[1].toFixed(2)
     )
       patch.xg = cur.xg;
     this.hud.set(patch);
-  }
-
-  shootoutInfo(m) {
-    const sh = m.shootout;
-    const kicking = m.penaltyEnd ?? (sh.kicks.length % 2 === 0 ? sh.first : 1 - sh.first);
-    let taker = null,
-      keeper = null,
-      best = Infinity,
-      bestK = Infinity;
-    for (const p of m.activePlayers) {
-      if (p.team === kicking) {
-        const d = Math.hypot(p.x - 92, p.y - 34);
-        if (d < best) {
-          best = d;
-          taker = p;
-        }
-      } else {
-        const d = Math.hypot(p.x - 104.6, p.y - 34);
-        if (d < bestK) {
-          bestK = d;
-          keeper = p;
-        }
-      }
-    }
-    const decided = sh.winner != null;
-    return {
-      first: sh.first,
-      kicks: sh.kicks.map(k => ({
-        team: k.team,
-        scored: !!k.scored,
-        outcome: k.outcome,
-        round: k.round,
-      })),
-      score: [...sh.score],
-      winner: sh.winner,
-      suddenDeath: sh.kicks.length >= 10,
-      kicking: decided ? null : kicking,
-      takerId: decided ? null : (taker?.id ?? null),
-      taker: decided || best > 6 ? null : (taker?.name ?? null),
-      keeper: decided || bestK > 6 ? null : (keeper?.name ?? null),
-    };
   }
 
   render() {
@@ -1345,6 +1450,7 @@ export class MatchController {
     clearTimeout(this.prefetchTimer);
     clearTimeout(this.fulltimeTimer);
     clearTimeout(this.layerTimer);
+    clearTimeout(this.resizeTimer);
     for (const name of Object.keys(this.jobs)) this.cancelJob(name);
     this.awaiting?.cancel();
     this.ro?.disconnect();

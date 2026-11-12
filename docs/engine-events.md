@@ -26,8 +26,20 @@ import { matchClock } from './core/sim/periods.js';
 | `m.winner()` | `0` / `1` once decided (score, shootout, or the opponent of an abandoned side), `null` for a draw or while running. |
 
 `config.competition`: `{ mode: 'sandbox' | 'ai' | 'pvp', difficulty, knockout?: boolean,
-extraTime?: boolean }`. `mode: 'ai'` lets `coach.js` run team 1's tactics. `knockout: true`
-decides a level match by a penalty shootout (see below).
+extraTime?: boolean, edge?: false }`. `mode: 'ai'` lets `coach.js` run team 1's tactics.
+`knockout: true` decides a level match by a penalty shootout (see below).
+
+**The player's side as favourite** (`tuning.userEdge`, `m.edge`). In `mode: 'ai'` team 0 is
+the player's side. When its XI has the higher overall at kick-off (mean `overallRating` of the
+eleven in their roles, without chemistry), `m.edge[0]` = lead × `perPoint` (0.006), at most
+`cap` (0.05); otherwise `[0, 0]` — never for the weaker side, never for team 1, never in
+`'pvp'` or `'sandbox'`, and not when `competition.edge === false` (the match screen sets that
+for an Exhibition, where both sides are the player's pick). Its one effect is in `keeperSave`:
+every save chance is multiplied by `1 + edge[keeper's team] − edge[other team]`, so a 5-point
+favourite's keeper is 3% surer and the keeper facing it 3% less sure — about +3% / −3% on the
+two sides' conversion. `m.edge` is `null` until the first step, is worked out once there and
+then travels with the match (worker halves, half-time): no RNG, nothing re-read later. The fast
+rating model (`competition/model.js`) does not include it.
 
 ### Tactics (`team.tactics`)
 
@@ -143,13 +155,27 @@ A foul in the box → `penalty` event, then `restart.type === 'Penalty'` for abo
 is immediate (`setupPenalty`, the UI cuts to it): the keeper on his line in the middle of the goal,
 the taker 3.4 m behind the ball, everyone else outside the box and the arc and behind the ball
 (spread along the edge, two of the taker's defenders and one opposing forward up the pitch). The
-taker runs up in the last 0.8 s and strikes; at the strike the keeper commits
+taker runs up in the last second, through the ball (he arrives as he strikes it); at the strike the keeper commits
 (`startPenaltyDive`: left 45% / right 45% / stays 10%, independent of the taker's side) and
 `players[keeper].penaltyDive` (`{ at, until, x0, y0, x, y }`) moves him ~2 m in a third of a second
 (`movement.js stepDive`). The save model then works from where the dive put him: only a keeper who
 went the right way can reach it. Play is live after the kick (rebounds count). Measured over
 1,600 fixtures (347 penalties): 76% scored, 18% saved, 5% off target or woodwork (before: 82% /
 3% / 16%) — a shootout (every taker, not only the best) is 74% / 17% / 10%.
+
+### Tight angles
+
+A shot's accuracy is an angle off the boot, its aim a point on the goal line: the scatter is
+multiplied by 1 / the sine of the angle the shot makes with the line (1 from in front, 1.4 from
+45°, 2 from 60°, at most 4), so a ball struck along the goal line rarely lands between the
+posts. A carrier's urge to shoot fades from 50° off the centre line and is gone by 78° (he cuts
+back or crosses, `decide`). With the ball wide and within 5.5 m of his goal line — or an
+opponent's pass on its way there — the keeper drops to his near post, a quarter of the ball's
+own distance off his line (`planKeeper`), and a shot from more than 60° off the centre line
+that comes within his reach is kept out more surely the tighter the angle (`keeperSave`). `xg`
+fades the same way beyond 53°. Measured over 288 club fixtures: shots seeing less than 12° of
+goal from inside 20 m scored 30% before and 3% after; shots from in front (within 30° of the
+centre line, 5–16.5 m) 47% before and after (docs/calibration.md).
 
 ### Ten men
 
@@ -195,7 +221,9 @@ With `competition.knockout === true`, a match level after regulation (incl. stop
 extra time when `competition.extraTime === true`) goes to a shootout: `mode` becomes
 `'shootout'`, then `finished` once a winner is known. Kicks alternate, five each then sudden
 death; takers are ordered by penalties + composure (keeper last); each kick is simulated
-physically (keeper dive, ball flight; no follow-ups), so live play and replays show it. All kicks
+physically (keeper dive, ball flight; no follow-ups). The UI does not show that: it steps the
+match to the end and lists the kicks as marks (docs/ui-match.md), and recordings stop at the
+final whistle. All kicks
 are taken at the x = 105 goal (`m.direction()` follows the kicking side). Each kick is set up at
 once (no walking between kicks: the kicker 3.4 m behind the ball, the keeper on his line in the
 middle, the other keeper beside the goal, both teams lined up on halfway) and takes about
@@ -221,8 +249,8 @@ m.shootout = {
 | `simulateComplete(config, seed, record, onProgress, cancelled)` | Runs a full match (`MATCH_SECONDS`) → `{ result, frames, clips }` (`frames`/`clips` only when `record`). Pure: can run in a Web Worker. |
 | `simulateHalf(match, onProgress, cancelled)` | Records one half of a live match → `{ result, frames, clips, viewDuration: 30, viewOffset }` |
 | `RECORD_STEP` | frames are stored every 3 steps (20 per second) |
-| `snapshot(m)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout` |
-| `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved), `momentum` (samples up to the frame) and `shootout`. Returns the 1-based clip number. |
-| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. |
+| `snapshot(m, previous?)` | one frame: clock, score, stats, player positions (Float32Array), states, ball, effects, mode, phase, restart, `momentumSamples`, `shootout`. Given the frame before it, the parts that did not change (most players' states, a side's stats, the restart) are shared with it, not copied — a recorded half is a third of the size to hand from the worker to the page. Frames are read-only |
+| `applyReplayFrame(target, recording, viewTime)` | Writes the interpolated frame for `viewTime` (seconds into the highlight reel) onto a display `Match`, including `events` up to that moment (shot outcomes reset to `'in flight'` until resolved) and `momentum` (samples up to the frame). A reel plays at 60 fps from 20 frames a second: when the display match already shows the frame, only the interpolated parts (positions, ball, clock, events) are written again. Between the last frame before a goal and the next (ball back on the centre spot) the ball runs on along its path, into the net. Returns the 1-based clip number. |
+| `selectHighlights(events, duration, budget = 60)` | Chronological clips `{ start, end, offset }` totalling `budget` s. Every goal and every red card is included (they share the reel when there are many); other moments are ranked by `highlightScore`. A penalty shootout is never in a reel: clips end at the `shootout-start` event, and `simulateHalf` / `simulateComplete` record no frames after it (`result.shootout` has the kicks). |
 | `highlightScore(event)` | Interest of a non-goal moment: xG and big chances for shots, near misses and woodwork, save difficulty, red cards and penalties, delivery/take-on strength. `0` = never a highlight. |
 | `performanceRating(player, match)` | 3–10 match rating |

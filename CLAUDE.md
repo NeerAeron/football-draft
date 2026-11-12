@@ -143,7 +143,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
-  club-XI fit + coach, gameplay, discipline, stamina, periods, formats, ratings, badges), live
+  club-XI fit + coach, gameplay, the favourite's edge (`userEdge`: a slightly better save balance for the user's side when it is the stronger team, AI matches only), discipline, stamina, periods, formats, ratings, badges), live
   `CONFIG` (a copy of the defaults; `setRuntimeConfig` for tools), `loadConfig`/`saveConfig`
   (diff-only storage, kept for tools and tests; unknown keys are ignored), `normalizeConfig`, `CONFIG_FIELDS`; `v8-defaults.js` (old-save migration). Each
   `Match` snapshots it into `match.tuning`; a draft session snapshots `CONFIG.draft`.

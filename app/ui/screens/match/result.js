@@ -211,7 +211,6 @@ export function ResultView({ result: r, momentum, onContinue, onRematch, onHome 
       ${
         r.shootout &&
         html`<${ShootoutPanel}
-          fixed
           teams=${r.teams}
           shootout=${{
             ...r.shootout,

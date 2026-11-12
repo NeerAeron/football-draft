@@ -384,14 +384,25 @@ const matchFlows = [
   {
     name: 'match-pens',
     async run({ page, shot, step, base }) {
-      await page.goto(`${base}${MATCH}&view=full&pens=1`);
-      await kickOff(page, step);
-      await step('shootout panel', () => visible(page, '.pens', 20000));
-      await step('speed 4x', () => page.click('.match-speed label:has-text("4×")'));
-      await page.waitForTimeout(3000);
-      await shot('shootout');
-      await step('shootout decided', () => visible(page, '[data-testid="match-result"]', 90000));
-      await shot('result');
+      // The shootout is a list of marks, never played on the pitch. Reduced motion (emulated
+      // here) shows every kick and the winner at once; with motion they come one by one.
+      for (const view of ['full', 'key']) {
+        await page.goto(`${base}${MATCH}&view=${view}&pens=1`);
+        await kickOff(page, step);
+        await step(`${view}: every kick and the winner`, async () => {
+          await visible(page, '[data-testid="shootout"] .pens.is-decided', 30000);
+          const marks = await page.locator('.pens__dot.is-goal, .pens__dot.is-miss').count();
+          if (marks < 6) throw new Error(`only ${marks} kicks shown`);
+          await visible(page, '.pens__row.is-winner');
+        });
+        if (view === 'full') await shot('shootout');
+        await step(`${view}: result`, () => visible(page, '[data-testid="match-result"]', 30000));
+        await step(`${view}: the result keeps the shootout`, () =>
+          visible(page, '[data-testid="match-result"] .pens.is-decided'),
+        );
+        if (view === 'full') await shot('result');
+        await page.evaluate(() => localStorage.removeItem('football-draft-match'));
+      }
     },
   },
 ];
