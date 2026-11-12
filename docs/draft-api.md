@@ -209,8 +209,8 @@ position }` on pool entries and slot players who have one (a legend version has 
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,274
-cards, 2.4 MB, 0.70 MB gzip / 0.55 MB brotli), attached to the catalog like the legends.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,486
+cards, 2.4 MB, 0.71 MB gzip / 0.56 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
 `node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
@@ -236,20 +236,32 @@ ratings (a title's launch ratings: the year before its number).
 | 2014 | Brazil 14 | 2011–2014 | FIFA 12–15 |
 | 2018 | Russia 18 | 2015–2018 | FIFA 16–19 |
 | 2022 | Qatar 22 | 2019–2022 | FIFA 20–23 |
-| 2026 | 2026 | 2023–2026 | FC 24, 25, 26 and today's catalog (FC 27) |
+| 2026 | USA/Canada/Mexico 26 | 2023–2026 | FC 24, 25, 26 and today's catalog (FC 27) |
 
-- `ERAS` — the table above, oldest first: `[{ id, label, from, to }]` (static: no data needed).
+Every era is named by its hosts. Each also has **`short`** — the same text, except
+`USA/CAN/MEX 26` for 2026 (14 characters; the longest is `South Africa 10`, 15). **Use `short`
+wherever the label shares a line or sits in a fixed box** (the era reel, chips, pool rows, the
+pick summary at 390 px) **and `label` where it has a line of its own** (the pool header, a
+sentence, the share text).
+
+- `ERAS` — the table above, oldest first: `[{ id, label, short, from, to }]` (static: no data
+  needed).
   `eraById(id)`, `eraOfYear(year)` → the era object or `null`.
 - `attachEras(catalog, data)` → the catalog, with `catalog.eras` set (idempotent). `data` is
   `decodeEras(file)`. A file built for another catalog build still attaches: cards of people
   the catalog does not know are simply nobody's other version.
-- `eraList(catalog)` → `[{ id, label, from, to, nations: [{ name, code, flag, strength, size,
-  keepers }] }]`, oldest era first, an era's nations strongest first. **Only spinnable nations
-  are listed** (20–70 per era, see below). `name` is the catalog's nation name (`code`/`flag`
-  as in `catalog.nations`; a nation today's catalog does not have — none at the moment — would
-  have `code: null`). `strength` = the mean shown rating of the pool's best XI (best keeper +
-  the ten best outfielders, one decimal): the number to weigh or order a reel by. `size` =
-  players in the pool (≤ 26), `keepers` = how many are goalkeepers.
+- `eraList(catalog)` → `[{ id, label, short, from, to, keeperLevel, nations: [{ name, code,
+  flag, strength, size, keepers }] }]`, oldest era first, an era's nations strongest first.
+  **Only spinnable nations are listed** (20–70 per era, see below). `name` is the catalog's
+  nation name (`code`/`flag` as in `catalog.nations`; a nation today's catalog does not have —
+  none at the moment — would have `code: null`). `size` = players in the pool (≤ 26),
+  **`keepers` = how many of them are goalkeepers: 0 to 3 — a spinnable pool may have none.**
+  `strength` = the mean shown rating of the pool's best XI (best keeper + the ten best
+  outfielders, one decimal): the number to weigh or order a reel by. A pool without a keeper
+  is rated with the era's `keeperLevel` in goal — the weakest first-choice keeper any
+  qualifying pool of that era has (71 / 63 / 62 / 61 / 58 / 53 / 58 / 53), i.e. the least a
+  keeper drafted from that era would be: no invented player, and such a nation is never
+  rated above what it could field.
 - `eraNations(catalog, eraId)` → that era's `nations` array (`[]` for an unknown era).
 - `eraPool(catalog, eraId, nation)` → the pool: an array of ≤ 26 players, best first (shown
   rating, then the later year, then the id), **the same frozen array every call**;
@@ -279,7 +291,7 @@ ratings (a title's launch ratings: the year before its number).
 }
 ```
 
-**The 2026 era** is today's catalog plus the FC 24–26 versions of the same people: a player's
+**The 2026 era** (USA/Canada/Mexico 26) is today's catalog plus the FC 24–26 versions of the same people: a player's
 2026 card is his best of the four titles (ties: the latest). When that is today's card, the
 pool holds **the catalog player object itself** (`catalog.byId` identity: no `era`, no `year`);
 otherwise an era card with `eraOf` = his catalog profileId. People who left the game after FC
@@ -305,21 +317,37 @@ attributes, badges, club and year (`editionLabel(card)` → "’05").
 
 **Which nations can be spun in an era** (decided by the compiler, `ERA_SPIN` in
 `scripts/compile-legends.mjs`, recorded in the file's `selection`): a nation whose pool has at
-least 18 players with a goalkeeper, at least 5 defenders, 5 midfielders and 2 forwards (counted
-before a second striker is settled as a striker or a No. 10: a pool can end with 4 midfielders
-or 1 forward); if more than 70 qualify, the 70 strongest; an era needs at least 20 (the build
-fails otherwise). As built:
+least 18 players, at least 5 defenders, 5 midfielders and 2 forwards (counted before a second
+striker is settled as a striker or a No. 10: a pool can end with 4 midfielders or 1 forward) —
+**a goalkeeper is not required**; if more than 70 qualify, the 70 strongest; an era needs at
+least 20 (the build fails otherwise). As built:
 
-| era | nations | pools under 26 | fewer than 3 keepers | strongest | weakest |
-| --- | --- | --- | --- | --- | --- |
-| France 98 | 27 | 8 (18–25) | 6 | England 82.7 | Hungary 70.9 |
-| Korea/Japan 02 | 52 | 6 | 13 | Brazil 86.9 | Canada 72.5 |
-| Germany 06 | 61 | 3 | 12 | Brazil 89.7 | China PR 71.0 |
-| South Africa 10 | 65 | 7 | 16 | Brazil 88.5 | New Zealand 66.5 |
-| Brazil 14 | 70 of 81 | 1 | 13 | Spain 89.3 | Gabon 71.3 |
-| Russia 18 | 70 of 90 | 1 | 5 | Spain 88.5 | Bulgaria 73.9 |
-| Qatar 22 | 70 of 92 | 0 | 4 | France 87.9 | Tunisia 74.5 |
-| 2026 | 70 of 92 | 1 | 5 | France 88.4 | Iran 73.7 |
+| era | nations | pools under 26 | fewer than 3 keepers | no keeper | strongest | weakest |
+| --- | --- | --- | --- | --- | --- | --- |
+| France 98 | 27 | 8 (18–25) | 6 | — | England 82.7 | Hungary 70.9 |
+| Korea/Japan 02 | 54 | 7 | 15 | Ghana, China PR | Brazil 86.9 | China PR 69.6 |
+| Germany 06 | 62 | 3 | 13 | Guinea | Brazil 89.7 | China PR 71.0 |
+| South Africa 10 | 70 | 9 | 21 | Mali, Peru, Algeria, Honduras, Congo DR | Brazil 88.5 | New Zealand 66.5 |
+| Brazil 14 | 70 of 84 | 0 | 13 | Honduras | Spain 89.3 | Guinea 71.4 |
+| Russia 18 | 70 of 98 | 1 | 5 | — | Spain 88.5 | Bulgaria 73.9 |
+| Qatar 22 | 70 of 100 | 1 | 5 | Gabon | France 87.9 | South Africa 74.5 |
+| USA/Canada/Mexico 26 | 70 of 99 | 1 | 5 | Egypt | France 88.4 | North Macedonia 73.9 |
+
+**What changed for the draft (keeper rule dropped, 2026 renamed)** — against the first build:
+
+1. `eraList(...).nations[i].keepers` can be **0** (10 of the 493 era–nation pools; listed
+   above). `eraPool` of such a nation has no `GK` at all. Nothing else about a pool changed:
+   still ≥ 18 players, best first, frozen.
+2. The data no longer guarantees a keeper per landing: **the draft must** — while the keeper
+   slot is open, at least half of the nations a spin can land on must have `keepers > 0`; when
+   the keeper is the only slot left, only nations with `keepers > 0` may be landed on. Every
+   era has plenty (27 / 52 / 61 / 65 / 69 / 70 / 69 / 69 pools with a keeper).
+3. Nation counts moved: Korea/Japan 02 52 → 54, Germany 06 61 → 62, South Africa 10 65 → 70;
+   the 70-nation eras swapped a few of their weakest (more qualify, the cap is the same).
+4. `strength` of a keeperless pool uses `era.keeperLevel` (see `eraList`); pools with a keeper
+   are rated as before.
+5. Era 2026: `label` is `USA/Canada/Mexico 26` (was `2026`), and every era has `short`. The id
+   (2026), `CURRENT_ERA` and the years did not change.
 
 Things a draft should know about the data:
 
@@ -332,8 +360,8 @@ Things a draft should know about the data:
 - **France 98 is thin**: 27 nations, no Brazil-size depth outside Europe and Argentina/Brazil
   (FIFA 98/99 use their own player ids and mostly surnames: a player counts only when
   FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch). Japan, Mexico, the United States or Nigeria of 1998 are not spinnable.
-- A pool can have 1 or 2 keepers (never 0), and as few as 18 players.
-- 7,207 people are in a pool; 3,406 of them in two or more eras (Messi in six). 585 best
+- A pool can have 0, 1 or 2 keepers, and as few as 18 players.
+- 7,334 people are in a pool; 3,455 of them in two or more eras (Messi in six). 601 best
   versions are kept outside the pools for the Prime.
 - Era cards and `catalog.legends` are separate objects for the same men (a legend's id ends
   in `:legend`, an era card's in `:era`): do not mix the two systems in one XI without
