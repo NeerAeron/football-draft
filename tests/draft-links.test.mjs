@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { teamLinks, chemValues, linkBoosts, LINK_KINDS } from '../app/core/draft/links.js';
+import {
+  teamLinks,
+  chemValues,
+  linkBoosts,
+  captainSlot,
+  LINK_KINDS,
+} from '../app/core/draft/links.js';
 import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 
 const rules = DEFAULT_CONFIG.draft.links;
@@ -12,7 +18,7 @@ const player = (clubId, nationality, leagueId, extra = {}) => ({
 });
 
 test('mates: nation mate +1.5, club mate +1, both +2.5 — one mate is enough, no league mates', () => {
-  assert.deepEqual(rules, { nation: 1.5, club: 1 });
+  assert.deepEqual(rules, { nation: 1.5, club: 1, captain: 1 });
   assert.deepEqual(LINK_KINDS, ['nation', 'club']);
   const xi = [
     player('c1', 'France', 'L1'), // nation mate (1) and club mate (2) -> +2.5
@@ -86,19 +92,41 @@ test('real national XIs are all nation mates (+1.5, +2.5 for club mates inside),
   assert.ok(c.pairs.every(p => p.kind === 'club'));
 });
 
-test('there is no Captain boost: a Captain-tagged player changes nothing', () => {
+test('a Captain gives every player +1 on top of the mates boosts; two do not stack', () => {
   const loner = (id, extra = {}) => ({
     sourceOverall: 70,
     source: { clubId: `c${id}`, nationality: `N${id}`, leagueId: `l${id}` },
     ...extra,
   });
-  const xi = [loner(1), loner(2, { captain: true, sourceOverall: 80 }), null];
-  const links = teamLinks(xi, { ...rules, captain: 1 }); // a rule saved with the old boost
-  assert.deepEqual(chemValues(xi, rules), [0, 0, 0]);
-  assert.equal(links.total, 0);
-  assert.equal(links.chem, 0);
-  assert.ok(!('captain' in links) && !('captainBoost' in links));
-  assert.deepEqual(Object.keys(linkBoosts(rules)), ['nation', 'club']);
+  const mate = (id, extra = {}) => ({
+    sourceOverall: 70,
+    source: { clubId: 'c', nationality: 'N', leagueId: 'l' },
+    profileId: 'm' + id,
+    ...extra,
+  });
+  const xi = [loner(1), loner(2, { captain: true, sourceOverall: 80 }), null, mate(1), mate(2)];
+  const links = teamLinks(xi, rules);
+  assert.deepEqual(chemValues(xi, rules), [1, 1, 0, 3.5, 3.5]);
+  assert.deepEqual(
+    links.players.map(e => e && e.boost),
+    [0, 0, null, 2.5, 2.5],
+  );
+  assert.equal(links.captain, 1);
+  assert.equal(links.captainBoost, 1);
+  assert.equal(links.score, 5); // the mates boosts
+  assert.equal(links.total, 9); // + the Captain's +1 for four players
+  assert.equal(links.chem, 9 / 4);
+  // Two captains: one boost; the higher source rating wears the armband (first slot on a tie).
+  const two = [loner(1, { captain: true, sourceOverall: 80 }), loner(2, { captain: true })];
+  assert.deepEqual(chemValues(two, rules), [1, 1]);
+  assert.equal(captainSlot(two), 0);
+  assert.equal(captainSlot([loner(1, { captain: true }), loner(2, { captain: true })]), 0);
+  assert.equal(captainSlot([loner(1), null]), null);
+  // No captain, no boost; a rule saved while the game had no Captain keeps playing without.
+  assert.equal(teamLinks([loner(1), loner(2)], rules).captainBoost, 0);
+  assert.deepEqual(chemValues(xi, { nation: 1.5, club: 1 }), [0, 0, 0, 2.5, 2.5]);
+  assert.deepEqual(linkBoosts({ nation: 1.5, club: 1 }), { nation: 1.5, club: 1, captain: 0 });
+  assert.deepEqual(Object.keys(linkBoosts(rules)), ['nation', 'club', 'captain']);
 });
 
 test('rules saved before the mates rule (thresholds per kind) read as the defaults', () => {
@@ -109,7 +137,7 @@ test('rules saved before the mates rule (thresholds per kind) read as the defaul
     maxChem: 2,
     captain: 1,
   };
-  assert.deepEqual(linkBoosts(old), { nation: 1.5, club: 1 });
+  assert.deepEqual(linkBoosts(old), { nation: 1.5, club: 1, captain: 1 });
   const xi = [player('a', 'X', 'l'), player('b', 'X', 'l')];
   assert.deepEqual(chemValues(xi, old), [1.5, 1.5]);
   // Custom numbers are honoured; a kind worth 0 makes no mates.

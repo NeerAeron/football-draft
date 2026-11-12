@@ -375,3 +375,40 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
     0 0 0 1.5px rgb(3 12 8 / 0.75),
     0 1px 4px rgb(0 0 0 / 0.5);
 }
+
+/* The captain's armband sits on the token's shoulder. */
+.pitch-slot__captain {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  z-index: 1;
+}
+/* A legend's or prime version's year ("’18"): gold, under the armband corner. */
+.pitch-slot__era {
+  position: absolute;
+  left: calc(var(--token) * -0.24);
+  bottom: calc(var(--token) * 0.02);
+  z-index: 1;
+  padding: 1px 3px 0;
+  border-radius: 4px;
+  background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
+  color: var(--on-gold);
+  font-size: calc(var(--token) * 0.23);
+  font-weight: var(--weight-heavy);
+  line-height: 1.15;
+  box-shadow: 0 0 0 1.5px rgb(3 12 8 / 0.75);
+}
+/* A Prime boost is available for him: a small gold spark. */
+.pitch-slot__prime {
+  position: absolute;
+  right: calc(var(--token) * -0.12);
+  bottom: calc(var(--token) * 0.02);
+  z-index: 1;
+  width: calc(var(--token) * 0.24);
+  height: calc(var(--token) * 0.24);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, var(--gold-400) 55%, var(--gold-500));
+  box-shadow:
+    0 0 0 1.5px rgb(3 12 8 / 0.75),
+    0 0 6px rgb(245 200 76 / 0.7);
+}

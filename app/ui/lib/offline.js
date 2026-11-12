@@ -18,6 +18,8 @@ const WORKERS = [
   './ui/screens/run/auto-sim-worker.js',
   './ui/screens/daily/perfect-xi-worker.js',
 ];
+// Data fetched on demand (the Legends and Prime versions: first when a draft starts).
+const DATA = ['./data/legends.v1.json'];
 const WARMED = './__offline-ready'; // marker entry written by sw.js after a warm-up
 
 const idle = fn => (globalThis.requestIdleCallback || (cb => setTimeout(cb, 500)))(fn);
@@ -41,7 +43,7 @@ async function warmUp(worker, routes) {
   const loaded = () => performance.getEntriesByType('resource').map(entry => entry.name);
   await document.fonts?.ready;
   await ask(worker, {
-    cache: [page, ...loaded(), ...WORKERS.map(path => new URL(path, page).href)],
+    cache: [page, ...loaded(), ...[...WORKERS, ...DATA].map(path => new URL(path, page).href)],
   });
   // Fetched through the worker now that it controls the page, so all of it gets cached:
   // every screen's module graph and every declared font face (fonts load lazily otherwise).

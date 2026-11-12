@@ -13,6 +13,8 @@
  *   boost        { label, text } the mates boost he would get, green, on the second line
  *                ('+1.5' 'nation mate')
  *
+ * A Captain's name carries the "C", a legend's the year of his version ("’18"); `player.primeNote`
+ * ("Prime 94 · ’19") is shown on the second line.
  * A Superstar's or a Star's row has a thin outline in the tier's colour (not with hideRatings).
  *   selected     volt edge + aria-pressed;  disabled (dimmed, not clickable)
  *   hideRatings  hide OVR + stats
@@ -27,6 +29,7 @@ import { resolveTier, isTopTier } from '../lib/tiers.js';
 import { keyStatsFirst } from '../lib/player-view.js';
 import { Flag } from './flag.js';
 import { FitTag, fitText } from './fit-tag.js';
+import { CaptainMark } from './captain-mark.js';
 
 export function PlayerRow({
   player,
@@ -61,9 +64,13 @@ export function PlayerRow({
     ${rank != null && html`<span class="prow__rank num">${rank}</span>`}
     <${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative />
     <span class="prow__who">
-      <span class="prow__name">${p.name}</span>
+      <span class="prow__name"
+        >${p.name}${p.era && html` <span class="prow__era num">${p.era}</span>`}${
+          p.captain && html` <${CaptainMark} class="prow__captain" />`
+        }</span
+      >
       ${
-        (sub || cost || boost) &&
+        (sub || cost || boost || p.primeNote) &&
         html`<span class="prow__meta"
           >${
             cost &&
@@ -75,7 +82,11 @@ export function PlayerRow({
             html`<span class="prow__boost"
               ><b class="num">${boost.label}</b>${` ${boost.text}`}</span
             >`
-          }${boost && sub ? ' · ' : ''}${sub}</span
+          }${boost && sub ? ' · ' : ''}${sub}${
+            p.primeNote &&
+            !hideRatings &&
+            html`${sub || boost ? ' · ' : ''}<span class="prow__prime">${p.primeNote}</span>`
+          }</span
         >`
       }
     </span>
@@ -105,6 +116,8 @@ export function PlayerRow({
       hideRatings ? null : `${p.ovr} overall`,
       p.nation?.name,
       p.club?.name,
+      p.captain && 'captain',
+      p.era && `20${p.era.slice(1)}`,
       cost && (cost.text || cost.label),
       boost && `${boost.label} ${boost.text}`,
       fitText(fit, hideRatings),

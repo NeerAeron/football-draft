@@ -12,7 +12,7 @@ import { makeIdentity } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';
 import { compileBadges } from '../app/core/players/badges.js';
 
-export const COMPILER_VERSION = '1.8.0';
+export const COMPILER_VERSION = '1.9.0';
 export const SOURCE_URL = 'https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data';
 const bound = (v, a = 0.05, b = 0.95) => Math.max(a, Math.min(b, v));
 const fields = {
@@ -133,6 +133,20 @@ const traitMap = {
   'Aerial Fortress': 'heading',
   Trivela: 'curve',
   'Low Driven Shot': 'finisher',
+  // Trait names of the past editions (FIFA 15–23, the legacy source): the same badges.
+  'Technical Dribbler (AI)': 'dribbler',
+  'Speed Dribbler (AI)': 'speedster',
+  'Long Shot Taker (AI)': 'longshot',
+  'Power Header': 'heading',
+  'Playmaker (AI)': 'vision',
+  'Long Passer (AI)': 'longball',
+  'Early Crosser': 'crosser',
+  'Outside Foot Shot': 'curve',
+  'Through Ball': 'through',
+  'Dives Into Tackles (AI)': 'ballwinner',
+  'Power Free-Kick': 'power',
+  'Rushes Out Of Goal': 'gkoneonone',
+  '1-on-1 Rush': 'gkoneonone',
 };
 const labelMap = {
   '#Dribbler': 'dribbler',
@@ -144,7 +158,14 @@ const labelMap = {
   '#Tackling': 'ballwinner',
   '#Tactician': 'interceptor',
 };
-export function compilePlayer(row, sourceRow) {
+// Past editions capitalise the same labels differently ('#Clinical Finisher').
+const labelLookup = new Map(Object.entries(labelMap).map(([k, v]) => [k.toLowerCase(), v]));
+/**
+ * One source row → a compiled player. `options` (past editions, scripts/compile-legends.mjs):
+ * `suffix` of the profile id (default `u<update>`), `source` ({ url, license }) and
+ * `inference` notes to record.
+ */
+export function compilePlayer(row, sourceRow, options = {}) {
   if (!/^\d+$/.test(row.player_id || '')) throw new Error('Invalid player ID');
   const [primaryPosition, ...secondaryPositions] = positions(row),
     attrs = {};
@@ -203,7 +224,8 @@ export function compilePlayer(row, sourceRow) {
     const plus = /\s*\+$/.test(label),
       base = label.replace(/\s*\+$/, '');
     let tag = traitMap[base];
-    if (primaryPosition === 'GK' && base === 'Cross Claimer') tag = 'safehands';
+    if (primaryPosition === 'GK' && (base === 'Cross Claimer' || base === 'Comes For Crosses'))
+      tag = 'safehands';
     if (base === 'Relentless' && primaryPosition !== 'GK' && attrs.stamina >= 80) tag = 'engine';
     if (base === 'Precision Header') tag = 'heading';
     if (base === 'Long Ball Pass' && primaryPosition === 'GK') tag = 'distributor';
@@ -212,7 +234,7 @@ export function compilePlayer(row, sourceRow) {
     add(tag, plus ? 0.98 : 0.9, label);
     traitEvidence.push({ name: base, plus, mappedTag: tag || null });
   }
-  for (const label of words(row.player_tags)) add(labelMap[label], 0.8, label);
+  for (const label of words(row.player_tags)) add(labelLookup.get(label.toLowerCase()), 0.8, label);
   const identityProfile = {
       attrs: normalized,
       primaryPosition,
@@ -222,7 +244,7 @@ export function compilePlayer(row, sourceRow) {
     },
     selected = compileBadges(identityProfile, [...candidates.values()]);
   const profile = {
-    profileId: `ea:${row.player_id}:fc${row.fifa_version}:u${row.fifa_update}`,
+    profileId: `ea:${row.player_id}:fc${row.fifa_version}:${options.suffix ?? 'u' + row.fifa_update}`,
     sourcePlayerId: row.player_id,
     name: row.short_name?.trim() || row.long_name?.trim(),
     fullName: row.long_name,
@@ -233,16 +255,16 @@ export function compilePlayer(row, sourceRow) {
     weakFoot,
     tendencies,
     tags: selected.map(t => t.tag),
-    // Captain: the source has no captaincy, so leadership is read from its real fields — an
-    // experienced player (28+) with an international reputation of 4 or 5 (34 players).
-    captain: number(row, 'international_reputation', 1, 5) >= 4 && number(row, 'age') >= 28,
+    // Captain: set by the catalog compiler from the reviewed list in data/captains.json (the
+    // source has no captaincy).
+    captain: false,
     sourceOverall: number(row, 'overall'),
     source: {
       compilerVersion: COMPILER_VERSION,
-      url: SOURCE_URL,
-      license: 'CC BY 4.0',
+      url: options.source?.url ?? SOURCE_URL,
+      license: options.source?.license ?? 'CC BY 4.0',
       row: sourceRow,
-      edition: `FC ${row.fifa_version}`,
+      edition: `${Number(row.fifa_version) >= 24 ? 'FC' : 'FIFA'} ${row.fifa_version}`,
       update: row.fifa_update,
       asOf: row.fifa_update_date,
       club: row.club_name || null,
@@ -258,6 +280,7 @@ export function compilePlayer(row, sourceRow) {
       awareness: '70% defensive awareness + 30% reactions',
       tendencies: 'Position and ability priors; work rate unavailable; discipline neutral',
       badges: selected,
+      ...options.inference,
     },
   };
   if (!profile.name) throw new Error(`${row.player_id}: missing name`);

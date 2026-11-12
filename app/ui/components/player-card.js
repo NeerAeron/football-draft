@@ -16,6 +16,8 @@
  *   onClick      makes the card a <button>;  href makes it a link
  *   showBadges   default true
  *   children     optional footer content inside the card (e.g. a fit chip)
+ * A legend or a prime version shows the year of that version under the position ("’18"); a
+ * Captain wears the "C".
  */
 import { html, cx } from '../lib/html.js';
 import { resolveTier } from '../lib/tiers.js';
@@ -25,6 +27,7 @@ import { Flag } from './flag.js';
 import { Crest, LeagueLogo } from './crest.js';
 import { Chip } from './chip.js';
 import { Icon } from './icon.js';
+import { CaptainMark } from './captain-mark.js';
 
 const MARK = { s: 18, m: 22, l: 28 };
 const BADGE_COUNT = { s: 0, m: 1, l: 3 };
@@ -73,11 +76,19 @@ export function PlayerCard({
     hideRatings ? null : t.label,
     p.nation?.name,
     p.club?.name,
+    p.legend
+      ? `legend, 20${p.era.slice(1)}`
+      : p.prime
+        ? `prime version, 20${p.era.slice(1)}`
+        : null,
+    p.captain ? 'captain' : null,
   ]
     .filter(Boolean)
     .join(', ');
   const classes = cx(
     'pcard',
+    p.legend && 'pcard--legend',
+    p.prime && 'pcard--prime',
     `pcard--${size}`,
     `pcard--tier-${frame}`,
     selected && 'is-selected',
@@ -91,6 +102,8 @@ export function PlayerCard({
         <span class="pcard__rating">
           <span class="pcard__ovr num">${hideRatings ? '?' : p.ovr}</span>
           <span class="pcard__pos">${p.position}</span>
+          ${p.era && html`<span class="pcard__era num">${p.era}</span>`}
+          ${p.captain && html`<${CaptainMark} size=${size === 's' ? 'sm' : 'md'} />`}
         </span>
         <span class="pcard__art"><${KitShirt} colors=${p.club?.colors} /></span>
         <span class="pcard__marks">

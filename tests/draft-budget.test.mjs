@@ -51,11 +51,11 @@ function assertWithinBudget(s) {
   }
 }
 
-test('tiers: 1 Superstar (88+), 2 Stars (84–87), 3 Starters (80–83), the rest free', () => {
+test('tiers: 2 Superstars (88+), 2 Stars (84–87), 3 Starters (80–83), the rest free', () => {
   assert.deepEqual(
     bands.map(b => [b.id, b.label, b.range, b.minimum, b.slots]),
     [
-      ['superstar', 'Superstar', '88+', 88, 1],
+      ['superstar', 'Superstar', '88+', 88, 2],
       ['star', 'Star', '84–87', 84, 2],
       ['starter', 'Starter', '80–83', 80, 3],
     ],
@@ -150,7 +150,7 @@ test('the team view counts the slots; a full band closes its players with a reas
   assert.deepEqual(
     s.snapshot().teams[0].budget.map(b => [b.label, b.slots, b.used, b.left]),
     [
-      ['Superstar', 1, 0, 1],
+      ['Superstar', 2, 0, 2],
       ['Star', 2, 0, 2],
       ['Starter', 3, 0, 3],
     ],

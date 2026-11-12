@@ -19,10 +19,17 @@ globalThis.localStorage = {
 globalThis.location = { hash: '#/' };
 
 const catalog = await loadRuntimeCatalog();
+const { readLegends } = await import('../scripts/data/catalog-file.mjs');
+const { attachLegends } = await import('../app/core/players/legends.js');
 const draft = await import('../app/ui/lib/draft-store.js');
 const prematch = await import('../app/ui/lib/prematch-store.js');
 const { readMatchResult, currentRequest } = await import('../app/ui/lib/match-store.js');
-draft.setCatalogLoader(async () => catalog);
+// World Cup drafts ask for the legends data; nothing else does.
+const loads = [];
+draft.setCatalogLoader(async ({ legends = false } = {}) => {
+  loads.push(legends);
+  return legends ? attachLegends(catalog, readLegends()) : catalog;
+});
 
 const reset = () => {
   draft.clearDraft();
@@ -75,6 +82,60 @@ test('startDraft spins at once, persists, and restores identically after a reloa
   assert.ok(restored);
   assert.equal(draft.draftStore.get().snap.spin.option.id, spinBefore);
   assert.equal(draft.draftStore.get().animate, null, 'a restored spin is shown landed');
+});
+
+test('a World Cup draft: Legend spin first, Prime boosts, legends data only for it', async () => {
+  reset();
+  loads.length = 0;
+  for (const kind of ['quick', 'versus', 'daily']) {
+    const ctx = draft.normalizeContext({ kind, type: 'nations', seed: 1 });
+    assert.equal(draft.worldCupDraft(ctx), false);
+    const options = draft.sessionOptions(ctx);
+    assert.ok(!('legendSpin' in options) && !('primes' in options), kind);
+  }
+  await draft.startDraft({ kind: 'quick', type: 'nations', seed: 7 });
+  assert.equal(draft.draftStore.get().snap.legendRound, false);
+  assert.deepEqual(loads, [false]);
+  reset();
+  const session = await draft.startDraft({ kind: 'run', type: 'nations', seed: 7 });
+  assert.deepEqual(loads, [false, true]);
+  let snap = draft.draftStore.get().snap;
+  assert.deepEqual([snap.legendSpin, snap.legendRound, snap.spin.legend], [true, true, true]);
+  assert.deepEqual(snap.primes, { perSide: 2, left: [2] });
+  assert.ok(snap.pool.length <= 10 && snap.pool.every(e => e.legend));
+  assert.ok(draft.pickPlayer(snap.pool[0].profileId).ok);
+  assert.ok(draft.autoComplete());
+  // A reload in the middle restores the legend (the loader is asked for the legends again).
+  const raw = storage.get(draft.DRAFT_KEY);
+  draft.clearDraft();
+  storage.set(draft.DRAFT_KEY, raw);
+  assert.ok(await draft.loadDraft());
+  assert.equal(loads.at(-1), true);
+  snap = draft.draftStore.get().snap;
+  assert.equal(snap.teams[0].slots.filter(x => x.player.legend).length, 1);
+  // Prime boost through the store: persisted, the XI holds the prime version.
+  const option = draft.currentDraft().session.primeOptions(0)[0];
+  if (option) {
+    const result = draft.primeDrafted(option.slot);
+    assert.equal(result.ok, true);
+    const after = draft.draftStore.get().snap.teams[0];
+    assert.equal(after.primesLeft, 1);
+    assert.equal(after.slots[option.slot].player.prime, true);
+    assert.match(
+      JSON.parse(storage.get(draft.DRAFT_KEY)).session.state.picks[0][option.slot],
+      /:prime$/,
+    );
+  }
+  assert.equal(draft.primeDrafted(99).ok, false);
+  // The run takes the XI as it is.
+  const { createRunFromDraft } = await import('../app/ui/lib/run-store.js');
+  const done = draft.completedDraft();
+  const { run } = createRunFromDraft(done.session.catalog, done);
+  assert.deepEqual(
+    run.user.players,
+    done.session.lineup(0).map(p => p.profileId),
+  );
+  assert.ok(session);
 });
 
 test('autoPick spins and picks in one press; auto-complete finishes run drafts to returnTo', async () => {

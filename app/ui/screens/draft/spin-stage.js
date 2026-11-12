@@ -72,7 +72,9 @@ function SpinningReels({ spin, spinKey, onLanded }) {
     ${legs.map(
       (r, i) =>
         html`<div key=${i} class="stage-reels__reel">
-          <span class="stage-reels__label">${CATEGORY_LABEL[reels[i].category]}</span>
+          <span class="stage-reels__label"
+            >${spin.legend ? 'Legends' : CATEGORY_LABEL[reels[i].category]}</span
+          >
           ${
             i > leg
               ? html`<div class="stage-reels__wait" aria-hidden="true">
@@ -114,7 +116,9 @@ function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
     <span class="reveal__media"><${Media} head=${head} size=${compact ? 52 : 64} /></span>
     <span class="reveal__text">
       <span class="reveal__cat">
-        ${CATEGORY_LABEL[spin.category]}${spin.reroll ? ` · re-roll ${spin.reroll}` : ''}
+        ${spin.legend ? 'Legends' : CATEGORY_LABEL[spin.category]}${
+          spin.reroll ? ` · re-roll ${spin.reroll}` : ''
+        }
       </span>
       <span class="reveal__title">${head.title}</span>
       <span class="reveal__meta">
@@ -123,17 +127,21 @@ function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
       </span>
     </span>
     ${head.badge && html`<${Chip} tone="gold" variant="solid" size="sm" class="reveal__badge">${head.badge}<//>`}
-    <${IconButton}
-      icon="info"
-      label="Odds of this spin"
-      size="sm"
-      class="reveal__odds"
-      onClick=${onOdds}
-    />
+    ${
+      // The Legend reel shows no odds.
+      !spin.legend &&
+      html`<${IconButton}
+        icon="info"
+        label="Odds of this spin"
+        size="sm"
+        class="reveal__odds"
+        onClick=${onOdds}
+      />`
+    }
   </div>`;
 }
 
-function IdlePanel({ category, complete, turnName }) {
+function IdlePanel({ category, complete, turnName, legend }) {
   if (complete)
     return html`<div class="stage-idle is-complete">
       <span class="stage-idle__icon" aria-hidden="true"
@@ -142,6 +150,16 @@ function IdlePanel({ category, complete, turnName }) {
       <span class="stage-idle__text">
         <b>Draft complete</b>
         <span>Every slot is filled. Check your XI, then continue.</span>
+      </span>
+    </div>`;
+  if (legend)
+    return html`<div class="stage-idle">
+      <span class="stage-idle__window" aria-hidden="true">
+        <${Icon} name="star" size=${26} />
+      </span>
+      <span class="stage-idle__text">
+        <b>Spin for a legend</b>
+        <span>Your first pick is a great of the past.</span>
       </span>
     </div>`;
   return html`<div class="stage-idle">
@@ -217,11 +235,22 @@ export function SpinStage({
   const spin = snap.spin;
   const category = snap.category;
   const animating = animate != null && spin;
-  return html`<section class=${cx('stage', animating && 'is-spinning')} aria-label="Spin">
+  const legend = !snap.complete && snap.legendRound;
+  return html`<section
+    class=${cx('stage', animating && 'is-spinning', legend && 'is-legend')}
+    aria-label=${legend ? 'Legend spin' : 'Spin'}
+    data-legend=${legend ? 'true' : undefined}
+  >
     <header class="stage__head">
       <span class="stage__cat">
-        <${Icon} name=${CATEGORY_ICON[category] || 'reel'} size=${16} />
-        ${snap.complete ? 'All picks made' : `${CATEGORY_LABEL[category] || ''} spin`}
+        <${Icon} name=${legend ? 'star' : CATEGORY_ICON[category] || 'reel'} size=${16} />
+        ${
+          snap.complete
+            ? 'All picks made'
+            : legend
+              ? 'Legend spin'
+              : `${CATEGORY_LABEL[category] || ''} spin`
+        }
       </span>
       ${
         !snap.complete &&
@@ -259,9 +288,14 @@ export function SpinStage({
               category=${category}
               complete=${snap.complete}
               turnName=${turnName}
+              legend=${legend}
             />`
     }
     ${actions && html`<div class="stage__actions">${actions}</div>`}
-    ${spin && html`<${OddsDialog} open=${odds} onClose=${() => setOdds(false)} spin=${spin} />`}
+    ${
+      spin &&
+      !spin.legend &&
+      html`<${OddsDialog} open=${odds} onClose=${() => setOdds(false)} spin=${spin} />`
+    }
   </section>`;
 }

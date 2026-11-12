@@ -28,7 +28,8 @@ Home → Start (setup) → the reel is already spinning: two taps from Home to t
 Last choices per mode are remembered in `football-draft-setup` (`{ run: { difficulty, formation,
 uniqueNations, budget, names, kits }, … }`). The World Cup setup has a **Budget mode** switch
 (`#setup-budget`; `budgetCopy()` writes its sentence from `CONFIG.draft.budget`): a harder run
-whose XI may hold only 1 Superstar (88+), 2 Stars (84–87) and 3 Starters (80–83) (`docs/draft-api.md`). The difficulty ladder shows each level's name, a
+whose XI may hold only 2 Superstars (88+), 2 Stars (84–87) and 3 Starters (80–83) (`docs/draft-api.md`). For a run the
+difficulty line also says the Prime boosts ("2 re-rolls and 2 Prime boosts per draft"). The difficulty ladder shows each level's name, a
 word on the opponents and the re-rolls — no ratings or example teams — and, for runs, the stage
 "a good manager reaches" (`projectRun` on the mode baseline). The World Cup setup says the
 formation is played in the first match (`formationLocked` on that pre-match side, see
@@ -59,6 +60,10 @@ clearDraft();          // forget it (memory + storage)
 * Persisted after **every** action: `{ format: 1, context, session: session.serialize(),
   savedAt }` under `football-draft-draft`. A reload restores the board where it was (a spin that
   was animating is shown landed).
+* A World Cup Run's Nations draft (`worldCupDraft(ctx)`) gets `legendSpin: true, primes: true`;
+  for it (and when restoring one) the catalog loader is asked for `{ legends: true }` and
+  fetches `app/data/legends.v1.json` (`services/legends.js`) — Home and every other screen but
+  the run never fetch that file. `primeDrafted(slot)` spends a Prime boost.
 * Actions used by the board: `spinDraft()`, `rerollDraft()`, `pickPlayer(id, slot | null)`,
   `autoPick()` (spin if needed + `suggestPick()` + pick — the board's **Auto-pick**,
   `data-testid="auto-pick"`), `autoComplete()`, `markLanded()`.
@@ -174,13 +179,29 @@ openPrematch({
 * **Projection**: open slots count at the mode's typical drafted rating (`estimateRating`);
   run/daily → `projectRun` stage, quick → win chance vs the difficulty target, versus → win
   chance vs the other drafter.
+* **Legend spin** (World Cup Run drafts, `snap.legendRound`): the first spin's stage is gold
+  (`.stage.is-legend`, "Legend spin", the button says "Legend spin", the pool "Pick a legend")
+  and shows **no odds** (no ⓘ, no dialog: the reel's weighting is silent). At most ten legends
+  are listed. A legend's — and a prime version's — card, row and pitch token carry the year of
+  that version ("’18" = FIFA 19: `view.era`, `editionLabel`; an edition name is never shown).
+* **Prime boost** (`snap.primes`, `prime-sheet.js`): the `PrimeButton` ("Prime boost 2") sits
+  under the meters and in the completion sheet's footer — boosts not used by "On to the World
+  Cup" are gone. It opens one sheet (`PrimeSheet`) listing the XI: players with a prime version
+  first with the bump ("84 → 86 +2", "Prime ’22"), the rest dimmed and not selectable; select,
+  then "Boost Son · Prime ’22" confirms (not reversible). Players with a prime available carry
+  a gold dot on the pitch and "Prime 94 · ’19" in their pool row while boosts are left.
+* **Captain**: the "C" (`CaptainMark`) on his row, card and pitch token (the armband: the
+  highest-rated Captain of the XI), the green chips include his +1, and the pick preview says
+  "Captain: +1 to every player" when he would be the XI's first.
 * Test hooks: `data-testid` `spin`, `reroll`, `auto-pick`, `spin-result`, `pool`,
   `confirm-pick`, `auto-slot`, `draft-done`, `draft-continue`, `opponent-name`, `pass-spin`,
-  `team-boosts`, `mates-effect`, `budget-effect`, `pick-card`, `final-boosts`;
+  `team-boosts`, `mates-effect`, `budget-effect`, `captain-effect`, `pick-card`, `final-boosts`,
+  `prime-open`, `prime-option`, `prime-confirm`;
   `data-screen="draft"` + `data-phase="spin|spinning|pick|complete"`.
 
-Browser flows (`tests/browser/flows.mjs`): `setup`, `draft-nations` (11 picks, select → Auto
-→ confirm; the card's six stats), `draft-budget` (setup switch, tier tags, a full tier closes rows, run
+Browser flows (`tests/browser/flows.mjs`): `setup`, `draft-nations` (the Legend spin: gold stage,
+years, no odds, the legends file fetched; 11 picks, select → Auto → confirm; the card's six
+stats; a Prime boost on the completion sheet; the run keeps the legend and the prime), `draft-budget` (setup switch, tier tags, a full tier closes rows, run
 `meta.budget`), `draft-clubs` (re-roll, odds, filters, auto-pick), `draft-versus` (coin toss, four
 alternating picks), `prematch` (quick draft → opponent reveal → swap, tactic, formation picker
 with team OVRs →

@@ -162,14 +162,14 @@ function candidates(players, formations, minimumFit) {
 /**
  * Best XI of a squad: the formation and slot assignment with the highest mean slot rating.
  * Players below `minimumFit` in a slot are not considered there; if no formation works at
- * the minimum, a fallback of 0.6 (any compatible position) is tried.
+ * the minimum, a fallback of 0.6 (any compatible position) is tried — unless `strict`.
  * @returns {{formation, players, rating}|null} players in formation slot order.
  */
 export function bestEleven(
   players,
-  { formations = Object.keys(FORMATIONS), minimumFit = CONFIG.ai.minimumFit } = {},
+  { formations = Object.keys(FORMATIONS), minimumFit = CONFIG.ai.minimumFit, strict = false } = {},
 ) {
-  for (const fit of minimumFit > 0.6 ? [minimumFit, 0.6] : [minimumFit]) {
+  for (const fit of minimumFit > 0.6 && !strict ? [minimumFit, 0.6] : [minimumFit]) {
     const pool = candidates(players, formations, fit);
     let best = null;
     for (const formation of formations) {
@@ -197,7 +197,7 @@ export function lineupRating(players, formation) {
 
 // ---- catalog index --------------------------------------------------------------------
 const rulesStamp = rules =>
-  JSON.stringify([rules.nations, rules.clubs, rules.minimumLeaguePlayers]);
+  JSON.stringify([rules.nations, rules.clubs, rules.minimumLeaguePlayers, CONFIG.ai.minimumFit]);
 const indexes = new WeakMap();
 /** The draft rules a session snapshots (defaults: the live CONFIG.draft). */
 export function draftRules(source = CONFIG.draft) {
@@ -208,6 +208,8 @@ export function draftRules(source = CONFIG.draft) {
     rerolls: source.rerolls,
     ladder: source.ladder,
     links: source.links,
+    legends: source.legends,
+    primes: source.primes,
     budget: source.budget,
     minimumLeaguePlayers: source.minimumLeaguePlayers,
   });
@@ -270,32 +272,43 @@ function* buildIndex(catalog, rules) {
   for (const nation of nations.values()) {
     if (nation.players.length < n.minimumPlayers || nation.goalkeepers < n.minimumGoalkeepers)
       continue;
-    const xi = bestEleven(nation.players);
+    // Playable: an XI with a real keeper and nobody out of position (no 0.6 fallback).
+    const xi = bestEleven(nation.players, { strict: true });
     if (xi) eligible.push({ nation, xi });
     yield;
   }
   for (const { nation, xi } of eligible) nation.strength = xi.rating;
   eligible.sort((a, b) => b.xi.rating - a.xi.rating || a.nation.name.localeCompare(b.nation.name));
-  const field = eligible.slice(0, n.fieldSize).map(({ nation }, i) => {
-    nation.pot = Math.floor(i / n.potSize) + 1;
-    return nation;
+  // Playable: every nation that can field such an XI, strongest first — on the reel and met as
+  // an opponent. The field is its strongest `fieldSize`, in pots: only the real-World-Cup draw
+  // (competition/cup.js worldCupDraw) and the Daily's schedule need exactly that many.
+  const playable = eligible.map(({ nation }) => nation),
+    outside = Math.floor(Math.min(playable.length, n.fieldSize) / n.potSize) + 1;
+  playable.forEach((nation, i) => {
+    nation.playable = true;
+    nation.pot = i < n.fieldSize ? Math.floor(i / n.potSize) + 1 : outside;
   });
-  // Wildcards: nations outside the field with a star. Spun in drafts (pot 5), not opponents.
-  const inField = new Set(field),
-    wildcards = [...nations.values()]
+  const field = playable.slice(0, n.fieldSize);
+  // Star nations: they cannot field an XI but have a star. Spun in drafts, never met. (Rules
+  // saved before the rename called the two numbers wildcardStar / wildcardPlayers.)
+  const isPlayable = new Set(playable),
+    reelStar = n.reelStar ?? n.wildcardStar,
+    reelPlayers = n.reelPlayers ?? n.wildcardPlayers ?? Infinity,
+    starNations = [...nations.values()]
       .filter(
         nation =>
-          !inField.has(nation) &&
-          nation.players.length >= (n.wildcardPlayers ?? Infinity) &&
-          nation.players.some(p => Math.round(naturalRating(p)) >= n.wildcardStar),
+          !isPlayable.has(nation) &&
+          nation.players.length >= reelPlayers &&
+          nation.players.some(p => Math.round(naturalRating(p)) >= reelStar),
       )
       .map(nation => {
+        // No XI: the mean of its best eleven stands in for a strength.
         const best = nation.players
           .map(naturalRating)
           .sort((a, b) => b - a)
           .slice(0, 11);
         nation.strength = best.reduce((a, b) => a + b, 0) / best.length;
-        nation.pot = Math.floor(field.length / n.potSize) + 1;
+        nation.pot = outside;
         return nation;
       })
       .sort((a, b) => b.strength - a.strength || a.name.localeCompare(b.name));
@@ -363,9 +376,10 @@ function* buildIndex(catalog, rules) {
     players,
     byId,
     nations,
+    playable,
     field,
-    // What a nation spin can land on: the field and the wildcards.
-    spinField: [...field, ...wildcards],
+    // What a nation spin can land on: every playable nation and the star nations.
+    spinField: [...playable, ...starNations],
     leagues,
     leagueById: new Map(leagues.map(l => [l.id, l])),
     clubs,
@@ -401,6 +415,64 @@ export function callUps(nation, available, rules = CONFIG.draft.nations) {
     if (!chosen.has(p) && !isKeeper(p) && available(p)) chosen.add(p);
   }
   return [...chosen].sort(byNatural);
+}
+
+// ---- legends ------------------------------------------------------------------------------
+const legendIndexes = new WeakMap();
+/** Best shown rating first, then the name (what a Legend spin lists). */
+const byShown = (a, b) =>
+  Math.round(naturalRating(b)) - Math.round(naturalRating(a)) ||
+  a.name.localeCompare(b.name) ||
+  (a.profileId < b.profileId ? -1 : 1);
+/**
+ * Index of a catalog's Legends (catalog.legends, players/legends.js) for the Legend spin, or
+ * null when none are attached. A legend counts when EA rated his best version
+ * `rules.legends.minimum` or more. `nations`: Map name → { id, name, code, flag, players
+ * (highest shown rating first, then name), goalkeepers, count, best (the top EA rating),
+ * weight }; `reel`: the nations with a legend EA rated `reelStar` or better, most legends
+ * first. weight = 1 + weightPerLegend × min(count, weightCap).
+ */
+export function legendIndex(catalog, rules = draftRules()) {
+  const data = catalog?.legends;
+  if (!data) return null;
+  const r = { ...CONFIG.draft.legends, ...rules.legends },
+    stamp = refreshRatings() + JSON.stringify(r);
+  const cached = legendIndexes.get(data);
+  if (cached?.stamp === stamp) return cached.index;
+  const meta = new Map((catalog.nations || []).map(n => [n.name, n])),
+    nations = new Map();
+  for (const p of data.players) {
+    if (p.sourceOverall < r.minimum) continue;
+    const name = p.source.nationality;
+    if (!nations.has(name)) {
+      const info = meta.get(name);
+      nations.set(name, {
+        id: name,
+        name,
+        code: info?.code || NATION_CODES[name] || null,
+        flag: info?.flag ?? null,
+        players: [],
+        goalkeepers: 0,
+        best: 0,
+      });
+    }
+    const nation = nations.get(name);
+    nation.players.push(p);
+    nation.best = Math.max(nation.best, p.sourceOverall);
+    if (isKeeper(p)) nation.goalkeepers++;
+  }
+  for (const nation of nations.values()) {
+    nation.players.sort(byShown);
+    nation.count = nation.players.length;
+    nation.weight =
+      Math.round((1 + r.weightPerLegend * Math.min(nation.count, r.weightCap)) * 1000) / 1000;
+  }
+  const reel = [...nations.values()]
+    .filter(n => n.best >= r.reelStar)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const index = { nations, reel, shown: r.shown };
+  legendIndexes.set(data, { stamp, index });
+  return index;
 }
 
 const stamps = new WeakMap();

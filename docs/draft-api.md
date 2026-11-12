@@ -5,11 +5,11 @@ deterministic for a seed.
 
 | Module | What it gives you |
 | --- | --- |
-| `session.js` | `createDraftSession`, `restoreDraftSession`, `buildSide`, `matchSetup`, `applyMatchSetup`, `DRAFT_MODES`, `DIFFICULTIES`, `DIFFICULTY_LABELS`, `NATURAL_FIT`, `seedNumber` |
-| `links.js` | `teamLinks(players)`, `chemValues(players)`, `linkBoosts(rules)` — mates (chemistry) |
+| `session.js` | `createDraftSession`, `restoreDraftSession` (spins, the Legend spin, Prime boosts), `buildSide`, `matchSetup`, `applyMatchSetup`, `DRAFT_MODES`, `DIFFICULTIES`, `DIFFICULTY_LABELS`, `NATURAL_FIT`, `seedNumber` |
+| `links.js` | `teamLinks(players)`, `chemValues(players)`, `linkBoosts(rules)`, `captainSlot(players)` — mates (chemistry) and the Captain |
 | `budget.js` | the player tiers (Superstar / Star / Starter / Normal / Bench) and Budget mode's slots: `budgetBands`, `bandIndex`, `bandUse`, `freeLabel`, `draftTiers`, `tierOfRating`, `BUDGET_TIERS` |
 | `opponents.js` | the difficulty ladder: `pickOpponent`, `chooseOpponent`, `buildOpponent`, `opponentCandidates`, `ladderPreview`, `ladderTarget`, `MODE_BASELINES`, `LEVELS` |
-| `pools.js` | catalog index (nations field/pots, leagues, clubs), `callUps`, `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
+| `pools.js` | catalog index (playable nations, field/pots, reel, leagues, clubs), `legendIndex`, `callUps`, `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
 | `nation-codes.js` | nationality → flag code fallback when the catalog has no `nations` table |
 
 Input is a decoded catalog (`loadCatalog()` in the browser, `loadRuntimeCatalog()` in Node):
@@ -22,7 +22,7 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 
 | Mode (`mode`) | One spin lands on | Pool | Odds (shown on the reel) |
 | --- | --- | --- | --- |
-| `nations` (default) | a nation of the field: the 48 strongest nations with ≥ 23 players and ≥ 2 GK (best-XI rating), shown in 4 pots of 12 | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR; refills as players are taken | uniform 1/48 |
+| `nations` (default) | a nation of the reel: every playable nation (80) and 13 star nations, 93 in all | best 23 available call-ups: 3 GK, ≥ 7 DEF, ≥ 7 MID, ≥ 4 ATT, then by OVR (fewer when the nation has fewer); refills as players are taken | uniform 1/93 |
 | `leagues` | a league (40 usable) | the whole league | flat by tier A 4 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubAndCountry` | alternately a nation (picks 1, 3, 5…) and a league (2, 4, 6…) | as above | as above |
@@ -38,13 +38,68 @@ available when only the GK slot is left. All numbers live in `CONFIG.draft` (`na
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
 
-**The nation reel.** A nation spin lands on any of 63 nations, all equally likely and shown as
-one pool (`index.spinField`): the 48-nation field (`index.field`, whose pots 1–4 are used only
-for the World Cup draw) plus every other nation with at least one player rated
-`nations.wildcardStar` (80) and `wildcardPlayers` (9) players — Nigeria, Algeria, DR Congo,
-Kosovo, Guinea, Venezuela, Finland, Tunisia, Saudi Arabia, Iceland, Burkina Faso, New Zealand,
-Egypt, Gabon, Armenia. Those 15 are spun but never met as opponents: most have fewer than two
-keepers in the data and cannot field a team.
+**Playable nations and the reel.** A nation is **playable** when it can field an XI: at least
+`nations.minimumPlayers` (11) players, `minimumGoalkeepers` (1) and a best XI with a real keeper
+and nobody under the engine's minimum fit (`ai.minimumFit`, no fallback) — 80 nations
+(`index.playable`, strongest first). Every playable nation is on the reel and can be met as an
+opponent (the Pro / World Class ladder, Quick Match, Exhibition). The reel (`index.spinField`, one
+pool, all equally likely) adds the **star nations**: nations that cannot field an XI but have a
+player rated `nations.reelStar` (75) and `reelPlayers` (9) players — Algeria, Tunisia, Gambia,
+Guinea-Bissau, Egypt, Togo, Gabon, Armenia, Syria, Zimbabwe, Equatorial Guinea, Dominican
+Republic, Mauritania (most have no keeper in the data): spun, never met. 93 nations in all.
+`index.field` is the strongest `fieldSize` (48) playable nations in pots of 12: the Daily's
+schedule uses it, and it is the fallback of Legendary's draw, which qualifies its own 48 for
+every run (`docs/competition-api.md`). A nation with one keeper whose keeper you drafted cannot
+field an XI any more: the ladder draws another opponent, the World Cup draw the nearest nation.
+
+**The Legend spin** (session option `legendSpin`; the game: World Cup Run drafts, normal and
+Budget — not Quick Match, Versus or the Daily). The side's first spin lands on a nation with a
+great legend and offers that nation's legends; the other ten spins are ordinary. Legends are
+the players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
+past players who are not in the catalog, at their best FIFA 15–23 version, EA rating
+`legends.minimum` (83) or more — 213 players of 40 nations. Rules in `CONFIG.draft.legends`:
+
+- the reel (`legendIndex(catalog).reel`) holds the 25 nations with a legend EA rated `reelStar`
+  (85) or more;
+- a nation's weight is `1 + weightPerLegend (0.15) × min(its legends, weightCap (20))`: 1.15 for
+  one legend, 4 for twenty or more (Brazil and Spain 8.1% each, France 7.8%, Italy 7.5%, Germany
+  7.2%, Argentina 6.0%, England 4.8%, Portugal 4.4%, Belgium and Netherlands 4.1%, Colombia 3.2%,
+  Croatia and Wales 2.9%, Côte d'Ivoire, Greece and Slovenia 2.6%, the nine nations with one
+  legend 2.3% each). The spin carries the honest `weight` / `probability` like every reel; the
+  UI shows no odds for this one;
+- the pool is the nation's `shown` (10) highest-rated legends (the rating on the card, then the
+  name); if none of them could be placed (slot class, Budget tier), the best that can are shown
+  instead. Re-rolls, exclusions, `uniqueNations` (the legend's nation counts) and Budget mode
+  (a legend costs the tier of his rating) work as for any spin;
+- `spin.legend`, `snapshot().legendRound`, `history[].legend` mark it; a pool entry / slot player
+  has `legend: true`, `edition` (15–23) and `year` (the edition minus one: FIFA 19 came out in
+  2018 — the UI shows "’18", never the edition).
+
+A legend is a club mate through the club of that edition when the catalog has it (202 of 213)
+and a nation mate like anyone; he is never a Captain. The game rates a legend with its own
+rating model, like every player, so the number on his card is often 1–4 below EA's (Kroos EA 90,
+shown 86): 9 legends show 88+, 43 show 85–87, 87 show 83–84, 74 show under 83.
+
+**Prime boosts** (session option `primes: true` = `CONFIG.draft.primes` by difficulty — Pro 2,
+World Class 1, Legendary 1 — or a number; the game: World Cup Run drafts). A boost turns a
+drafted player into his **prime version** (`catalog.legends.primes`: 1,962 catalog players whose
+best past EA rating is 3+ above the current one, or 88+ and higher): the attributes, positions,
+badges and rating of that edition, the same name, nation, club and Captain tag (so mates and
+the armband do not change), `profileId` `ea:<id>:fc<edition>:prime`, `primeOf` = his catalog id.
+
+```js
+draft.primeOptions(0);       // [{ slot, profileId, name, from: { ovr, rating }, to: { profileId,
+                             //    ovr, rating, edition, year, position, tier }, allowed, reason }]
+draft.prime(slot, 0);        // { ok: true, side, slot, profileId, primeOf, rating } | { ok: false, reason }
+```
+
+`rating` is the rating in that slot. Usable at any time after he is drafted, until the draft is
+handed on (the run is created from `matchSide`); not reversible in core (the UI confirms).
+Budget mode never refuses it and it uses no slot: a primed player keeps the tier slot of the
+version that was drafted. His current version stays taken (`available` false) and opponents
+never field it (`baseProfileId`). `snapshot()`: `primes: { perSide, left }`, `teams[i].primesLeft`,
+`slots[i].prime` (the option, or null), and `primeVersion: { profileId, ovr, edition, year,
+position }` on pool entries and slot players who have one.
 
 ## Flow
 
@@ -60,6 +115,8 @@ const draft = createDraftSession(catalog, {
   hideRatings: false,        // data flag only ("Ball Knower"): the UI hides numbers
   uniqueNations: false,      // each nation at most once per side
   budget: false,             // Budget mode: tier caps (see below)
+  legendSpin: false,         // the first spin is the Legend spin (needs catalog.legends)
+  primes: null,              // Prime boosts: true (by difficulty) | a number | none
   excludeNations: [], excludeClubs: [], excludePlayers: [], // e.g. a pre-chosen opponent
   teams: [{ name: 'You', color: '#d9f580', secondary: '#16213a' }],
   useDefaultRules: false,    // true: DEFAULT_CONFIG rules (daily, challenge links)
@@ -96,6 +153,7 @@ Plain JSON, cached until the state changes (treat as read-only):
 ```js
 {
   mode, modeLabel, difficulty, sides, hideRatings, uniqueNations, budget, daily,
+  legendSpin, legendRound, primes,    // see "The Legend spin" and "Prime boosts" above
   phase: 'spin' | 'pick' | 'complete', complete, first, turn,
   pickIndex, totalPicks, round,       // picks made overall / needed; the side's round 0–10
   category,                           // what the next/current spin draws: nation | league | club
@@ -105,8 +163,10 @@ Plain JSON, cached until the state changes (treat as read-only):
     profileId, name, fullName, position, secondary, ovr, tier, nation, nationCode,
     club, clubId, league, leagueId,   // tier: 'Superstar' | 'Star' | 'Starter' | 'Normal' | 'Bench'
     band,                             // Budget mode: 'superstar' | 'star' | 'starter' | null (free)
+    captain, legend, prime, edition, year, primeVersion,
     boost,                            // the mates boost he would get in this XI:
                                       // { value: 1.5, kinds: ['nation'] } | null (no mate)
+    captainBoost,                     // 1 when he would be the XI's first Captain, else 0
     best: { slot, role, rating, familiarity, delta },  // best open slot (delta vs natural)
     naturalSlots,                     // open slots with familiarity >= 0.95
     available, reason,                // false + 'Goalkeeper slot filled', 'No Star slot left' etc.
@@ -115,8 +175,8 @@ Plain JSON, cached until the state changes (treat as read-only):
     side, name, color, secondary, formation, filled, complete, rerollsLeft,
     rating, lines: { DEF, MID, ATT },  // team OVR meters (mean slot ratings, 1 decimal)
     slots: [{ slot, role, x, y, line, player, rating, familiarity, link }],
-    links: { score, maxScore, total, chem, linked, pairs,
-             boosts },                // boosts: per slot, the mates boost (null = open)
+    links: { score, maxScore, total, chem, linked, pairs, captain, captainBoost,
+             boosts },                // boosts: per slot, mates + Captain (null = open)
     budget,                           // Budget mode: [{ id, label, range, minimum, slots, used, left }]
   }],
   history: [{ side, round, slot, role, profileId, category, optionId, optionName, leagueId, rerolls }],
@@ -145,36 +205,55 @@ attribute weights doing most of it), so neighbouring roles count as natural (≥
 moves stay costly. Club and ladder XIs field a player only at `ai.minimumFit` 0.965 or better
 (his own, a secondary or a neighbouring role); the boss XIs at 0.99 (own or secondary).
 
-## Mates (chemistry)
+## Mates (chemistry) and the Captain
 
-One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 1.5, club: 1 }`): a player
-with a **nation team-mate** in the XI gets **+1.5**, with a **club mate +1**, and the two
-**stack** (both: **+2.5**). One mate is enough, there are no thresholds and no league mates.
-That boost is the player's `chem` (attribute points the engine adds to every skill; the
-engine caps it at 5).
+One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 1.5, club: 1, captain: 1 }`):
+a player with a **nation team-mate** in the XI gets **+1.5**, with a **club mate +1**, and the
+two **stack** (both: **+2.5**). One mate is enough, there are no thresholds and no league
+mates. An XI with a **Captain** gives **every player +1** on top (one captain counts; two do
+not stack). The sum is the player's `chem` (attribute points the engine adds to every skill,
+capped at 5): 0–3.5.
 
 `teamLinks(players)` (players in slot order, `null` = open slot) returns
 `players[i] = { boost, kinds, chem, mates: { nation, club } }` (`boost` = the mates boost,
-`kinds` = what gives it, `chem` = the same number under the engine's name, `mates` = number
-of XI mates per kind), `pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates —
-one line per pair for the pitch, `kind: 'nation'` when they share the nation), `score` =
-`total` (sum of the boosts, max `maxScore` = 27.5: the UI's "Boosts +7.5"), `chem` (mean
-boost), `linked` (players with a mate).
-`linkBoosts(rules)` gives the two numbers; rules saved before this rule (thresholds per
-kind) read as the defaults, and a saved `captain` number is ignored. Real national XIs are
-all nation mates (+1.5 each, +2.5 for club mates inside them), real club XIs club mates (+1,
-+2.5 for compatriots). In a Nations draft a nation mate needs the same nation twice — lucky
-and strong; club mates are the common boost there. A pool entry's `boost` says what a player
-would get in the XI as it stands.
-Measured typical drafted XI (300 drafts, 1 re-roll, pick the best player): chem 0.48
-(Nations), 0.67 (Leagues), 0.52 (Clubs); with 0 / 2 re-rolls 0.48 / 0.48, 0.61 / 0.71,
-0.50 / 0.53. A drafter who also values the boosts gets 0.58 / 1.14 / 0.83 for −0.05 to
-−0.3 OVR (effective +0.04 / +0.21 / +0.13). `MODE_BASELINES` still holds the chem of the
-old rule (+2 / +2 and a Captain's +1) until it is re-measured.
+`kinds` = what gives it, `chem` = boost + the Captain's boost, `mates` = number of XI mates per
+kind), `pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates — one line per pair
+for the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the mates boosts,
+max `maxScore` = 27.5), `total` (sum of `chem`, Captain included: the UI's "Boosts +13"),
+`chem` (mean chem), `linked` (players with a mate), `captain` (slot of the armband or null:
+`captainSlot(players)`, the highest source rating among the Captains, first slot on a tie) and
+`captainBoost`. `linkBoosts(rules)` gives the three numbers; rules saved before the mates rule
+(thresholds per kind) read as the defaults, and rules saved while the game had no Captain
+(`{ nation, club }`) keep playing without one. Real national XIs are all nation mates (+1.5
+each, +2.5 for club mates inside them, +1 with their captain), real club XIs club mates. A pool
+entry's `boost` says what a player would get in the XI as it stands, `captainBoost` what he
+would give it.
 
-There is **no Captain** for now: the catalog still carries the `captain` flag (34 players;
-`scripts/compile-players.mjs` derives it from international reputation and age) and the codec
-keeps it, but nothing reads it — no boost, no mark.
+**Captains** are a reviewed list of real national-team captains, current players only
+(`data/captains.json`: name, sofifa id, nation, source URL, reason, ranked leaders first). The
+compiler tags its first `size` (10) players — van Dijk, Kimmich, Modrić, Kane, Messi, Son,
+Marquinhos, Xhaka, Koulibaly, Robertson — and fails when an id, name or nation does not match
+the catalog. The size is cut so that about one drafted World Cup XI in three has a captain:
+measured with `draft-baselines.mjs --legend --primes default --captains N` (400 drafts, pick the
+best player; 1 / 2 re-rolls): 8 → 29% / 33%, **10 → 32% / 35%**, 12 → 35% / 38%, 15 → 44% / 49%,
+20 → 65% / 69%. The tag goes with a player into his prime version; legends are never captains.
+Opponents with a captain get the boost too.
+
+Measured typical World Cup XI (300 drafts, pick the best player, the 93-nation reel; 1 / 2
+re-rolls = World Class and Legendary / Pro), effective = OVR + chem:
+
+| Draft | OVR | chem | effective | captain |
+| --- | --- | --- | --- | --- |
+| no legend, no primes | 80.25 / 80.68 | 0.63 / 0.71 | 80.88 / 81.39 | 36% / 40% |
+| + Legend spin (the legend plays at 87.0) | 80.79 / 81.20 | 0.60 / 0.67 | 81.39 / 81.87 | 31% / 34% |
+| + Prime boosts, spent on the biggest gain (0.78 / 1.17 used, +2.7 / +3.5 slot points) | 81.04 / 81.53 | 0.60 / 0.67 | **81.64 / 82.20** | 31% / 34% |
+| Budget, no legend, no primes | 79.69 / 80.02 | 0.57 / 0.61 | 80.26 / 80.63 | 31% / 33% |
+| Budget + Legend spin | 80.08 / 80.37 | 0.49 / 0.53 | 80.58 / 80.91 | 23% / 25% |
+| Budget + Legend spin + Prime boosts | 80.32 / 80.68 | 0.49 / 0.53 | **80.81 / 81.21** | 23% / 25% |
+
+`MODE_BASELINES` is older than all of this (the 48-nation reel, no Captain, no legends: Nations
+83.61 with one re-roll) and is due a re-measure: the reel of every playable nation alone costs
+about 2 OVR.
 
 ## Match setup
 
@@ -209,8 +288,8 @@ solo drafts per mode × re-roll count, positional policy; the table is from befo
 | Club & Country (no longer offered) | 82.30 ± 1.46 | 0.41 | 82.17 / 82.71 / 83.24 |
 
 Gap (`CONFIG.draft.ladder`): Pro 0 · World Class +4 ·
-Legendary +7, using the re-roll count of that difficulty. Candidates: national best XIs
-(Nations), club XIs (Leagues, Clubs), both (Club & Country), plus bosses **World XI** (88.5)
+Legendary +7, using the re-roll count of that difficulty. Candidates: the best XI of every
+playable nation (Nations), club XIs (Leagues, Clubs), both (Club & Country), plus bosses **World XI** (88.5)
 and **All-Stars** (87.3, the best XI without the World XI; `bosses: false` in `chooseOpponent`
 / `modeCandidates` leaves them out, as the World Cup Run and the Daily do). Real national XIs carry +1.5 chem or more, club XIs +1 or more (club mates in a national XI and compatriots in a club XI get +2.5). Nations examples:
 Pro ≈ Belgium/Uruguay/
@@ -239,8 +318,9 @@ const again = restoreDraftSession(catalog, JSON.parse(localStorage.getItem('draf
 ```
 
 `serialize()` holds options, the rules snapshot, RNG state, picks (ids), the current spin and
-history, plus `catalog: catalogStamp(catalog)`. Restore throws if a saved player is missing
-from the catalog; compare the stamp with `catalogStamp(catalog)` to warn about a changed
+history, the Prime boosts left, plus `catalog: catalogStamp(catalog)`. Restore throws if a saved
+player is missing from the catalog — a draft with a legend or a primed player needs
+`catalog.legends` attached first; compare the stamp with `catalogStamp(catalog)` to warn about a changed
 database. Restored sessions continue with identical spins.
 
 ## Determinism contract
@@ -261,9 +341,10 @@ carry it as `tier`. The UI's frames, outlines and pick celebrations use the same
 badges a player carries (stamped into the catalog) and is not shown to the player.
 
 **Budget mode** is a harder draft: the XI may hold only so many players per tier —
-`CONFIG.draft.budget` (`Superstar`, `Star`, `Starter`, each `{ minimum, slots }`): **1
-Superstar, 2 Stars, 3 Starters**, everyone else under 80 (free). What a row shows is what it
-costs.
+`CONFIG.draft.budget` (`Superstar`, `Star`, `Starter`, each `{ minimum, slots }`): **2
+Superstars, 2 Stars, 3 Starters**, everyone else under 80 (free). What a row shows is what it
+costs. A legend counts on the tier of his rating; a Prime boost is free (the player keeps the
+slot of the version that was drafted).
 
 - A player whose tier is full is not available: pool entries carry `band` (`'superstar'`,
   `'star'`, `'starter'` or `null` = free), `available: false` and `reason: 'No Star slot
@@ -281,9 +362,6 @@ used, left }]` (`label: 'Star'`, `range: '84–87'`; or `null`). Helpers: `budge
 - The game offers it in the World Cup Run only (`context.options.budget` → run
   `meta.budget`).
 
-Measured (300 Nations drafts, 1 re-roll; `tools/calibration/draft-baselines.mjs --budget
-"off;default" --policies positional,smart`): team OVR 81.23 ± 0.58 (83.13 ± 1.03 without),
-chem 0.40 (0.48), effective 81.63 ± 0.67 (83.61 ± 1.11 without) — a Budget XI is 1.98
-effective points weaker (2.26 under the old mates rule); the best player of a spin is closed
-in 4.5 picks per draft; a drafter who values boosts and saves tier slots for the top of a
-tier reaches 81.79 (+0.16; without the budget the same drafter gains +0.04).
+Measured: the table under "Mates and the Captain" (`tools/calibration/draft-baselines.mjs
+--budget "off;default" --legend --primes default`): a Budget XI is about 0.8–1.0 effective
+points weaker than a normal one (it was 2.0 with one Superstar slot and the 48-nation reel).

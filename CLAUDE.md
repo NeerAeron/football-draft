@@ -57,13 +57,16 @@ app/                     served statically (deploy = publish this folder); runti
     styles/              app.css (the one stylesheet entry, cascade layers), tokens, base, fonts
     gallery/             gallery page + generated fixture (make-fixture.mjs)
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
-  data/catalog.v3.json   compiled columnar catalog (the only JSON fetched; decode via services/catalog.js)
+  data/catalog.v3.json   compiled columnar catalog (decode via services/catalog.js)
+  data/legends.v1.json   Legends + Prime versions, fetched when a World Cup draft starts (services/legends.js)
   assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
-data/                    repo root, NOT deployed: catalog-reference.json (compiler input), logo and
+data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
+                         captains.json (reviewed Captain list with sources), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
-scripts/                 catalog compiler (compile-league-catalog.mjs + compile-players.mjs)
+scripts/                 catalog compiler (compile-league-catalog.mjs + compile-players.mjs),
+                         compile-legends.mjs (Legends and Prime versions from the legacy CSV)
 scripts/data/            data:fetch / data:build pipeline; catalog-file.mjs = loadRuntimeCatalog() for Node
 scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
 tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
@@ -117,17 +120,21 @@ club-less national-team players have `source.club === null` and appear only in n
   role]` rows, `formationLabel`), `team-ratings.js`, `club-lineups.js` (club squads, best XI per
   formation by Hungarian assignment, catalog stamps), `lineups.js` (seeded random XIs,
   `playerInitials`), `player-labels.js` (`commonName`), `catalog-codec.js` (v3 encode/decode,
-  `indexCatalog`), `catalog-derived.js` (precomputed badges/club data, `reconcileCatalog`).
+  `indexCatalog`), `catalog-derived.js` (precomputed badges/club data, `reconcileCatalog`),
+  `legends-codec.js` + `legends.js` (Legends and Prime versions: `attachLegends` puts them on
+  `catalog.legends` — never in `catalog.players`; `legendPlayer`, `primeVersion`,
+  `baseProfileId`, `editionLabel`: the UI shows the year, edition − 1, never the edition).
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
-  re-rolls, picks, placement, `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
+  re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
+  draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
   `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; removed ids read as Pro via `difficultyOf`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
-  `bestEleven`, cached role ratings, `catalogStamp`), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
+  `bestEleven`, cached role ratings, `catalogStamp`; `playable` = every nation that can field an XI, on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel; `legendIndex` for the Legend spin), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
   best thirds, `BEST_THIRD`) + five knockouts from the Round of 32 (the semi-final loser plays the
   third-place play-off), places and medals instead of grades (`PLACES`), Pro / World Class on the
-  ladder (`CUP_TUNING`), Legendary on the real 48-nation field (`worldCupDraw`), standings, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
+  ladder (`CUP_TUNING`), Legendary on a real 48-nation World Cup (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
@@ -138,7 +145,8 @@ club-less national-team players have `source.club === null` and appear only in n
 - **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
   uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
   `searchKey`).
-- **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `sim-client.js`
+- **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `legends.js`
+  (`loadLegends`: the legends file, attached to the catalog), `sim-client.js`
   (`createSimClient`: Instant results and Key Moments halves in a module Worker, main-thread
   fallback) + `sim-worker.js` (the worker; `runSimJob`, `hydrateMatch`), `sound.js` (Web Audio
   cues, `MatchSoundEvents`, `selectionSound`), `playback.js` (`PlaybackClock`).
@@ -226,10 +234,27 @@ Source: rovnez, "FC 26 (FIFA 26) player data", `FC26_20250921.csv` (18,405 rows,
 SHA-256 `4399cb2bcc2a14a2872e76a118f8f4bf64d7954503949c75751a14f33863e3b2`). An identical public
 copy: `https://raw.githubusercontent.com/Din1225/Data-Mining-Hw1/2276bf1434028fbd55a564d450d3971e75b425c5/data/FC26_20250921.csv`.
 
+Second source (Legends, Prime versions): jsulz/FIFA23 on Hugging Face, `male_players
+(legacy).csv` (FIFA 15–23 career mode from sofifa.com, same 110 columns, MIT, revision
+`0b74dbfc434808cf5573f0f11f4c977185bd0e0c`, SHA-256
+`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`; pinned in
+`scripts/data/paths.mjs`). `player_id` is the same sofifa id as the catalog's `profileId`.
+
 ```sh
-npm run data:fetch   # pinned CSV -> data/raw/ (SHA-256 checked; no-op when present)
-npm run data:build   # -> app/data/catalog.v3.json, app/assets/flags/, data/build/players-fc26.json
+npm run data:fetch   # both pinned CSVs -> data/raw/ (SHA-256 checked; no-op when present)
+npm run data:build   # -> app/data/catalog.v3.json, app/data/legends.v1.json, app/assets/flags/,
+                     #    data/build/players-fc26.json + legends.json (~30 s: the 91 MB CSV)
 ```
+
+`app/data/legends.v1.json` (`core/players/legends-codec.js`, columnar; fetched only by
+`services/legends.js` when a World Cup draft or run opens — never on Home) is compiled by
+`scripts/compile-legends.mjs` through `compilePlayer`: **legends** = players not in the catalog
+whose best version (highest overall, ties → latest edition) is rated 83+, with the club of that
+edition when the catalog has it; **prime versions** = catalog players whose best past overall is
+3+ above today's, or 88+ and higher. FIFA 15/16 have no composure: taken from the player's
+nearest later edition, else his reactions. It is stamped with the catalog build (`catalog.ids`)
+and the badge configuration, so rebuild both files together. **Captains** come from the reviewed
+list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
 
 Builds are deterministic (byte-identical reruns). Format v3 is columnar
 (`app/core/players/catalog-codec.js`); it also carries precomputed badges, club ratings and club

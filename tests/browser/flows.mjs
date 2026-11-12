@@ -403,6 +403,13 @@ export const flows = [
       await page.goto(base);
       await step('home screen', () => visible(page, '[data-screen="home"]'));
       await step('fonts', () => page.evaluate(() => document.fonts.ready));
+      await step('Home does not fetch the legends file', async () => {
+        await page.waitForTimeout(600);
+        const fetched = await page.evaluate(() =>
+          performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1')),
+        );
+        if (fetched) throw new Error('legends.v1.json was fetched on Home');
+      });
       await shot('landing');
       if (viewport === 'mobile') await shot('landing-full', { fullPage: true });
       await step('how-to sheet', async () => {
@@ -615,11 +622,35 @@ export const flows = [
     async run({ page, shot, step, base, viewport }) {
       await seed(page, ONBOARDED);
       await step('start a seeded run draft', () =>
-        startFromSetup(page, base, '#/play/run?type=nations&seed=7&formation=433'),
+        startFromSetup(page, base, '#/play/run?type=nations&seed=21&formation=433'),
       );
       await step('first spin lands', () => visible(page, '[data-testid="spin-result"]'));
+      await step(
+        'it is the Legend spin: gold stage, legends with their year, no odds',
+        async () => {
+          await visible(page, '.stage.is-legend');
+          const stage = await page.textContent('.stage');
+          if (!/Legend spin/.test(stage)) throw new Error('the stage does not say Legend spin');
+          if (await page.locator('.reveal__odds').count())
+            throw new Error('the Legend reel shows odds');
+          if (/%|chance|likely/i.test(stage)) throw new Error('odds text on the Legend stage');
+          const rows = page.locator('[data-testid="pool"] button.prow');
+          const count = await rows.count();
+          if (count < 1 || count > 10) throw new Error(`${count} legends shown, expected 1–10`);
+          const eras = await page.locator('[data-testid="pool"] .prow__era').allTextContents();
+          if (eras.length !== count || !eras.every(t => /^’(1[4-9]|2[0-2])$/.test(t)))
+            throw new Error('legend rows without a year: ' + eras.join(' '));
+          const text = await page.textContent('[data-screen="draft"]');
+          if (/FIFA \d\d/.test(text)) throw new Error('an edition name is on screen');
+          // The file is fetched for the draft only.
+          const fetched = await page.evaluate(() =>
+            performance.getEntriesByType('resource').some(e => e.name.includes('legends.v1.json')),
+          );
+          if (!fetched) throw new Error('the legends file was not fetched');
+        },
+      );
       await page.evaluate(() => document.fonts.ready);
-      await shot('first-spin');
+      await shot('legend-spin');
       await step('select a player', async () => {
         await page.locator('[data-testid="pool"] button.prow:not([disabled])').first().click();
         await visible(page, '[data-testid="confirm-pick"]');
@@ -631,7 +662,14 @@ export const flows = [
         if (await page.locator('[data-testid="player-attributes"]').count())
           throw new Error('the Stats dropdown is back');
       });
-      await shot('selected');
+      await step('the legend card shows his year', async () => {
+        const era = await page
+          .locator('[data-testid="pick-card"]:visible .pcard__era')
+          .first()
+          .textContent();
+        if (!/^’\d\d$/.test(era)) throw new Error('no year on the legend card');
+      });
+      await shot('legend-pick');
       await step('pick 1 (other slot, then Auto)', async () => {
         await page.click(
           '.pitch--interactive .pitch-slot.is-fit-ok, .pitch--interactive .pitch-slot.is-fit-penalty',
@@ -639,6 +677,11 @@ export const flows = [
         await page.click('[data-testid="auto-slot"]:visible');
         await page.click('[data-testid="confirm-pick"]:visible');
         await picksMade(page, 1);
+      });
+      await step('the second spin is an ordinary nation spin', async () => {
+        if (await page.locator('.stage.is-legend').count())
+          throw new Error('the Legend stage stays after the legend pick');
+        await visible(page, '[data-testid="prime-open"]');
       });
       await shot('after-first-pick');
       for (let pick = 2; pick <= 11; pick++) {
@@ -650,10 +693,56 @@ export const flows = [
       }
       await step('completion sheet', () => visible(page, 'dialog.complete-sheet[open]'));
       await shot('complete');
-      await step('continue to the run', async () => {
+      await step(
+        'Prime boost: one sheet, eligible players show the bump, the rest are closed',
+        async () => {
+          await page.click('dialog.complete-sheet[open] [data-testid="prime-open"]');
+          await visible(page, '.draft-prime [data-testid="prime-confirm"]');
+          const rows = page.locator('.draft-prime__row');
+          if ((await rows.count()) !== 11) throw new Error('the sheet does not list the XI');
+          const options = page.locator('[data-testid="prime-option"]');
+          if (!(await options.count())) throw new Error('nobody in this XI has a prime version');
+          if (!(await page.locator('.draft-prime__row:disabled').count()))
+            throw new Error('players without a prime version are selectable');
+          const bump = await options.first().locator('.draft-prime__bump').textContent();
+          if (!/^\s*\d\d\s*\d\d\s*\+\d+\s*$/.test(bump)) throw new Error('no bump: ' + bump);
+          if (!(await page.locator('[data-testid="prime-confirm"]').isDisabled()))
+            throw new Error('confirm is enabled before a choice');
+          await options.first().click();
+        },
+      );
+      await shot('prime-boost');
+      await step('confirm: he is his prime version, the boost is spent', async () => {
+        const before = await page.evaluate(
+          () =>
+            JSON.parse(localStorage.getItem('football-draft-draft')).session.state.primesLeft[0],
+        );
+        await page.click('[data-testid="prime-confirm"]');
+        await page.waitForFunction(
+          n =>
+            JSON.parse(localStorage.getItem('football-draft-draft')).session.state.primesLeft[0] ===
+            n - 1,
+          before,
+        );
+        const picks = await page.evaluate(
+          () => JSON.parse(localStorage.getItem('football-draft-draft')).session.state.picks[0],
+        );
+        if (picks.filter(id => /:prime$/.test(id)).length !== 1)
+          throw new Error('no prime version in the XI');
+        if (picks.filter(id => /:legend$/.test(id)).length !== 1)
+          throw new Error('no legend in the XI');
+      });
+      await shot('primed');
+      await step('continue to the run with the legend and the prime', async () => {
         await page.click('[data-testid="draft-continue"]');
         await page.waitForFunction(() => location.hash === '#/run');
+        await visible(page, '[data-screen="run"]');
+        await page.waitForFunction(() => {
+          const run = JSON.parse(localStorage.getItem('football-draft-run-state') || 'null');
+          return run?.run?.user?.players?.some(id => /:prime$/.test(id));
+        });
       });
+      await shot('run');
     },
   },
   {
@@ -670,7 +759,7 @@ export const flows = [
         await page.click('[data-testid="start-budget"]');
         await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
         const text = await page.textContent('[data-screen="setup"]');
-        if (!/1 Superstar \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)/.test(text))
+        if (!/2 Superstars \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)/.test(text))
           throw new Error('Budget mode does not say its caps');
       });
       await page.evaluate(() => document.fonts.ready);
@@ -741,7 +830,7 @@ export const flows = [
               b.querySelectorAll('.draft-budget__pips i').length,
             ]),
         );
-        if (used.map(u => u[1]).join() !== '1,2,3') throw new Error(`budget slots: ${used}`);
+        if (used.map(u => u[1]).join() !== '2,2,3') throw new Error(`budget slots: ${used}`);
         if (used.some(([on, slots]) => on > slots)) throw new Error(`over budget: ${used}`);
       });
       await shot('complete');

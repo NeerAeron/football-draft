@@ -136,7 +136,12 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
     <div class="ladder__detail" aria-live="polite">
       <p>
         <b>${selected.label}:</b>
-        ${' '}${rerollText(selected.rerolls)} per draft. ${selected.text}
+        ${' '}${rerollText(selected.rerolls)}${
+          mode === 'run' && selected.primes > 0
+            ? ` and ${selected.primes} Prime boost${selected.primes === 1 ? '' : 's'}`
+            : ''
+        }
+        per draft. ${selected.text}
       </p>
       ${
         typical &&

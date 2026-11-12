@@ -191,7 +191,7 @@ test('oddsSummary reports uniform nation odds and tiered league odds honestly', 
   const nations = createDraftSession(catalog, { mode: 'nations', seed: 2 });
   const [n] = oddsSummary(nations.spin());
   assert.equal(n.uniform, true);
-  assert.equal(n.eligible, 63);
+  assert.equal(n.eligible, 93);
   const clubs = createDraftSession(catalog, { mode: 'clubs', seed: 2 });
   const [league, club] = oddsSummary(clubs.spin());
   assert.equal(league.uniform, false);
@@ -280,7 +280,7 @@ test('pickPreview says who the mates are and what everyone gets', () => {
     preview.mates.reduce((sum, m) => sum + m.boost, 0),
   );
   assert.equal(preview.gain, 2 * preview.boost);
-  assert.ok(!('captain' in preview));
+  assert.equal(preview.captain, null); // no Captain in this pick
   assert.deepEqual(preview.lifts, []);
   const lines = mateLines(preview);
   assert.match(lines[0].text, /^Nation mate of .+: \+1\.5 each$/);
@@ -311,7 +311,16 @@ test('pickPreview says who the mates are and what everyone gets', () => {
 });
 
 test('Budget mode: rows show their tier, closed rows say which tier is full, the preview what it uses', () => {
-  const d = createDraftSession(catalog, { mode: 'nations', seed: 11, budget: true, rerolls: 0 });
+  let checked = 0,
+    d;
+  for (const seed of [11, 12, 13, 14, 15, 16]) {
+    d = createDraftSession(catalog, { mode: 'nations', seed, budget: true, rerolls: 0 });
+    checked += budgetRows(d);
+  }
+  assert.ok(checked > 0);
+  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
+});
+function budgetRows(d) {
   let checked = 0;
   while (!d.complete) {
     d.spin();
@@ -347,9 +356,8 @@ test('Budget mode: rows show their tier, closed rows say which tier is full, the
     else assert.deepEqual(preview.budget, { free: true, label: 'Under 80' });
     d.pick(e.profileId, auto.slot);
   }
-  assert.ok(checked > 0);
-  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
-});
+  return checked;
+}
 
 test('Budget mode travels from the setup to the session and the run, World Cup only', async () => {
   const { normalizeContext, sessionOptions } = await import('../app/ui/lib/draft-store.js');
@@ -370,7 +378,7 @@ test('Budget mode travels from the setup to the session and the run, World Cup o
   assert.equal(sessionOptions(normalizeContext({ kind: 'daily' })).budget, false);
   assert.match(
     budgetCopy(),
-    /^Harder: your XI may hold only 1 Superstar \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)\. Everyone else must be under 80\.$/,
+    /^Harder: your XI may hold only 2 Superstars \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)\. Everyone else must be under 80\.$/,
   );
 });
 
@@ -441,7 +449,7 @@ test('difficulty levels explain opponents and re-rolls', () => {
   assert.equal(setupContext('run', setupDefaults('run')).rerolls, undefined);
 });
 
-test('the boost chips on the pitch follow the core rule; no armband', async () => {
+test('the boost chips on the pitch follow the core rule; the Captain wears the armband', async () => {
   const view = await import('../app/ui/lib/player-view.js');
   const { mateBoosts, playerView } = view;
   const raw = (nationality, clubId, leagueId, captain = false) => ({
@@ -460,10 +468,16 @@ test('the boost chips on the pitch follow the core rule; no armband', async () =
     raw('D', 9, 9),
   ].map(p => p && playerView(p));
   assert.deepEqual(mateBoosts(views), [1.5, 0, 2.5, 1, 0, 0]);
-  // A Captain-tagged player (the catalog keeps the flag) boosts nobody and gets no mark.
+  // A Captain gives every player +1 on top and wears the armband.
   views[5] = playerView(raw('D', 9, 9, true));
-  assert.deepEqual(mateBoosts(views), [1.5, 0, 2.5, 1, 0, 0]);
-  assert.ok(!('captain' in views[5]) && !('captainSlot' in view));
+  assert.deepEqual(mateBoosts(views), [2.5, 0, 3.5, 2, 1, 1]);
+  assert.equal(views[5].captain, true);
+  assert.equal(view.captainSlot(views), 5);
+  assert.equal(view.captainSlot(views.slice(0, 5)), null);
+  // A legend or a prime version carries the year of that version (FIFA 19 → ’18).
+  assert.equal(views[0].era, '');
+  const legend = playerView({ ...raw('E', 1, 1), legend: true, edition: 19 });
+  assert.deepEqual([legend.legend, legend.prime, legend.era], [true, false, '’18']);
   assert.deepEqual(mateBoosts([{ name: 'no source' }, null]), [0, 0]);
   const { boost } = await import('../app/ui/lib/format.js');
   assert.deepEqual(

@@ -34,7 +34,7 @@ export const TYPE_INFO = [
     value: 'nations',
     label: 'Nations',
     icon: 'flag',
-    text: 'Spin one of 63 nations, pick from its best 23 call-ups.',
+    text: 'Spin one of 93 nations, pick from its best 23 call-ups.',
   },
   {
     value: 'leagues',
@@ -85,6 +85,7 @@ export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
     label: DIFFICULTY_LABELS[level],
     text: DIFFICULTY_TEXT[level] ?? '',
     rerolls,
+    primes: rules.primes?.[level] ?? 0, // Prime boosts (World Cup drafts)
     gap: rules.ladder[level] ?? 0,
     target: Math.round(ladderTarget(draftMode(type), level, { rules })),
   };
@@ -140,7 +141,7 @@ export const savedChoices = state => ({
 });
 
 /**
- * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 1 Superstar
+ * Budget mode in one sentence, from the live rules: 'Harder: your XI may hold only 2 Superstars
  * (88+), 2 Stars (84–87) and 3 Starters (80–83). Everyone else must be under 80.'
  */
 export function budgetCopy(rules = CONFIG.draft.budget) {

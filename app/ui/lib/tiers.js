@@ -1,6 +1,6 @@
 // Player tiers by the rating shown on a player — the draft's tiers (core/draft/budget.js,
 // CONFIG.draft.budget): Superstar 88+, Star 84–87, Starter 80–83, Normal 74–79, Bench below.
-// The same names Budget mode counts ("1 Superstar, 2 Stars, 3 Starters"), so a player's frame
+// The same names Budget mode counts ("2 Superstars, 2 Stars, 3 Starters"), so a player's frame
 // and his Budget tier always agree. tierOf() is the display default; pass `tier` explicitly
 // (a draft pool entry's `tier`) when a session plays with other thresholds.
 import { DEFAULT_CONFIG } from '../../core/config/config.js';

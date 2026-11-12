@@ -31,6 +31,7 @@ import {
   MODE_BASELINES,
 } from '../draft/opponents.js';
 import { simulateResult } from './model.js';
+import { legendPlayer, baseProfileId } from '../players/legends.js';
 
 export const CUP_ROUNDS = [
   { id: 'group1', label: 'Group · Matchday 1', stage: 'group', knockout: false },
@@ -250,7 +251,7 @@ export class CupRun {
     this.#index = catalogIndex(catalog);
     Object.assign(this, structuredClone(state));
     for (const id of [...this.user.players, ...this.opponents.flatMap(o => o.players)])
-      if (!this.#index.byId.has(id)) throw Error('Saved run does not match the player database');
+      if (!this.#player(id)) throw Error('Saved run does not match the player database');
   }
   get complete() {
     return this.status !== 'playing';
@@ -258,8 +259,12 @@ export class CupRun {
   get round() {
     return this.complete ? null : this.matches.length;
   }
+  // A catalog player, or a drafted legend / prime version (catalog.legends).
+  #player(id) {
+    return this.#index.byId.get(id) ?? legendPlayer(this.#catalog, id);
+  }
   #players(ids) {
-    return ids.map(id => this.#index.byId.get(id));
+    return ids.map(id => this.#player(id));
   }
   /** Engine-ready user side (buildSide). */
   userSide() {
@@ -315,7 +320,11 @@ export class CupRun {
     const { players, ...o } = this.#opponent(round);
     if (round > 2) return { ...o, pot: null };
     if (o.pot) return o;
-    const stronger = this.opponents.slice(0, 3).filter(x => x.effective > o.effective).length;
+    const stronger = this.opponents
+      .slice(0, 3)
+      .filter(
+        x => x.effective > o.effective || (x.effective === o.effective && x.key > o.key),
+      ).length;
     return { ...o, pot: 2 + stronger };
   }
   #random() {
@@ -441,7 +450,7 @@ export class CupRun {
       }
     const rows = FORMATIONS[this.user.formation];
     return [...stats.values()].map(s => {
-      const p = this.#index.byId.get(s.profileId),
+      const p = this.#player(s.profileId),
         role = rows[s.slot][2];
       return {
         profileId: s.profileId,
@@ -613,10 +622,11 @@ const GROUP_PAIRS = [
 export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
   const nations = opponentCandidates(catalog, { rules }).filter(c => c.kind === 'nation'),
     rating = new Map(nations.map(c => [c.id, c.effective])),
-    field = catalogIndex(catalog, draftRules(rules)).field,
-    pots = [1, 2, 3, 4].map(pot => field.filter(n => n.pot === pot && rating.has(n.id)));
-  if (pots.some(pot => pot.length !== 12)) return null;
-  const seats = pots.map(pot => pot.map(n => n.id));
+    field = qualify(catalog, random, rules).filter(n => rating.has(n.id)),
+    pots = [0, 1, 2, 3].map(pot => field.slice(pot * 12, pot * 12 + 12));
+  if (field.length !== 48) return null;
+  const seats = pots.map(pot => pot.map(n => n.id)),
+    potOf = new Map(field.map((n, i) => ['nation:' + n.id, Math.floor(i / 12) + 1]));
   // The field is sorted by strength: the last nation of pot 1 is its weakest.
   seats[0][11] = USER;
   for (const pot of seats) shuffle(pot, random);
@@ -671,7 +681,33 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
   }
   const key = id => 'nation:' + id,
     draw = { group: mates.map(key), knockouts: knockouts.map(key), third: key(third) };
-  return { ...draw, keys: [...draw.group, ...draw.knockouts, draw.third] };
+  return { ...draw, keys: [...draw.group, ...draw.knockouts, draw.third], pots: potOf };
+}
+/**
+ * Qualification for one World Cup: 48 of the playable nations (catalogIndex playable),
+ * strongest first. The strongest `nations.fieldCore` are always in; the other seats are drawn
+ * without replacement from the rest, a nation's odds halving every `nations.fieldHalving`
+ * rating points below the last core nation — so a lower-rated nation sometimes makes it, like
+ * real qualification. Rules without those numbers (saved before them) take the strongest 48.
+ */
+function qualify(catalog, random, rules) {
+  const index = catalogIndex(catalog, draftRules(rules)),
+    { fieldSize, fieldCore, fieldHalving } = rules.nations,
+    playable = index.playable;
+  if (!(fieldCore >= 0) || !(fieldHalving > 0) || playable.length <= fieldSize) return index.field;
+  const core = Math.min(fieldCore, fieldSize),
+    chosen = playable.slice(0, core),
+    rest = playable.slice(core),
+    top = (playable[core - 1] ?? rest[0]).strength,
+    weights = rest.map(n => 2 ** ((n.strength - top) / fieldHalving));
+  while (chosen.length < fieldSize) {
+    let r = random() * weights.reduce((a, b) => a + b, 0),
+      i = weights.findIndex(w => (r -= w) < 0);
+    if (i < 0) i = weights.findLastIndex(w => w > 0);
+    chosen.push(rest[i]);
+    weights[i] = 0;
+  }
+  return chosen.sort((a, b) => b.strength - a.strength || a.name.localeCompare(b.name));
 }
 
 /**
@@ -688,9 +724,13 @@ export function createCupRun(catalog, options) {
   if (!MODE_BASELINES[mode]) throw Error('Unknown draft mode: ' + mode);
   if (!DIFFICULTIES.includes(difficulty)) throw Error('Unknown difficulty: ' + difficulty);
   const index = catalogIndex(catalog),
-    players = user.players.map(p => (typeof p === 'string' ? index.byId.get(p) : p));
+    players = user.players.map(p =>
+      typeof p === 'string' ? (index.byId.get(p) ?? legendPlayer(catalog, p)) : p,
+    );
   if (players.length !== 11 || players.some(p => !p)) throw Error('The run needs a complete XI');
+  // Opponents never field the user's players — a prime version counts as the current player.
   const ids = players.map(p => p.profileId),
+    taken = players.map(baseProfileId),
     links = { links: rules.links };
   const side = buildSide({ ...user, players, ...links, kind: 'draft' });
   const rngSeed = seedValue(seed),
@@ -706,8 +746,8 @@ export function createCupRun(catalog, options) {
     avoid = [...(field?.keys ?? [])];
   const candidates = opponentCandidates(catalog, { rules }),
     byKey = new Map(candidates.map(c => [c.key, c])),
-    pots = new Map(index.field.map(n => ['nation:' + n.id, n.pot]));
-  const build = ref => buildOpponent(catalog, ref, { excludePlayers: ids, rules });
+    pots = field?.pots ?? new Map(index.field.map(n => ['nation:' + n.id, n.pot]));
+  const build = ref => buildOpponent(catalog, ref, { excludePlayers: taken, rules });
   while (opponents.length <= CUP_ROUNDS.length) {
     const round = opponents.length,
       fixed = options.opponents?.[round];
