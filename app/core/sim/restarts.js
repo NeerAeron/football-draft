@@ -92,15 +92,7 @@ export class RestartMethods {
         );
         p.ty = this.direction(p.team) > 0 ? by : H - by;
       }
-      if (type === 'Penalty') {
-        if (p.team !== team && p.role === 'GK') {
-          p.tx = this.abs(105, team);
-          p.ty = 34;
-        } else if (p.id !== taker.id) {
-          p.tx = this.abs(82 - (p.slot % 3) * 2, team);
-          p.ty = 18 + (p.slot % 6) * 7;
-        }
-      } else if (p.team !== team && dist(p, b) < 9.15) {
+      if (type !== 'Penalty' && p.team !== team && dist(p, b) < 9.15) {
         const angle = Math.atan2(p.y - y, p.x - x);
         p.tx = clamp(x + Math.cos(angle) * 9.4, 1, 104);
         p.ty = clamp(y + Math.sin(angle) * 9.4, 1, 67);
@@ -116,6 +108,56 @@ export class RestartMethods {
     if (type === 'Throw-in') this.setupThrowIn(team, taker, x, y);
     taker.tx = x - this.direction(team) * 0.6;
     taker.ty = clamp(y, 1, 67);
+    if (type === 'Penalty') this.setupPenalty(team, taker);
+  }
+  // A penalty is set up like a real one, at once (the screen cuts to it): the keeper on his
+  // line in the middle of the goal, the taker a few steps behind the ball, everybody else
+  // outside the box and the arc, behind the ball — spread along the edge in the order they
+  // stood across the pitch, two of the taker's defenders and one opposing forward staying up
+  // the pitch. The taker waits, then runs up (stepRestart).
+  setupPenalty(team, taker) {
+    const dir = this.direction(team),
+      depth = p => this.formation(p)[0],
+      outfield = this.activePlayers.filter(p => p.role !== 'GK' && p.id !== taker.id),
+      back = outfield
+        .filter(p => p.team === team)
+        .sort((a, c) => depth(a) - depth(c) || a.id - c.id)
+        .slice(0, 2),
+      up = outfield
+        .filter(p => p.team !== team)
+        .sort((a, c) => depth(c) - depth(a) || a.id - c.id)
+        .slice(0, 1),
+      edge = outfield
+        .filter(p => !back.includes(p) && !up.includes(p))
+        .sort((a, c) => a.y - c.y || a.id - c.id);
+    const place = (p, rx, y) => {
+      p.x = p.tx = this.abs(rx, team);
+      p.y = p.ty = y;
+      p.vx = p.vy = 0;
+      p.facing = Math.atan2(34 - y, this.abs(94, team) - p.x);
+      p.trail = [];
+    };
+    back.forEach((p, i) => place(p, 60, back.length > 1 ? 26 + i * 16 : 34));
+    up.forEach(p => place(p, 66, 34));
+    edge.forEach((p, i) => {
+      const y = edge.length > 1 ? 13.5 + (41 * i) / (edge.length - 1) : 34,
+        // Outside the box (88.5) and the arc (9.15 m from the spot); every other man a
+        // couple of strides further back, so it is a crowd on the edge and not a wall.
+        arc = 94 - Math.sqrt(Math.max(0, 9.9 * 9.9 - (y - 34) * (y - 34)));
+      place(p, Math.min(87.4, arc) - (i % 2) * 2.3, y);
+    });
+    for (const p of this.activePlayers) {
+      if (p.role !== 'GK') continue;
+      if (p.team === team) {
+        p.tx = this.abs(6, team);
+        p.ty = 34;
+      } else {
+        place(p, 104.6, 34);
+        p.action = 'On his line';
+      }
+    }
+    place(taker, 94 - 3.4, 34 + dir * 1.1);
+    taker.action = 'Stepping up';
   }
   // Throw-in: the two nearest team-mates show for the ball, one down the line and one
   // infield, so the thrower has a short throw to a player coming to meet it (their markers
@@ -251,20 +293,22 @@ export class RestartMethods {
   stepRestart(dt) {
     const r = this.restart;
     r.timer -= dt;
-    for (const p of this.activePlayers) this.move(p, dt, true);
-    if (r.timer > 0) return;
     const taker = this.players[r.taker],
       kickoff = KICKOFFS.has(r.type);
+    // Penalty run-up: the taker stands over it, then comes at the ball in the last moments.
+    if (r.type === 'Penalty' && r.timer < 0.8) {
+      taker.tx = r.x - this.direction(r.team) * 0.5;
+      taker.ty = r.y;
+    }
+    for (const p of this.activePlayers) this.move(p, dt, true);
+    if (r.timer > 0) return;
     if (kickoff) this.positionKickoff(r.team);
     for (const p of this.activePlayers) {
       if (r.type === 'Penalty') {
+        // Set up in setupPenalty; the keeper is on his line whatever happened since.
         if (p.team !== r.team && p.role === 'GK') {
-          p.x = this.abs(105, r.team);
+          p.x = this.abs(104.6, r.team);
           p.y = 34;
-          p.vx = p.vy = 0;
-        } else if (p.id !== taker.id) {
-          p.x = this.abs(82 - (p.slot % 3) * 2, r.team);
-          p.y = 18 + (p.slot % 6) * 7;
           p.vx = p.vy = 0;
         }
       } else if (!kickoff && p.team !== r.team) {
