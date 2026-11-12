@@ -623,6 +623,7 @@ export default function RunScreen() {
     try {
       await ticker.start(c.run, {
         limit: single ? 1 : Infinity,
+        milestones: !single,
         configFor: m => fixtureConfig(m, c.run.difficulty),
         idFor: m => fixtureId(c.meta, m.round),
         onDone: (m, result, snapshot) => {

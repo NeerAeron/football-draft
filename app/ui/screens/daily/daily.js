@@ -23,6 +23,7 @@ import { PitchView } from '../../components/pitch-view.js';
 import { EmptyState } from '../../components/empty-state.js';
 import { Skeleton } from '../../components/skeleton.js';
 import { Confetti } from '../../components/confetti.js';
+import { toast } from '../../components/toast.js';
 import { completedDraft, clearDraft, startDraft, loadDraft } from '../../lib/draft-store.js';
 import { buildMatchConfig, requestMatch, clearMatch, matchStore } from '../../lib/match-store.js';
 import {
@@ -605,7 +606,23 @@ export default function DailyScreen() {
   const start = async () => {
     setS(prev => ({ ...prev, starting: true }));
     const { day } = s;
-    await startDraft({
+    try {
+      await startDailyDraft(day);
+    } catch (error) {
+      console.error('[daily] could not start the draft', error);
+      toast({
+        title: 'Could not start the draft',
+        message: String(error.message || error),
+        tone: 'danger',
+      });
+      if (alive.current) setS(prev => ({ ...prev, starting: false }));
+      return;
+    }
+    // A draft that finishes without leaving this route (no draft screen in between): reload.
+    if (alive.current && globalThis.location.hash.startsWith('#/daily')) boot();
+  };
+  const startDailyDraft = day =>
+    startDraft({
       kind: 'daily',
       type: 'nations',
       difficulty: day.difficulty,
@@ -618,9 +635,6 @@ export default function DailyScreen() {
       options: { hideRatings, uniqueNations: false },
       returnTo: '/daily',
     });
-    // A draft that finishes without leaving this route (no draft screen in between): reload.
-    if (alive.current && globalThis.location.hash.startsWith('#/daily')) boot();
-  };
 
   let body;
   if (s.phase === 'loading')

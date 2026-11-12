@@ -29,8 +29,13 @@ export function matchPath(pattern, path) {
   if (want.length !== have.length) return null;
   const params = {};
   for (let i = 0; i < want.length; i++) {
-    if (want[i].startsWith(':')) params[want[i].slice(1)] = decodeURIComponent(have[i]);
-    else if (want[i] !== have[i]) return null;
+    if (want[i].startsWith(':')) {
+      try {
+        params[want[i].slice(1)] = decodeURIComponent(have[i]);
+      } catch {
+        return null; // a truncated %-escape in a pasted link
+      }
+    } else if (want[i] !== have[i]) return null;
   }
   return params;
 }

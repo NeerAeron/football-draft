@@ -5,6 +5,8 @@
 //
 //   const ticker = useSimTicker();
 //   await ticker.start(run, { configFor, idFor, onDone: async (m, result, snapshot) => persist() });
+//   milestones: true — the screen shows state.milestone as a pop-up and calls ticker.proceed();
+//   without it (the Daily) a cleared stage is only a short breath.
 //   ticker.state → { items, progress, skip, stop, finished, announce } | null
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { isReducedMotion } from '../../lib/motion.js';
@@ -37,7 +39,10 @@ export function useSimTicker() {
     [],
   );
 
-  async function start(run, { configFor, idFor, onDone, pace = 900, limit = Infinity }) {
+  async function start(
+    run,
+    { configFor, idFor, onDone, pace = 900, limit = Infinity, milestones = false },
+  ) {
     flags.current = { skip: isReducedMotion(), stop: false, abort: false };
     const pause = ms => sleep(flags.current.skip ? 0 : ms);
     let current = {
@@ -128,7 +133,7 @@ export function useSimTicker() {
                     : null;
           // A stage cleared: the sim waits on a pop-up until the player taps on (keep simming)
           // or stops. Skipping (or reduced motion) passes straight through.
-          if (milestone && !flags.current.skip) {
+          if (milestones && milestone && !flags.current.skip) {
             push({ milestone, announce: `${milestone}.` });
             playCue('pick-star');
             await new Promise(resolve => (proceed.current = resolve));
@@ -153,6 +158,7 @@ export function useSimTicker() {
     skip() {
       flags.current.skip = true;
       setState(s => s && { ...s, skip: true });
+      proceed.current?.();
     },
     stop() {
       flags.current.stop = true;

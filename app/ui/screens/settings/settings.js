@@ -201,7 +201,17 @@ function GameplayPanel() {
 function DataPanel() {
   const [keys, setKeys] = useState(ownKeys);
   const [confirm, setConfirm] = useState(false);
-  const reset = () => {
+  const reset = async () => {
+    // The draft, pre-match and match also live in memory: forget them first, or the next
+    // action would write the cleared keys back.
+    const [draft, prematch, match] = await Promise.all([
+      import('../../lib/draft-store.js'),
+      import('../../lib/prematch-store.js'),
+      import('../../lib/match-store.js'),
+    ]);
+    draft.clearDraft();
+    prematch.clearPrematch();
+    match.clearMatch();
     clearOwnKeys();
     reloadPrefs();
     resetSound();

@@ -105,7 +105,14 @@ export default function ChallengeScreen({ query }) {
   const setup = href(
     '/play/:mode',
     { mode: kind.mode },
-    { type, difficulty: c.difficulty, formation: c.formation, seed: c.seed, challenge: 1 },
+    {
+      type,
+      difficulty: c.difficulty,
+      formation: c.formation,
+      seed: c.seed,
+      hide: c.hideRatings ? 1 : 0,
+      unique: c.uniqueNations ? 1 : 0,
+    },
   );
   return html`<div class="screen container-narrow challenge" data-screen="challenge">
     <section class="challenge-card card card--hero card--pad-lg" aria-labelledby="challenge-title">

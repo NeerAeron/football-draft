@@ -1133,8 +1133,22 @@ export const flows = [
       });
       await shot('after-sim-match');
       await step('"Simulate the whole cup" plays to the end', async () => {
+        // With motion on, a cleared stage stops the sim on a pop-up until the player taps on.
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
         await page.click('[data-testid="sim-rest"]');
-        await visible(page, '[data-testid="run-end"]', 120000);
+        const end = page.locator('[data-testid="run-end"]'),
+          keep = page.locator('[data-testid="sim-keep"]');
+        let popups = 0;
+        for (const until = Date.now() + 120000; !(await end.count());) {
+          if (Date.now() > until) throw new Error('the cup sim did not finish');
+          if (await keep.count()) {
+            await keep.click();
+            popups++;
+          } else await page.waitForTimeout(150);
+        }
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        const groupCleared = (await page.locator('.run-path-strip .is-played').count()) > 3;
+        if (groupCleared && !popups) throw new Error('no stage pop-up after the group');
         const place = await page.getAttribute('[data-testid="run-end"]', 'data-place');
         const title = await page.textContent('.run-end__title');
         if (!place || /\b[SABCDF][+-]?\b grade/i.test(title)) throw new Error(`end: ${place}`);

@@ -129,7 +129,8 @@ export function readSavedDraft() {
   const saved = readJSON(DRAFT_KEY, null);
   if (!saved || saved.format !== DRAFT_FORMAT || saved.session?.type !== 'draft-session')
     return null;
-  const picks = (saved.session.state?.picks || []).flat();
+  const raw = saved.session.state?.picks,
+    picks = Array.isArray(raw) ? raw.flat() : [];
   return {
     context: saved.context && typeof saved.context === 'object' ? saved.context : {},
     picks: picks.filter(Boolean).length,
