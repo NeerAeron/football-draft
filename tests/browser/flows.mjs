@@ -56,6 +56,34 @@ const savedRun = (page, { difficulty = 'pro', results = [], budget = false, seed
     { difficulty, results, budget, seed },
   );
 
+/**
+ * A finished tournament's honours: three award cards with a winner each, the squad's table of
+ * eleven with every match counted, and the awards' line in the share text.
+ */
+async function honours(page, matches) {
+  await visible(page, '[data-testid="award-glove"]:not(.is-pending)');
+  for (const id of ['boot', 'ball', 'glove']) {
+    const card = page.locator(`[data-testid="award-${id}"]`),
+      name = (await card.locator('.run-award__name').textContent()).trim(),
+      value = (await card.locator('.run-award__value b').textContent()).trim();
+    if (!name || !/^\d+(\.\d)?$/.test(value)) throw new Error(`${id}: "${name}" ${value}`);
+  }
+  const rows = await page.$$eval('[data-testid="squad-stats"] tbody tr', trs =>
+    trs.map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim())),
+  );
+  if (rows.length !== 11) throw new Error(`${rows.length} rows in the squad's table`);
+  if (matches && rows.some(r => Number(r[0]) !== matches))
+    throw new Error(`matches: ${rows.map(r => r[0])}, played ${matches}`);
+  if (rows.some(r => !/^\d\.\d$|^10\.0$/.test(r[4]))) throw new Error('a player has no rating');
+  if (rows.filter(r => r[3] !== '').length !== 1) throw new Error('clean sheets: the keeper only');
+  const fits = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+  );
+  if (!fits) throw new Error('the page scrolls sideways');
+  const text = await page.textContent('[data-testid="share-text"]');
+  if (!/👟 .+ \d+ · ⭐ .+ · 🧤 /u.test(text)) throw new Error(`share text: ${text}`);
+}
+
 /** Auto-sims use the fast rating model (screens/run/auto-sim.js) so the flows stay quick. */
 const FAST_SIM = { 'football-draft-dev': { fastSim: true } };
 
@@ -1397,6 +1425,7 @@ export const flows = [
         if (!place || /\b[SABCDF][+-]?\b grade/i.test(title)) throw new Error(`end: ${place}`);
         if (await page.locator('.grade').count()) throw new Error('a letter grade is shown');
       });
+      await step("awards and the squad's stats, simulated matches included", () => honours(page));
       await shot('end');
       if (viewport === 'desktop') await shot('end-full', { fullPage: true });
       await step('share text + challenge link', async () => {
@@ -1634,6 +1663,7 @@ export const flows = [
         const title = await page.textContent('.run-end__title');
         if (!/Out in the Quarter-finals/.test(title)) throw new Error(`title reads ${title}`);
         if (await page.locator('.run-end__cup').count()) throw new Error('a medal for a QF exit');
+        await honours(page, 6);
       });
       await shot('qf-exit');
       await step('champions: the gold cup', async () => {
@@ -1643,9 +1673,10 @@ export const flows = [
         const text = await page.textContent('[data-testid="share-text"]');
         if (!/7-1-0 · Champions/.test(text) || !/🏆/u.test(text))
           throw new Error(`share text: ${text}`);
+        await honours(page, 8);
       });
       await shot('champion');
-      if (viewport === 'mobile') await shot('champion-full', { fullPage: true });
+      await shot('champion-full', { fullPage: true });
       await step('Legendary + Budget + 8–0: the ultimate achievement', async () => {
         await open('ultimate', {
           difficulty: 'legendary',
@@ -1657,6 +1688,8 @@ export const flows = [
         const text = await page.textContent('[data-testid="share-text"]');
         if (!/👑 Immortals: Legendary · Budget · 8-0-0/u.test(text))
           throw new Error(`share text: ${text}`);
+        // Legendary: the awards are over the whole 48-nation World Cup.
+        await honours(page, 8);
       });
       await shot('ultimate');
       await step('the cabinet has them all, the ultimate slot is unlocked', async () => {
@@ -1851,6 +1884,7 @@ export const flows = [
       await step('auto-sim to the result', () =>
         visible(page, '[data-testid="daily-result"]', 120000),
       );
+      await step("awards and the squad's stats", () => honours(page));
       await shot('result');
       await shot('result-full', { fullPage: true });
       await step('share text', async () => {

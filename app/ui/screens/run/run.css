@@ -1273,6 +1273,139 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* ---------- Honours: tournament awards + the squad's table (run end, Daily result) ---------- */
+.run-awards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+@media (min-width: 720px) {
+  .run-awards {
+    gap: var(--space-3);
+  }
+}
+.run-award {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-2);
+  background: var(--surface-1);
+  text-align: center;
+  transition: opacity var(--dur-base) var(--ease-out, ease-out);
+}
+.run-award.is-pending {
+  opacity: 0.45;
+}
+.run-award.is-yours {
+  border-color: var(--volt-400);
+  box-shadow:
+    0 0 0 1px var(--volt-400),
+    0 0 24px -8px var(--volt-glow);
+}
+.run-award__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--gold-300);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.run-award__name {
+  margin-top: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--display-xs);
+  font-weight: var(--weight-heavy);
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.run-award__team {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 18px;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+.run-award__value {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+  line-height: 1.2;
+}
+.run-award__value b {
+  color: var(--text-1);
+  font-size: var(--display-sm);
+  line-height: 1;
+}
+.run-award.is-yours .run-award__value b {
+  color: var(--volt-300);
+}
+.run-squad {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--text-sm);
+}
+.run-squad th,
+.run-squad td {
+  padding: 7px 0;
+  text-align: center;
+  font-weight: var(--weight-regular, 400);
+}
+.run-squad thead th {
+  width: 34px;
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.run-squad thead abbr {
+  text-decoration: none;
+}
+.run-squad tbody tr {
+  border-top: 1px solid var(--line-1);
+}
+.run-squad .run-squad__player {
+  width: auto;
+  text-align: left;
+}
+.run-squad tbody .run-squad__player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-1);
+  font-weight: var(--weight-bold);
+}
+.run-squad__role {
+  flex: none;
+  width: 26px;
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+}
+.run-squad td.is-zero {
+  color: var(--text-3);
+}
+.run-squad td.is-top {
+  color: var(--gold-300);
+  font-weight: var(--weight-bold);
+}
+.run-squad td.run-squad__rating {
+  width: 40px;
+  color: var(--text-1);
+  font-weight: var(--weight-bold);
+}
 .run-end__xi {
   display: flex;
   flex-direction: column;
