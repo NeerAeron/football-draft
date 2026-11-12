@@ -6,6 +6,8 @@ import { offsideSnapshot, targetChance } from './rules.js';
 import { shootingAbility } from '../players/ratings.js';
 import { GOAL, hypot } from './constants.js';
 
+const SLANT_LIMIT = 4; // the most a tight angle multiplies a shot's scatter
+
 export class ShootingMethods {
   shotWeights(p, d, aerialHeight = 0, penalty = false) {
     if (penalty) return [['Penalty', 1]];
@@ -60,6 +62,13 @@ export class ShootingMethods {
         : footExecution(p, Math.atan2(34 - p.y, goalX - p.x));
     const curve = shotType === 'Curler' ? (p.y < 34 ? 1 : -1) * this.direction(p.team) * 3.6 : 0;
     const aimY = 34 + (this.rand() > 0.5 ? 1 : -1) * (penalty ? 1.95 : 1.25 + this.rand() * 1.2);
+    // Accuracy is an angle off the boot; the aim is a point on the goal line. From the side
+    // the same error covers a longer stretch of that line (1 / the sine of the angle the shot
+    // makes with it): 1 from in front, 1.4 from 45°, 2 from 60°, and from the byline the
+    // mouth is all but closed. Without it a ball struck along the goal line landed between
+    // the posts as surely as one from the penalty spot.
+    const depth = Math.max(0.1, Math.abs(goalX - p.x)),
+      slant = penalty ? 1 : clamp(hypot(depth, aimY - p.y) / depth, 1, SLANT_LIMIT);
     const balance =
       1 +
       (100 - p.skill('composure')) * 0.004 +
@@ -81,6 +90,7 @@ export class ShootingMethods {
         (shotType === 'Curler' && p.has('curve') ? 0.88 : 1) *
         (1 + (1 - spatial.openness) * 0.4) *
         clamp(1 / Math.sqrt(spatial.quality), 0.9, 1.2) *
+        slant *
         // Mentality: a side that commits bodies forward finds (and leaves) more room to shoot.
         (1 / clamp(1 + this.shootingRoom(p.team), 0.5, 2));
     const ty = aimY + this.noise() * spread,

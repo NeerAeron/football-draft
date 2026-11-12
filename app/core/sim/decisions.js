@@ -169,6 +169,9 @@ export class DecisionMethods {
           (specialist ? clamp((34 - dGoal) / 12, 0.1, 1) : clamp((31 - dGoal) / 11, 0, 1)) *
           0.55 ** blocks;
       if (spatial.zone === 'deep_central') urge *= this.profile.deepUrge;
+      // No shooting from a hopeless angle: the urge fades from 50° off the centre line and is
+      // gone by about 78° (the byline) — he cuts it back or crosses instead.
+      urge *= clamp(((105 - rx) / (dGoal || 1) - 0.2) / 0.45, 0, 1);
       if (!box && (blocks > 2 || pressure > 1.1 || p.hold < 0.2)) urge = 0;
       // He has just beaten his man: the space he made is for shooting.
       const beat = p.beatChain.length ? p.beatChain[p.beatChain.length - 1] : null;

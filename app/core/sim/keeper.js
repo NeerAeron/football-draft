@@ -83,10 +83,17 @@ export class KeeperMethods {
           0.04,
           record ? 0.97 : 0.995,
         );
+    // From a tight angle he is not beaten for pace or reflexes: he stands at his post and the
+    // ball has to get past him there. More than 60° off the centre line a shot within his
+    // reach is stopped more and more surely (from the byline, nearly always).
+    const from = record && !b.penaltyKick ? b.shotOrigin : null,
+      depth = from ? 105 - from.attackX : 1,
+      face = from ? depth / (hypot(depth, from.y - 34) || 1) : 1,
+      covered = prob + (1 - prob) * 0.85 * clamp((0.5 - face) / 0.3, 0, 1);
     // A shot under the bar is the hardest to keep out: he has to get a hand up to it and
     // turn it over (it used to be "tipped over" into his own net as often as not).
     const save = clamp(
-      prob * (record && !b.penaltyKick ? 1 - 0.7 * high : 1) * this.tuning.gameplay.saveAbility,
+      covered * (record && !b.penaltyKick ? 1 - 0.7 * high : 1) * this.tuning.gameplay.saveAbility,
       0.01,
       0.995,
     );

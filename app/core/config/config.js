@@ -191,7 +191,7 @@ export const DEFAULT_CONFIG = {
     shotFrequency: 2,
     shotScatter: 1.08,
     shotPower: 1,
-    saveAbility: 1,
+    saveAbility: 1.02,
     passCompletion: 1,
     passError: 1,
     routinePassError: 0.6,

@@ -151,6 +151,20 @@ went the right way can reach it. Play is live after the kick (rebounds count). M
 1,600 fixtures (347 penalties): 76% scored, 18% saved, 5% off target or woodwork (before: 82% /
 3% / 16%) — a shootout (every taker, not only the best) is 74% / 17% / 10%.
 
+### Tight angles
+
+A shot's accuracy is an angle off the boot, its aim a point on the goal line: the scatter is
+multiplied by 1 / the sine of the angle the shot makes with the line (1 from in front, 1.4 from
+45°, 2 from 60°, at most 4), so a ball struck along the goal line rarely lands between the
+posts. A carrier's urge to shoot fades from 50° off the centre line and is gone by 78° (he cuts
+back or crosses, `decide`). With the ball wide and within 5.5 m of his goal line — or an
+opponent's pass on its way there — the keeper drops to his near post, a quarter of the ball's
+own distance off his line (`planKeeper`), and a shot from more than 60° off the centre line
+that comes within his reach is kept out more surely the tighter the angle (`keeperSave`). `xg`
+fades the same way beyond 53°. Measured over 288 club fixtures: shots seeing less than 12° of
+goal from inside 20 m scored 30% before and 3% after; shots from in front (within 30° of the
+centre line, 5–16.5 m) 47% before and after (docs/calibration.md).
+
 ### Ten men
 
 A red card never leaves a hole: `coverDismissal` (fouls.js) swaps formation slots at once, for
