@@ -7,7 +7,7 @@ deterministic for a seed.
 | --- | --- |
 | `session.js` | `createDraftSession`, `restoreDraftSession`, `buildSide`, `matchSetup`, `applyMatchSetup`, `DRAFT_MODES`, `DIFFICULTIES`, `DIFFICULTY_LABELS`, `NATURAL_FIT`, `seedNumber` |
 | `links.js` | `teamLinks(players)`, `chemValues(players)`, `linkBoosts(rules)` — mates (chemistry) |
-| `budget.js` | Budget mode's rating bands: `budgetBands`, `bandIndex`, `bandUse`, `freeLabel` |
+| `budget.js` | the player tiers (Superstar / Star / Starter / Normal / Bench) and Budget mode's slots: `budgetBands`, `bandIndex`, `bandUse`, `freeLabel`, `draftTiers`, `tierOfRating`, `BUDGET_TIERS` |
 | `opponents.js` | the difficulty ladder: `pickOpponent`, `chooseOpponent`, `buildOpponent`, `opponentCandidates`, `ladderPreview`, `ladderTarget`, `MODE_BASELINES`, `LEVELS` |
 | `pools.js` | catalog index (nations field/pots, leagues, clubs), `callUps`, `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
 | `nation-codes.js` | nationality → flag code fallback when the catalog has no `nations` table |
@@ -51,7 +51,7 @@ const draft = createDraftSession(catalog, {
   difficulty: 'pro',         // sets re-rolls; the opponent ladder uses the same ids
   hideRatings: false,        // data flag only ("Ball Knower"): the UI hides numbers
   uniqueNations: false,      // each nation at most once per side
-  budget: false,             // Budget mode: rating-band caps (see below)
+  budget: false,             // Budget mode: tier caps (see below)
   excludeNations: [], excludeClubs: [], excludePlayers: [], // e.g. a pre-chosen opponent
   teams: [{ name: 'You', color: '#d9f580', secondary: '#16213a' }],
   useDefaultRules: false,    // true: DEFAULT_CONFIG rules (daily, challenge links)
@@ -95,19 +95,21 @@ Plain JSON, cached until the state changes (treat as read-only):
   rerolls: [left per side], canReroll,
   pool: [{                            // the current spin's players, best open-slot fit first
     profileId, name, fullName, position, secondary, ovr, tier, nation, nationCode,
-    club, clubId, league, leagueId,
-    band,                             // Budget mode: 'band1' | 'band2' | 'band3' | null (free)
+    club, clubId, league, leagueId,   // tier: 'Superstar' | 'Star' | 'Starter' | 'Normal' | 'Bench'
+    band,                             // Budget mode: 'superstar' | 'star' | 'starter' | null (free)
+    boost,                            // the mates boost he would get in this XI:
+                                      // { value: 1.5, kinds: ['nation'] } | null (no mate)
     best: { slot, role, rating, familiarity, delta },  // best open slot (delta vs natural)
     naturalSlots,                     // open slots with familiarity >= 0.95
-    available, reason,                // false + 'Goalkeeper slot filled', 'No 88+ slot left' etc.
+    available, reason,                // false + 'Goalkeeper slot filled', 'No Star slot left' etc.
   }],
   teams: [{                           // one per side
     side, name, color, secondary, formation, filled, complete, rerollsLeft,
     rating, lines: { DEF, MID, ATT },  // team OVR meters (mean slot ratings, 1 decimal)
     slots: [{ slot, role, x, y, line, player, rating, familiarity, link }],
-    links: { score, maxScore, total, chem, linked, pairs, captain, captainBoost,
-             boosts },                // boosts: per slot, mates + Captain (null = open)
-    budget,                           // Budget mode: [{ id, label, minimum, slots, used, left }]
+    links: { score, maxScore, total, chem, linked, pairs,
+             boosts },                // boosts: per slot, the mates boost (null = open)
+    budget,                           // Budget mode: [{ id, label, range, minimum, slots, used, left }]
   }],
   history: [{ side, round, slot, role, profileId, category, optionId, optionName, leagueId, rerolls }],
 }
@@ -121,7 +123,7 @@ Plain JSON, cached until the state changes (treat as read-only):
 allowed, reason }`. `rating` is the OVR in that slot after familiarity (what the slot shows:
 "79 → 75" = `natural → rating`, `delta = rating − natural`). `reason` when not allowed:
 `'Spin first'`, `'Already drafted'`, `'Not in this pool'`, `'Slot filled'`,
-`'Goalkeepers only'`, `'Outfield players only'`, `'Not this side’s turn'`, `'No 88+ slot left'` (Budget mode),
+`'Goalkeepers only'`, `'Outfield players only'`, `'Not this side’s turn'`, `'No Star slot left'` (Budget mode),
 `'The draft is complete'`. Light up `allowed` slots; mark `familiarity < NATURAL_FIT` (0.95)
 as out of position.
 
@@ -137,42 +139,34 @@ moves stay costly. Club and ladder XIs field a player only at `ai.minimumFit` 0.
 
 ## Mates (chemistry)
 
-One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 2, club: 2, captain: 1 }`):
-a player with a **nation team-mate** in the XI gets **+2**, with a **club mate +2**, and the
-two **stack** (both: **+4**). One mate is enough, there are no thresholds and no league mates.
-A **Captain** in the XI adds +1 to everyone on top, so a player's boost (`chem`, added to
-every skill by the engine, capped at 5) is 0–5.
+One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 1.5, club: 1 }`): a player
+with a **nation team-mate** in the XI gets **+1.5**, with a **club mate +1**, and the two
+**stack** (both: **+2.5**). One mate is enough, there are no thresholds and no league mates.
+That boost is the player's `chem` (attribute points the engine adds to every skill; the
+engine caps it at 5).
 
 `teamLinks(players)` (players in slot order, `null` = open slot) returns
 `players[i] = { boost, kinds, chem, mates: { nation, club } }` (`boost` = the mates boost,
-`kinds` = what gives it, `chem` = boost + Captain, `mates` = number of XI mates per kind),
-`pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates — one line per pair for
-the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the mates boosts, max
-`maxScore` = 44), `total` (sum of `chem`, Captain included, max 55: the UI's "Boosts +14"),
-`chem` (mean chem), `linked` (players with a mate), `captain`, `captainBoost`.
-`linkBoosts(rules)` gives the three numbers; rules saved before this rule (thresholds per
-kind) read as the defaults. Real national XIs are all nation mates (+2 each, +4 for club mates
-inside them, +1 with a captain), real club XIs club mates (+2, +4 for compatriots). In a
-Nations draft a nation mate needs the same nation twice — lucky and strong; club mates are the
-common boost there.
-Measured typical drafted XI (300 drafts, 1 re-roll, pick the best player): chem 1.69 (Nations:
-mates 0.81 + Captain 0.88), 1.95 (Leagues), 1.25 (Clubs); with 0 / 2 re-rolls 1.64 / 1.72,
-1.83 / 2.03, 1.20 / 1.31. A drafter who also values the boosts gets 2.05 / 2.83 / 1.77 for
-−0.2 to −0.5 OVR (effective +0.18 / +0.33 / +0.24). `MODE_BASELINES` still holds the chem of
-the old rule until it is re-measured.
+`kinds` = what gives it, `chem` = the same number under the engine's name, `mates` = number
+of XI mates per kind), `pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates —
+one line per pair for the pitch, `kind: 'nation'` when they share the nation), `score` =
+`total` (sum of the boosts, max `maxScore` = 27.5: the UI's "Boosts +7.5"), `chem` (mean
+boost), `linked` (players with a mate).
+`linkBoosts(rules)` gives the two numbers; rules saved before this rule (thresholds per
+kind) read as the defaults, and a saved `captain` number is ignored. Real national XIs are
+all nation mates (+1.5 each, +2.5 for club mates inside them), real club XIs club mates (+1,
++2.5 for compatriots). In a Nations draft a nation mate needs the same nation twice — lucky
+and strong; club mates are the common boost there. A pool entry's `boost` says what a player
+would get in the XI as it stands.
+Measured typical drafted XI (300 drafts, 1 re-roll, pick the best player): chem 0.48
+(Nations), 0.67 (Leagues), 0.52 (Clubs); with 0 / 2 re-rolls 0.48 / 0.48, 0.61 / 0.71,
+0.50 / 0.53. A drafter who also values the boosts gets 0.58 / 1.14 / 0.83 for −0.05 to
+−0.3 OVR (effective +0.04 / +0.21 / +0.13). `MODE_BASELINES` still holds the chem of the
+old rule (+2 / +2 and a Captain's +1) until it is re-measured.
 
-### Captain (team-boost tag)
-
-Some players carry the **Captain** tag (catalog `captain: true`, 34 of 15,378: Salah, van Dijk,
-Kane, Kimmich, Messi, …). The source has no captaincy, so the compiler derives it from real
-fields: international reputation 4–5 and age 28+ (`scripts/compile-players.mjs`). Drafting the
-best player at each spin lands a captain often (88% of Nations drafts), and
-most top national XIs have one. An XI with a captain adds `CONFIG.draft.links.captain`
-(1 attribute point) to every player's `chem`, on top of the mates boost; the highest-rated captain wears
-the armband and two captains do not stack. `teamLinks()` returns `captain` (slot) and
-`captainBoost`; the UI marks Captain-tagged players with a "C" (rows, cards) and the armband
-on the pitch (`captainSlot()` in `ui/lib/player-view.js`, same rule). Opponent XIs get it the
-same way. The engine adds `chem` to every skill (capped at 5).
+There is **no Captain** for now: the catalog still carries the `captain` flag (34 players;
+`scripts/compile-players.mjs` derives it from international reputation and age) and the codec
+keeps it, but nothing reads it — no boost, no mark.
 
 ## Match setup
 
@@ -194,7 +188,10 @@ makes the same side object from any XI (exhibition teams, tests).
 
 A level is a target **effective rating** (team OVR + mean chem) relative to the mode's typical
 drafted XI (`MODE_BASELINES`, measured with `tools/calibration/draft-baselines.mjs`: 300
-solo drafts per mode × re-roll count, positional policy; chem includes the Captain's boost):
+solo drafts per mode × re-roll count, positional policy; the table is from before the
++1.5 / +1 mates rule and is due a re-measure — under the new rule the same drafts give
+83.20 / 83.61 / 83.75 (Nations), 81.62 / 82.31 / 82.91 (Leagues), 77.98 / 78.49 / 78.89
+(Clubs)):
 
 | Mode | OVR (Pro) | chem | effective with 0 / 1 / 2 re-rolls |
 | --- | --- | --- | --- |
@@ -207,7 +204,7 @@ Gap (`CONFIG.draft.ladder`): Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: national best XIs
 (Nations), club XIs (Leagues, Clubs), both (Club & Country), plus bosses **World XI** (88.5)
 and **All-Stars** (87.3, the best XI without the World XI; `bosses: false` in `chooseOpponent`
-/ `modeCandidates` leaves them out, as the World Cup Run and the Daily do). Real national and club XIs carry +2 chem or more (club mates in a national XI and compatriots in a club XI get +4; +1 with a captain). Nations examples:
+/ `modeCandidates` leaves them out, as the World Cup Run and the Daily do). Real national XIs carry +1.5 chem or more, club XIs +1 or more (club mates in a national XI and compatriots in a club XI get +2.5). Nations examples:
 Pro ≈ Belgium/Uruguay/
 Croatia/Switzerland, World Class ≈ Brazil/Spain/France/England, Legendary ≈ World XI.
 
@@ -245,28 +242,40 @@ spins. Only those three calls consume the RNG (one draw per reel; a scheduled/da
 consumes none). For shareable runs (daily, challenge links) use `useDefaultRules: true` so the
 device's config cannot change the odds.
 
-## Budget mode (`budget.js`, session option `budget: true`)
+## Player tiers and Budget mode (`budget.js`, session option `budget: true`)
 
-A harder draft: the XI may hold only so many players per rating band — `CONFIG.draft.budget`
-(`band1`–`band3`, each `{ minimum, slots }`): **1 player rated 88+, 2 rated 84–87, 3 rated
-80–83**, everyone else under 80 (free). The rating is the OVR shown on the player (his rounded
-natural rating), so what a row shows is what it costs.
+**Tiers.** A player is a **Superstar** (rated 88+), a **Star** (84–87), a **Starter**
+(80–83), a **Normal** (74–79) or a **Bench** player by the OVR shown on him (his rounded
+natural rating). The top three start at `CONFIG.draft.budget[tier].minimum`; `draftTiers()`
+lists all five, `tierOfRating(rating, bands)` names one, and pool entries / slot players
+carry it as `tier`. The UI's frames, outlines and pick celebrations use the same tiers
+(`ui/lib/tiers.js`). They are separate from `CONFIG.playerTiers`, which only sets how many
+badges a player carries (stamped into the catalog) and is not shown to the player.
 
-- A player whose band is full is not available: pool entries carry `band` (`'band1'`… or `null`
-  = free), `available: false` and `reason: 'No 84–87 slot left'`; `placementOptions` gives the
-  same reason, `pick` refuses, `suggestPick` (Auto-pick) skips him. `affordable(player, side)`
-  is the check.
-- `snapshot().budget` is the flag; `teams[i].budget` is `[{ id, label, minimum, slots, used,
-left }]` (or `null`). Helpers: `budgetBands(rules)`, `bandIndex`, `bandUse`, `freeLabel`.
+**Budget mode** is a harder draft: the XI may hold only so many players per tier —
+`CONFIG.draft.budget` (`Superstar`, `Star`, `Starter`, each `{ minimum, slots }`): **1
+Superstar, 2 Stars, 3 Starters**, everyone else under 80 (free). What a row shows is what it
+costs.
+
+- A player whose tier is full is not available: pool entries carry `band` (`'superstar'`,
+  `'star'`, `'starter'` or `null` = free), `available: false` and `reason: 'No Star slot
+left'`; `placementOptions` gives the same reason, `pick` refuses, `suggestPick` (Auto-pick)
+  skips him. `affordable(player, side)` is the check.
+- `snapshot().budget` is the flag; `teams[i].budget` is `[{ id, label, range, minimum, slots,
+used, left }]` (`label: 'Star'`, `range: '84–87'`; or `null`). Helpers: `budgetBands(rules)`,
+  `bandIndex`, `bandUse`, `freeLabel` ('Under 80').
 - Never a dead end: the spin guard also needs an affordable player for an open slot class, and
   a nation's pool is its usual 23 call-ups (the stars you cannot afford are listed, closed)
   plus the best 23 call-ups you can afford.
-- Serialised with the session (`options.budget`, `rules.budget`); old saves have no budget.
-- The game offers it in the World Cup Run only (setup switch → `context.options.budget` →
-  run `meta.budget`).
+- Serialised with the session (`options.budget`, `rules.budget`); old saves have no budget,
+  and rules saved with numbered bands (`band1`–`band3`) keep their numbers under the tier
+  names.
+- The game offers it in the World Cup Run only (`context.options.budget` → run
+  `meta.budget`).
 
 Measured (300 Nations drafts, 1 re-roll; `tools/calibration/draft-baselines.mjs --budget
-"off;88:1,84:2,80:3" --policies positional,smart`): team OVR 81.03 ± 0.66 (82.89 ± 1.07
-without), chem 1.34, effective 82.37 ± 0.97 (84.58 ± 1.37 without); the best player of a spin
-is closed in 4.2 picks per draft; a drafter who values boosts and saves band slots for the top
-of a band reaches 82.75 (+0.38; without the budget the same drafter gains +0.18).
+"off;default" --policies positional,smart`): team OVR 81.23 ± 0.58 (83.13 ± 1.03 without),
+chem 0.40 (0.48), effective 81.63 ± 0.67 (83.61 ± 1.11 without) — a Budget XI is 1.98
+effective points weaker (2.26 under the old mates rule); the best player of a spin is closed
+in 4.5 picks per draft; a drafter who values boosts and saves tier slots for the top of a
+tier reaches 81.79 (+0.16; without the budget the same drafter gains +0.04).

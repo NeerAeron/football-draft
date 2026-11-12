@@ -23,7 +23,7 @@ import {
 import { quickOpponent, difficultyLabel } from '../../lib/draft-store.js';
 import { linkLines } from './draft-model.js';
 import { BudgetStrip } from './team-panel.js';
-import { fmt1 } from '../../lib/format.js';
+import { fmt1, boost as fmtBoost } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
 const pct = p => `${Math.round(p * 100)}%`;
@@ -72,7 +72,7 @@ function XiSummary({ team, players, hideRatings, small }) {
       >
       <span
         ><small>Boosts</small
-        ><b class="num is-boost" data-testid="final-boosts">+${team.links.total}</b></span
+        ><b class="num is-boost" data-testid="final-boosts">${fmtBoost(team.links.total)}</b></span
       >
       <span
         ><small>Mates</small><b class="num">${team.links.linked}<i>/11</i></b></span

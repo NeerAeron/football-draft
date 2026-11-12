@@ -9,7 +9,11 @@
  *                the row hides them below ~460 px of its own width, container query)
  *   meta         override the second line (default "Club · League")
  *   cost         { label, tone? } a small tag before the second line: what the player costs
- *                (Budget mode: '88+' with tone 'band1' | 'band2' | 'band3', or 'Free')
+ *                (Budget mode: 'Star' with tone 'superstar' | 'star' | 'starter', or 'Free')
+ *   boost        { label, text } the mates boost he would get, green, on the second line
+ *                ('+1.5' 'nation mate')
+ *
+ * A Superstar's or a Star's row has a thin outline in the tier's colour (not with hideRatings).
  *   selected     volt edge + aria-pressed;  disabled (dimmed, not clickable)
  *   hideRatings  hide OVR + stats
  *   rank         optional leading number (e.g. pool order)
@@ -19,9 +23,8 @@
  * Put rows in <ul role="list" class="player-list"> … <li> for lists.
  */
 import { html, cx } from '../lib/html.js';
-import { resolveTier } from '../lib/tiers.js';
+import { resolveTier, isTopTier } from '../lib/tiers.js';
 import { keyStatsFirst } from '../lib/player-view.js';
-import { CaptainMark } from './captain-mark.js';
 import { Flag } from './flag.js';
 import { FitTag, fitText } from './fit-tag.js';
 
@@ -31,6 +34,7 @@ export function PlayerRow({
   stats = 3,
   meta,
   cost,
+  boost,
   selected = false,
   disabled = false,
   hideRatings = false,
@@ -47,6 +51,7 @@ export function PlayerRow({
   const shown = hideRatings ? [] : keyStatsFirst(p.stats, p.position).slice(0, stats);
   const classes = cx(
     'prow',
+    !hideRatings && isTopTier(t) && `prow--tier-${t.id}`,
     selected && 'is-selected',
     disabled && 'is-disabled',
     onClick && 'prow--interactive',
@@ -56,18 +61,21 @@ export function PlayerRow({
     ${rank != null && html`<span class="prow__rank num">${rank}</span>`}
     <${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative />
     <span class="prow__who">
-      <span class="prow__name"
-        >${p.name}${p.captain && html` <${CaptainMark} class="prow__captain" />`}</span
-      >
+      <span class="prow__name">${p.name}</span>
       ${
-        (sub || cost) &&
+        (sub || cost || boost) &&
         html`<span class="prow__meta"
           >${
             cost &&
             html`<b class=${cx('prow__cost num', cost.tone && `prow__cost--${cost.tone}`)}
               >${cost.label}</b
             >`
-          }${sub}</span
+          }${
+            boost &&
+            html`<span class="prow__boost"
+              ><b class="num">${boost.label}</b>${` ${boost.text}`}</span
+            >`
+          }${boost && sub ? ' · ' : ''}${sub}</span
         >`
       }
     </span>
@@ -98,6 +106,7 @@ export function PlayerRow({
       p.nation?.name,
       p.club?.name,
       cost && (cost.text || cost.label),
+      boost && `${boost.label} ${boost.text}`,
       fitText(fit, hideRatings),
     ]
       .filter(Boolean)

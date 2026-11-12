@@ -15,11 +15,10 @@ import {
   roleFit,
   naturalRating,
   isKeeper,
-  tierName,
   LINE_OF,
 } from './pools.js';
-import { teamLinks } from './links.js';
-import { budgetBands, bandIndex, bandUse } from './budget.js';
+import { teamLinks, linkBoosts } from './links.js';
+import { budgetBands, bandIndex, bandUse, tierOfRating } from './budget.js';
 
 export const DRAFT_MODES = {
   nations: { label: 'Nations', categories: ['nation'] },
@@ -133,8 +132,10 @@ export class DraftSession {
     this.mode = this.options.mode;
     this.sides = this.options.sides;
     this.formations = [...this.options.formations];
-    // Budget mode: the rating bands and their slots (null when off).
-    this.bands = this.options.budget ? budgetBands(this.rules.budget) : null;
+    // The capped tiers (Superstar, Star, Starter: where each starts) and, in Budget mode, their
+    // slots (`bands`, null when off).
+    this.tiers = budgetBands(this.rules.budget);
+    this.bands = this.options.budget ? this.tiers : null;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
     this.excluded = {
       nations: new Set(this.options.excludeNations),
@@ -597,7 +598,7 @@ export class DraftSession {
       position: p.primaryPosition,
       secondary: [...(p.secondaryPositions || [])],
       ovr: Math.round(naturalRating(p)),
-      tier: tierName(p),
+      tier: tierOfRating(Math.round(naturalRating(p)), this.tiers),
       nation: s.nationality || null,
       nationCode: this.#index.nations.get(s.nationality)?.code ?? null,
       club: s.club || null,
@@ -606,7 +607,18 @@ export class DraftSession {
       leagueId: s.leagueId == null ? null : String(s.leagueId),
     };
   }
-  #entry(p, side, used) {
+  /** Nations and clubs of a side's XI (what makes a pool player a mate) + the boosts. */
+  #mates(side) {
+    const nations = new Set(),
+      clubs = new Set();
+    for (const p of this.lineup(side)) {
+      if (!p) continue;
+      if (p.source?.nationality) nations.add(p.source.nationality);
+      if (p.source?.clubId != null) clubs.add(String(p.source.clubId));
+    }
+    return { nations, clubs, value: linkBoosts(this.rules.links) };
+  }
+  #entry(p, side, used, mates) {
     const rows = FORMATIONS[this.formations[side]],
       natural = naturalRating(p);
     let best = null,
@@ -621,9 +633,21 @@ export class DraftSession {
     const band = this.bands ? bandIndex(this.bands, this.#price(p)) : -1,
       afford = band < 0 || used[band] < this.bands[band].slots,
       ok = this.available(p) && !!best && afford;
+    // The mates boost he would get in this XI (null when he has no mate in it).
+    const kinds = [];
+    if (mates.value.nation > 0 && mates.nations.has(p.source?.nationality)) kinds.push('nation');
+    if (
+      mates.value.club > 0 &&
+      p.source?.clubId != null &&
+      mates.clubs.has(String(p.source.clubId))
+    )
+      kinds.push('club');
     return {
       ...this.playerSummary(p),
       band: band < 0 ? null : this.bands[band].id,
+      boost: kinds.length
+        ? { value: kinds.reduce((sum, k) => sum + mates.value[k], 0), kinds }
+        : null,
       best: best && {
         slot: best.slot,
         role: best.role,
@@ -692,12 +716,13 @@ export class DraftSession {
       complete: filled.length === 11,
     };
   }
-  /** Budget mode: the bands with what the side has used: [{ id, label, slots, used, left }]. */
+  /** Budget mode: the capped tiers with what the side has used: [{ id, label, range, … }]. */
   #budgetView(side) {
     const used = this.#bandUsed(side);
     return this.bands.map((b, i) => ({
       id: b.id,
       label: b.label,
+      range: b.range,
       minimum: b.minimum,
       slots: b.slots,
       used: used[i],
@@ -708,9 +733,10 @@ export class DraftSession {
   snapshot() {
     if (this.#snapshot) return this.#snapshot;
     const side = this.turn,
-      bandUsed = this.bands && this.#bandUsed(side);
+      bandUsed = this.bands && this.#bandUsed(side),
+      mates = this.#mates(side);
     const pool = this.poolPlayers()
-      .map(p => this.#entry(p, side, bandUsed))
+      .map(p => this.#entry(p, side, bandUsed, mates))
       .sort(
         (a, b) =>
           b.available - a.available ||

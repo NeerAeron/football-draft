@@ -61,26 +61,25 @@ export const DEFAULT_CONFIG = {
       legendary: 7,
     },
     // Mates (draft/links.js): attribute points for a player with a nation team-mate and for
-    // one with a club mate in the XI — one mate is enough, and the two stack (+4 with both).
+    // one with a club mate in the XI — one mate is enough, and the two stack (+2.5 with both).
     links: {
-      nation: 2,
-      club: 2,
-      // A Captain in the XI: attribute points added to every player on top.
-      captain: 1,
+      nation: 1.5,
+      club: 1,
     },
-    // Budget mode (session option `budget`): at most `slots` players rated `minimum` or more
-    // per band (by the rating shown on the player, bands highest first); players under the
-    // last band are free.
+    // The draft's player tiers (draft/budget.js), by the rating shown on the player, highest
+    // first: `minimum` is where the tier starts (these are the tiers the game shows: frames,
+    // outlines, pick celebrations) and `slots` how many of them a Budget-mode XI may hold
+    // (session option `budget`). Players under Starter (Normal, Bench) are free.
     budget: {
-      band1: {
+      Superstar: {
         minimum: 88,
         slots: 1,
       },
-      band2: {
+      Star: {
         minimum: 84,
         slots: 2,
       },
-      band3: {
+      Starter: {
         minimum: 80,
         slots: 3,
       },
@@ -825,15 +824,14 @@ const DRAFT_FIELDS = {
   'draft.ladder.': [null, -15, 15, 0.5],
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
-  'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
   'draft.budget.': [null, 0, 99, 1],
 };
 const LEVEL_LABELS = {
   pro: 'Pro',
   worldclass: 'World Class',
   legendary: 'Legendary',
-  minimum: 'Budget band: rating from',
-  slots: 'Budget band: players allowed',
+  minimum: 'Draft tier: rating from',
+  slots: 'Budget mode: players of this tier allowed',
 };
 const draftField = path => {
   const key = Object.keys(DRAFT_FIELDS)
@@ -946,17 +944,17 @@ const CROSS_FIELD_RULES = [
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,
   },
   {
-    message: 'Mates and Captain boosts cannot total more than 5 (the engine cap).',
+    message: 'Mates boosts cannot total more than 5 (the engine cap).',
     reset: ['draft.links'],
-    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain <= 5,
+    ok: ({ draft: { links: l } }) => l.nation + l.club <= 5,
   },
   {
-    message: 'Budget bands must descend and their slots stay within an XI.',
+    message: 'Draft tiers must descend and their Budget slots stay within an XI.',
     reset: ['draft.budget'],
     ok: ({ draft: { budget: b } }) =>
-      b.band1.minimum > b.band2.minimum &&
-      b.band2.minimum > b.band3.minimum &&
-      [b.band1, b.band2, b.band3].every(x => x.slots <= 11),
+      b.Superstar.minimum > b.Star.minimum &&
+      b.Star.minimum > b.Starter.minimum &&
+      [b.Superstar, b.Star, b.Starter].every(x => x.slots <= 11),
   },
   {
     message: 'Minimum added time exceeds maximum.',

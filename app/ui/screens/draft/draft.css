@@ -763,6 +763,19 @@
   gap: var(--space-3);
   align-items: start;
 }
+/* The selected player's card with his six stats: compact, so the pitch and the Draft button
+   stay in reach (the card's inner measures follow its font-size). */
+.pick-card {
+  --pc-w: 132px;
+  aspect-ratio: auto;
+  font-size: 9.5px;
+  margin: 3px;
+}
+.dock .pick-card {
+  --pc-w: 124px;
+  font-size: 9px;
+  align-self: center;
+}
 .pick__info {
   display: grid;
   gap: var(--space-1);
@@ -832,12 +845,30 @@
 .pick-effects__budget {
   color: var(--text-2);
 }
-.dock .pick-effects {
-  grid-auto-flow: column;
-  gap: var(--space-3);
+/* The dock: his card on the left, name + slot and the effects of the pick beside it, the
+   actions on the right. */
+.dock {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'card who actions'
+    'card effects actions';
+  align-items: center;
 }
-.dock .pick-effects__mates {
-  max-width: 30ch;
+.dock .pick-card {
+  grid-area: card;
+}
+.dock__who {
+  grid-area: who;
+  align-self: end;
+}
+.dock .pick-effects {
+  grid-area: effects;
+  align-self: start;
+}
+.dock__actions {
+  grid-area: actions;
+  align-self: end;
 }
 
 /* ---------- completion ---------- */
@@ -1183,77 +1214,7 @@
   gap: var(--space-4);
 }
 
-/* ---------- All attributes (pick sheet + dock) ---------- */
-.attrs {
-  width: 100%;
-  border-radius: var(--radius-md);
-  background: var(--surface-1);
-  border: 1px solid var(--line-1);
-}
-.attrs__summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--touch);
-  padding: 0 var(--space-3);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-  list-style: none;
-}
-.attrs__summary::-webkit-details-marker {
-  display: none;
-}
-.attrs__summary > span {
-  flex: 1;
-}
-.attrs__chevron {
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.attrs[open] .attrs__chevron {
-  transform: rotate(180deg);
-}
-.attrs__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: var(--space-2) var(--space-5);
-  padding: 0 var(--space-3) var(--space-3);
-}
-.attrs__group {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.attrs__head {
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
-  color: var(--text-1);
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: var(--weight-heavy);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.attrs__group {
-  align-content: start;
-}
-.attrs .statbar {
-  grid-template-columns: 7.2em minmax(0, 1fr) 2ch;
-  font-size: var(--text-xs);
-}
-.attrs .statbar__label {
-  color: var(--text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pick-effects__captain {
-  align-items: center;
-}
-
-/* ---------- Budget mode: the rating bands as slots filling up ---------- */
+/* ---------- Budget mode: the capped tiers as slots filling up ---------- */
 .draft-budget {
   display: flex;
   flex-wrap: wrap;
@@ -1286,18 +1247,28 @@
   color: var(--band);
   font-size: var(--text-sm);
 }
-.draft-budget__band.is-band1 {
-  --band: var(--gold-400);
+.draft-budget__band.is-superstar {
+  --band: var(--tier-superstar);
 }
-.draft-budget__band.is-band2 {
-  --band: var(--volt-400);
+.draft-budget__band.is-star {
+  --band: var(--tier-star);
 }
-.draft-budget__band.is-band3 {
-  --band: var(--sky-400);
+.draft-budget__band.is-starter {
+  --band: var(--tier-starter);
 }
 .draft-budget__band.is-free {
   margin-left: auto;
   color: var(--text-3);
+}
+/* Phones: the three tiers and the free note on one line. */
+@media (max-width: 479px) {
+  .draft-budget {
+    gap: 6px var(--space-2);
+    padding-inline: var(--space-2);
+  }
+  .draft-budget__title {
+    display: none;
+  }
 }
 .draft-budget__pips {
   display: inline-flex;

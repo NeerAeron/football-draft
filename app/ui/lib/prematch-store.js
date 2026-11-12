@@ -254,38 +254,82 @@ export function swapSlots(players, formation, a, b) {
   return next;
 }
 
-/**
- * Re-slot an XI into another formation: the best keeper in goal, the outfield players on the
- * assignment with the highest total slot rating (exact DP over slot masks).
- */
-export function reslot(players, formation) {
+// The best assignment of an XI to a formation: the best keeper in goal, the outfield players
+// on the slots that give the highest total slot rating (= the best team OVR). Exact: a DP over
+// slot masks on a 10 × 10 table of slot ratings (about 10,000 additions, so all 21 formations
+// are compared in a millisecond or two — no worker needed, even on a phone).
+function bestSlots(players, formation, rate = roleRating) {
   const roles = rolesOf(formation);
   const gkSlot = roles.indexOf('GK');
-  const keepers = players
-    .filter(isKeeper)
-    .sort((a, b) => roleRating(b, 'GK') - roleRating(a, 'GK'));
-  const keeper = keepers[0] || null;
-  const outfield = players.filter(p => p !== keeper);
+  let keeper = null;
+  for (const p of players)
+    if (p && isKeeper(p) && (!keeper || rate(p, 'GK') > rate(keeper, 'GK'))) keeper = p;
+  const outfield = players.filter(p => p && p !== keeper);
   const slots = roles.map((r, i) => i).filter(i => i !== gkSlot);
-  const memo = new Map();
-  const solve = (i, mask) => {
-    if (i === outfield.length) return { v: 0, slots: [] };
-    const key = i * 4096 + mask;
-    if (memo.has(key)) return memo.get(key);
-    let best = null;
-    slots.forEach((slot, k) => {
-      if (mask & (1 << k)) return;
-      const rest = solve(i + 1, mask | (1 << k));
-      const v = roleRating(outfield[i], roles[slot]) + rest.v;
-      if (!best || v > best.v + 1e-9) best = { v, slots: [slot, ...rest.slots] };
-    });
-    memo.set(key, best);
-    return best;
-  };
+  const n = outfield.length,
+    size = 1 << slots.length;
+  const table = outfield.map(p => slots.map(slot => rate(p, roles[slot])));
+  // best[mask]: the best total with the first popcount(mask) players on the slots of mask.
+  const best = new Float64Array(size).fill(-Infinity),
+    choice = new Int8Array(size).fill(-1);
+  best[0] = 0;
+  for (let mask = 1; mask < size; mask++) {
+    let i = -1;
+    for (let m = mask; m; m &= m - 1) i++;
+    if (i >= n) continue;
+    for (let k = 0; k < slots.length; k++) {
+      if (!(mask & (1 << k))) continue;
+      const v = best[mask ^ (1 << k)] + table[i][k];
+      if (v > best[mask] + 1e-9) {
+        best[mask] = v;
+        choice[mask] = k;
+      }
+    }
+  }
+  // With fewer than ten outfield players any n slots may be used: take the best set.
+  let end = 0;
+  for (let mask = 1; mask < size; mask++) {
+    let bits = 0;
+    for (let m = mask; m; m &= m - 1) bits++;
+    if (bits === n && best[mask] > best[end] + 1e-9) end = mask;
+  }
   const next = Array(roles.length).fill(null);
   if (keeper) next[gkSlot] = keeper;
-  solve(0, 0).slots.forEach((slot, i) => (next[slot] = outfield[i]));
+  for (let mask = end, i = n - 1; i >= 0; i--) {
+    const k = choice[mask];
+    next[slots[k]] = outfield[i];
+    mask ^= 1 << k;
+  }
+  const total = (n ? best[end] : 0) + (keeper ? rate(keeper, 'GK') : 0);
+  return { players: next, roles, total, count: n + (keeper ? 1 : 0) };
+}
+
+/**
+ * Re-slot an XI into another formation: the best keeper in goal, the outfield players on the
+ * assignment with the highest total slot rating — the best team OVR that formation can give.
+ */
+export function reslot(players, formation) {
+  const { players: next, roles } = bestSlots(players, formation);
   return next.map((p, i) => (p ? placed(p, i, roles[i]) : p));
+}
+
+/**
+ * The team OVR (one decimal) every formation would give this XI with its best lineup:
+ * { '433': 84.2, '4231': 83.9, … } — what the formation picker shows.
+ */
+export function formationRatings(players) {
+  const out = {},
+    seen = new Map(), // player → { role: rating }: 21 formations share a dozen roles
+    rate = (p, role) => {
+      let row = seen.get(p);
+      if (!row) seen.set(p, (row = {}));
+      return (row[role] ??= roleRating(p, role));
+    };
+  for (const formation of Object.keys(FORMATIONS)) {
+    const { total, count } = bestSlots(players, formation, rate);
+    out[formation] = count ? Math.round((total / count) * 10) / 10 : 0;
+  }
+  return out;
 }
 
 // ---------- edits on the stored pre-match ----------

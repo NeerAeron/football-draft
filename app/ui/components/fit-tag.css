@@ -54,3 +54,13 @@
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }
+/* "81 at CM": his rating at another position (the number leads, the words are quieter). */
+.fit-tag__at {
+  font-weight: var(--weight-semibold);
+  opacity: 0.85;
+}
+.fit-tag--neutral .fit-tag__to {
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: 14px;
+}

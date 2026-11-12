@@ -8,7 +8,8 @@
  *   size         's' (112px: rating, flag, kit, name) | 'm' (168px: + six stats, 1 badge)
  *                | 'l' (232px: + club · league line, 3 badges)                    default 'm'
  *   tier         override the tier ('Superstar' | 'Star' | 'Starter' | 'Normal' | 'Bench');
- *                default from ovr: 85+ holo, 80–84 gold, 74–79 silver, 68–73 bronze, else slate
+ *                default from ovr: 88+ holo, 84–87 gold, 80–83 silver, 74–79 bronze, else slate
+ *                (lib/tiers.js); a Superstar's or Star's card has a thin outline in its colour
  *   selected     volt ring + check (aria-pressed when interactive)
  *   disabled     dimmed, not clickable (e.g. no open slot)
  *   hideRatings  "Ball Knower": hides OVR, stats and the tier frame (shows '?')
@@ -21,7 +22,6 @@ import { resolveTier } from '../lib/tiers.js';
 import { teamStyle } from '../lib/color.js';
 import { surname } from '../lib/player-view.js';
 import { Flag } from './flag.js';
-import { CaptainMark } from './captain-mark.js';
 import { Crest, LeagueLogo } from './crest.js';
 import { Chip } from './chip.js';
 import { Icon } from './icon.js';
@@ -91,7 +91,6 @@ export function PlayerCard({
         <span class="pcard__rating">
           <span class="pcard__ovr num">${hideRatings ? '?' : p.ovr}</span>
           <span class="pcard__pos">${p.position}</span>
-          ${p.captain && html`<${CaptainMark} size=${size === 's' ? 'sm' : 'md'} />`}
         </span>
         <span class="pcard__art"><${KitShirt} colors=${p.club?.colors} /></span>
         <span class="pcard__marks">

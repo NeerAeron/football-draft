@@ -4,10 +4,10 @@ import { html, cx } from '../../lib/html.js';
 import { teamStyle } from '../../lib/color.js';
 import { PitchView, Meter, Icon, Flag, LeagueLogo, Crest } from '../../components/index.js';
 import { linkLines } from './draft-model.js';
-import { fmt1, signed1 } from '../../lib/format.js';
+import { freeLabel } from '../../../core/draft/budget.js';
+import { fmt1, signed1, boost as fmtBoost } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
-const boostNumber = n => (Number.isInteger(n) ? String(n) : fmt1(n));
 
 /** Pick progress: one pip per slot, filled as players arrive. */
 export function Progress({ filled, total = 11, label }) {
@@ -34,7 +34,7 @@ function Stat({ label, value, sub, tone, testid }) {
 
 /**
  * The meters strip: team OVR (with a preview delta), Boosts (the sum of the green chips on the
- * pitch: mates + Captain) and the projection.
+ * pitch) and the projection.
  * hideRatings hides OVR and the projection (they would reveal the ratings).
  */
 export function TeamSummary({
@@ -73,9 +73,9 @@ export function TeamSummary({
     <${Stat}
       label="Boosts"
       testid="team-boosts"
-      value=${`+${boostNumber(team.links.total)}`}
+      value=${fmtBoost(team.links.total)}
       tone="green"
-      sub=${boostDelta > 0 ? html`<span class="delta is-up">+${boostNumber(boostDelta)}</span>` : null}
+      sub=${boostDelta > 0 ? html`<span class="delta is-up">${fmtBoost(boostDelta)}</span>` : null}
     />
     ${
       projection
@@ -92,13 +92,12 @@ export function TeamSummary({
 }
 
 /**
- * Budget mode: the rating bands as slots filling up ("88+ ●", "84–87 ●○", "80–83 ●●○").
- * budget: team.budget ([{ id, label, slots, used, left }]); use: the band id the selected
- * player would take (its next pip pulses).
+ * Budget mode: the capped tiers as slots filling up ("Superstar ●", "Star ●○", "Starter
+ * ●●○"). budget: team.budget ([{ id, label, range, slots, used, left }]); use: the tier id
+ * the selected player would take (its next pip pulses).
  */
 export function BudgetStrip({ budget, use = null, class: className }) {
   if (!budget) return null;
-  const free = `Under ${budget[budget.length - 1].minimum}`;
   return html`<div class=${cx('draft-budget', className)} role="group" aria-label="Budget">
     <span class="draft-budget__title">Budget</span>
     ${budget.map(
@@ -107,7 +106,8 @@ export function BudgetStrip({ budget, use = null, class: className }) {
           key=${b.id}
           class=${cx('draft-budget__band', `is-${b.id}`, b.left === 0 && 'is-full')}
           role="img"
-          aria-label=${`${b.label}: ${b.used} of ${b.slots} used`}
+          aria-label=${`${b.label} (rated ${b.range}): ${b.used} of ${b.slots} used`}
+          title=${`${b.label}: rated ${b.range}`}
           data-band=${b.id}
         >
           <b class="num">${b.label}</b>
@@ -123,7 +123,7 @@ export function BudgetStrip({ budget, use = null, class: className }) {
           </span>
         </span>`,
     )}
-    <span class="draft-budget__band is-free"><b class="num">${free}</b> free</span>
+    <span class="draft-budget__band is-free">${`${freeLabel(budget)} free`}</span>
   </div>`;
 }
 

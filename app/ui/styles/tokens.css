@@ -88,7 +88,8 @@
   --pitch-stripe-b: #186b3e;
 
   /* ---------- Tier palettes (player OVR) ----------
-     Superstar 85+ holo · Star 80–84 gold · Starter 74–79 silver · Normal 68–73 bronze · Bench slate.
+     Superstar 88+ holo · Star 84–87 gold · Starter 80–83 silver · Normal 74–79 bronze · Bench slate
+     (lib/tiers.js; the top two also get a thin outline wherever players are shown).
      --tier-* = solid accent (numerals, rings); --tier-*-frame = foil border gradient;
      --tier-*-fill = card body tint. */
   --tier-superstar: #c9b6ff;

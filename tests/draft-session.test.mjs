@@ -464,7 +464,7 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
   assert.equal(home.players.length, 11);
   home.players.forEach((p, i) => {
     assert.equal(p.role, FORMATIONS['4231'][i][2]);
-    assert.ok(p.chem >= 0 && p.chem <= 5 && Number.isInteger(p.chem));
+    assert.ok([0, 1, 1.5, 2.5].includes(p.chem), `chem ${p.chem}`);
   });
   const setup = matchSetup(home, { ...away, color: home.color });
   assert.notEqual(setup.teams[1].color, setup.teams[0].color, 'clashing kits switch');
@@ -485,12 +485,12 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
       formation: '433',
       players: assignXI(nation.players),
     });
-  // A national XI is all nation mates: +2 each (+4 for club mates inside it), plus the
-  // captain's +1 (Brazil has one).
+  // A national XI is all nation mates: +1.5 each (+2.5 for club mates inside it). A Captain
+  // tag (Brazil has one) adds nothing.
   assert.ok(nation.players.some(p => p.captain));
-  assert.ok(xi.players.every(p => p.chem === 3 || p.chem === 5));
-  assert.ok(xi.links.score >= 22 && xi.links.score <= 44);
-  assert.equal(xi.links.total, xi.links.score + 11);
+  assert.ok(xi.players.every(p => p.chem === 1.5 || p.chem === 2.5));
+  assert.ok(xi.links.score >= 16.5 && xi.links.score <= 27.5);
+  assert.equal(xi.links.total, xi.links.score);
 });
 
 function assignXI(players) {

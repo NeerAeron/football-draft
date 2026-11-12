@@ -17,7 +17,7 @@
 // players per band + free in the final XI, `blocked` = picks per draft whose best player (by
 // slot rating) had no band slot left, `spendOrWait` = picks per draft where the best affordable
 // player costs a band slot while a cheaper one within 3 points was on offer. Policy "smart":
-// slot rating + the boosts the pick adds to the XI (mates, Captain), and in Budget mode minus a
+// slot rating + the boosts the pick adds to the XI (mates), and in Budget mode minus a
 // penalty for spending a scarce band slot on a player from the bottom of his band
 // (--smart-weight points at most); `differs` = picks per draft where it did not take the
 // positional pick.
@@ -25,7 +25,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
 import { createDraftSession } from '../../app/core/draft/session.js';
 import { teamLinks } from '../../app/core/draft/links.js';
-import { budgetBands, bandIndex, bandUse } from '../../app/core/draft/budget.js';
+import { budgetBands, bandIndex, bandUse, BUDGET_TIERS } from '../../app/core/draft/budget.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../app/core/config/config.js';
 import { roleRating, roleFit, naturalRating, isKeeper } from '../../app/core/draft/pools.js';
 import { FORMATIONS } from '../../app/core/players/formations.js';
@@ -51,7 +51,7 @@ const schemeRules = text =>
     : Object.fromEntries(
         text.split(',').map((part, i) => {
           const [minimum, slots] = part.split(':').map(Number);
-          return ['band' + (i + 1), { minimum, slots }];
+          return [BUDGET_TIERS[i], { minimum, slots }];
         }),
       );
 const raw = file ? JSON.parse(readFileSync(file, 'utf8')) : null;
@@ -81,7 +81,7 @@ function linkMove(s) {
   }
   return best;
 }
-// The smart drafter: slot rating plus the boosts the pick adds to the XI (mates, Captain), and
+// The smart drafter: slot rating plus the boosts the pick adds to the XI (mates), and
 // in Budget mode a band slot spent on a player from the bottom of his band is worth less than
 // one spent near its top, the more so the scarcer the slots are for the picks to come.
 function smartMove(s) {
@@ -196,8 +196,6 @@ function draft(mode, seed, rerolls, policy, scheme) {
     blocked,
     spendOrWait,
     differs,
-    captain: links.captain === null ? 0 : 1,
-    mates: links.score / 11,
     ovr,
     chem: links.chem,
     links: links.score,
@@ -241,8 +239,6 @@ for (const scheme of schemes)
           p90: r2(q(o, 0.9)),
           chem: r2(mean(rows.map(r => r.chem))),
           chemSd: r2(sd(rows.map(r => r.chem))),
-          mates: r2(mean(rows.map(r => r.mates))),
-          captain: r2(mean(rows.map(r => r.captain))),
           links: r2(mean(rows.map(r => r.links))),
           effectiveSd: r2(sd(rows.map(r => r.effective))),
           bands: rows[0].bands.map((_, i) => r2(mean(rows.map(r => r.bands[i])))).join(' / '),
