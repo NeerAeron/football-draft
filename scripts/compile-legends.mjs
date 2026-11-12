@@ -199,40 +199,42 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     if (nation && key && !nationByName.has(key)) nationByName.set(key, nation);
   };
   for (const row of legacyRows) spell(row.nationality_name, row.nationality_id);
-  for (const t of older.titles)
-    if (t.edition >= 5 && t.edition < 90)
-      for (const p of t.players) if (p.nationName) spell(p.nationName, p.nationCode);
   const teamNation = name => nationByName.get(teamWords(name).join(' ')) ?? null;
-  // A person's nation from his own rows: FIFA 15–23, else EA's nationality id (FIFA 2005–14),
-  // else the national team he is in.
+  // A person's nation from his own rows: FIFA 15–23, else EA's nationality id (FIFA 2005) or
+  // the nation's name (FIFA 06–14) where the catalog or FIFA 15–23 spell it that way, else
+  // the national team he is in.
   const ownNation = one => {
     if (one.legacy.length) {
       const row = one.legacy.at(-1).row;
       return nationNames.get(row.nationality_id) ?? row.nationality_name;
     }
-    for (const p of [...one.old].reverse())
-      if (p.edition >= 5 && p.edition < 90 && p.nationCode != null) {
-        const nation = nationNames.get(String(p.nationCode)) ?? teamNation(p.nationName ?? '');
-        if (nation) return nation;
-      }
+    for (const p of [...one.old].reverse()) {
+      const nation =
+        (p.edition === 5 ? nationNames.get(String(p.nationCode)) : null) ??
+        teamNation(p.nationName ?? '');
+      if (nation) return nation;
+    }
     for (const p of [...one.old].reverse())
       for (const team of p.clubs) if (teamNation(team)) return teamNation(team);
     return null;
   };
-  // The nationality codes of FIFA 98–2003 differ per title: a code is the nation most of its
-  // players with a known nation have (at least three, four in five agreeing).
+  // What a title calls a nationality — a code of its own (FIFA 98–2002), an adjective (FIFA
+  // 2003), a name spelled another way (FIFA 06–14: "Holland", "Korea Republic") — is the
+  // nation most of its players with a known nation have (at least three, four in five
+  // agreeing).
   const byOldRow = new Map();
   for (const one of persons.values()) for (const p of one.old) byOldRow.set(p, one);
+  const nationKey = p => p.nationCode ?? p.nationName;
   const codeNation = new Map(); // title → Map(code → nation)
   for (const t of older.titles) {
-    if (!(t.edition <= 3 || t.edition >= 90)) continue;
     const votes = new Map();
     for (const p of t.players) {
       const one = byOldRow.get(p),
-        nation = one && ownNation(one);
-      if (!nation || p.nationCode == null) continue;
-      if (!votes.has(p.nationCode)) votes.set(p.nationCode, new Map());
-      votes.get(p.nationCode).set(nation, (votes.get(p.nationCode).get(nation) || 0) + 1);
+        nation = one && ownNation(one),
+        key = nationKey(p);
+      if (!nation || key == null) continue;
+      if (!votes.has(key)) votes.set(key, new Map());
+      votes.get(key).set(nation, (votes.get(key).get(nation) || 0) + 1);
     }
     const codes = new Map();
     for (const [code, list] of votes) {
@@ -242,14 +244,17 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     }
     codeNation.set(t.edition, codes);
   }
+  const nationCache = new Map();
   const nationOf = one => {
-    const own = ownNation(one);
-    if (own) return own;
-    for (const p of [...one.old].reverse()) {
-      const nation = codeNation.get(p.edition)?.get(p.nationCode);
-      if (nation) return nation;
-    }
-    return null;
+    if (nationCache.has(one)) return nationCache.get(one);
+    let found = ownNation(one);
+    if (!found)
+      for (const p of [...one.old].reverse()) {
+        found = codeNation.get(p.edition)?.get(nationKey(p)) ?? null;
+        if (found) break;
+      }
+    nationCache.set(one, found);
+    return found;
   };
   // ---- clubs of the early titles (names only): the EA team id a later title gives that name
   const teamIds = new Map();
@@ -388,8 +393,11 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     groups.sort((a, b) => b.rows.length - a.rows.length); // a tie: the earlier name
     return [...(groups[0]?.rows ?? [])].reverse();
   };
+  // A whole name in one string ("David Seaman") is shown as today's cards show one: "D. Seaman".
+  const abbreviated = q =>
+    q.named === 'whole' ? `${q.name[0]}. ${q.name.slice(q.name.indexOf(' ') + 1)}` : q.name;
   const nameSource = one =>
-    ['parts', 'short', 'whole'].map(kind => real(one).find(q => q.named === kind)).find(Boolean);
+    ['parts', 'whole', 'short'].map(kind => real(one).find(q => q.named === kind)).find(Boolean);
   const fullNameSource = one => real(one).find(q => /\s/.test(q.fullName));
   const notes = {};
   // The compiled card of a version: its skills moved to show its overall.
@@ -434,7 +442,7 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
         fifa_version: String(p.edition),
         fifa_update: '1',
         fifa_update_date: '',
-        short_name: legacy?.short_name ?? named.name,
+        short_name: legacy?.short_name ?? abbreviated(named),
         long_name: legacy?.long_name ?? fullNameSource(one)?.fullName ?? named.fullName,
         player_positions: p.positions.join(', '),
         preferred_foot: p.foot ?? foot?.found ?? 'right',

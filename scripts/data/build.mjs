@@ -25,7 +25,7 @@ import { encodeLegends, catalogIds } from '../../app/core/players/legends-codec.
 import { badgeStamp } from '../../app/core/players/catalog-derived.js';
 import { compileLegends, LEGACY, TITLES, SELECTION } from '../compile-legends.mjs';
 import { loadLegacyTitles } from './legacy-titles.mjs';
-import { PATHS, SOURCE, LEGACY_SOURCE, LEGACY_TITLES } from './paths.mjs';
+import { PATHS, SOURCE, LEGACY_SOURCE, LEGACY_TITLES, LEGACY_NAMES } from './paths.mjs';
 
 async function readSource(path, source) {
   let bytes;
@@ -62,7 +62,10 @@ export async function compileSource() {
  */
 export async function compileLegendsFile(compiled, runtime) {
   const { rows, hash } = await readSource(PATHS.legacyCsv, LEGACY_SOURCE),
-    older = await loadLegacyTitles(PATHS.legacyTitles, LEGACY_TITLES.sha256),
+    older = await loadLegacyTitles(PATHS.legacyTitles, LEGACY_TITLES.sha256, {
+      path: PATHS.legacyNames,
+      sha256: LEGACY_NAMES.sha256,
+    }),
     { legends, primes, stats, calibration, notes } = compileLegends(rows, compiled, hash, older),
     sample = runtime.players[0].profileId.match(/^(\D*)\d+(\D.*)$/);
   if (older.source.sha256 !== LEGACY_TITLES.workbookSha256)
