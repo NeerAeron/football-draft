@@ -90,7 +90,8 @@ plus **`chem`**: links/chemistry bonus, a number clamped to 0–2 (default 0), a
 | `teams[t]` | `{ name, short, color, tactics }` — team 0 is home |
 | `elapsed` | real seconds simulated |
 | `time`, `half` | match clock in seconds (`0…2700` first half, `2700…5400` second, extra time `5400…6300` half 3 and `6300…7200` half 4; beyond a period's end = added time). Display with `matchClock(time, half)` → `"45+01:12"`. `PERIOD_START` / `PERIOD_END` in `periods.js`. The clock stops during a shootout. |
-| `addedMinutes` | `[firstHalf, secondHalf]` stoppage minutes (announced by an `added` event) |
+| `addedMinutes` | `[firstHalf, secondHalf]` stoppage minutes (announced by an `added` event; 1.6 and 2.1 on average, `tuning.periods`) |
+| `heldTime` | real seconds each period ran past its deadline because the whistle was held (`[0, 0, 0, 0]`, filled in as the periods end), see _The final whistle_ |
 | `periodDeadline()`, `expectedDuration()` | real-second end of this period / of the whole match (progress bars) |
 | `mode` | `'restart'` (dead ball, players setting up) · `'play'` · `'halftime'` · `'fulltime'` · `'shootout'` |
 | `phase` | short label: `'Build-up'`, `'In transition'`, `'Final third'`, `'Keeper possession'`, `'Shot on goal'`, `'Moving the ball'`, `'Ball in dispute'`, a restart type, `'Half-time'`, `'Full time'`, `'Penalty shootout'`, `'Match abandoned'` |
@@ -148,6 +149,38 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `shootout-start` | `first` (team taking the first kick) |
 | `shootout` | one kick, at its outcome: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive`, `kickedAt` (elapsed of the strike) |
 | `shootout-end` | `winner` (team), `shootoutScore` |
+
+### The final whistle
+
+The referee does not blow for half-time or full time (or the end of an extra-time period) in
+the middle of an attack (`sim/whistle.js`, `whistleHeld`). When the clock, added time included,
+runs out, play goes on while
+
+* the attacking side has the ball within `periods.holdRange` (30 m) of the goal line — once the
+  whistle is held, anywhere in the attacking third — or its pass, cross or through ball is on
+  its way there, its shot is in flight, or a loose ball is in the box it attacks (or anywhere in
+  that third while the whistle is held);
+* its corner, or its free kick in the attacking third, has been awarded and is being set up;
+* a penalty has been awarded: it is always taken and the kick decided (as before).
+
+The whistle goes as soon as that is over: a goal (after its celebration), the keeper holding
+the ball (at once), the ball out for a goal kick or a throw-in, a free kick or offside against
+the attackers (at once), or the attackers without the ball for half a second (cleared, a
+defender on it, a pass gone astray). Caps, all in `match.tuning.periods` (real seconds of play —
+2 s are a minute on the match clock): an attack gets `holdAttack` (4 s), counted again from the
+delivery of a set piece it wins, and is not cut while its cross is in the air towards the box;
+of the corners awarded after time was up `holdCorners` (1) are taken (one already awarded when
+time ran out does not count); a new set piece is only waited for when it can be delivered and
+played for 2 s before `holdMaximum` (10 s); beyond `holdMaximum` only a struck shot and the goal
+it scores are allowed to finish (4 s more). Nothing here draws RNG and no state is added to the
+clock: `time` simply runs on as added time (`"45+03:10"` with two minutes announced) and
+`heldTime[half − 1]` records how long. A match in which nothing is on at any whistle is, step
+for step, the match it was before. The whole thing happens inside `step()`, so Full, Key
+Moments, Instant and the auto-sim worker get the same match; a goal scored in held time is a
+goal of that half (`story` has `stoppage`) and is in its reel like any other.
+
+Measured on 960 club fixtures (`tools/calibration/lib/fixtures.mjs`): the whistle is held in
+28% of the periods, for 3.1 s on average (docs/calibration.md, Phase 8).
 
 ### Penalties (in the match)
 

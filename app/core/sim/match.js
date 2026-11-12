@@ -57,7 +57,7 @@ const FORMATION_NAME = [null, null],
   FORMATION_ROWS = [null, null];
 import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
-import { hypot } from './constants.js';
+import { WhistleMethods } from './whistle.js';
 
 // Cold start. V8 chooses how a field is stored from the first values written to it and, when
 // a later value does not fit (a whole-number field receives a fraction), re-shapes the object
@@ -82,6 +82,8 @@ const WHOLE_NUMBER_FIELDS = new Set([
   'lastTeam',
   'lastTouch',
   'taker',
+  'holdTeam',
+  'holdCorners',
 ]);
 let shapesPrimed = false;
 function primeShapes(duration) {
@@ -235,6 +237,9 @@ export class Match {
     this.periodStart = 0;
     this.addedMinutes = stoppageMinutes(this.seed, this.tuning.periods);
     this.addedAnnounced = [false, false];
+    // Real seconds each period ran past its deadline (a held whistle, whistle.js).
+    this.heldTime = [0, 0, 0, 0];
+    this.resetHold();
     this.halftime = null;
     this.score = [0, 0];
     this.stats = [0, 1].map(() => ({
@@ -693,6 +698,8 @@ export class Match {
     );
   }
   finishPeriod() {
+    this.heldTime[this.half - 1] = Math.max(0, this.elapsed - this.periodDeadline());
+    this.resetHold();
     this.resolveShot('off target');
     if (this.half === 1) {
       const outfield = this.activePlayers.filter(p => p.role !== 'GK'),
@@ -824,19 +831,8 @@ export class Match {
         { minutes: this.addedMinutes[this.half - 1] },
       );
     }
-    const pendingPenalty =
-      (this.mode === 'restart' && this.restart.type === 'Penalty') ||
-      (this.ball.penaltyKick &&
-        (this.ball.kind === 'shot' || this.ball.kind === 'loose') &&
-        hypot(this.ball.vx, this.ball.vy) > 0.5);
-    const settling =
-      (this.ball.kind === 'shot' && this.ball.age < 3) ||
-      (this.mode === 'restart' && this.restart.type === 'Goal' && this.restart.timer > 0.1);
-    if (
-      this.elapsed >= this.periodDeadline() - 1e-7 &&
-      !pendingPenalty &&
-      (!settling || this.elapsed > this.periodDeadline() + 4)
-    ) {
+    const over = this.elapsed - this.periodDeadline();
+    if (over >= -1e-7 && !this.whistleHeld(over)) {
       this.finishPeriod();
       return;
     }
@@ -881,4 +877,5 @@ install(
   InsightMethods,
   ShootoutMethods,
   KeeperMethods,
+  WhistleMethods,
 );

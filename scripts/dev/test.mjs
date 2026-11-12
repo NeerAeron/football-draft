@@ -25,6 +25,7 @@ const SLOW = [
   'every formation pairing draws',
   'formation variations have eleven usable roles',
   'same seed and inputs produce the same match state',
+  'however it is played: complete, by halves, stepped',
   'event contract over a full match',
   'a budget draft never exceeds a band',
   'precomputed values match the live configuration',
