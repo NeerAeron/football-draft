@@ -12,9 +12,7 @@ export const DEFAULT_CONFIG = {
     // Nations: a nation is playable — on the reel, met as an opponent — when it can field an
     // XI (>= minimumPlayers, >= minimumGoalkeepers and a best XI with nobody under the
     // engine's minimum fit, ai.minimumFit). `fieldSize` / `potSize` are only the real World Cup
-    // draw (Legendary) and the Daily's schedule: the strongest playable nations, in pots. Each
-    // spin offers the best available call-ups (as many as the nation has, up to the squad
-    // numbers).
+    // draw (Legendary) and the Daily's schedule: the strongest playable nations, in pots.
     nations: {
       fieldSize: 48,
       potSize: 12,
@@ -32,11 +30,16 @@ export const DEFAULT_CONFIG = {
       // (no keeper needed: they are spun, never met as opponents).
       reelStar: 80,
       reelPlayers: 9,
-      squadSize: 23,
+      // A nation's draft squad (draft/pools.js draftSquad): the only players a nation spin
+      // ever offers — its best `squadSize` among the players a draft may offer (pickMinimum),
+      // with that many keepers and at least that many defenders, midfielders and attackers so
+      // every position can be filled. A spin's pool is those of them still available; it never
+      // refills from deeper in the nation. Teams (opponents, strength, playable) keep everyone.
+      squadSize: 30,
       squadGoalkeepers: 3,
-      squadDefenders: 7,
-      squadMidfielders: 7,
-      squadAttackers: 4,
+      squadDefenders: 9,
+      squadMidfielders: 9,
+      squadAttackers: 5,
     },
     // Leagues (and the league leg of Clubs): flat odds per league tier.
     leagueTierWeights: {
@@ -890,11 +893,11 @@ const DRAFT_FIELDS = {
   'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
   'draft.pickMinimum': ['Draft: a player can be picked from this rating', 0, 85, 1],
   'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
-  'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
-  'draft.nations.squadGoalkeepers': ['Call-ups: goalkeepers', 1, 5, 1],
-  'draft.nations.squadDefenders': ['Call-ups: at least defenders', 0, 15, 1],
-  'draft.nations.squadMidfielders': ['Call-ups: at least midfielders', 0, 15, 1],
-  'draft.nations.squadAttackers': ['Call-ups: at least attackers', 0, 15, 1],
+  'draft.nations.squadSize': ['Draftable players per nation', 11, 40, 1],
+  'draft.nations.squadGoalkeepers': ['Draftable per nation: goalkeepers', 1, 5, 1],
+  'draft.nations.squadDefenders': ['Draftable per nation: at least defenders', 0, 15, 1],
+  'draft.nations.squadMidfielders': ['Draftable per nation: at least midfielders', 0, 15, 1],
+  'draft.nations.squadAttackers': ['Draftable per nation: at least attackers', 0, 15, 1],
   'draft.leagueTierWeights.': [null, 0, 20, 0.05],
   'draft.clubs.minimumPlayers': ['Spinnable club: minimum players', 1, 30, 1],
   'draft.clubs.tierWeights.': [null, 0, 20, 0.05],
@@ -1027,7 +1030,7 @@ const CROSS_FIELD_RULES = [
     ok: c => c.playerTiers.Bench.minimum === 0 && c.teamTiers.F === 0,
   },
   {
-    message: 'Call-up minimums cannot exceed the call-up size.',
+    message: 'A nation’s line minimums cannot exceed its draftable players.',
     reset: ['draft.nations'],
     ok: ({ draft: { nations: n } }) =>
       n.squadGoalkeepers + n.squadDefenders + n.squadMidfielders + n.squadAttackers <= n.squadSize,

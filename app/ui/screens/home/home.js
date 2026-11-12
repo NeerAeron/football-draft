@@ -5,7 +5,13 @@ import { html, cx } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
 import { href } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
-import { readSavedRun, readDailyStatus, readSavedDraft, STAGES } from '../../lib/saved.js';
+import {
+  readSavedRun,
+  readDailyStatus,
+  readSavedDraft,
+  dailyKey,
+  STAGES,
+} from '../../lib/saved.js';
 import { readRecords } from '../../lib/records.js';
 import { Button, IconButton } from '../../components/button.js';
 import { Card } from '../../components/card.js';
@@ -15,7 +21,7 @@ import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { HeroPitch } from './hero-art.js';
 import { Cabinet } from './cabinet.js';
-import { int } from '../../lib/format.js';
+import { int, fmtDate } from '../../lib/format.js';
 
 export const DRAFT_TYPE_OPTIONS = [
   { value: 'nations', label: 'Nations' },
@@ -132,7 +138,7 @@ function ContinueCard({ run }) {
       <div class="continue__titles">
         <p class="eyebrow">${done ? 'Last run' : 'Run in progress'}</p>
         <h2 class="continue__title" id="continue-title">
-          ${done ? run.placeLabel || (run.status === 'champion' ? 'Champions' : 'Run over') : run.stageLabel || stage?.label || 'World Cup Run'}
+          ${done ? run.placeLabel || 'Run over' : run.stageLabel || stage?.label || 'World Cup Run'}
         </h2>
       </div>
       <span
@@ -168,10 +174,7 @@ const DRAFT_KIND = {
 /** The draft in progress (lib/saved.js readSavedDraft): back to the board in one tap. */
 function DraftCard({ draft }) {
   const kind = DRAFT_KIND[draft.context.kind] || 'Draft';
-  const type =
-    draft.context.type === 'clubAndCountry' || draft.context.type === 'club-country'
-      ? 'Club & Country'
-      : TYPE_LABEL[draft.context.type];
+  const type = TYPE_LABEL[draft.context.type];
   const total = draft.total || 11;
   const pct = Math.round((draft.picks / total) * 100);
   return html`<${Card}
@@ -219,12 +222,8 @@ function DraftCard({ draft }) {
 
 function DailyCard({ daily }) {
   const played = daily.playedToday;
-  const date = new Date().toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  });
+  // The Daily's day is the UTC day.
+  const date = fmtDate(dailyKey());
   return html`<${Card} variant="gold" class="home-daily" as="section" aria-labelledby="daily-title">
     <div class="home-daily__head">
       <span class="home-daily__icon" aria-hidden="true"
@@ -235,9 +234,11 @@ function DailyCard({ daily }) {
         <h2 class="home-daily__title" id="daily-title">${date}</h2>
       </div>
       ${
-        played
+        played && !daily.inProgress
           ? html`<${Chip} tone="green" icon="check">Played<//>`
-          : html`<${Chip} tone="gold" variant="outline">New<//>`
+          : daily.inProgress
+            ? html`<${Chip} tone="gold">Started<//>`
+            : html`<${Chip} tone="gold" variant="outline">New<//>`
       }
     </div>
     <p class="home-daily__text">
@@ -255,7 +256,7 @@ function DailyCard({ daily }) {
         ${daily.best > 0 && html`<span class="home-daily__best">· best ${daily.best}</span>`}
       </span>
       <${Button} variant="secondary" size="sm" iconEnd="arrow-right" href=${href('/daily')}
-        >${played ? 'Results' : 'Play'}<//
+        >${daily.inProgress ? 'Resume' : played ? 'Results' : 'Play'}<//
       >
     </div>
   <//>`;

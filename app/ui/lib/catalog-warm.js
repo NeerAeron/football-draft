@@ -19,7 +19,7 @@ import {
   catalogIndexSteps,
 } from '../../core/draft/pools.js';
 import { opponentCandidatesSteps } from '../../core/draft/opponents.js';
-import { loadCatalog, stepped } from '../../services/catalog.js';
+import { loadCatalog, stepped, nextTask } from '../../services/catalog.js';
 
 const SLICE_MS = 8;
 // Mirrors pools.js candidates(): only a nation's best 80 outfielders and 5 keepers can make
@@ -30,18 +30,13 @@ const HEAD_KEEPERS = 5;
 const OUTFIELD = ROLES.filter(r => r !== 'GK');
 const warmed = new WeakMap();
 
-const yieldToMain = () =>
-  globalThis.scheduler?.yield
-    ? globalThis.scheduler.yield()
-    : new Promise(resolve => setTimeout(resolve, 0));
-
 /** Run `work(item)` over `items`, yielding to the main thread every SLICE_MS. */
 async function sliced(items, work) {
   let start = performance.now();
   for (let i = 0; i < items.length; i++) {
     work(items[i]);
     if ((i & 31) === 31 && performance.now() - start > SLICE_MS) {
-      await yieldToMain();
+      await nextTask();
       start = performance.now();
     }
   }
@@ -70,7 +65,7 @@ export function warmCatalog(catalog) {
         ...members.filter(isKeeper).slice(0, HEAD_KEEPERS),
       );
     }
-    await yieldToMain();
+    await nextTask();
     await sliced(head, p => {
       if (isKeeper(p)) roleRating(p, 'GK');
       else
@@ -79,9 +74,9 @@ export function warmCatalog(catalog) {
           roleRating(p, role);
         }
     });
-    await yieldToMain();
+    await nextTask();
     await stepped(catalogIndexSteps(catalog));
-    await yieldToMain();
+    await nextTask();
     return catalog;
   })().catch(error => {
     warmed.delete(catalog);
@@ -102,10 +97,10 @@ export function warmOpponents(catalog) {
   let job = opponents.get(catalog);
   if (!job) {
     job = warmCatalog(catalog)
-      .then(yieldToMain)
+      .then(nextTask)
       .then(() => stepped(opponentCandidatesSteps(catalog)))
       // Resolve in a fresh task: the caller's next step (a render) must not join this one.
-      .then(yieldToMain)
+      .then(nextTask)
       .then(() => catalog);
     opponents.set(catalog, job);
   }

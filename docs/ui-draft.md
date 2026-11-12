@@ -14,6 +14,7 @@ Home → Start (setup) → the reel is already spinning: two taps from Home to t
 The draft's back arrow always leaves for Home (route `leave: true`), also mid-spin: the draft
 stays saved, Home's card resumes it with that spin landed. "Play again" (`?go=1`) starts a
 draft once — the parameter is removed from the history entry, so going back never starts another.
+Starting a World Cup draft while a run is in progress asks first (`docs/ui-run.md`).
 
 ## Setup query parameters (challenge links land here)
 
@@ -21,8 +22,8 @@ draft once — the parameter is removed from the history entry, so going back ne
 
 | Param | Values | Notes |
 | --- | --- | --- |
-| `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`). `club-country` is no longer offered and reads as `nations` |
-| `difficulty` | `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` (so does a removed `amateur` / `semipro`) |
+| `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`); anything else reads as `nations` |
+| `difficulty` | `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` (so does any unknown id) |
 | `formation` | any `FORMATIONS` key (`433`, `4231-wide`, …) | default: last choice, else `433` |
 | `seed` | digits (uint32) or any string (FNV-1a, like the core) | **implies standard rules** (`useDefaultRules`), shows the Challenge banner |
 | `hide` / `unique` | `1` / `0` | Ball Knower / one player per nation (nation spins only) |
@@ -35,7 +36,7 @@ whose XI may hold only 2 Superstars (88+), 2 Stars (84–87) and 3 Starters (80�
 difficulty line also says the Prime boosts ("2 re-rolls and 2 Prime boosts per draft"). The difficulty ladder shows each level's name, a
 word on the opponents and the re-rolls — no ratings or example teams — and, for runs, the stage
 "a good manager reaches" (`projectRun` on the mode baseline). The World Cup setup says the
-formation is played in the first match (`formationLocked` on that pre-match side, see
+formation stays for the group stage (`formationLocked` on those pre-match sides, see
 `docs/ui-run.md`).
 
 ## `lib/draft-store.js` (framework-free, Node-tested)
@@ -55,14 +56,19 @@ await loadDraft();     // the same after a reload (restores 'football-draft-draf
 readSavedDraft();      // sync summary { context, picks, total, complete, savedAt } | null
                        // (lives in lib/saved.js, no catalog; Home's "Draft in progress" card)
 clearDraft();          // forget it (memory + storage)
+await restoreSaved(saved);  // { session, context, catalog } of a saved draft, not made current
+await resumeDraft(saved);   // make a saved draft the current one → #/draft (the Daily's kept draft)
 ```
 
-* `type` accepts `club-country` and `clubAndCountry`; `seed` numbers, digit strings or any
+* `type` is the core draft mode (`nations` · `leagues` · `clubs`; anything else reads as
+  `nations`); `seed` numbers, digit strings or any
   string; kind `daily` implies `useDefaultRules`. `normalizeContext()` / `sessionOptions()`
   show exactly what reaches `createDraftSession`.
-* Persisted after **every** action: `{ format: 1, context, session: session.serialize(),
+* Persisted after **every** action: `{ format: 2, context, session: session.serialize(),
   savedAt }` under `football-draft-draft`. A reload restores the board where it was (a spin that
-  was animating is shown landed).
+  was animating is shown landed). A Daily draft with a pick made is also kept with the Daily
+  record after every action (`lockDailyDraft`, `docs/ui-run.md`): one attempt from the first
+  pick. `readSavedDraft()` ignores a Daily draft of another day.
 * A World Cup Run's Nations draft (`worldCupDraft(ctx)`) gets `legendSpin: true, primes: true`;
   for it (and when restoring one) the catalog loader is asked for `{ legends: true }` and
   fetches `app/data/legends.v1.json` (`services/legends.js`) — Home and every other screen but
@@ -106,7 +112,9 @@ openPrematch({
 * `id` falls back to `meta.fixture`, then `match-<seed36>`; `meta` is kept intact (plus
   `context`/`title`/`returnTo` defaults). Sides: `players` may be `draft.matchSide(i).players`
   or `buildOpponent(...).players` (their `chem` is kept); `editable` defaults to `kind !== 'ai'`.
-* Persisted under `football-draft-prematch` (edits survive a reload). Edits: `swapPlayers(side,
+* Persisted under `football-draft-prematch` (edits survive a reload) until its match has a
+  result: the store then forgets it (`clearPrematch()`; it subscribes to the match store), so
+  the key does not outlive the match. Edits: `swapPlayers(side,
   a, b)` (GK slot keepers only), `changeFormation(side, f)` (exact best re-slot: the lineup with the best team OVR, keeper in
   goal), `setSideTactic(side, key, value)` (the screens set `mentality` only),
   `setMatchView(view)` (remembered in `football-draft-match-view`).
@@ -123,7 +131,7 @@ openPrematch({
 * The lineup panel's formation picker (`data-testid="formation-select"`) lists every
   formation with that team OVR ("4–3–3 · Attacking · 84.2", ★ on the best; the formation in
   play shows the lineup as it stands) and choosing one fields its best lineup. No numbers
-  with hidden ratings; a locked formation (the World Cup opener) stays locked.
+  with hidden ratings; a locked formation (a World Cup run's group stage) stays locked.
 
 ## The draft board (`screens/draft/`)
 

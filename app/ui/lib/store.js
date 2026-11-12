@@ -8,38 +8,10 @@
 //
 // State is treated as immutable: always produce a new object, never mutate in place.
 import { useEffect, useReducer, useRef } from 'preact/hooks';
+import { createStore, shallowEqual } from './create-store.js';
 
-export function createStore(initial) {
-  let state = initial;
-  const listeners = new Set();
-  return {
-    get: () => state,
-    set(next) {
-      const value =
-        typeof next === 'function'
-          ? next(state)
-          : next && typeof next === 'object' && state && typeof state === 'object'
-            ? { ...state, ...next }
-            : next;
-      if (Object.is(value, state)) return;
-      state = value;
-      for (const listener of [...listeners]) listener(state);
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
-
-/** Shallow equality for selectors that return small objects/arrays. */
-export function shallowEqual(a, b) {
-  if (Object.is(a, b)) return true;
-  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
-  const ka = Object.keys(a);
-  if (ka.length !== Object.keys(b).length) return false;
-  return ka.every(k => Object.prototype.hasOwnProperty.call(b, k) && Object.is(a[k], b[k]));
-}
+// The store itself is hook-free (lib/create-store.js): framework-free modules import it there.
+export { createStore, shallowEqual };
 
 const identity = s => s;
 

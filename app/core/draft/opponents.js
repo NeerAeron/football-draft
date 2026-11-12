@@ -2,7 +2,7 @@
 // link chem) relative to the typical XI the player drafts in that mode (MODE_BASELINES,
 // measured by tools/calibration/draft-baselines.mjs). Real club and national XIs are fully
 // linked (+1 chem or more), so they are matched on effective rating, not raw OVR.
-// Candidates: national best XIs (Nations), club XIs (Leagues, Clubs), both (Club & Country),
+// Candidates: national best XIs (Nations), club XIs (Leagues, Clubs),
 // plus two bosses: the World XI (best XI in the catalog) and the All-Stars (the best XI
 // without the World XI players). Deterministic for a seed.
 import { CONFIG } from '../config/config.js';
@@ -30,14 +30,12 @@ export const MODE_BASELINES = {
   nations: { ovr: 83.15, sd: 1.14, chem: 0.89, effective: [83.58, 84.04, 84.18] },
   leagues: { ovr: 82.72, sd: 1.87, chem: 1.21, effective: [83.08, 83.93, 84.57] },
   clubs: { ovr: 78.82, sd: 1.77, chem: 0.57, effective: [78.92, 79.4, 79.76] },
-  clubAndCountry: { ovr: 83.02, sd: 1.52, chem: 0.91, effective: [83.38, 83.93, 84.38] },
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
 const KINDS_BY_MODE = {
   nations: ['nation', 'boss'],
   leagues: ['club', 'boss'],
   clubs: ['club', 'boss'],
-  clubAndCountry: ['nation', 'club', 'boss'],
 };
 export const BOSSES = {
   'world-xi': { name: 'World XI', color: '#d2ae53', secondary: '#0b1426' },

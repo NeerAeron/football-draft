@@ -18,7 +18,7 @@ import { readJSON, writeJSON } from './storage.js';
 
 export const RECORDS_KEY = 'football-draft-records';
 // Format 3: places and medals instead of the furthest round, three difficulties, the Budget
-// cabinet and the ultimate achievement. Formats 1 and 2 migrate when read (see migrate()).
+// cabinet and the ultimate achievement. Anything stored in an older format reads as empty.
 export const RECORDS_FORMAT = 3;
 /** Easiest first. Legendary is the main challenge: the cabinet's centrepiece. */
 export const LEVELS = [
@@ -67,47 +67,19 @@ const tallyOf = raw => {
     best: Math.max(floor, Math.min(count(raw?.best), gold ? CHAMPION : CHAMPION - 1)),
   };
 };
-// A level of format 1 or 2 → format 3. Their `best` was the furthest round: 0–2 group, then
-// (format 2) 3 R32, 4 R16, 5 QF, 6 SF, 7 final, 8 = won; format 1 had no Round of 32, so its
-// knockout rounds sit one lower. Titles become golds and perfect runs carry over; a lost final
-// is a silver; there was no play-off, so a lost semi-final reads as fourth place.
-function migrateLevel(raw, format) {
-  const titles = count(raw?.titles);
-  let round = count(raw?.best);
-  if (format === 1 && round >= 3) round += 1;
-  const best = titles
-    ? CHAMPION
-    : round >= 7
-      ? placeIndex('final')
-      : round === 6
-        ? placeIndex('fourth')
-        : Math.max(0, round - 2);
-  return {
-    runs: raw?.runs,
-    gold: titles,
-    silver: !titles && best === placeIndex('final') ? 1 : 0,
-    bronze: 0,
-    perfect: raw?.perfect,
-    best,
-  };
-}
-
 /** The stored records, whatever is in storage (missing, older or broken data reads as empty). */
 function load() {
   const raw = readJSON(RECORDS_KEY, null),
     data = raw && typeof raw === 'object' ? raw : {},
-    old = data.format === 1 || data.format === 2,
-    known = old || data.format === RECORDS_FORMAT;
+    known = data.format === RECORDS_FORMAT;
   const levels = {},
     budget = {};
-  // Only today's difficulties are read: entries of the removed ones (Amateur, Semi-pro) go.
   for (const { id } of LEVELS) {
-    const level = known ? data.levels?.[id] : null;
-    levels[id] = tallyOf(old ? migrateLevel(level, data.format) : level);
-    budget[id] = tallyOf(known && !old ? data.budget?.[id] : null);
+    levels[id] = tallyOf(known ? data.levels?.[id] : null);
+    budget[id] = tallyOf(known ? data.budget?.[id] : null);
   }
   const last = known ? data.last : null,
-    ultimate = known && !old ? data.ultimate : null;
+    ultimate = known ? data.ultimate : null;
   return {
     levels,
     budget,

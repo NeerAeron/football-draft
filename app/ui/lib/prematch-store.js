@@ -9,7 +9,8 @@
 //     seed,                          // match seed (uint32)
 //     sides: [{ name, short?, colors: [p, s], flagCode?, kind: 'user'|'ai'|'p2', formation,
 //               tactics?, players: [11 profiles in slot order], editable,
-//               formationLocked? (the formation cannot change, here or in the match) }, …],
+//               formationLocked? (the formation cannot change, here or in the match: a World Cup
+//               run's group stage) }, …],
 //     competition: { mode?: 'ai'|'pvp', difficulty: 'pro', knockout: false },
 //     meta: { context: 'run', title: 'Quarter-final', returnTo: '#/run', fixture: 'run:abc:qf' },
 //   });
@@ -19,9 +20,17 @@ import { roleRating, roleFit, naturalRating, isKeeper } from '../../core/draft/p
 import { teamLinks } from '../../core/draft/links.js';
 import { NATURAL_FIT } from '../../core/draft/session.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
-import { buildMatchConfig, requestMatch, teamCode, MATCH_VIEWS } from './match-store.js';
+import {
+  buildMatchConfig,
+  requestMatch,
+  matchStore,
+  teamCode,
+  MATCH_VIEWS,
+} from './match-store.js';
 import { nationKit, nationTrigram } from './kits.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
+import { createStore } from './create-store.js';
+import { randomSeed } from './random.js';
 
 export const PREMATCH_KEY = 'football-draft-prematch';
 export const VIEW_KEY = 'football-draft-match-view';
@@ -54,26 +63,6 @@ const DEFAULT_KITS = [
   ['#baaff0', '#16213a'],
 ];
 
-// ---------- observable ----------
-
-function observable(initial) {
-  let state = initial;
-  const listeners = new Set();
-  return {
-    get: () => state,
-    set(next) {
-      const value = typeof next === 'function' ? next(state) : next;
-      if (Object.is(value, state)) return;
-      state = value;
-      for (const listener of [...listeners]) listener(state);
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
-
 // ---------- normalising ----------
 
 function cleanTactics(t = {}) {
@@ -105,16 +94,14 @@ function normalizeSide(side, i) {
     tactics: cleanTactics(side.tactics),
     players: side.players.map(p => p),
     editable: side.editable ?? kind !== 'ai',
-    // The formation picked before the draft, kept for this match (World Cup: the first game).
+    // The formation picked before the draft, kept for this match (World Cup: the group stage).
     formationLocked: !!side.formationLocked,
   };
 }
 
 function storedView() {
   const own = readJSON(VIEW_KEY, null);
-  if (MATCH_VIEWS.includes(own)) return own;
-  const pref = readJSON('football-draft-ui', null)?.matchView;
-  return MATCH_VIEWS.includes(pref) ? pref : 'key';
+  return MATCH_VIEWS.includes(own) ? own : 'key';
 }
 
 /** Fill defaults and validate an openPrematch() payload (throws on malformed sides). */
@@ -149,13 +136,6 @@ export function normalizePrematch(input = {}) {
   };
 }
 
-function randomSeed() {
-  const buf = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0;
-  return buf[0] >>> 0;
-}
-
 function load() {
   const saved = readJSON(PREMATCH_KEY, null);
   if (!saved || saved.format !== FORMAT) return null;
@@ -167,7 +147,7 @@ function load() {
 }
 
 /** The pending pre-match (or null), persisted under 'football-draft-prematch'. */
-export const prematchStore = observable(load());
+export const prematchStore = createStore(load(), { merge: false });
 prematchStore.subscribe(state => {
   if (state) writeJSON(PREMATCH_KEY, state);
   else removeKey(PREMATCH_KEY);
@@ -185,6 +165,15 @@ export function openPrematch(input, { go = true } = {}) {
 export function clearPrematch() {
   prematchStore.set(null);
 }
+// A pre-match has served once its match is over: when the result of the match it kicked off
+// is stored, it is forgotten (the key does not outlive the match; going back from a finished
+// match never offers to kick the same fixture off again).
+const served = state => {
+  const pending = prematchStore.get();
+  if (pending && state?.result && state.request?.id === pending.id) clearPrematch();
+};
+matchStore.subscribe(served);
+served(matchStore.get());
 
 // ---------- lineup helpers (pure) ----------
 
@@ -250,7 +239,10 @@ export function swapSlots(players, formation, a, b) {
 // The best assignment of an XI to a formation: the best keeper in goal, the outfield players
 // on the slots that give the highest total slot rating (= the best team OVR). Exact: a DP over
 // slot masks on a 10 × 10 table of slot ratings (about 10,000 additions, so all 21 formations
-// are compared in a millisecond or two — no worker needed, even on a phone).
+// are compared in a millisecond or two — no worker needed, even on a phone). Not the Hungarian
+// solver of core/util/assignment.js: with a slot rating table this small the exact DP is
+// simpler, handles fewer than ten outfield players (any subset of the slots) and takes a
+// memoised rating function.
 function bestSlots(players, formation, rate = roleRating) {
   const roles = rolesOf(formation);
   const gkSlot = roles.indexOf('GK');
@@ -381,11 +373,7 @@ export function engineCompetition(data) {
   const mode = ['ai', 'pvp', 'sandbox'].includes(c.mode) ? c.mode : humans === 2 ? 'pvp' : 'ai';
   return {
     mode,
-    // A request saved on a removed level (Amateur, Semi-pro) is coached as Pro.
-    difficulty:
-      COACH_LEVEL[c.difficulty] ||
-      (c.difficulty === 'amateur' || c.difficulty === 'semipro' ? COACH_LEVEL.pro : c.difficulty) ||
-      'medium',
+    difficulty: COACH_LEVEL[c.difficulty] || c.difficulty || 'medium',
     knockout: !!c.knockout,
     ...(c.extraTime ? { extraTime: true } : {}),
   };

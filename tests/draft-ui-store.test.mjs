@@ -39,14 +39,16 @@ const reset = () => {
 };
 
 test('normalizeContext maps UI types, fills defaults and parses seeds', () => {
-  const ctx = draft.normalizeContext({ kind: 'run', type: 'club-country', seed: '42' });
-  assert.equal(ctx.mode, 'clubAndCountry');
-  assert.equal(ctx.type, 'club-country');
+  const ctx = draft.normalizeContext({ kind: 'run', type: 'leagues', seed: '42' });
+  assert.equal(ctx.mode, 'leagues');
+  assert.equal(ctx.type, 'leagues');
   assert.equal(ctx.seed, 42);
   assert.equal(ctx.difficulty, 'pro');
   assert.equal(ctx.formation, '433');
   assert.deepEqual(ctx.options, { hideRatings: false, uniqueNations: false });
-  assert.equal(draft.normalizeContext({ type: 'clubAndCountry' }).mode, 'clubAndCountry');
+  // Club & Country is gone: it reads like any unknown type.
+  assert.equal(draft.normalizeContext({ type: 'clubAndCountry' }).mode, 'nations');
+  assert.equal(draft.normalizeContext({ type: 'club-country' }).type, 'nations');
   assert.equal(draft.normalizeContext({ type: 'nope' }).mode, 'nations');
   assert.equal(draft.parseSeed('abc'), draft.parseSeed('abc'));
   assert.equal(typeof draft.normalizeContext({}).seed, 'number');
@@ -82,6 +84,59 @@ test('startDraft spins at once, persists, and restores identically after a reloa
   assert.ok(restored);
   assert.equal(draft.draftStore.get().snap.spin.option.id, spinBefore);
   assert.equal(draft.draftStore.get().animate, null, 'a restored spin is shown landed');
+});
+
+test('one cut-off: a draft slot of an older format is nothing saved; a broken one is an error', async () => {
+  reset();
+  await draft.startDraft({ kind: 'quick', type: 'nations', seed: 7 });
+  draft.autoPick();
+  const raw = JSON.parse(storage.get(draft.DRAFT_KEY));
+  assert.equal(raw.format, 2);
+  assert.equal(raw.session.format, 2);
+  const reload = async value => {
+    draft.clearDraft();
+    if (value !== undefined)
+      storage.set(draft.DRAFT_KEY, typeof value === 'string' ? value : JSON.stringify(value));
+    return [await draft.loadDraft(), draft.draftStore.get().status, draft.readSavedDraft()];
+  };
+  // Older formats and junk: nothing to resume, anywhere.
+  for (const value of [
+    { ...raw, format: 1 },
+    { ...raw, format: undefined },
+    '{broken',
+    'null',
+    '[]',
+    '7',
+    undefined,
+  ]) {
+    const [loaded, status, summary] = await reload(value);
+    assert.equal(loaded, null, String(value?.format));
+    assert.equal(status, 'empty');
+    assert.equal(summary, null);
+    assert.equal(draft.completedDraft(), null);
+  }
+  // Today's slot with a session that is not today's (an older session format, a removed
+  // difficulty, rules of an older shape, a player who is gone): the existing error path —
+  // no throw, nothing half-restored.
+  for (const [what, patch] of [
+    ['session format 1', s => (s.format = 1)],
+    ['Amateur', s => (s.options.difficulty = 'amateur')],
+    ['no rules', s => (s.rules = null)],
+    ['numbered Budget bands', s => (s.rules.budget = { band1: { minimum: 87, slots: 2 } })],
+    ['a missing player', s => (s.state.picks[0][s.state.picks[0].findIndex(Boolean)] = 'ea:0')],
+    ['no state', s => (s.state = { picks: 3 })],
+  ]) {
+    const session = structuredClone(raw.session);
+    patch(session);
+    const [loaded, status] = await reload({ ...raw, session });
+    assert.equal(loaded, null, what);
+    assert.equal(status, 'error', what);
+    assert.equal(draft.currentDraft(), null, what);
+  }
+  // The untouched save still restores.
+  const [loaded, status] = await reload(raw);
+  assert.equal(status, 'ready');
+  assert.equal(loaded.session.history.length, 1);
 });
 
 test('a World Cup draft: Legend spin first, Prime boosts, legends data only for it', async () => {
@@ -152,6 +207,66 @@ test('autoPick spins and picks in one press; auto-complete finishes run drafts t
   assert.equal(next.route, '/run');
   assert.equal(globalThis.location.hash, '#/run');
   assert.ok(draft.completedDraft(), 'RUN-UI reads the XI before clearing it');
+});
+
+test('a Daily draft is kept with the Daily record from its first pick, and resumes from it', async () => {
+  reset();
+  const { readDaily, lockedDailyDraft } = await import('../app/ui/lib/run-store.js');
+  const { dailyChallenge } = await import('../app/core/competition/daily.js');
+  const day = dailyChallenge(catalog, '2026-11-08'),
+    context = {
+      kind: 'daily',
+      type: 'nations',
+      difficulty: day.difficulty,
+      formation: day.formation,
+      seed: day.seed,
+      schedule: day.schedule,
+      rerolls: day.rerolls,
+      daily: day.id,
+      useDefaultRules: true,
+      returnTo: '/daily',
+    };
+  await draft.startDraft(context);
+  // The first spin alone locks nothing (nor does a re-roll).
+  assert.equal(readDaily().draft, null);
+  draft.rerollDraft();
+  assert.equal(readDaily().draft, null);
+  // The first pick does.
+  assert.ok(draft.autoPick().ok);
+  const kept = lockedDailyDraft(readDaily(), day.id);
+  assert.ok(kept);
+  assert.equal(kept.session.state.history.length, 1);
+  draft.spinDraft();
+  assert.ok(lockedDailyDraft(readDaily(), day.id).session.state.current, 'every action is kept');
+  const before = JSON.stringify(draft.currentDraft().session.serialize());
+  // Another draft takes the slot: the Daily's is not lost.
+  await draft.startDraft({ kind: 'quick', type: 'clubs', seed: 4 });
+  assert.equal(draft.currentDraft().context.kind, 'quick');
+  const locked = lockedDailyDraft(readDaily(), day.id);
+  assert.equal(JSON.stringify(locked.session), before);
+  // Rebuilt without touching the slot…
+  const copy = await draft.restoreSaved(locked);
+  assert.equal(copy.context.kind, 'daily');
+  assert.equal(JSON.stringify(copy.session.serialize()), before);
+  assert.equal(draft.currentDraft().context.kind, 'quick');
+  // …or resumed on the board: the same spins and the pick, never a new draft.
+  globalThis.location.hash = '#/daily';
+  await draft.resumeDraft(locked);
+  assert.equal(globalThis.location.hash, '#/draft');
+  assert.equal(draft.currentDraft().context.daily, day.id);
+  assert.equal(JSON.stringify(draft.currentDraft().session.serialize()), before);
+  assert.equal(draft.draftStore.get().snap.pickIndex, 1);
+  assert.ok(draft.autoComplete());
+  assert.equal(lockedDailyDraft(readDaily(), day.id).session.state.history.length, 11);
+  // A kept draft that no longer fits the player database is refused.
+  const broken = structuredClone(locked);
+  broken.session.state.picks[0][0] = 'ea:0:nobody';
+  await assert.rejects(draft.restoreSaved(broken));
+  // Other kinds of draft never touch the Daily record.
+  reset();
+  await draft.startDraft({ kind: 'run', type: 'leagues', seed: 3 });
+  draft.autoPick();
+  assert.equal(readDaily().draft, null);
 });
 
 test('quick drafts reveal a ladder opponent and open the pre-match; kick-off requests the match', async () => {

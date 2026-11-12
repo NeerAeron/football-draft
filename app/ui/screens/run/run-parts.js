@@ -12,6 +12,10 @@ import { Prize } from '../../components/cup.js';
 import { Trophy } from './trophy.js';
 
 // ---- teams ---------------------------------------------------------------------------------
+/** The other group fixture of a matchday (AI v AI). */
+export const elsewhereOf = (snapshot, md) =>
+  snapshot.group.fixtures.find(f => f.md === md && f.home !== 'user' && f.away !== 'user');
+
 /** { key, name, code, colors, user, kind, rating, pot } for a group key or a round's opponent. */
 export function teamOf(snapshot, key) {
   if (key === 'user')

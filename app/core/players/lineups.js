@@ -1,5 +1,6 @@
 import { positionFamiliarity } from './ratings.js';
 import { lcg } from '../util/rng.js';
+import { assignRows, costMatrix } from '../util/assignment.js';
 
 export function playerInitials(player) {
   const parts =
@@ -35,60 +36,23 @@ export function randomLineups(slots, profiles, seed) {
     pool = shuffle(profiles),
     n = rows.length,
     m = pool.length;
-  const cost = rows.map(({ slot }) =>
-    pool.map(p =>
-      (p.primaryPosition === 'GK') !== (slot.role === 'GK')
-        ? 100
-        : 1 - positionFamiliarity(p, slot.role),
-    ),
-  );
-  // Rectangular Hungarian assignment, O(slots² × profiles). Potentials retain
-  // the true familiarity costs; random ratings or arbitrary position boosts
-  // never enter the optimization or the players' attributes.
-  const u = new Float64Array(n + 1),
-    v = new Float64Array(m + 1),
-    owner = new Int32Array(m + 1),
-    via = new Int32Array(m + 1);
-  for (let i = 1; i <= n; i++) {
-    owner[0] = i;
-    let column = 0;
-    const best = new Float64Array(m + 1).fill(Infinity),
-      used = new Uint8Array(m + 1);
-    do {
-      used[column] = 1;
-      const row = owner[column];
-      let delta = Infinity,
-        next = 0;
-      for (let j = 1; j <= m; j++)
-        if (!used[j]) {
-          const reduced = cost[row - 1][j - 1] - u[row] - v[j];
-          if (reduced < best[j]) {
-            best[j] = reduced;
-            via[j] = column;
-          }
-          if (best[j] < delta) {
-            delta = best[j];
-            next = j;
-          }
-        }
-      for (let j = 0; j <= m; j++)
-        if (used[j]) {
-          u[owner[j]] += delta;
-          v[j] -= delta;
-        } else best[j] -= delta;
-      column = next;
-    } while (owner[column] !== 0);
-    do {
-      const previous = via[column];
-      owner[column] = owner[previous];
-      column = previous;
-    } while (column !== 0);
+  // Rectangular assignment (util/assignment.js) on the true familiarity costs; random ratings
+  // or arbitrary position boosts never enter the optimization or the players' attributes.
+  const cost = costMatrix(n * m);
+  for (let i = 0; i < n; i++) {
+    const role = rows[i].slot.role;
+    for (let j = 0; j < m; j++) {
+      const p = pool[j];
+      cost[i * m + j] =
+        (p.primaryPosition === 'GK') !== (role === 'GK') ? 100 : 1 - positionFamiliarity(p, role);
+    }
   }
+  const owner = assignRows(cost, n, m);
   const result = Array(n);
   for (let j = 1; j <= m; j++)
     if (owner[j]) {
       const row = owner[j] - 1;
-      if (cost[row][j - 1] >= 100)
+      if (cost[row * m + j - 1] >= 100)
         throw new Error('Not enough players for the required goalkeeper and outfield slots');
       result[rows[row].index] = structuredClone(pool[j - 1]);
     }

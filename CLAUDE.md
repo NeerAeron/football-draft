@@ -50,7 +50,8 @@ app/                     served statically (deploy = publish this folder); runti
     draft/               draft session, catalog pools, Links, opponent ladder, nation codes
     competition/         World Cup Run (cup), fast rating model, Daily Challenge, share/links
     config/              DEFAULT_CONFIG, live CONFIG, normalizeConfig, CONFIG_FIELDS
-    util/                rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey)
+    util/                rng.js (LCG), math.js (clamp/lerp/dist), text.js (escapeHtml, searchKey),
+                         assignment.js (the one Hungarian solver)
   services/              browser services any UI can use: catalog, sim client/worker, sound, playback
   ui/                    the UI (Preact + htm, no build) — read docs/ui-guide.md before touching it
     main.js routes.js    entry (renders the shell) and the hash-route table
@@ -146,14 +147,14 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
   draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
-  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; removed ids read as Pro via `difficultyOf`), `pools.js` (catalog index: nations field/pots, leagues, clubs, `callUps`,
+  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; `SESSION_FORMAT` 2), `pools.js` (catalog index: nations field/pots, leagues, clubs, `draftSquad` (a nation's draftable players: its best 30 of the players shown 65+, 3 GK and line minimums — a nation spin never offers anyone else, `nation.squad`),
   `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel; `legendIndex` for the Legend spin), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
   best thirds, `BEST_THIRD`) + five knockouts from the Round of 32 (the semi-final loser plays the
   third-place play-off), places and medals instead of grades (`PLACES`), Pro / World Class on the
-  ladder (`CUP_TUNING`), Legendary on a real 48-nation World Cup (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`), `model.js` (fast Poisson rating model, shootouts),
+  ladder (`CUP_TUNING`), Legendary on a real 48-nation World Cup (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`; `setLineup`: the line-up set up before a match — positions, tactics and, after the group stage, the formation — stays for the rest of the run), `model.js` (fast Poisson rating model, shootouts),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
 - **Config** (`config/config.js`) — `DEFAULT_CONFIG` (draft session, player/team tiers, AI
@@ -163,20 +164,25 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `Match` snapshots it into `match.tuning`; a draft session snapshots `CONFIG.draft`.
 - **Util** (`util/`) — `rng.js` (`lcgNext`, `lcg(seed)`, `LCG_RANGE`: the one LCG everyone
   uses, each with its own state), `math.js`, `text.js` (`escapeHtml`, `foldDiacritics`,
-  `searchKey`).
+  `searchKey`), `assignment.js` (`assignRows` + `costMatrix`: the one rectangular assignment
+  solver — best XIs in `pools.js`, club line-ups, `randomLineups`, the Daily's perfect XI; its
+  scratch arrays are module-level, so read a result before the next call; ties resolve by
+  column order, which the callers' player order relies on. The pre-match's `bestSlots` DP in
+  `ui/lib/prematch-store.js` is a different problem — ten players, any subset of slots — and
+  stays).
 - **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `legends.js`
   (`loadLegends`: the legends file, attached to the catalog), `sim-client.js`
   (`createSimClient`: Instant results and Key Moments halves in a module Worker, main-thread
   fallback) + `sim-worker.js` (the worker; `runSimJob`, `hydrateMatch`), `sound.js` (Web Audio
   cues, `MatchSoundEvents`, `selectionSound`), `playback.js` (`PlaybackClock`).
-- **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`), `router.js`
+- **UI stores and state** (`app/ui/lib/`) — `store.js` (`createStore`/`useStore`; `create-store.js` is the store without the hook, used by the framework-free hand-off stores), `random.js` (`randomSeed`/`randomId`: the UI's only randomness), `router.js`
   (hash router), `prefs.js`, `audio.js`, `motion.js`, `draft-store.js` (draft hand-off),
   `prematch-store.js` (pre-match edits → kick-off), `match-store.js` (match requests/results),
   `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: medals per difficulty, the Budget cabinet, the
   ultimate achievement; `recordRun`, `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
   `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
-  only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
-  `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `screen-loader.js`
+  only way to format displayed numbers and dates: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, `fmtDate`, never
+  `toLocaleString` / `toLocaleDateString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `screen-loader.js`
   + `styles.js` (a lazy screen = its module and its stylesheets, `SCREEN_SHEETS`), `offline.js`
   (`registerOffline`: service worker + one-time warm-up of the installed app).
   The match stage (`ui/screens/match/renderer/`): the pitch is a DOM layer (`pitch.js`) under a
@@ -201,17 +207,21 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 | `football-draft-sound` | `services/sound.js` | muted, volume |
 | `football-draft-setup` | setup screen | last choices per mode |
 | `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`) |
-| `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits / last view |
+| `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits (until its match has a result) / last view |
 | `football-draft-match` | `match-store.js` | current match request + result |
 | `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
 | `football-draft-run-state` / `-run` | `run-store.js` | full run state / Home summary |
-| `football-draft-daily` | `run-store.js` | daily streak, results, attempt in progress |
+| `football-draft-daily` | `run-store.js` | daily streak, results, the day's draft from its first pick (one attempt: resume only), attempt in progress |
 | `football-draft-records` | `ui/lib/records.js` | trophy cabinet: runs, medals and best finish per difficulty, Budget-mode trophies, the ultimate achievement |
 | `football-draft-exhibition` | exhibition screen | last two teams |
 | `football-draft-dev` | tests only | `{ fastSim: true }`: auto-sims use the fast model |
 
 Shapes are in `docs/ui-draft.md`, `docs/ui-match.md` and `docs/ui-run.md`; readers must stay
-tolerant of missing or broken data.
+tolerant of missing or broken data. **One cut-off for older saves and links**: only today's
+formats are read (cup 3, cabinet 3, draft 2, three difficulties, three modes, cup and daily
+links); anything older reads as "nothing saved" / "link not valid" — never converted, never a
+crash. When a format changes, bump its number and let the old one fall through the readers
+(`tests/run-ui-store.test.mjs` fuzzes them); do not add mapping code.
 
 ## Invariants — do not break
 
@@ -363,7 +373,7 @@ real squads. Never invent ratings or club metadata: a club without a sourced col
   Prefix screen classes with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names
   like `.stage` collided — and when a screen renders another screen's parts, name that sheet in
   its route too (`tests/styles.test.mjs` checks).
-- Displayed numbers go through `ui/lib/format.js` ('.' decimals everywhere, whatever the locale).
+- Displayed numbers and dates go through `ui/lib/format.js` ('.' decimals and "12 Nov 2026" everywhere, whatever the locale; a test fails on `toLocale…String` / `Intl` formatting in `app/`).
 - After UI changes: `npm run shots -- --only <flow>` and look at the PNGs; update
   `tests/browser/flows.mjs` when selectors or flows change; `npm run test:browser` must pass.
 - Commit in logical steps with clear messages; run `npm run check` first.

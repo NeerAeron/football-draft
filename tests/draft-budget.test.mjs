@@ -10,11 +10,12 @@ import {
   draftTiers,
   tierOfRating,
 } from '../app/core/draft/budget.js';
-import { naturalRating } from '../app/core/draft/pools.js';
+import { naturalRating, catalogIndex } from '../app/core/draft/pools.js';
 import { DEFAULT_CONFIG, normalizeConfig } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
 
 const catalog = loadRuntimeCatalog();
+const index = catalogIndex(catalog);
 const bands = budgetBands(DEFAULT_CONFIG.draft.budget);
 const price = p => Math.round(naturalRating(p));
 
@@ -84,23 +85,27 @@ test('tiers: 2 Superstars (88+), 2 Stars (84–87), 3 Starters (80–83), the re
     [0, 0, 1, 1, 2, 2, -1, -1],
   );
   assert.deepEqual(bandUse(bands, [90, 85, 85, 81, 70]), [1, 2, 1]);
-  // Rules saved before Budget mode read as the defaults.
-  assert.deepEqual(budgetBands(undefined), bands);
-  assert.deepEqual(budgetBands({}), bands);
+  assert.deepEqual(budgetBands(undefined), bands, 'the live rules by default');
   assert.throws(() =>
     normalizeConfig({ draft: { budget: { Star: { minimum: 90 } } } }, { lenient: false }),
   );
-  // Rules saved with numbered bands (before the tiers had names) keep their numbers.
-  const old = { band1: { minimum: 87, slots: 2 }, band2: { minimum: 83, slots: 2 } };
-  old.band3 = { minimum: 79, slots: 4 };
+  // Other numbers under the tier names are honoured; rules without the tiers (the numbered
+  // bands of an older version, nothing at all) are not rules: there is no conversion.
+  const custom = {
+    Superstar: { minimum: 87, slots: 2 },
+    Star: { minimum: 83, slots: 2 },
+    Starter: { minimum: 79, slots: 4 },
+  };
   assert.deepEqual(
-    budgetBands(old).map(b => [b.label, b.range, b.slots]),
+    budgetBands(custom).map(b => [b.label, b.range, b.slots]),
     [
       ['Superstar', '87+', 2],
       ['Star', '83–86', 2],
       ['Starter', '79–82', 4],
     ],
   );
+  assert.throws(() => budgetBands({ band1: { minimum: 87, slots: 2 } }));
+  assert.throws(() => budgetBands({}));
 });
 
 test('a budget draft never exceeds a band, whatever the policy, and never dead-ends', () => {
@@ -170,20 +175,26 @@ test('the team view counts the slots; a full band closes its players with a reas
   assert.ok(plain.snapshot().pool.every(e => e.band === null));
 });
 
-test('a nation spin with a full band still shows the stars (closed) and a full squad to pick', () => {
-  // Fill the Superstar slot and both Star slots, then look at a strong nation's pool.
-  let found = false;
-  for (let seed = 1; seed <= 60 && !found; seed++) {
+test('a nation spin with a full tier lists the stars (closed) and only its draft squad', () => {
+  // Fill tiers, then look at a strong nation's pool: its draft squad and nobody else — the
+  // players of a full tier are listed, closed, under the ones that can be picked.
+  let found = 0;
+  for (let seed = 1; seed <= 60; seed++) {
     const s = createDraftSession(catalog, { seed, budget: true, rerolls: 0 });
-    while (!s.complete && !found) {
-      s.spin();
-      const snap = s.snapshot(),
-        closed = snap.pool.filter(e => /slot left$/.test(e.reason));
+    while (!s.complete) {
+      const spin = s.spin(),
+        snap = s.snapshot(),
+        squad = new Set(index.nations.get(spin.option.id).squad.map(p => p.profileId)),
+        closed = snap.pool.filter(e => /slot left$/.test(e.reason)),
+        open = snap.pool.filter(e => e.available);
+      assert.ok(snap.pool.length <= s.rules.nations.squadSize);
+      assert.ok(
+        snap.pool.every(e => squad.has(e.profileId)),
+        'nobody from outside the squad',
+      );
+      assert.ok(open.length > 0, 'never a dead end');
       if (closed.length >= 5) {
-        found = true;
-        const open = snap.pool.filter(e => e.available);
-        assert.ok(open.length >= 11, 'a full choice of affordable call-ups: ' + open.length);
-        assert.ok(snap.pool.length > s.rules.nations.squadSize, 'the squad was extended');
+        found++;
         assert.ok(
           snap.pool.findIndex(e => !e.available) > open.length - 1,
           'affordable players are listed first',
@@ -192,8 +203,9 @@ test('a nation spin with a full band still shows the stars (closed) and a full s
       const move = spender(s);
       s.pick(move.profileId, move.slot);
     }
+    assertWithinBudget(s);
   }
-  assert.ok(found);
+  assert.ok(found > 20, 'spins with closed stars: ' + found);
 });
 
 test('budget drafts are deterministic and survive serialize/restore', () => {

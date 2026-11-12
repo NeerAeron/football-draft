@@ -470,7 +470,7 @@ test('difficulty levels explain opponents and re-rolls', () => {
     [2, 1, 1],
   );
   assert.ok(levels.every(l => l.text.length > 20));
-  // A removed level in a link or a saved choice falls back to Pro.
+  // An unknown level in a link or a saved choice (a removed one too) falls back to Pro.
   assert.equal(setupDefaults('run', { query: { difficulty: 'amateur' } }).difficulty, 'pro');
   assert.equal(setupDefaults('run', { saved: { difficulty: 'semipro' } }).difficulty, 'pro');
   // Versus picks its re-rolls itself (None / One / Two), whatever the levels give.

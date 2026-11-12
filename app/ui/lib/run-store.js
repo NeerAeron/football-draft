@@ -18,35 +18,30 @@ import {
 import { outcomeProbabilities } from '../../core/competition/model.js';
 import { encodeChallenge, decodeChallenge } from '../../core/competition/share.js';
 import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/competition/daily.js';
-import { seedNumber, difficultyOf } from '../../core/draft/session.js';
+import { seedNumber, draftModeOf, DRAFT_MODES } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
-import { RUN_KEY, DAILY_KEY, STAGES, PLAYOFF_STAGE, RUN_SUMMARY_FORMAT } from './saved.js';
+import {
+  RUN_KEY,
+  DAILY_KEY,
+  STAGES,
+  PLAYOFF_STAGE,
+  RUN_SUMMARY_FORMAT,
+  readSavedRun,
+} from './saved.js';
 import { recordRun } from './records.js';
-import { teamCode } from './match-store.js';
+import { randomId } from './random.js';
+import { teamCode, buildMatchConfig } from './match-store.js';
+import { engineCompetition } from './prematch-store.js';
 import { sideColors, nationTrigram } from './kits.js';
 
 export const RUN_STATE_KEY = 'football-draft-run-state';
 export const RUN_STATE_FORMAT = 1;
 export { RUN_KEY, DAILY_KEY };
 
-// ---- draft type ↔ core mode -------------------------------------------------------------
-const TYPE_TO_MODE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  'club-country': 'clubAndCountry',
-  clubAndCountry: 'clubAndCountry',
-};
-const MODE_TO_TYPE = {
-  nations: 'nations',
-  leagues: 'leagues',
-  clubs: 'clubs',
-  clubAndCountry: 'club-country',
-};
-/** UI draft type ('club-country' …) or core mode → core mode. */
-export const modeOf = type => TYPE_TO_MODE[type] || 'nations';
-/** Core mode → UI draft type (Home, setup query). */
-export const typeOf = mode => MODE_TO_TYPE[mode] || MODE_TO_TYPE[TYPE_TO_MODE[mode]] || 'nations';
+// ---- draft type = core mode ---------------------------------------------------------------
+/** The UI's draft type is the core draft mode (nations · leagues · clubs; else nations). */
+export const modeOf = draftModeOf;
+export const typeOf = draftModeOf;
 
 // ---- stages -------------------------------------------------------------------------------
 export const STAGE_IDS = STAGES.map(s => s.id); // G1 G2 G3 R32 R16 QF SF F
@@ -106,8 +101,56 @@ export function matchSideFor(side, { kind = 'ai', editable = kind !== 'ai', name
     kind,
     formation: side.formation,
     players: side.players,
+    // The tactics set up for the run (CupRun.setLineup), when there are any.
+    ...(side.tactics ? { tactics: side.tactics } : {}),
     editable,
   };
+}
+/**
+ * Engine config for a run fixture (run.nextMatch()): what an auto-sim plays, and what the
+ * pre-match screen builds for the same line-up — the user's side with the run's tactics.
+ */
+export function fixtureConfig(m, difficulty, tuning) {
+  return buildMatchConfig({
+    sides: [matchSideFor(m.home, { kind: 'user' }), matchSideFor(m.away)],
+    // Same engine competition as the pre-match screen builds (AI coach level by difficulty).
+    competition: engineCompetition({
+      sides: [{ kind: 'user' }, { kind: 'ai' }],
+      competition: { mode: 'ai', difficulty, knockout: m.knockout },
+    }),
+    ...(tuning ? { tuning } : {}),
+  });
+}
+/**
+ * What the player set up for a run fixture: the pre-match as he left it (or kicked it off), else
+ * the kick-off config of its match request — { formation, players, tactics } for
+ * CupRun.setLineup, or null when neither is this fixture's.
+ *   prematch: prematchStore.get(), request: matchStore.get()?.request
+ */
+export function fixtureLineup(id, { prematch = null, request = null } = {}) {
+  const side = prematch?.id === id ? prematch.sides?.[0] : null;
+  if (side?.players)
+    return { formation: side.formation, players: side.players, tactics: side.tactics };
+  const team = request?.id === id ? request.config?.teams?.[0] : null;
+  if (!team?.tactics) return null;
+  // The engine's tactics, cut to the ones the pre-match keeps (the same line-up either way).
+  const tactics = {};
+  for (const key of LINEUP_TACTICS) if (team.tactics[key] != null) tactics[key] = team.tactics[key];
+  return {
+    formation: team.tactics.formation,
+    players: request.config.players.slice(0, 11),
+    tactics,
+  };
+}
+const LINEUP_TACTICS = ['style', 'tempo', 'width', 'press', 'mentality'];
+/**
+ * Keep a line-up for the rest of the run (formation once the group stage is over, positions,
+ * tactics). Returns true when the run changed (save it then).
+ */
+export function applyLineup(run, lineup) {
+  if (!lineup || run.complete) return false;
+  const before = JSON.stringify(run.user);
+  return run.setLineup(lineup) && JSON.stringify(run.user) !== before;
 }
 /** Display name of the user's drafted team ('You' reads oddly on cards). */
 export const userTeamName = name => (!name || name === 'You' ? 'Your XI' : name);
@@ -116,12 +159,6 @@ export const userTeamName = name => (!name || name === 'You' ? 'Your XI' : name)
 export const fixtureId = (meta, round) => `run:${meta?.id || 'run'}:${round}`;
 
 // ---- run creation & persistence --------------------------------------------------------------
-const randomId = () => {
-  const buf = new Uint32Array(2);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(buf);
-  else buf[0] = (Date.now() * 2654435761) >>> 0;
-  return buf[0].toString(36) + buf[1].toString(36).slice(0, 3);
-};
 
 /**
  * Start a World Cup Run from a completed draft ({ session, context } from draft-store).
@@ -131,7 +168,7 @@ const randomId = () => {
 export function createRunFromDraft(catalog, { session, context = {} }, { now = Date.now() } = {}) {
   const options = session.options || {};
   const mode = modeOf(context.type ?? session.mode);
-  const difficulty = difficultyOf(context.difficulty ?? options.difficulty);
+  const difficulty = context.difficulty ?? options.difficulty;
   const seed = context.seed ?? options.seed ?? 1;
   const challenge = context.meta?.challenge ?? context.challenge ?? null;
   const defaultRules = !!(options.useDefaultRules || context.useDefaultRules || challenge);
@@ -221,15 +258,15 @@ export function patchRunState(patch) {
   return next;
 }
 /**
- * The raw saved state (tolerant: null for anything that does not look like ours). A run saved
- * in an older cup format (before the third-place play-off and the three difficulties, or the
- * seven-match format before that) cannot be resumed: it reads as no run (Home's summary of a
- * finished one stays, see lib/saved.js).
+ * The raw saved state (tolerant: null for anything that does not look like ours — also a run
+ * saved in an older cup format: it reads as no run).
  */
 export function readRunState() {
   const state = readJSON(RUN_STATE_KEY, null);
   if (!state || typeof state !== 'object' || state.format !== RUN_STATE_FORMAT) return null;
   if (!state.run || state.run.type !== 'cup-run' || state.run.format !== CUP_FORMAT) return null;
+  // A run of a draft mode the game no longer has.
+  if (!Object.hasOwn(DRAFT_MODES, state.run.mode)) return null;
   return {
     run: state.run,
     meta: state.meta && typeof state.meta === 'object' ? state.meta : {},
@@ -250,6 +287,14 @@ export function loadRun(catalog) {
 export function clearRun() {
   removeKey(RUN_STATE_KEY);
   removeKey(RUN_KEY);
+}
+/**
+ * A World Cup run is being played (saved, resumable, not over): what a new World Cup draft
+ * would replace — the screens ask first (screens/run/replace-run.js).
+ */
+export function runInProgress() {
+  const summary = readSavedRun();
+  return !!summary && !summary.complete && readRunState() !== null;
 }
 
 // ---- match log (scorers per round, for the hub and the end screen) ------------------------------
@@ -361,8 +406,7 @@ export function pageBase(loc = globalThis.location) {
   if (!loc) return 'https://world-cup-draft.example/';
   return `${loc.origin}${loc.pathname}`;
 }
-// Where the friend finished, in the link: two letters per place (core cup.js PLACES). Links
-// from before the places carried a letter grade there ('sp', 'b', …): those read as no place.
+// Where the friend finished, in the link: two letters per place (core cup.js PLACES).
 const PLACE_TOKENS = {
   champion: 'ch',
   final: 'ru',
@@ -380,7 +424,7 @@ export const placeFromToken = token => TOKEN_PLACES[String(token || '')] ?? null
 /**
  * "Challenge a friend" URL for the run/daily that was just played:
  *   <page>#/challenge?c=<token>&r=<w>-<d>-<l>.<place>
- * The token is core/competition/share.js encodeChallenge; parseChallengeUrl reads it too.
+ * The token is core/competition/share.js encodeChallenge.
  */
 export function challengeLink(challenge, { record = null, place = null, base = pageBase() } = {}) {
   const token = encodeChallenge(challenge);
@@ -392,15 +436,17 @@ export function challengeLink(challenge, { record = null, place = null, base = p
 }
 /**
  * Parse the landing query: { challenge (decoded) | null, score: { w, d, l, place, placeLabel }
- * | null }. An old link's grade token is ignored (place: null).
+ * | null }. The result is the record and, after a dot, a place token; anything else (a place
+ * that is not one) reads as no result.
  */
 export function readChallengeQuery(query = {}) {
   const challenge = decodeChallenge(String(query.c || '').toLowerCase());
-  const m = /^(\d)-(\d)-(\d)(?:\.([a-z]{1,2}))?$/.exec(String(query.r || ''));
-  const place = m ? placeFromToken(m[4]) : null;
-  const score = m
-    ? { w: +m[1], d: +m[2], l: +m[3], place, placeLabel: place ? PLACE_LABELS[place] : null }
-    : null;
+  const m = /^(\d)-(\d)-(\d)(?:\.([a-z]{2}))?$/.exec(String(query.r || ''));
+  const place = m?.[4] ? placeFromToken(m[4]) : null;
+  const score =
+    m && (!m[4] || place)
+      ? { w: +m[1], d: +m[2], l: +m[3], place, placeLabel: place ? PLACE_LABELS[place] : null }
+      : null;
   return { challenge, score };
 }
 /** The challenge describing a run (for its "Challenge a friend" link). */
@@ -410,9 +456,11 @@ export function runChallenge(meta, snapshot) {
     mode: meta.mode || snapshot.mode,
     seed: meta.seed ?? 1,
     formation: meta.formation || '433',
-    difficulty: difficultyOf(meta.difficulty || snapshot.difficulty),
+    difficulty: meta.difficulty || snapshot.difficulty,
     hideRatings: !!meta.hideRatings,
     uniqueNations: !!meta.uniqueNations,
+    // A Budget run challenges the friend to a Budget draft.
+    budget: meta.budget === true,
   };
 }
 
@@ -424,6 +472,7 @@ const DAILY_RUNS_KEPT = 7; // full run state (replays) only for the latest week
  *   { streak, best, lastPlayed, lastResult,            // what Home reads (lib/saved.js)
  *     streakState: { current, best, last },            // core updateStreak() state
  *     results: { 'YYYY-MM-DD': entry },                // finished attempts (latest 40)
+ *     draft: { id, context, session, savedAt } | null, // the day's draft, from its first pick
  *     current: { id, number, run, rating, perfect, startedAt } | null }  // attempt being simmed
  */
 export function readDaily() {
@@ -443,6 +492,13 @@ export function readDaily() {
     lastResult: typeof d.lastResult === 'string' ? d.lastResult : null,
     streakState,
     results,
+    draft:
+      d.draft &&
+      typeof d.draft === 'object' &&
+      typeof d.draft.id === 'string' &&
+      d.draft.session?.type === 'draft-session'
+        ? d.draft
+        : null,
     current: d.current && typeof d.current === 'object' && d.current.run ? d.current : null,
   };
 }
@@ -467,8 +523,39 @@ export function displayStreak(state, today = todayDailyId()) {
   return currentStreak(state.streakState, today);
 }
 /**
- * Lock today's attempt once the XI is drafted (one attempt per day): sets lastPlayed and the
- * streak, stores the serialised run so a refresh resumes the auto-sim.
+ * One attempt per day, from the first pick: keep the day's draft ({ context, session:
+ * session.serialize(), savedAt }, as the draft store saves it) with the Daily record. From then
+ * on the day can only be resumed from this copy — whatever happens to the one draft slot
+ * ('football-draft-draft': another draft may replace it) — never started again. Called by the
+ * draft store after every action of a Daily draft with a pick made.
+ */
+export function lockDailyDraft(saved) {
+  const id = saved?.context?.daily;
+  if (typeof id !== 'string' || saved.session?.type !== 'draft-session') return null;
+  const state = readDaily();
+  // The day is past the draft already (being simulated, or finished).
+  if (state.results[id] || state.current?.id === id) return null;
+  const draft = {
+    id,
+    context: saved.context,
+    session: saved.session,
+    savedAt: saved.savedAt ?? null,
+  };
+  writeDaily({ ...state, draft });
+  return draft;
+}
+/** The day's draft that can only be resumed (see lockDailyDraft), or null. */
+export const lockedDailyDraft = (state, today = todayDailyId()) =>
+  state?.draft?.id === today && !state.results?.[today] && state.current?.id !== today
+    ? state.draft
+    : null;
+/** Forget the kept draft (a new day, or one that no longer fits the player database). */
+export function dropDailyDraft(state) {
+  return state.draft ? writeDaily({ ...state, draft: null }) : state;
+}
+/**
+ * The XI is drafted: sets lastPlayed and the streak, stores the serialised run so a refresh
+ * resumes the auto-sim, and drops the kept draft.
  */
 export function beginDailyAttempt(state, { id, number, run, rating, perfect, formation }) {
   const streakState = updateStreak(state.streakState, id);
@@ -478,6 +565,7 @@ export function beginDailyAttempt(state, { id, number, run, rating, perfect, for
     best: streakState.best,
     lastPlayed: id,
     streakState,
+    draft: null,
     current: {
       id,
       number,

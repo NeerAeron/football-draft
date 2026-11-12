@@ -28,6 +28,8 @@ ui/
   lib/                    framework-free helpers (no JSX, no DOM except motion/audio/router)
     html.js               html`` (htm bound to Preact), cx(), nextId()
     store.js              createStore, useStore, shallowEqual
+    create-store.js       the store without the hook (framework-free modules and Node tests import it here)
+    random.js             randomSeed, randomId — UI-side randomness only, never in core
     router.js             hash router: startRouter, useRoute, href, navigate, back, leave, rewrite
     screen-loader.js      lazy screens (module + stylesheets): loadScreen, preloadRoutes
     styles.js             lazy screen stylesheets: SCREEN_SHEETS (cascade order), loadStyles
@@ -39,7 +41,7 @@ ui/
                           Normal 74+ · Bench); teamStyle/readableOn/contrastRatio
     kits.js               nation home kits (NATION_KITS, nationKit, sideColors, kitColors) — use
                           them wherever a national side is shown; never a generic default colour
-    format.js             fmt1/fmt2/int/signed1/pct/boost — the ONLY number formatting for display
+    format.js             fmt1/fmt2/int/signed1/pct/boost and fmtDate ("12 Nov 2026") — the ONLY number and date formatting for display
                           ('.' decimals, ',' thousands; never toLocaleString for numbers)
     saved.js storage.js   saved run/daily/draft readers; safe localStorage helpers
     catalog-warm.js       loadWarmCatalog()/warmCatalog()/warmOpponents(): fill core's rating cache

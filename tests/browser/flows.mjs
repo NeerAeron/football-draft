@@ -719,7 +719,7 @@ export const flows = [
           await page.goto(`${base}#/play/quick?type=nations&difficulty=amateur&seed=5`);
           await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
           if (!(await page.isChecked('input[name="setup-difficulty"][value="pro"]')))
-            throw new Error('a removed difficulty does not fall back to Pro');
+            throw new Error('an unknown difficulty does not fall back to Pro');
         },
       );
       await shot('quick-challenge');
@@ -1330,7 +1330,11 @@ export const flows = [
           await page.click('[data-testid="play-fixture"]');
           await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
           if (!(await page.isDisabled('[data-testid="formation-select"]')))
-            throw new Error('the formation can change before the first match');
+            throw new Error('the formation can change in the group stage');
+          // What is set up here stays for the run: push. (Back to the top: on a phone the
+          // Kick off bar would otherwise cover the view radios finishMatch() presses.)
+          await page.click('.tactics__mentality label:has-text("Push")');
+          await page.evaluate(() => scrollTo(0, 0));
           if ((await prematchView()) !== 'key') throw new Error(`view is ${await prematchView()}`);
         },
       );
@@ -1346,6 +1350,16 @@ export const flows = [
         await page.goto(base);
         await visible(page, '[data-testid="continue-run"]');
         await page.click('[data-testid="continue-run"]');
+        await visible(page, '[data-testid="next-fixture"]');
+      });
+      await step('matchday 2: still the draft formation, and the mentality was kept', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+        if (!(await page.isDisabled('[data-testid="formation-select"]')))
+          throw new Error('the formation can change before matchday 2');
+        if (!(await page.isChecked('.tactics__mentality input[value="push"]')))
+          throw new Error('the mentality of matchday 1 was not kept');
+        await page.goBack();
         await visible(page, '[data-testid="next-fixture"]');
       });
       await step('"Simulate this match" plays one fixture and shows its result', async () => {
@@ -1408,6 +1422,155 @@ export const flows = [
         if (/Not played/.test(status)) throw new Error('the Pro slot ignores the run');
       });
       await shot('home-cabinet', { fullPage: true });
+    },
+  },
+  {
+    // A new World Cup draft asks before it replaces a run in progress — from the setup's
+    // Start, "Play again" (?go=1), Budget mode and a challenge link alike; a finished run is
+    // replaced without a question.
+    name: 'run-replace',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      await savedRun(page, { difficulty: 'pro', results: [[2, 0]] });
+      const run = () => page.evaluate(() => localStorage.getItem('football-draft-run-state'));
+      const dialog = 'dialog.replace-run[open]';
+      const asked = async how => {
+        await visible(page, `${dialog} [data-testid="replace-run"]`);
+        if (!(await run())) throw new Error(`${how}: the run was dropped before the answer`);
+      };
+      const kept = async how => {
+        await page.click(`${dialog} [data-testid="keep-run"]`);
+        await page.waitForSelector(dialog, { state: 'detached', timeout: 5000 }).catch(() => {});
+        if (await page.locator(dialog).count()) throw new Error(`${how}: the dialog stayed open`);
+        await page.waitForTimeout(200);
+        if (!(await run())) throw new Error(`${how}: "Keep run" lost the run`);
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-draft')))
+          throw new Error(`${how}: a draft started anyway`);
+      };
+      await step('Start on the setup asks first', async () => {
+        await page.goto(base);
+        await page.click('[data-testid="start-run"]');
+        await visible(page, '[data-screen="setup"][data-mode="run"]');
+        await page.locator('[data-testid="start-draft"]:visible').click();
+        await asked('setup');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('ask');
+      await step('"Keep run" changes nothing', () => kept('setup'));
+      await step('Budget mode asks the same', async () => {
+        await page.goto(base);
+        await page.click('[data-testid="start-budget"]');
+        await visible(page, '[data-screen="setup"] [data-testid="setup-budget"]');
+        await page.locator('[data-testid="start-draft"]:visible').click();
+        await asked('budget');
+        await kept('budget');
+      });
+      await step('"Play again" (?go=1) asks instead of starting', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await asked('go=1');
+        await kept('go=1');
+        if (!(await page.evaluate(() => location.hash.startsWith('#/play/run'))))
+          throw new Error('left the setup');
+      });
+      await step('a challenge link asks, and "Start new" replaces the run', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await page.click('[data-testid="accept-challenge"]');
+        await asked('challenge');
+        await kept('challenge');
+        await page.click('[data-testid="accept-challenge"]');
+        await asked('challenge');
+        await page.click(`${dialog} [data-testid="replace-run"]`);
+        await visible(page, '[data-screen="draft"][data-phase]');
+        if (await run()) throw new Error('the old run is still saved');
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-run')))
+          throw new Error('Home would still show the old run');
+      });
+      await step('a finished run is replaced without a question', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await page.evaluate(() => localStorage.removeItem('football-draft-draft'));
+        await savedRun(page, {
+          difficulty: 'pro',
+          results: [
+            [0, 1],
+            [0, 1],
+            [0, 1],
+          ],
+        });
+        await page.evaluate(() => (location.hash = '#/play/run?type=nations&go=1'));
+        await visible(page, '[data-screen="draft"][data-phase]');
+        if (await page.locator(dialog).count()) throw new Error('asked about a finished run');
+      });
+    },
+  },
+  {
+    // The line-up of a run: after the group stage the formation can change, and what is set
+    // up before a match (formation, mentality) is kept for the next ones and for auto-sims.
+    name: 'run-lineup',
+    async run({ page, shot, step, base }) {
+      await seed(page, { ...ONBOARDED, ...FAST_SIM });
+      await page.goto(base);
+      await visible(page, '[data-screen="home"]');
+      // Up to the semi-final: whatever its result, a match follows (the final or the play-off).
+      await savedRun(page, { difficulty: 'pro', results: Array(6).fill([2, 0]) });
+      const lineup = () =>
+        page.evaluate(() => {
+          const user = JSON.parse(localStorage.getItem('football-draft-run-state')).run.user;
+          return `${user.formation}:${user.tactics?.mentality ?? '-'}:${user.players.join()}`;
+        });
+      let before = null,
+        chosen = null;
+      await step('after the group stage the formation can change', async () => {
+        await page.goto(`${base}#/run`);
+        await visible(page, '[data-testid="next-fixture"][data-round="sf"]');
+        before = await lineup();
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-select"]');
+        if (await page.locator('[data-testid="formation-locked"]').count())
+          throw new Error('the formation is still locked after the group stage');
+        if (await page.isDisabled('[data-testid="formation-select"]'))
+          throw new Error('the formation cannot change in a knockout match');
+        chosen = before.startsWith('442:') ? '4231' : '442';
+        await page.selectOption('[data-testid="formation-select"]', chosen);
+        await page.click('.tactics__mentality label:has-text("Hold")');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('prematch-new-formation', { fullPage: true });
+      await step('left without kicking off: the hub keeps the set-up', async () => {
+        await page.goBack();
+        await visible(page, '[data-testid="next-fixture"][data-round="sf"]');
+        const now = await lineup();
+        if (!now.startsWith(`${chosen}:hold:`)) throw new Error(`the run has ${now}`);
+        const head = await page.textContent('.run-head__meta');
+        const label = chosen === '442' ? '4–4–2' : '4–2–3–1';
+        if (!head.includes(label)) throw new Error(`header reads "${head}", expected ${label}`);
+      });
+      await step('the match is played with it, and the next pre-match starts from it', async () => {
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await page.inputValue('[data-testid="formation-select"]')) !== chosen)
+          throw new Error('the pre-match forgot the formation');
+        await finishMatch(page);
+        await visible(page, '[data-testid="result-banner"]', 60000);
+        const now = await lineup();
+        if (!now.startsWith(`${chosen}:hold:`)) throw new Error(`after the match: ${now}`);
+        if (await page.evaluate(() => !!localStorage.getItem('football-draft-prematch')))
+          throw new Error('the pre-match of a finished match is still stored');
+        await page.reload();
+        await visible(page, '[data-testid="next-fixture"]');
+        await page.click('[data-testid="play-fixture"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
+        if ((await page.inputValue('[data-testid="formation-select"]')) !== chosen)
+          throw new Error('the next pre-match was rebuilt from the draft');
+        if (!(await page.isChecked('.tactics__mentality input[value="hold"]')))
+          throw new Error('the next pre-match forgot the mentality');
+        await page.evaluate(() => document.fonts.ready);
+      });
+      await shot('next-prematch', { fullPage: true });
     },
   },
   {
@@ -1584,7 +1747,7 @@ export const flows = [
         await page.click('.cabinet__mode label:has-text("Classic")');
       });
       await shot('partly');
-      await step('an old cabinet migrates: titles become golds, removed levels go', async () => {
+      await step('a cabinet saved in an older format reads as empty', async () => {
         await show({
           format: 2,
           levels: {
@@ -1595,11 +1758,9 @@ export const flows = [
           seen: [],
         });
         const count = await page.getAttribute('.cabinet__count', 'aria-label');
-        if (!/^1 of 3/.test(count)) throw new Error(`count: ${count}`);
-        const legendary = await page.textContent('.cabinet__slot[data-level="legendary"]');
-        if (!/Runners-up/.test(legendary)) throw new Error(`legendary: ${legendary}`);
-        if (!/^7 runs/.test((await page.textContent('.cabinet__foot')).trim()))
-          throw new Error('the removed level is still counted');
+        if (!/^0 of 3/.test(count)) throw new Error(`count: ${count}`);
+        if ((await page.locator('.cabinet__slot', { hasText: 'Not played' }).count()) !== 3)
+          throw new Error('an old cabinet still shows something');
       });
       await step('everything won: the ultimate slot unlocked', async () => {
         await show({
@@ -1641,9 +1802,51 @@ export const flows = [
       await step('intro', () => visible(page, '[data-testid="start-daily"]', 30000));
       await page.evaluate(() => document.fonts.ready);
       await shot('intro', { fullPage: true });
-      await step('draft with auto picks', async () => {
+      const dailyDraft = () =>
+        page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-daily') || '{}').draft;
+          return d ? d.session.state.picks.flat().filter(Boolean).join() : null;
+        });
+      let picked = null;
+      await step('the first pick locks the day: the draft is kept with the Daily', async () => {
         await page.click('[data-testid="start-daily"]');
+        await visible(page, '[data-screen="draft"] [data-testid="spin-result"]');
+        if (await dailyDraft()) throw new Error('locked before a pick was made');
+        await page.click('[data-testid="auto-pick"]');
+        await page.waitForFunction(
+          () => !!JSON.parse(localStorage.getItem('football-draft-daily') || '{}').draft,
+        );
+        picked = await dailyDraft();
+        if (!picked) throw new Error('no pick was kept');
+      });
+      await step('left mid-draft: Home and the Daily offer to resume, not to start', async () => {
+        await page.click('.topbar__back');
+        await visible(page, '[data-screen="home"] .home-daily');
+        const card = await page.textContent('.home-daily');
+        if (!/Started/.test(card) || !/Resume/.test(card)) throw new Error(`Daily card: ${card}`);
+        // Another draft takes the one draft slot meanwhile.
+        await page.evaluate(async () => {
+          const store = await import('./ui/lib/draft-store.js');
+          await store.startDraft({ kind: 'quick', type: 'clubs', seed: 5 }, { go: false });
+        });
+        await page.goto(`${base}#/daily`);
+        await visible(page, '[data-testid="resume-daily"]', 30000);
+        if (await page.locator('[data-testid="start-daily"]').count())
+          throw new Error('the Daily can be started again after a pick');
+        if ((await dailyDraft()) !== picked) throw new Error('the kept draft changed');
+      });
+      await shot('resume', { fullPage: true });
+      await step('resume: the same draft with its pick, then auto picks', async () => {
+        await page.click('[data-testid="resume-daily"]');
+        await visible(page, '[data-screen="draft"][data-phase]');
+        const state = await page.evaluate(() => {
+          const d = JSON.parse(localStorage.getItem('football-draft-draft'));
+          return [d.context.kind, d.session.state.picks.flat().filter(Boolean).join()];
+        });
+        if (state[0] !== 'daily' || !state[1].startsWith(picked))
+          throw new Error(`resumed ${state.join(' ')}, kept ${picked}`);
         await completeDraft(page, '[data-testid="daily-sim"], [data-testid="daily-result"]');
+        if (await dailyDraft()) throw new Error('the kept draft outlived the draft');
       });
       await step('auto-sim to the result', () =>
         visible(page, '[data-testid="daily-result"]', 120000),
@@ -1705,16 +1908,27 @@ export const flows = [
     name: 'challenge-link',
     async run({ page, shot, step, base }) {
       await seed(page, { ...ONBOARDED, ...FAST_SIM });
-      await step('short link lands on the challenge', async () => {
-        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+      await step('links of older formats are not valid: no crash, the way Home', async () => {
+        // A removed difficulty (a), Club & Country (x), a Quick Match link (q).
+        for (const token of ['c1.c.n.433.a.0.16', 'c1.c.x.433.p.0.16', 'c1.q.n.433.p.0.16']) {
+          await page.goto(`${base}#/challenge?c=${token}&r=5-1-1.bp`);
+          await visible(
+            page,
+            '[data-screen="challenge"] .empty-state, [data-screen="challenge"] h1',
+          );
+          if (await page.locator('[data-testid="accept-challenge"]').count())
+            throw new Error(`${token} can be accepted`);
+        }
+        // A letter grade where the place goes: the challenge opens, without a result.
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=5-1-1.bp`);
         await visible(page, '[data-screen="challenge"] [data-testid="accept-challenge"]');
+        if (await page.locator('.friend-score').count())
+          throw new Error('a grade read as a result');
+        // The short '#c=' form is gone: not a route.
+        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+        await visible(page, '[data-screen="placeholder"] h1');
       });
       await step('shared link with a result', async () => {
-        // An old link: a letter grade after the record (ignored) on a removed difficulty (Pro).
-        await page.goto(`${base}#/challenge?c=c1.c.n.433.a.0.16&r=5-1-1.bp`);
-        await visible(page, '[data-screen="challenge"] .friend-score');
-        const old = await page.textContent('[data-screen="challenge"]');
-        if (!/5–1–1/.test(old) || !/Pro/.test(old)) throw new Error('old link does not read');
         await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
         await visible(page, '[data-screen="challenge"] .friend-score .medal');
         const label = await page.textContent('.friend-score__label');
@@ -1722,6 +1936,32 @@ export const flows = [
         await page.evaluate(() => document.fonts.ready);
       });
       await shot('landing');
+      await step('a Budget run’s link says Budget and starts a Budget draft', async () => {
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.b.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] [data-testid="challenge-budget"]');
+        const review = await page.getAttribute('.challenge-card__setup', 'href');
+        if (!/budget=1/.test(review)) throw new Error(`the review link reads ${review}`);
+        await page.evaluate(() => document.fonts.ready);
+        await shot('landing-budget');
+        await page.click('.challenge-card__setup');
+        await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
+        await page.goBack();
+        await page.click('[data-testid="accept-challenge"]');
+        await visible(page, '[data-screen="draft"][data-phase]');
+        const draft = await page.evaluate(() =>
+          JSON.parse(localStorage.getItem('football-draft-draft')),
+        );
+        if (!draft.context.options.budget || !draft.session.options.budget)
+          throw new Error('the friend’s draft is not a Budget draft');
+        if (draft.context.seed !== 42 || !draft.session.options.useDefaultRules)
+          throw new Error('not the same draft');
+        // A link without the flag is no Budget draft.
+        await page.evaluate(() => localStorage.removeItem('football-draft-draft'));
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
+        await visible(page, '[data-screen="challenge"] .friend-score');
+        if (await page.locator('[data-testid="challenge-budget"]').count())
+          throw new Error('a normal link says Budget');
+      });
       await step('accept → same draft → run', async () => {
         await page.click('[data-testid="accept-challenge"]');
         await completeDraft(page, '[data-testid="next-fixture"]');

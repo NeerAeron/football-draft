@@ -13,16 +13,6 @@
 // screen".
 const placeholder = () => import('./screens/placeholder/placeholder.js');
 
-// Challenge links in the core's short form ('#c=<token>', share.js challengeUrl) land on the
-// challenge screen; the RUN screens share '#/challenge?c=<token>' links directly.
-const loc = globalThis.location;
-if (loc && /^#c=[0-9a-z.-]+/i.test(loc.hash))
-  globalThis.history?.replaceState(
-    null,
-    '',
-    `${loc.pathname}${loc.search}#/challenge?${loc.hash.slice(1)}`,
-  );
-
 export const routes = [
   { path: '/', title: 'Home', load: () => import('./screens/home/home.js') },
   {
