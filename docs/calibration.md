@@ -23,6 +23,38 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 9: goal kicks
+
+Owner's note: "opponents seem to mess up goal kicks too much". Followed every goal kick of 240
+club fixtures (`tools/calibration/lib/fixtures.mjs`) and of 200 matches between the 40 strongest
+nation XIs, 180 s. A goal kick is **given away** when it goes straight out of play, its first
+touch is an opponent's within 45 m of the kicking side's goal line, or the man it went to is
+robbed within 40 m of his goal and 3.5 s of the kick (`blunders.mjs`, `goal-kick-given-away`).
+
+| | clubs before | after | nations before | after |
+| --- | --- | --- | --- | --- |
+| goal kicks a match | 3.5 | 3.5 | 2.4 | 2.6 |
+| straight out of play | 5.4% | 0.2% | 8.2% | 0.2% |
+| straight to an opponent within 45 m | 1.1% | 0.7% | 2.0% | 0.8% |
+| the receiver robbed within 40 m, 3.5 s | 5.1% | 3.2% | 5.7% | 2.5% |
+| **given away** (per match) | 11.6% (0.40) | 4.2% (0.15) | 16.0% (0.39) | 3.5% (0.09) |
+| given away and a shot against within 10 s | 5.6% | 2.7% | 8.8% | 2.0% |
+| long kicks (42 m+) · won by the opponent beyond 45 m | 1% · 0.6% | 11% · 5.5% | 5% · 0% | 31% · 15% |
+
+What was wrong (both sides alike, team 0 and the AI-coached team 1 within a point of each
+other): nobody was ever set. The kick was taken 1.7 s after the ball went out, with twenty
+players still around the box the attack had ended in, so the keeper passed short into a crowd
+— or, after waiting 2.5 s for an outlet, hoofed a 35 m ball at a full-back on the touchline (a
+third of those went straight out). And the centre-back he found played his first touch forward
+into the midfield's press. What changed (docs/engine-events.md, _Goal kicks_): the goal kick
+is a cut, like the corner — both sides are placed when it is awarded, the defending side in a
+mid-block or, with `press` 4+ or on Push, up at the box; the kicking side builds up short only
+when the ball is really on (nobody within 13 m of the receiver) and otherwise goes long to its
+best header beyond halfway with the midfield around him; the man the keeper gives it to takes
+his time for two seconds. A long kick is a 50–60% ball, and losing it costs a header on
+halfway, which is the point. `blunders.mjs --compare`, 24 fixtures: goal kicks given away
+0.46 → 0.13 a match; nothing else moved beyond its noise.
+
 ## Phase 8: the whistle waits for the attack
 
 Owner's note: "sometimes the game ends on an attack, so let attacks finish, and corners".
@@ -394,7 +426,7 @@ open danger-zone shots 0.31 → 0.25, goals 2.15 → 2.42; the paired 128-match 
 goals 2.50 → 2.58 and evens the halves (shots 2nd/1st 0.86 → 1.00).
 
 **Known gaps:** a free kick near the box is a pass or a shot, never a delivery with a set-up
-like a corner's; players are placed (not walked) into kick-off, penalty and goal-kick
+like a corner's; players are placed (not walked) into kick-off, penalty and (since Phase 9) goal-kick
 positions (the match view cuts there).
 
 ## Before / after (Phase 3: goals and drama)

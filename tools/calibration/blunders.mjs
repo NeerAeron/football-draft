@@ -27,8 +27,10 @@ const hyp = Math.hypot;
 export const DETECTORS = {
   giveaway: 'plain pass by an unpressed player (nobody within 4 m) cut out by an opponent',
   'pass-out': 'plain pass (not a cross, clearance or long ball) straight out of play',
-  'restart-giveaway': 'throw-in, goal kick or free kick passed straight to an opponent',
+  'restart-giveaway': 'throw-in or free kick passed straight to an opponent',
   'keeper-giveaway': "keeper's pass or throw cut out in his own half",
+  'goal-kick-given-away':
+    'goal kick straight out of play, to an opponent within 45 m of the goal, or the man it went to robbed within 40 m and 3.5 s of the kick',
   'dribble-out': 'carrier takes the ball out of play with no opponent within 3 m',
   'own-box-dawdle': 'outfield carrier keeps the ball 1.5 s+ in his own box with a presser on him',
   'idle-carrier': 'unpressed outfield carrier keeps the ball 6 s+ and goes nowhere (< 5 m)',
@@ -83,6 +85,7 @@ function analyse(m, spec) {
     loose = null, // loose-ball spell
     exchange = [], // recent completed short passes (ping-pong)
     restartStart = null,
+    goalKick = null, // the goal kick being followed: { team, kicked, received }
     seenEvents = 0,
     step = 0;
   const still = new Array(22).fill(0),
@@ -125,7 +128,7 @@ function analyse(m, spec) {
       zone: zone(relX(pass.x0, k.team)),
     };
     if (outcome === 'intercepted') {
-      if (pass.restart)
+      if (pass.restart && pass.restart !== 'Goal kick')
         add('restart-giveaway', { ...info, restart: pass.restart, by: interceptor.name });
       else if (k.role === 'GK' && relX(interceptor.x, k.team) < 52.5)
         add('keeper-giveaway', { ...info, by: interceptor.name });
@@ -187,6 +190,36 @@ function analyse(m, spec) {
       const r = (totals.restarts[restartStart.type] ??= { n: 0, seconds: 0 });
       r.n++;
       r.seconds += m.elapsed - restartStart.t;
+    }
+
+    // ---- goal kicks: followed from the kick until 3.5 s after it
+    if (prev.mode === 'restart' && prev.restart === 'Goal kick' && m.mode === 'play')
+      goalKick = { team: m.lastTeam, kicked: null, received: false };
+    if (goalKick) {
+      const g = goalKick,
+        owner = b.owner !== null ? m.players[b.owner] : null,
+        given = reason => {
+          add('goal-kick-given-away', {
+            reason,
+            keeper: name(m.keeper(g.team)?.id),
+            from: g.kicked,
+            x: Math.round(relX(b.x, g.team)),
+          });
+          goalKick = null;
+        };
+      if (g.kicked === null) {
+        if (b.kind === 'pass' && b.owner === null) g.kicked = +m.elapsed.toFixed(2);
+        else if (m.mode !== 'play' || (owner && owner.role !== 'GK')) goalKick = null;
+      } else if (m.elapsed - g.kicked > 3.5) goalKick = null;
+      else if (m.mode === 'restart') {
+        if (!g.received && m.restart.team !== g.team && m.restart.type !== 'Goal')
+          given('straight out');
+        else goalKick = null;
+      } else if (owner && owner.team !== g.team) {
+        if (!g.received && relX(owner.x, g.team) < 45) given('to an opponent');
+        else if (g.received && relX(owner.x, g.team) < 40) given('receiver robbed');
+        else goalKick = null;
+      } else if (owner && owner.role !== 'GK') g.received = true;
     }
 
     // ---- ball leaves play: who put it out?
