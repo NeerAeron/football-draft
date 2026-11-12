@@ -83,7 +83,8 @@ tools/calibration/       manual calibration runners (write to /tmp; not run by n
 tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json
 tools/og/                og-image.html + render.mjs: re-renders og-image.png and the app icons
 docs/                    contracts, guides and calibration notes — index in docs/README.md
-.github/workflows/       ci.yml (format, lint, tests, browser smoke), pages.yml (deploys app/)
+.github/workflows/       ci.yml: format, lint, tests, browser smoke — once per change (pull requests,
+                         pushes to main, manual); on main a green run deploys app/ to Pages
 ```
 
 **Contracts** (keep them current when you change the code they describe): `docs/ui-guide.md`

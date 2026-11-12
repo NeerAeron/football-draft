@@ -175,10 +175,11 @@ offers only players shown at 65 or more (10,968 of the 15,788); teams field thei
 Deploying means publishing the `app/` folder to any static host; nothing else in the
 repository is needed at runtime.
 
-GitHub Pages is set up in `.github/workflows/pages.yml`: every push to `main` (or a manual run)
-uploads `app/` and deploys it. To use it, enable Pages once under **Settings → Pages → Build and
-deployment → Source: GitHub Actions**. `.github/workflows/ci.yml` runs the format check, lint,
-tests and browser smoke test on every push and pull request.
+`.github/workflows/ci.yml` runs the format check, lint, tests and browser smoke test once per
+change: on every pull request and on every push to `main` (or by hand: Actions → CI → Run
+workflow). On `main`, a green run then deploys `app/` to GitHub Pages (without the component
+gallery, a development page), so nothing is published that did not pass. To use it, enable Pages
+once under **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
 ## Credits and licences
 
