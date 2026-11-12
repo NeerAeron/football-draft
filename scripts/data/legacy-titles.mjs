@@ -1,5 +1,7 @@
 // FIFA 98–14: the pinned file data/legacy-titles.json (tools/research/legacy-titles.py copies
-// it out of the workbook, values unchanged) read into one record per player and title. This
+// it out of the workbook, values unchanged: the squad players of each title, per nationality
+// the first 36 outfielders and 4 keepers of the workbook's ranking) read into one record per
+// player and title, with the name parts data/legacy-names.json has for the best known. This
 // module only decodes what the titles say — names, teams, positions, feet and which skill of a
 // title stands for which of today's attributes. Putting those skills on today's scale is the
 // job of scripts/legends-calibration.mjs.
@@ -210,6 +212,10 @@ const ALIASES = new Map([
   [177848, 21195],
   [184410, 21195],
 ]);
+// An id EA gave to one man and later to a famous namesake: the earlier man's rows are nobody's
+// (`otherMan`). 45661 is Brescia's Raúl González in FIFA 2003 and Real Madrid's Raúl — until
+// then 5641 — from FIFA 2004 on.
+const REUSED = new Set(['3:45661']);
 // An unlicensed stand-in ("No 9", "No. 11") is not a name either.
 const STAND_IN = /^no\.?\s*\d+$/i;
 
@@ -234,8 +240,6 @@ function positions(row, edition) {
     list = wide ? [...wide] : [primary],
     codes = edition >= 11 && edition < 90 ? CODES_2011 : edition >= 2 && edition < 90 ? CODES_2002 : null;
   if (codes) {
-    if (codes[row.preferredposition1 ?? row.PreferredPos ?? row.position_code] !== label)
-      throw Error(`FIFA ${edition}: position code of ${row.name} is not ${label}`);
     for (const key of ['preferredposition2', 'preferredposition3', 'preferredposition4']) {
       const other = row[key] >= 0 ? POSITION[codes[row[key]]] : null;
       if (other && !list.includes(other)) list.push(other);
@@ -262,25 +266,37 @@ function weakFoot(row) {
 }
 // The name on a card, in the style of the current source ("Z. Zidane", "Ronaldinho"), and
 // the full name. The early titles know surnames only.
-function names(row) {
-  const first = row.firstname ?? row.First_Name ?? null,
-    last = row.surname ?? row.Last_Name ?? null,
-    common = row.pseudonym ?? null,
-    full = row.full_name ?? ([first, last].filter(Boolean).join(' ') || row.name);
-  let name = row.name;
+// The workbook has one name column; `parts` are the name parts data/legacy-names.json has for
+// the title's best known players ({ firstname, surname, pseudonym, full_name }), which tell a
+// first name from a double surname and a known-as name from both.
+function names(row, parts) {
+  const first = parts?.firstname ?? parts?.First_Name ?? null,
+    last = parts?.surname ?? parts?.Last_Name ?? null,
+    common = parts?.pseudonym ?? null,
+    whole = String(row.name).trim(),
+    full = parts?.full_name ?? ([first, last].filter(Boolean).join(' ') || whole);
+  let name = whole;
   if (common) name = common;
   else if (first && last) name = `${first[0]}. ${last}`;
   else if (last) name = last;
-  else if (row.full_name && row.full_name === row.name && /\s/.test(name))
+  else if (parts?.full_name && parts.full_name === whole && /\s/.test(name))
     name = `${name[0]}. ${name.slice(name.indexOf(' ') + 1)}`;
   return {
     name: String(name).trim(),
     fullName: String(full).trim(),
     surname: last,
     // How much of a name the title has: first and last name (or a known-as name), the whole
-    // name as one string (FIFA 2001/02), or the surname only (FIFA 98–2000, mostly).
-    named: first || last || common || row.full_name ? 'parts' : /\s/.test(name) ? 'whole' : 'short',
+    // name as one string (FIFA 2001 on, without name parts), or the surname only (FIFA
+    // 98–2000, mostly).
+    named: parts ? 'parts' : /\s/.test(name) ? 'whole' : 'short',
   };
+}
+// The EA team ids of a row: FIFA 2003 on list them with the shirt numbers ("243:9 / 1370:9"),
+// in the order of the team names.
+function teamIdsOf(row, teams) {
+  if (typeof row.jersey_numbers !== 'string' || !row.jersey_numbers) return [];
+  const ids = row.jersey_numbers.split(' / ').map(pair => pair.split(':')[0]);
+  return ids.length === teams.length ? ids : [];
 }
 
 /**
@@ -293,9 +309,22 @@ function names(row) {
  * (the title's), born, age, foot, weakFoot, overall (stored, FIFA 09–14, else null), native:
  * { field → value in the title's own units }, keeping (native keeper number), traits[] }.
  */
-export function decodeLegacyTitles(file) {
-  if (file?.format !== 'football-draft-legacy-titles' || file.version !== 1)
+export function decodeLegacyTitles(file, nameFile = null) {
+  if (file?.format !== 'football-draft-legacy-titles' || file.version !== 2)
     throw Error('Unsupported legacy titles file');
+  if (nameFile && (nameFile.format !== 'football-draft-legacy-names' || nameFile.version !== 1))
+    throw Error('Unsupported legacy names file');
+  const nameParts = new Map(
+    (nameFile?.titles ?? []).map(t => [
+      t.edition,
+      new Map(
+        t.rows.map(values => [
+          values[0],
+          Object.fromEntries(t.columns.map((c, j) => [c, values[j]])),
+        ]),
+      ),
+    ]),
+  );
   const titles = file.titles.map(t => {
     const columns = new Set(t.columns),
       fields = Object.fromEntries(SKILL_FIELDS.map(f => [f, pick(FIELDS[f], columns)])),
@@ -308,7 +337,7 @@ export function decodeLegacyTitles(file) {
     const players = t.rows.map((values, i) => {
       const row = Object.fromEntries(t.columns.map((c, j) => [c, values[j]])),
         teams = String(row.teams).split(' / '),
-        teamIds = row.team_ids == null ? [] : String(row.team_ids).split(' / '),
+        teamIds = teamIdsOf(row, teams),
         real = teams.map((team, j) => ({ team, id: teamIds[j] ?? null })).filter(
           ({ team }) => !isRepresentative(team, edition) && !NO_CLUB.has(team),
         ),
@@ -323,14 +352,18 @@ export function decodeLegacyTitles(file) {
         edition,
         year,
         rank: i + 1,
-        ...names(row),
+        ...names(row, nameParts.get(edition)?.get(row.playerid)),
         teams,
         teamIds,
         clubs: real.map(r => r.team),
         clubIds: real.map(r => r.id),
         representativeOnly: teams.every(team => isRepresentative(team, edition)),
-        nationName: row.nationality_name ?? null,
-        nationCode: row.nationality ?? row.Nationality ?? row.nationality_code ?? null,
+        otherMan: REUSED.has(`${edition}:${row.playerid}`),
+        // FIFA 2003 names the nationality by its adjective ("Brazilian"): a code like the
+        // numbers of the titles before it, not a nation's name.
+        nationName: edition === 3 ? null : (row.nationality_name ?? null),
+        nationCode:
+          row.nationality ?? row.nationality_code ?? (edition === 3 ? row.nationality_name : null),
         positions: list,
         secondStriker: edition >= 4 && edition < 90 && row.ranking_position === 'CF',
         label: row.ranking_position,
@@ -364,13 +397,25 @@ export function decodeLegacyTitles(file) {
   return { source: file.source, titles };
 }
 
-/** Read and check the pinned file: { source, titles, sha256 }. */
-export async function loadLegacyTitles(path, expected) {
+async function pinned(path, expected) {
   const bytes = await readFile(path),
     sha256 = createHash('sha256').update(bytes).digest('hex');
   if (expected && sha256 !== expected)
     throw Error(
       `${path} has SHA-256 ${sha256}, expected ${expected}: pin the new file in scripts/data/paths.mjs`,
     );
-  return { ...decodeLegacyTitles(JSON.parse(bytes.toString('utf8'))), sha256 };
+  return { json: JSON.parse(bytes.toString('utf8')), sha256 };
+}
+/**
+ * Read and check the pinned files: { source, titles, sha256, names: { source, sha256 } }.
+ * `names` = { path, sha256 } of data/legacy-names.json (optional).
+ */
+export async function loadLegacyTitles(path, expected, names = null) {
+  const file = await pinned(path, expected),
+    parts = names ? await pinned(names.path, names.sha256) : null;
+  return {
+    ...decodeLegacyTitles(file.json, parts?.json ?? null),
+    sha256: file.sha256,
+    names: parts ? { source: parts.json.source, sha256: parts.sha256 } : null,
+  };
 }

@@ -12,7 +12,7 @@
 //   precomputed { badges }                 config stamp of the normalised badges
 //   nations[]                              nation names (catalog spelling) legends.nation indexes
 //   legends { count, sourceId[] (EA's player id), edition[] (the title's number: 98, 99,
-//             0–23), year[] (the year of that version's ratings), name[], fullName[], club[]
+//             0–26), year[] (the year of that version's ratings), name[], fullName[], club[]
 //             (catalog team id, 0 = none), nation[],
 //             current[] (1 = the player is in the catalog: `legendOf`), position, secondary[],
 //             foot, weakFoot[], sourceOverall[], attrs[K*N], tendencies[T*N], tags[],
@@ -29,12 +29,18 @@ export const LEGENDS_FORMAT = 'football-draft-legends';
 export const LEGENDS_VERSION = 1;
 const CODE = new Map([...CODE_ALPHABET].map((c, i) => [c, i]));
 const SCALE = 1000;
-const ID = /^ea:(\d+):fc(\d+):(legend|prime)$/;
+const ID = /^ea:(\d+):fc(\d+):(legend|prime|era)$/;
 
 /** Stamp of a catalog's player ids: a legends file belongs to one catalog build. */
 export const catalogIds = catalog => stamp(catalog.players.map(p => p.profileId));
 
-function encodeTable(players, { attributeKeys, tendencyKeys, positions, badges }, kind, extra) {
+/** One columnar table of players (shared with eras-codec.js); `extra` adds columns. */
+export function encodeTable(
+  players,
+  { attributeKeys, tendencyKeys, positions, badges },
+  kind,
+  extra,
+) {
   const index = (list, value, what) => {
     const i = list.indexOf(value);
     if (i < 0 || i >= CODE_ALPHABET.length) throw Error(`Cannot encode ${what} ${value}`);
@@ -150,7 +156,15 @@ export function encodeLegends(data) {
   };
 }
 
-function decodeTable(file, table, kind, extra) {
+/** The players of a table written by encodeTable. */
+export function decodeTable(file, table, kind, extra) {
+  const steps = decodeTableSteps(file, table, kind, extra);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/** decodeTable as a step-wise generator: yields every `chunk` players, returns them all. */
+export function* decodeTableSteps(file, table, kind, extra, chunk = 200) {
   const n = table.count,
     K = file.attributeKeys.length,
     T = file.tendencyKeys.length,
@@ -159,6 +173,7 @@ function decodeTable(file, table, kind, extra) {
   const players = new Array(n);
   let evidenceIndex = 0;
   for (let i = 0; i < n; i++) {
+    if (i && i % chunk === 0) yield i;
     const attrs = {},
       tendencies = {};
     for (let k = 0; k < K; k++) attrs[file.attributeKeys[k]] = table.attrs[k * n + i];
