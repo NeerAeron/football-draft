@@ -16,6 +16,8 @@ export const DEFAULT_CONFIG = {
       potSize: 12,
       minimumPlayers: 11,
       minimumGoalkeepers: 1,
+      // Only the strongest `playableSize` nations that can field an XI are playable.
+      playableSize: 56,
       // The real World Cup draw (Legendary) qualifies its own 48 for every run: the strongest
       // `fieldCore` playable nations are always in, the other seats are drawn from the rest
       // with odds that halve every `fieldHalving` rating points below the last core nation.
@@ -24,7 +26,7 @@ export const DEFAULT_CONFIG = {
       // Star nations: nations that cannot field an XI but are still on the reel because they
       // have a star — at least one player rated reelStar or better and reelPlayers players
       // (no keeper needed: they are spun, never met as opponents).
-      reelStar: 75,
+      reelStar: 80,
       reelPlayers: 9,
       squadSize: 23,
       squadGoalkeepers: 3,
@@ -537,11 +539,11 @@ export const DEFAULT_CONFIG = {
     },
     roleOffsets: {
       GK: 0,
-      CB: 0.25,
-      LB: 1.5,
-      RB: 1.5,
-      DM: 1,
-      CM: 0.25,
+      CB: 0.5,
+      LB: 2,
+      RB: 2,
+      DM: 1.25,
+      CM: 0.5,
       AM: 0.5,
       LM: 1.25,
       RM: 1.25,
@@ -549,6 +551,8 @@ export const DEFAULT_CONFIG = {
       RW: 1.25,
       ST: 1,
     },
+    topFrom: 78,
+    topLift: 0.1,
     familiarityBase: 0.72,
     familiarityBonus: 0.28,
     familiarityDecay: 0.235,

@@ -282,7 +282,7 @@ function* buildIndex(catalog, rules) {
   // Playable: every nation that can field such an XI, strongest first — on the reel and met as
   // an opponent. The field is its strongest `fieldSize`, in pots: only the real-World-Cup draw
   // (competition/cup.js worldCupDraw) and the Daily's schedule need exactly that many.
-  const playable = eligible.map(({ nation }) => nation),
+  const playable = eligible.slice(0, n.playableSize ?? Infinity).map(({ nation }) => nation),
     outside = Math.floor(Math.min(playable.length, n.fieldSize) / n.potSize) + 1;
   playable.forEach((nation, i) => {
     nation.playable = true;

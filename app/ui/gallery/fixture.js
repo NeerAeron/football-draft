@@ -268,6 +268,7 @@ export const PLAYERS = [
       { id: 'marker', label: 'Tight Marking' },
       { id: 'pressescape', label: 'Press Escape' },
       { id: 'finisher', label: 'Clinical Finish' },
+      { id: 'overlap', label: 'Overlap Engine' },
     ],
   },
   {
@@ -432,6 +433,7 @@ export const PLAYERS = [
       { id: 'finisher', label: 'Clinical Finish' },
       { id: 'vision', label: 'Visionary' },
       { id: 'givego', label: 'Give & Go' },
+      { id: 'latearrival', label: 'Late Arrival' },
     ],
   },
   {
@@ -595,6 +597,7 @@ export const PLAYERS = [
       { id: 'dribbler', label: 'Dribbler' },
       { id: 'crosser', label: 'Crosser' },
       { id: 'latearrival', label: 'Late Arrival' },
+      { id: 'givego', label: 'Give & Go' },
     ],
   },
   {

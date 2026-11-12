@@ -185,11 +185,12 @@ export function roleAbility(p, role = p.role) {
 // No per-player source overall or hidden correction is used at runtime.
 export const OVERALL_OFFSETS = CONFIG.ratings.roleOffsets;
 export function calibratedRoleAbility(p, role = p.role) {
-  return clamp(
-    roleAbility(p, role) + ((p.tuning?.ratings.roleOffsets || OVERALL_OFFSETS)[role] || 0),
-    1,
-    99,
-  );
+  const ratings = p.tuning?.ratings || CONFIG.ratings,
+    ability = roleAbility(p, role) + (ratings.roleOffsets[role] || 0);
+  // The weighted attributes compress the very top (a player EA rates 89 came out at 87):
+  // every point above `topFrom` is stretched by `topLift`, which puts the best players back
+  // near EA's overall without moving the rest.
+  return clamp(ability + Math.max(0, ability - ratings.topFrom) * ratings.topLift, 1, 99);
 }
 export function overallRating(p, rounded = true, role = p.role) {
   const value = calibratedRoleAbility(p, role) * positionFamiliarity(p, role);
