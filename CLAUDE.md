@@ -26,6 +26,7 @@ modules; Preact + htm are vendored). Node ≥ 22 for tooling/tests. Only dev dep
 | `npm run data:reconcile` | tie a new source snapshot's club, league and nation names to the reference (`data/source-map.json`) | ~1 s |
 | `node tools/og/render.mjs` | re-render the link-preview card and app icons | — |
 | `npm run preload` | regenerate the preload block of `app/index.html` after adding/removing an import or stylesheet of the first screen (a test fails until you do) | — |
+| `node scripts/dev/offline-deploy.mjs` | simulated deploys against the service worker: install, deploy, go offline (run after touching `app/sw.js` or `ui/lib/offline.js`) | ~40 s |
 | `node tools/calibration/blunders.mjs` | count frustrating plays over 24 club fixtures (`--compare`, `--list <type>`) | ~15 s |
 | `node tools/calibration/watch.mjs --fixture 3 --at 81.4` | contact sheet (PNG) of what the engine did around a moment — view it with the Read tool | ~3 s |
 
@@ -39,7 +40,10 @@ app/                     served statically (deploy = publish this folder); runti
   index.html             the game: import map (preact, htm), fonts → ui/main.js
   gallery.html           component gallery (design review, screenshot QA)
   manifest.webmanifest   install metadata (icons, shortcuts); og/twitter preview tags live in index.html
-  sw.js                  offline service worker, network first (registered by ui/lib/offline.js)
+  sw.js                  offline service worker, network first (registered by ui/lib/offline.js):
+                         one cache per build, the last complete copy answers offline
+  build.json             build stamp ("dev" here; the Pages deploy writes the commit): a new
+                         stamp makes the installed app cache the whole game again
   core/                  pure logic: no DOM, no storage, Node-testable
     sim/                 match engine, rules, cards, periods, replay, shootout, in-match AI coach
     players/             ratings, badges, formations, club lineups, catalog codec + derived data
@@ -71,7 +75,8 @@ scripts/                 catalog compiler (compile-league-catalog.mjs + compile-
                          compile-legends.mjs (Legends and Prime versions from the legacy CSV)
 scripts/data/            data:fetch / data:reconcile / data:build pipeline (ea-source.mjs adapts the
                          source rows); catalog-file.mjs = loadRuntimeCatalog() for Node
-scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs
+scripts/dev/             serve.mjs, test.mjs, browser.mjs, sim-fingerprint.mjs, preload.mjs,
+                         offline-deploy.mjs
 tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by tools/calibration)
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
 tools/calibration/       manual calibration runners (write to /tmp; not run by npm test), incl.
@@ -85,6 +90,7 @@ tools/og/                og-image.html + render.mjs: re-renders og-image.png and
 docs/                    contracts, guides and calibration notes — index in docs/README.md
 .github/workflows/       ci.yml: format, lint, tests, browser smoke — once per change (pull requests,
                          pushes to main, manual); on main a green run deploys app/ to Pages
+                         (stamps build.json, leaves the gallery out)
 ```
 
 **Contracts** (keep them current when you change the code they describe): `docs/ui-guide.md`

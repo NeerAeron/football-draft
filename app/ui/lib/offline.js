@@ -4,10 +4,13 @@
 //   registerOffline(routes)   // from ui/main.js, once
 //
 // In a browser tab the worker just keeps what the player has used, at no extra cost. Opened
-// as an installed app (display-mode standalone), the first launch warms the whole game once:
-// the files loaded before the worker took control, the catalog with its flags and league
-// logos, every lazy screen module and every font face — then <html data-offline-ready> is set
-// and the game opens and plays without a network (~2.3 MB download, once).
+// as an installed app (display-mode standalone), a launch asks the worker whether it holds a
+// complete copy of the deployed build (app/build.json, written by the deploy). If not — the
+// first launch, or the first one after a deploy — it warms the whole game: the files loaded
+// before the worker took control, the catalog with its flags and league logos, every lazy
+// screen module and every font face. Then <html data-offline-ready> is set and the game opens
+// and plays without a network (~2.3 MB download, once per deploy). The previous complete copy
+// keeps answering offline until the new one is whole (see sw.js).
 // Skipped on loopback hosts (dev server, browser tests) unless the page URL has ?sw=1, which
 // also forces the warm-up; and wherever service workers are unavailable (insecure origins).
 const LOOPBACK = /^(localhost|127\.0\.0\.1|\[::1\])$/;
@@ -20,7 +23,6 @@ const WORKERS = [
 ];
 // Data fetched on demand (the Legends and Prime versions: first when a draft starts).
 const DATA = ['./data/legends.v1.json'];
-const WARMED = './__offline-ready'; // marker entry written by sw.js after a warm-up
 
 const idle = fn => (globalThis.requestIdleCallback || (cb => setTimeout(cb, 500)))(fn);
 const installed = () =>
@@ -28,21 +30,23 @@ const installed = () =>
   globalThis.navigator?.standalone === true;
 const markReady = () => (document.documentElement.dataset.offlineReady = 'true');
 
-/** Post `message` to the worker; resolves true when every URL was cached. */
-function ask(worker, message) {
+/** Post `message` to the worker; resolves with its answer (null if none came in time). */
+function ask(worker, message, patience = 60000) {
   return new Promise(resolve => {
     const channel = new MessageChannel();
-    channel.port1.onmessage = event => resolve(event.data === 'done');
+    channel.port1.onmessage = event => resolve(event.data);
     worker.postMessage(message, [channel.port2]);
-    setTimeout(() => resolve(false), 60000); // never wait forever on a busy worker
+    setTimeout(() => resolve(null), patience); // never wait forever on a busy worker
   });
 }
 
-async function warmUp(worker, routes) {
+/** Cache the whole game as `build`; true when the worker recorded a complete copy. */
+async function warmUp(worker, routes, build) {
   const page = location.href.split('#')[0];
   const loaded = () => performance.getEntriesByType('resource').map(entry => entry.name);
   await document.fonts?.ready;
   await ask(worker, {
+    build,
     cache: [page, ...loaded(), ...[...WORKERS, ...DATA].map(path => new URL(path, page).href)],
   });
   // Fetched through the worker now that it controls the page, so all of it gets cached:
@@ -52,11 +56,12 @@ async function warmUp(worker, routes) {
     ...routes.filter(route => route.load).map(route => route.load()),
     ...[...(document.fonts || [])].map(face => face.load()),
   ]);
-  const complete = settled.every(result => result.status === 'fulfilled');
+  const failed = settled.some(result => result.status === 'rejected');
   // Files still downloading at the first list bypassed the worker: list them again. The
-  // worker records the warm-up only when everything was cached (else: again next launch).
-  if ((await ask(worker, { cache: loaded(), artwork: true, done: complete })) && complete)
-    markReady();
+  // worker records the copy as complete only when everything was cached (else: again at the
+  // next launch).
+  const answer = await ask(worker, { build, cache: loaded(), artwork: true, done: true, failed });
+  return answer === 'done';
 }
 
 export function registerOffline(routes = []) {
@@ -64,21 +69,28 @@ export function registerOffline(routes = []) {
   if (!sw || !globalThis.isSecureContext) return false;
   const forced = new URLSearchParams(location.search).has('sw');
   if (LOOPBACK.test(location.hostname) && !forced) return false;
-  // The worker claims open pages when it activates; until then requests bypass it.
-  const controlled = () =>
-    sw.controller
-      ? Promise.resolve(sw.controller)
-      : new Promise(resolve =>
-          sw.addEventListener('controllerchange', () => resolve(sw.controller), { once: true }),
-        );
-  const start = async () => {
+  // Ask the controlling worker about its copy and warm it if it is not this build's. Runs
+  // again when another worker takes control (the first install; an updated sw.js, whose
+  // predecessor does not answer): only the latest run goes on.
+  let run = 0;
+  const check = async () => {
+    const id = ++run,
+      worker = sw.controller;
+    if (!worker) return;
+    const state = await ask(worker, { status: true }, 15000);
+    if (id !== run || !state) return;
+    if (state.ready) return markReady();
+    // Without a network (no build) there is nothing to warm.
+    if (state.build && (await warmUp(worker, routes, state.build)) && id === run) markReady();
+  };
+  const start = () => {
     sw.register('./sw.js').catch(() => {});
     if (!(forced || installed())) return;
-    if (await globalThis.caches?.match(new URL(WARMED, location.href).href)) return markReady();
-    const worker = await sw.ready.then(controlled);
-    if (worker) await warmUp(worker, routes);
+    // The worker claims open pages when it activates; until then requests bypass it.
+    sw.addEventListener('controllerchange', () => check().catch(() => {}));
+    check().catch(() => {});
   };
-  const begin = () => idle(() => start().catch(() => {}));
+  const begin = () => idle(start);
   if (document.readyState === 'complete') begin();
   else addEventListener('load', begin, { once: true });
   return true;

@@ -82,6 +82,14 @@ what you have used is kept. Online, every file is always fetched fresh: the serv
 (`app/sw.js`) is network-first and its cache is only a fallback. It is not registered on
 `localhost`/`127.0.0.1` (development and tests) unless the URL has `?sw=1`.
 
+The offline copy follows deploys. `app/build.json` holds a build stamp: the Pages deploy writes
+the commit there (the checked-in file says `dev`). The worker keeps one cache per stamp; the
+first online launch of the installed app after a deploy caches the whole new build, and only
+when it is complete are the older caches deleted — until then the previous complete copy keeps
+answering offline. If you publish `app/` some other way, write a new value into `build.json`
+with every publish (any text of letters, digits, `.`, `_` or `-`), or the installed app keeps
+its first copy of the screens it does not open.
+
 Shared links unfurl with a preview card (`app/assets/og-image.png`). Its absolute address in
 `app/index.html` (`og:url`, `og:image`, `twitter:image`) points at the GitHub Pages deployment,
 `https://neeraeron.github.io/football-draft/`; change those three tags if you host it elsewhere.
@@ -116,6 +124,7 @@ app/                  the deployed site, served as-is
   index.html          the game (loads ui/main.js)
   gallery.html        component gallery
   manifest.webmanifest, sw.js   install metadata and the offline service worker
+  build.json          build stamp of the offline copy ("dev" here; the deploy writes the commit)
   core/               pure logic, no DOM or storage; runs in Node
     sim/              match engine, rules, cards, periods, replay, shootouts, AI coach
     players/          ratings, badges, formations, club lineups, catalog codec
@@ -178,7 +187,7 @@ repository is needed at runtime.
 `.github/workflows/ci.yml` runs the format check, lint, tests and browser smoke test once per
 change: on every pull request and on every push to `main` (or by hand: Actions → CI → Run
 workflow). On `main`, a green run then deploys `app/` to GitHub Pages (without the component
-gallery, a development page), so nothing is published that did not pass. To use it, enable Pages
+gallery, a development page, and with the commit as the build stamp in `build.json`), so nothing is published that did not pass. To use it, enable Pages
 once under **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
 ## Credits and licences

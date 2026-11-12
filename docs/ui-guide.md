@@ -44,7 +44,8 @@ ui/
                           its own task — use it (not bare loadCatalog) wherever a screen drafts,
                           builds a run or lists opponents (no main-thread task > 200 ms)
     offline.js            registerOffline(routes): registers app/sw.js (network first); the
-                          installed app's first launch caches every screen, font, worker, the
+                          installed app's first launch — and the first after each deploy (a new
+                          stamp in app/build.json) — caches every screen, font, worker, the
                           catalog, flags and logos, then sets <html data-offline-ready>. Add new
                           module workers to its WORKERS list. Off on localhost unless ?sw=1.
   components/             shared components: <name>.js + <name>.css, props documented on top
