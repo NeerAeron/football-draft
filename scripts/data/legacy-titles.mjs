@@ -212,6 +212,10 @@ const ALIASES = new Map([
   [177848, 21195],
   [184410, 21195],
 ]);
+// An id EA gave to one man and later to a famous namesake: the earlier man's rows are nobody's
+// (`otherMan`). 45661 is Brescia's Raúl González in FIFA 2003 and Real Madrid's Raúl — until
+// then 5641 — from FIFA 2004 on.
+const REUSED = new Set(['3:45661']);
 // An unlicensed stand-in ("No 9", "No. 11") is not a name either.
 const STAND_IN = /^no\.?\s*\d+$/i;
 
@@ -354,6 +358,7 @@ export function decodeLegacyTitles(file, nameFile = null) {
         clubs: real.map(r => r.team),
         clubIds: real.map(r => r.id),
         representativeOnly: teams.every(team => isRepresentative(team, edition)),
+        otherMan: REUSED.has(`${edition}:${row.playerid}`),
         // FIFA 2003 names the nationality by its adjective ("Brazilian"): a code like the
         // numbers of the titles before it, not a nation's name.
         nationName: edition === 3 ? null : (row.nationality_name ?? null),

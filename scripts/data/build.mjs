@@ -5,10 +5,13 @@
 //   → data/build/players.json        full catalog with provenance (gitignored, for audits)
 //   → app/data/catalog.v3.json       runtime catalog, format v3 (catalog-codec.js)
 //   → app/assets/flags/*.svg         flag of every nationality in the catalog
-//   data/raw/FIFA15-23_male_players_legacy.csv (FIFA 15–23) + data/legacy-titles.json
-//   (FIFA 98–14, in the repository) + the compiled catalog
+//   data/raw/FIFA15-23_male_players_legacy.csv (FIFA 15–23) + data/legacy-titles.json and
+//   data/legacy-names.json (FIFA 98–14, in the repository) + the FC 24, FC 25 and FC 26 files
+//   in data/raw/ + the compiled catalog
 //   → app/data/legends.v1.json       Legends and Prime versions (legends-codec.js)
 //   → data/build/legends.json        the same players with provenance (gitignored)
+//   → app/data/eras.v1.json          era pools: nation × World Cup cycle (eras-codec.js)
+//   → data/build/eras.json           the same with provenance (gitignored)
 // Options: --from <file.json>  re-encode a compiled or schema-2 runtime catalog instead of the CSV.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -22,11 +25,58 @@ import { toRuntimeCatalog } from './runtime-catalog.mjs';
 import { adaptSource } from './ea-source.mjs';
 import { writeFlags } from './flags.mjs';
 import { encodeLegends, catalogIds } from '../../app/core/players/legends-codec.js';
+import { encodeEras } from '../../app/core/players/eras-codec.js';
 import { badgeStamp } from '../../app/core/players/catalog-derived.js';
-import { compileLegends, LEGACY, TITLES, SELECTION } from '../compile-legends.mjs';
+import {
+  compileLegends,
+  LEGACY,
+  TITLES,
+  SELECTION,
+  ERA_SELECTION,
+} from '../compile-legends.mjs';
+import { fc24Rows, fc25Rows, fc26Rows, sofifaRows } from './modern-titles.mjs';
 import { loadLegacyTitles } from './legacy-titles.mjs';
-import { PATHS, SOURCE, LEGACY_SOURCE, LEGACY_TITLES, LEGACY_NAMES } from './paths.mjs';
+import {
+  PATHS,
+  SOURCE,
+  LEGACY_SOURCE,
+  LEGACY_TITLES,
+  LEGACY_NAMES,
+  MODERN_SOURCES,
+} from './paths.mjs';
 
+async function readText(path, source) {
+  let bytes;
+  try {
+    bytes = await readFile(path);
+  } catch {
+    throw Error(`Missing ${path}: run \`npm run data:fetch\` first`);
+  }
+  const hash = createHash('sha256').update(bytes).digest('hex');
+  if (hash !== source.sha256)
+    throw Error(`${path} has SHA-256 ${hash}, expected ${source.sha256}; run data:fetch`);
+  return bytes.toString('utf8');
+}
+/** FC 24, FC 25 and FC 26 as compiler rows: [{ edition, rows, source }], oldest first. */
+export async function readModernTitles() {
+  const map = JSON.parse(await readFile(PATHS.sourceMap, 'utf8')),
+    read = { 24: fc24Rows, 25: text => fc25Rows(parseCSV(text), map), 26: fc26Rows },
+    out = [];
+  for (const source of MODERN_SOURCES)
+    out.push({
+      edition: source.edition,
+      rows: read[source.edition](await readText(PATHS.modernCsv(source.edition), source)),
+      source: {
+        url: source.page,
+        author: source.author,
+        upstream: source.upstream,
+        license: source.license,
+        revision: source.revision,
+        sha256: source.sha256,
+      },
+    });
+  return out;
+}
 async function readSource(path, source) {
   let bytes;
   try {
@@ -61,12 +111,21 @@ export async function compileSource() {
  * put on the scale, where each card's numbers come from).
  */
 export async function compileLegendsFile(compiled, runtime) {
-  const { rows, hash } = await readSource(PATHS.legacyCsv, LEGACY_SOURCE),
+  // The legacy file is 91 MB of 110 columns: only the columns the compiler reads are kept.
+  const rows = sofifaRows(await readText(PATHS.legacyCsv, LEGACY_SOURCE)),
+    hash = LEGACY_SOURCE.sha256,
     older = await loadLegacyTitles(PATHS.legacyTitles, LEGACY_TITLES.sha256, {
       path: PATHS.legacyNames,
       sha256: LEGACY_NAMES.sha256,
     }),
-    { legends, primes, stats, calibration, notes } = compileLegends(rows, compiled, hash, older),
+    modern = await readModernTitles(),
+    { legends, primes, eras, stats, calibration, notes } = compileLegends(
+      rows,
+      compiled,
+      hash,
+      older,
+      modern,
+    ),
     sample = runtime.players[0].profileId.match(/^(\D*)\d+(\D.*)$/);
   if (older.source.sha256 !== LEGACY_TITLES.workbookSha256)
     throw Error(`${PATHS.legacyTitles} was made from another workbook than the pinned one`);
@@ -84,8 +143,11 @@ export async function compileLegendsFile(compiled, runtime) {
         file: `data/${LEGACY_TITLES.file}`,
         sha256: older.sha256,
         workbookSha256: older.source.sha256,
+        namesSha256: older.names.sha256,
         titles: older.titles.length,
       },
+      // FC 24, FC 25, FC 26.
+      modern: modern.map(m => ({ edition: m.edition, rows: m.rows.length, ...m.source })),
     },
     selection: {
       sourceRows: rows.length,
@@ -103,11 +165,30 @@ export async function compileLegendsFile(compiled, runtime) {
     legends,
     primes,
   };
+  const eraData = {
+    compilerVersion: compiled.compilerVersion,
+    sources: data.source,
+    selection: { ...ERA_SELECTION, nations: eras.summary },
+    catalog: data.catalog,
+    attributeKeys: data.attributeKeys,
+    dictionaries: data.dictionaries,
+    precomputed: data.precomputed,
+    eras: eras.eras,
+    cards: eras.cards,
+    pools: eras.pools,
+  };
   return {
     data,
     stats,
     provenance: { ...data, calibration, dropped: stats.dropped, merged: stats.merged, notes },
     text: JSON.stringify(encodeLegends(data)) + '\n',
+    eras: {
+      data: eraData,
+      stats: eras.stats,
+      summary: eras.summary,
+      provenance: { ...eraData, stats: eras.stats },
+      text: JSON.stringify(encodeEras(eraData)) + '\n',
+    },
   };
 }
 
@@ -135,12 +216,27 @@ async function main() {
   const { runtime, text, flags } = await writeRuntime(compiled);
   const bytes = Buffer.from(text);
   // Legends and Prime versions (not with --from: they need both CSVs).
-  let legends = null;
+  let legends = null,
+    eraReport = null;
   if (rows) {
     const built = await compileLegendsFile(compiled, runtime),
       legendBytes = Buffer.from(built.text);
     await writeFile(PATHS.legends, built.text);
     await writeFile(PATHS.legendsProvenance, JSON.stringify(built.provenance) + '\n');
+    const eraBytes = Buffer.from(built.eras.text);
+    await writeFile(PATHS.eras, built.eras.text);
+    await writeFile(PATHS.erasProvenance, JSON.stringify(built.eras.provenance) + '\n');
+    const { sameName, otherNations: eraOthers, ...eraCounts } = built.eras.stats;
+    eraReport = {
+      ...eraCounts,
+      sameName: sameName.length,
+      otherNations: Object.keys(eraOthers).length,
+      eras: built.eras.summary.map(e => `${e.label}: ${e.nations} of ${e.qualified}`),
+      path: PATHS.eras,
+      bytes: eraBytes.length,
+      gzip: gzipSync(eraBytes, { level: 9 }).length,
+      brotli: brotliCompressSync(eraBytes).length,
+    };
     const { dropped, merged, otherNations, ...counts } = built.stats;
     legends = {
       legends: built.data.legends.length,
@@ -172,6 +268,7 @@ async function main() {
         },
         captains: runtime.players.filter(p => p.captain).map(p => p.name),
         legends,
+        eras: eraReport,
         flags,
         provenance: from ? null : PATHS.provenance,
       },

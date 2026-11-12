@@ -10,12 +10,13 @@
 //     byId: Map(profileId → legend | prime version),
 //   }
 // A legend is shaped like a catalog player plus `legend: true`, `edition` (the title's number:
-// 98, 99, 0–23 for FIFA 98 … FIFA 23) and `year` (the year of that version's ratings,
-// 1997–2022); his `source` has today's nation name and, when his club of that edition is in
+// 98, 99, 0–26 for FIFA 98 … FC 26) and `year` (the year of that version's ratings,
+// 1997–2025); his `source` has today's nation name and, when his club of that edition is in
 // the catalog, that club (so he is a club mate). His card shows the overall EA gave him that
 // year (FIFA 98–08 printed none: theirs is chain-linked to FIFA 09's scale by the compiler),
 // so the best of all time stand above today's cards. A legend can be the
-// best past version of a player who IS in the catalog: `legendOf` is that player's profileId,
+// best past version of a player who IS in the catalog, when it shows at least two more than
+// his card today: `legendOf` is that player's profileId,
 // and the two are one person (baseProfileId) — an XI holds him once. A prime version is the
 // catalog player with the attributes, positions, badges and rating of that edition: `prime:
 // true`, `edition`, `year`, `primeOf` (the catalog player's profileId). He keeps the name,
@@ -74,10 +75,12 @@ export const legendPlayer = (catalog, id) => catalog?.legends?.byId.get(String(i
 export const primeVersion = (catalog, p) =>
   (p && !p.prime && !p.legend && catalog?.legends?.primes.get(p.profileId)) || null;
 /**
- * The id a player is known by in the catalog: a prime version and a catalog player's legend
- * version count as the current player (an XI holds a person once; opponents never field him).
+ * The id a player is known by in the catalog: a prime version, a catalog player's legend
+ * version and his era cards (players/eras.js: `eraOf`) count as the current player (an XI
+ * holds a person once; opponents never field him). People who are not in the catalog keep
+ * their own id — `personId` (eras.js) is the key that is the same on all of a man's cards.
  */
-export const baseProfileId = p => p.primeOf ?? p.legendOf ?? p.profileId;
+export const baseProfileId = p => p.primeOf ?? p.legendOf ?? p.eraOf ?? p.profileId;
 // A title comes out in the autumn before its number: FIFA 19 in September 2018, FIFA 98 in
 // 1997, FIFA 2000 (edition 0) in 1999.
 const releaseYear = edition =>

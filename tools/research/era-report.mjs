@@ -1,0 +1,73 @@
+// The era pools at a glance (app/data/eras.v1.json, as the game reads it): per era the nations
+// that can be spun, pool sizes, the strongest and the weakest pool, who has cards in several
+// eras, the all-time top — and, with a nation and an era, that pool.
+//   node tools/research/era-report.mjs                 the summary
+//   node tools/research/era-report.mjs 2002 Brazil     one pool
+import { readFile } from 'node:fs/promises';
+import { loadRuntimeCatalog } from '../../scripts/data/catalog-file.mjs';
+import { PATHS } from '../../scripts/data/paths.mjs';
+import { decodeEras } from '../../app/core/players/eras-codec.js';
+import {
+  attachEras,
+  eraList,
+  eraPool,
+  bestVersion,
+  personId,
+} from '../../app/core/players/eras.js';
+import { editionLabel } from '../../app/core/players/legends.js';
+import { overallRating } from '../../app/core/players/ratings.js';
+
+const shown = p => overallRating(p, true, p.primaryPosition),
+  line = p => `${shown(p)} ${p.name} ${p.primaryPosition}${p.year ? ' ' + editionLabel(p) : ''}`,
+  catalog = attachEras(
+    await loadRuntimeCatalog(),
+    decodeEras(JSON.parse(await readFile(PATHS.eras, 'utf8'))),
+  ),
+  [eraId, nation] = process.argv.slice(2);
+
+if (eraId && nation) {
+  for (const p of eraPool(catalog, eraId, nation)) {
+    const best = bestVersion(catalog, p);
+    console.log(
+      `${line(p).padEnd(34)} ${(p.source.club ?? '').padEnd(24)} ${best ? 'prime ' + line(best) : ''}`,
+    );
+  }
+} else {
+  const eras = new Map(); // person → Set(era)
+  for (const era of eraList(catalog)) {
+    const sizes = era.nations.map(n => n.size),
+      short = era.nations.filter(n => n.size < 26),
+      [first, last] = [era.nations[0], era.nations.at(-1)];
+    console.log(
+      `${era.label} (${era.from}–${era.to}): ${era.nations.length} nations; pools of ${Math.min(...sizes)}–${Math.max(...sizes)} (${short.length} under 26; ${era.nations.filter(n => n.keepers < 3).length} with fewer than 3 keepers); strongest ${first.name} ${first.strength}, weakest ${last.name} ${last.strength}`,
+    );
+    console.log(`  ${era.nations.map(n => n.name).join(', ')}`);
+    for (const n of era.nations)
+      for (const p of eraPool(catalog, era.id, n.name)) {
+        const key = personId(p);
+        if (!eras.has(key)) eras.set(key, new Set());
+        eras.get(key).add(era.id);
+      }
+  }
+  const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (const set of eras.values()) counts[set.size]++;
+  console.log(
+    `people in a pool: ${eras.size}; in 2+ eras: ${eras.size - counts[1]} (${counts
+      .map((n, i) => (n && i ? `${i} era${i > 1 ? 's' : ''}: ${n}` : ''))
+      .filter(Boolean)
+      .join(', ')})`,
+  );
+  const best = new Map(); // person → his best card in any pool or kept as a best version
+  for (const p of catalog.eras.byId.values())
+    if (!best.has(p.person) || shown(p) > shown(best.get(p.person))) best.set(p.person, p);
+  for (const p of catalog.eras.today.values())
+    if (!best.has(personId(p)) || shown(p) > shown(best.get(personId(p)))) best.set(personId(p), p);
+  console.log('all-time top 60:');
+  console.log(
+    [...best.values()]
+      .sort((a, b) => shown(b) - shown(a) || (b.year ?? 2026) - (a.year ?? 2026))
+      .slice(0, 60)
+      .map(p => `  ${line(p)} (${p.source.nationality})`)
+      .join('\n'),
+  );
+}

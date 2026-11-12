@@ -16,7 +16,13 @@ import {
   editionYear,
 } from '../app/core/players/legends.js';
 import { loadRuntimeCatalog, readLegends } from '../scripts/data/catalog-file.mjs';
-import { PATHS, LEGACY_SOURCE, LEGACY_TITLES } from '../scripts/data/paths.mjs';
+import {
+  PATHS,
+  LEGACY_SOURCE,
+  LEGACY_TITLES,
+  LEGACY_NAMES,
+  MODERN_SOURCES,
+} from '../scripts/data/paths.mjs';
 
 const text = readFileSync(PATHS.legends, 'utf8'),
   file = JSON.parse(text),
@@ -26,7 +32,7 @@ const text = readFileSync(PATHS.legends, 'utf8'),
 const shown = p => overallRating(p, true, p.primaryPosition);
 // A title comes out the autumn before its number: FIFA 98 in 1997, FIFA 2000 (0) in 1999.
 const releaseYear = edition => (edition >= 90 ? 1899 : 1999) + edition;
-const EDITION = /^ea:\d+:fc(9[89]|\d|1\d|2[0-3]):(legend|prime)$/;
+const EDITION = /^ea:\d+:fc(9[89]|\d|1\d|2[0-6]):(legend|prime)$/;
 
 test('the legends file is the pinned sources compiled for this catalog, and round-trips', () => {
   assert.equal(file.format, LEGENDS_FORMAT);
@@ -39,7 +45,18 @@ test('the legends file is the pinned sources compiled for this catalog, and roun
   assert.equal(file.source.older.sha256, LEGACY_TITLES.sha256);
   assert.equal(file.source.older.workbookSha256, LEGACY_TITLES.workbookSha256);
   assert.equal(file.source.older.titles, 17);
-  assert.equal(file.selection.olderRows, 17_000);
+  assert.equal(file.source.older.namesSha256, LEGACY_NAMES.sha256);
+  assert.ok(file.selection.olderRows > 60_000);
+  // FC 24, FC 25 and FC 26: each from its own pinned file, with its licence as stated.
+  assert.deepEqual(
+    file.source.modern.map(m => [m.edition, m.sha256, m.revision, m.license]),
+    MODERN_SOURCES.map(m => [m.edition, m.sha256, m.revision, m.license]),
+  );
+  for (const m of MODERN_SOURCES) assert.ok(m.url.includes(m.revision) && m.license);
+  assert.deepEqual(
+    file.source.modern.map(m => m.rows),
+    [18350, 16161, 18405],
+  );
   // Built against this catalog build, with today's configuration.
   assert.equal(file.catalog.players, catalog.players.length);
   assert.equal(file.catalog.ids, catalogIds(catalog));
@@ -48,16 +65,18 @@ test('the legends file is the pinned sources compiled for this catalog, and roun
   assert.deepEqual(file.attributeKeys, catalog.attributeKeys);
   // encode(decode(file)) is the file, byte for byte.
   assert.equal(JSON.stringify(encodeLegends(data)) + '\n', text);
-  // A lazily fetched file stays small: 26 titles of legends and every gain as a prime version
-  // are about 500 KB, 150 KB on the wire (it was 390 / 120 KB with FIFA 15–23 alone).
-  assert.ok(text.length < 560_000, 'raw: ' + text.length);
+  // A lazily fetched file stays small: 29 titles of legends and every gain as a prime version
+  // (FC 24–26 alone give 2,000 current players a better card) are about 800 KB, 240 KB on the
+  // wire.
+  assert.ok(text.length < 880_000, 'raw: ' + text.length);
   const gzip = gzipSync(Buffer.from(text), { level: 9 }).length;
-  assert.ok(gzip < 175_000, 'gzip: ' + gzip);
+  assert.ok(gzip < 260_000, 'gzip: ' + gzip);
 });
 
 test('legends are best past versions shown 85+: valid, catalog nations, the year of the ratings', () => {
   assert.equal(legends.length, data.legends.length);
   assert.equal(file.selection.legendMinimum, 85);
+  assert.equal(file.selection.legendGain, 2);
   const current = new Map(catalog.players.map(p => [p.profileId.split(':')[1], p])),
     badges = new Set(BADGES.map(b => b.id)),
     nations = new Set(catalog.nations.map(n => n.name)),
@@ -105,12 +124,12 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
       assert.equal(baseProfileId(p), p.profileId);
       continue;
     }
-    // A current player's best past version: the same person, better than his card today —
-    // however far apart the two are — and rated higher by EA then than now.
+    // A current player's best past version: the same person, at least two better than his
+    // card today, and rated higher by EA then than now.
     past++;
     assert.equal(p.legendOf, now.profileId);
     assert.equal(baseProfileId(p), now.profileId);
-    assert.ok(shown(p) > shown(now), `${p.name}: ${shown(p)} vs ${shown(now)} today`);
+    assert.ok(shown(p) >= shown(now) + 2, `${p.name}: ${shown(p)} vs ${shown(now)} today`);
     assert.ok(p.sourceOverall > now.sourceOverall, p.name);
     assert.deepEqual(
       [p.name, p.fullName, p.source.nationality],
@@ -130,9 +149,9 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
   assert.equal(new Set(legends.map(p => p.profileId.split(':')[1])).size, legends.length);
   // Best first, as shown; names everyone knows, at their best version.
   for (let i = 1; i < legends.length; i++) assert.ok(shown(legends[i - 1]) >= shown(legends[i]));
-  // From 1997 (FIFA 98) to 2022 (FIFA 23).
+  // From 1998 (FIFA 99) to 2025 (FC 26).
   const years = legends.map(p => p.year);
-  assert.deepEqual([Math.min(...years), Math.max(...years)], [1997, 2022]);
+  assert.deepEqual([Math.min(...years), Math.max(...years)], [1998, 2025]);
   // The great ones are the top cards of the game, above today's best: EA's own numbers for
   // Messi and Cristiano Ronaldo, the chain's for the years before FIFA 09.
   const card = (name, nation) =>
@@ -146,14 +165,14 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
   assert.deepEqual(facts(card('Neymar Jr', 'Brazil')).slice(0, 3), [92, 2019, 20]); // as printed
   assert.deepEqual(facts(card('Ronaldo', 'Brazil')), [94, 2003, 4, 'ST', 'Real Madrid']);
   assert.deepEqual(facts(card('Xavi', 'Spain')), [93, 2011, 12, 'CM', 'FC Barcelona']);
-  assert.deepEqual(facts(card('Ronaldinho', 'Brazil')), [92, 2005, 6, 'AM', 'FC Barcelona']);
-  assert.deepEqual(facts(card('Z. Zidane', 'France')), [92, 2003, 4, 'AM', 'Real Madrid']);
-  assert.deepEqual(facts(card('T. Henry', 'France')), [92, 2004, 5, 'ST', 'Arsenal']);
-  assert.deepEqual(facts(card('G. Buffon', 'Italy')).slice(0, 4), [93, 2007, 8, 'GK']);
+  assert.deepEqual(facts(card('Ronaldinho', 'Brazil')), [93, 2003, 4, 'AM', 'FC Barcelona']);
+  assert.deepEqual(facts(card('Z. Zidane', 'France')), [93, 2003, 4, 'AM', 'Real Madrid']);
+  assert.deepEqual(facts(card('T. Henry', 'France')), [91, 2004, 5, 'ST', 'Arsenal']);
+  assert.deepEqual(facts(card('G. Buffon', 'Italy')).slice(0, 4), [92, 2007, 8, 'GK']);
   assert.equal(shown(card('Kaká', 'Brazil')), 91); // FIFA 09 printed 90
   // The lift is for the top: it fades to nothing at 84, so it makes hardly anyone a legend.
   assert.match(file.selection.lift, /never lowered/);
-  assert.ok(legends.length > 395 && legends.length < 430, 'legends: ' + legends.length);
+  assert.ok(legends.length > 400 && legends.length < 460, 'legends: ' + legends.length);
   assert.ok(shown(card('P. Maldini', 'Italy')) >= 87);
   // Today's best card shows 92: Messi, Cristiano Ronaldo, Ronaldo, Xavi and Buffon stand above
   // it, Zidane, Ronaldinho and Henry beside it.
@@ -234,13 +253,13 @@ test('prime versions: a catalog player at his best past version, any gain, ident
   assert.equal(editionLabel({ edition: 0, year: 1999 }), '’99');
   // Two digits tell every year of the data apart.
   const labels = [];
-  for (let year = 1997; year <= 2022; year++) labels.push(editionLabel({ year }));
-  assert.equal(new Set(labels).size, 26);
+  for (let year = 1997; year <= 2026; year++) labels.push(editionLabel({ year }));
+  assert.equal(new Set(labels).size, 30);
   // A player at his best today has none.
   assert.equal(
     primeVersion(
       catalog,
-      catalog.players.find(p => p.name === 'L. Yamal'),
+      catalog.players.find(p => p.name === 'Lamine Yamal'),
     ),
     null,
   );

@@ -10,12 +10,15 @@ title's source file, ranking basis and skill scale, and the ReadMe's source link
 `npm run data:build` then needs neither Python nor the workbook.
 
 Which rows: squad players only (record_status "Assigned to team": the unassigned records of
-the career pools are invented players), and of those, per title and nationality, the first
-PER_NATION outfielders and PER_NATION_KEEPERS goalkeepers in the workbook's order (its own
-ranking) -- what a nation's era pool of 26, a legend or a prime version can use, with room for
-the compiler rating them in another order. FIFA 2004 has no nationality column: its rows are
-grouped by the nationality the same player id has in FIFA 06, 2005 or 07, and the rest by the
-last team named (a national team, where he has one). This grouping only chooses rows.
+the career pools are invented players). FIFA 98-2003 are kept whole: their scales are too
+coarse for the workbook's ranking to say who a nation's best are, and the compiler rates a
+player of those years only with his rows in the neighbouring titles. Of FIFA 2004-14, per title
+and nationality, the first PER_NATION outfielders and PER_NATION_KEEPERS goalkeepers in the
+workbook's order (its own ranking) -- what a nation's era pool of 26, a legend or a prime
+version can use, with room for the compiler rating them in another order. FIFA 2004 has no
+nationality column: its rows are grouped by the nationality the same player id has in FIFA 06,
+2005 or 07, and the rest are one group of their own (UNKNOWN_NATION rows). This grouping only
+chooses rows.
 
     python3 -I tools/research/legacy-titles.py <ratings.xlsb> data/legacy-titles.json
 
@@ -44,6 +47,8 @@ YEAR = lambda edition: (1899 if edition >= 90 else 1999) + edition
 HEADER_ROW = 6  # the header is the sixth row of every title sheet
 PER_NATION = 36
 PER_NATION_KEEPERS = 4
+UNKNOWN_NATION = 400  # FIFA 2004 rows whose nationality no neighbouring title has
+WHOLE = {98, 99, 0, 1, 2, 3}  # the coarse titles: every squad player
 SQUAD = 'Assigned to team'
 NATIONALITY = ['nationality_name', 'nationality', 'nationality_code']
 
@@ -154,7 +159,7 @@ def main(source, output):
             found = lookups[other].get(playerid)
             if found is not None:
                 return f'{other}:{found}'
-        return 'team:' + str(row[header.index('teams')]).split(' / ')[-1]
+        return None
 
     out = [
         '{"format":"football-draft-legacy-titles","version":2,',
@@ -164,9 +169,9 @@ def main(source, output):
             'description': prepared,
             'archive': links[0]['url'],
             'references': links,
-            'note': f'Squad players ("{SQUAD}") of each title: per nationality the first '
-                    f'{PER_NATION} outfielders and {PER_NATION_KEEPERS} goalkeepers in the '
-                    'workbook\'s order (its own ranking: the stored overall for FIFA 09-14, a '
+            'note': f'Squad players ("{SQUAD}") of each title: FIFA 98-2003 whole; of FIFA '
+                    f'2004-14 per nationality the first {PER_NATION} outfielders and '
+                    f'{PER_NATION_KEEPERS} goalkeepers in the workbook\'s order (its own ranking: the stored overall for FIFA 09-14, a '
                     'position-weighted estimate before). Values are the workbook\'s, unchanged '
                     '(a date of birth stored as an Excel day number is written as ISO text).',
         }) + ',',
@@ -181,12 +186,16 @@ def main(source, output):
         squad = [row for row in body if row[status] == SQUAD]
         counts, chosen = {}, []
         for row in squad:
-            key = group_key(title, header, row)
-            count = counts.setdefault(key, [0, 0])
-            keeper = row[position] == 'GK'
-            if count[keeper] >= (PER_NATION_KEEPERS if keeper else PER_NATION):
-                continue
-            count[keeper] += 1
+            if edition not in WHOLE:
+                key = group_key(title, header, row)
+                count = counts.setdefault(key, [0, 0])
+                keeper = row[position] == 'GK'
+                limit = PER_NATION_KEEPERS if keeper else PER_NATION
+                if key is None:
+                    keeper, limit = 0, UNKNOWN_NATION
+                if count[keeper] >= limit:
+                    continue
+                count[keeper] += 1
             if born is not None and isinstance(row[born], int):
                 row = list(row)
                 row[born] = (EXCEL_DAY_ZERO + datetime.timedelta(days=row[born])).isoformat()

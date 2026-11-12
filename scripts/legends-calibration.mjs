@@ -160,7 +160,24 @@ const nameKeys = p => {
 const shareTeam = (p, q) =>
   p.clubIds.some((id, i) => id != null && q.clubIds.includes(id)) ||
   p.clubs.some(a => q.clubs.some(b => sameTeam(teamWords(a), teamWords(b))));
+// The year a row says its player was born: his date of birth (FIFA 2004 on), else from his
+// age — FIFA 2002 counts it in 2000, FIFA 2003 in 2003 (measured on the players both share
+// with FIFA 2004) — or null. Two rows more than a year apart there are two men, whatever their
+// names: EA reused ids.
+const AGE_YEAR = { 2: 2000, 3: 2003 };
+const birthYear = p =>
+  p.born
+    ? Number(p.born.slice(0, 4))
+    : Number.isFinite(p.age) && p.age > 0 && AGE_YEAR[p.edition]
+      ? AGE_YEAR[p.edition] - p.age
+      : null;
+const agesClash = (p, q) => {
+  const a = birthYear(p),
+    b = birthYear(q);
+  return a != null && b != null && Math.abs(a - b) > 1;
+};
 const sameMan = (p, q) => {
+  if (agesClash(p, q)) return false;
   if (p.standIn !== q.standIn) return p.standIn ? standsFor(p, q) : standsFor(q, p);
   if (p.born && q.born && p.born === q.born) return true;
   const a = nameWords(p);
@@ -194,7 +211,7 @@ export function linkPersons(titles) {
   for (const t of titles)
     for (const p of t.players) {
       p.person = null;
-      if (p.representativeOnly) continue;
+      if (p.representativeOnly || p.otherMan) continue;
       const map = byId[era(t)];
       if (!map.has(p.id)) map.set(p.id, []);
       map.get(p.id).push(p);
@@ -260,6 +277,7 @@ export function linkPersons(titles) {
             b.rows.some(q => Math.abs(p.year - q.year) <= 2 && together(p, q)),
           );
         if (!apart || !near || (dated && !born(a, b))) continue;
+        if (a.rows.some(p => b.rows.some(q => agesClash(p, q)))) continue;
         const [keep, gone] = a.rows.at(-1).year >= b.rows.at(-1).year ? [a, b] : [b, a];
         keep.rows = [...keep.rows, ...gone.rows].sort((p, q) => p.year - q.year);
         for (const p of keep.rows) p.person = keep;
@@ -526,6 +544,10 @@ export function calibrateLink(title, next, yardstick, read) {
         slope: (sd(y) * yardstick[kind].spread) / sd(x),
         at: avg(x),
         to: avg(y) - yardstick[kind].drift,
+        // A coarse keeper scale (two skills of eight levels, or none at all) has the best and
+        // the merely good on its top level: it says no more than the best the next title gives
+        // the keepers they share.
+        top: coarse && kind === 'keepers' ? Math.max(...y) : Infinity,
       };
     link[name] = {
       shared: pairs.length,
@@ -552,7 +574,7 @@ export function calibrateLink(title, next, yardstick, read) {
   for (const p of players) {
     const line = lines[groupOf(p.positions[0])];
     if (!line) continue;
-    p.scale = line.to + line.slope * (p.reading - line.at);
+    p.scale = Math.min(line.top, line.to + line.slope * (p.reading - line.at));
     if (!coarse) p.given = p.scale;
   }
   return link;
