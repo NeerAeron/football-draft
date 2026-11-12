@@ -7,7 +7,27 @@ import { compilePlayer, parseCSV, COMPILER_VERSION, SOURCE_URL } from './compile
 import { ATTRS } from '../app/core/players/ratings.js';
 import { PATHS } from './data/paths.mjs';
 
-export function compileLeagueCatalog(rows, reference, hash = null) {
+/**
+ * The reviewed Captain list (data/captains.json) → Map(sofifa id → entry) of its first `size`
+ * players. Every entry of the list must be a catalog player with that name and nation: a wrong
+ * id fails the build.
+ */
+export function captainIds(captains, players) {
+  const byId = new Map(players.map(p => [String(p.sourcePlayerId), p])),
+    ids = new Map();
+  const size = captains?.size ?? Infinity;
+  for (const [i, c] of (captains?.players || []).entries()) {
+    const p = byId.get(String(c.sofifaId));
+    if (!p) throw Error(`Captain ${c.name} (${c.sofifaId}) is not in the catalog`);
+    if (p.source.nationality !== c.nation)
+      throw Error(`Captain ${c.name}: nation ${p.source.nationality}, expected ${c.nation}`);
+    if (c.sourceName !== p.name)
+      throw Error(`Captain ${c.name}: the source calls ${c.sofifaId} "${p.name}"`);
+    if (i < size) ids.set(String(c.sofifaId), c);
+  }
+  return ids;
+}
+export function compileLeagueCatalog(rows, reference, hash = null, captains = null) {
   const seen = new Set();
   for (const row of rows) {
     if (seen.has(row.player_id)) throw Error(`Duplicate ${row.player_id}`);
@@ -38,6 +58,8 @@ export function compileLeagueCatalog(rows, reference, hash = null) {
     p.source.sha256 = hash;
     return p;
   });
+  for (const id of captainIds(captains, players).keys())
+    players.find(p => String(p.sourcePlayerId) === id).captain = true;
   const colors = new Map(reference.colors.map(c => [String(c.id), c])),
     ratings = new Map(reference.clubs.map(c => [String(c.sourceTeamId), c]));
   const clubs = new Map();
@@ -78,6 +100,13 @@ export function compileLeagueCatalog(rows, reference, hash = null) {
       asOf: reference.rosterDate,
       optaAsOf: reference.optaDate,
     },
+    captains: captains
+      ? {
+          rule: 'Reviewed list of real national-team captains (data/captains.json)',
+          asOf: captains.asOf,
+          size: Math.min(captains.size ?? Infinity, captains.players.length),
+        }
+      : null,
     selection: {
       sourceRows: rows.length,
       policy:
@@ -100,11 +129,13 @@ async function main() {
   if (!csv || !referencePath || !output)
     throw Error('Usage: compile-league-catalog.mjs CSV REFERENCE OUTPUT [RUNTIME_OUTPUT]');
   const bytes = await readFile(csv),
-    reference = JSON.parse(await readFile(referencePath, 'utf8'));
+    reference = JSON.parse(await readFile(referencePath, 'utf8')),
+    captains = JSON.parse(await readFile(PATHS.captains, 'utf8'));
   const catalog = compileLeagueCatalog(
     parseCSV(bytes.toString('utf8')),
     reference,
     createHash('sha256').update(bytes).digest('hex'),
+    captains,
   );
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, JSON.stringify(catalog) + '\n');

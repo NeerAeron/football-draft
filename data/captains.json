@@ -1,0 +1,188 @@
+{
+  "description": "Reviewed Captain list (compiler input, scripts/compile-league-catalog.mjs): real national-team captains, current players only, ranked leaders first. The compiler tags the first `size` players as Captain (catalog `captain: true`) and fails when an id, source name or nation does not match the catalog. `sofifaId` is the player_id of the source data (profileId ea:<id>:fc26:…). `size` is cut so that about one drafted World Cup XI in three has a captain (tools/calibration/draft-baselines.mjs --captains).",
+  "asOf": "2026-11-12",
+  "squadsSource": "https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_squads",
+  "size": 10,
+  "players": [
+    {
+      "rank": 1,
+      "name": "Virgil van Dijk",
+      "sourceName": "V. van Dijk",
+      "sofifaId": 203376,
+      "nation": "Netherlands",
+      "source": "https://nos.nl/artikel/2524636-vice-aanvoerder-ake-steekt-voelsprieten-uit-kleine-irritaties-kunnen-ontstaan",
+      "reason": "Netherlands captain at the 2026 World Cup (started every match with the armband), the squad's undisputed leader."
+    },
+    {
+      "rank": 2,
+      "name": "Joshua Kimmich",
+      "sourceName": "J. Kimmich",
+      "sofifaId": 212622,
+      "nation": "Germany",
+      "source": "https://www.sport1.de/news/fussball/dfb-team/2024/09/mit-kimmich-an-der-spitze-beim-dfb-bricht-eine-neue-ara-an",
+      "reason": "Germany captain since September 2024 (named by Nagelsmann), captain at the 2026 World Cup."
+    },
+    {
+      "rank": 3,
+      "name": "Luka Modrić",
+      "sourceName": "L. Modrić",
+      "sofifaId": 177003,
+      "nation": "Croatia",
+      "source": "https://glashrvatske.hrt.hr/en/sports/luka-modric-set-for-historic-200th-cap-for-croatia-against-panama-12778386",
+      "reason": "Croatia captain at his fifth World Cup, 200 caps."
+    },
+    {
+      "rank": 4,
+      "name": "Harry Kane",
+      "sourceName": "H. Kane",
+      "sofifaId": 202126,
+      "nation": "England",
+      "source": "https://www.sportsmole.co.uk/football/england/world-cup/news/tuchel-confirms-england-vice-captain-for-2026-world-cup_598821.html",
+      "reason": "England captain since 2018, captain at the 2026 World Cup."
+    },
+    {
+      "rank": 5,
+      "name": "Lionel Messi",
+      "sourceName": "L. Messi",
+      "sofifaId": 158023,
+      "nation": "Argentina",
+      "source": "https://eleconomista.com.ar/deportes/todos-jugadores-capitanes-seleccion-argentina-era-scaloni-n98523",
+      "reason": "Argentina captain for over a decade, captain of the 2026 World Cup finalists."
+    },
+    {
+      "rank": 6,
+      "name": "Son Heung-min",
+      "sourceName": "H. Son",
+      "sofifaId": 200104,
+      "nation": "Korea Republic",
+      "source": "https://citizen.digital/article/south-korea-boss-backs-son-as-captain-after-rift-rumours-n392964",
+      "reason": "Korea Republic captain since 2018, captain at his fourth World Cup."
+    },
+    {
+      "rank": 7,
+      "name": "Marquinhos",
+      "sourceName": "Marquinhos",
+      "sofifaId": 207865,
+      "nation": "Brazil",
+      "source": "https://foot-africa.com/en/news/brazil-ancelotti-names-the-captain-for-the-2026-world-cup-1225459/",
+      "reason": "Named Brazil captain for the 2026 World Cup by Ancelotti; started every logged match with the armband."
+    },
+    {
+      "rank": 8,
+      "name": "Granit Xhaka",
+      "sourceName": "G. Xhaka",
+      "sofifaId": 199503,
+      "nation": "Switzerland",
+      "source": "https://thepeninsulaqatar.com/article/20/05/2026/veteran-midfielder-xhaka-to-lead-switzerland-at-world-cup",
+      "reason": "Switzerland captain and record cap holder, led the side at a fourth straight World Cup."
+    },
+    {
+      "rank": 9,
+      "name": "Kalidou Koulibaly",
+      "sourceName": "K. Koulibaly",
+      "sofifaId": 201024,
+      "nation": "Senegal",
+      "source": "https://fr.allafrica.com/stories/202605210452.html",
+      "reason": "Senegal captain, captain of the 2021 Africa Cup of Nations winners and at the 2026 World Cup."
+    },
+    {
+      "rank": 10,
+      "name": "Andy Robertson",
+      "sourceName": "A. Robertson",
+      "sofifaId": 216267,
+      "nation": "Scotland",
+      "source": "https://www.uefa.com/european-qualifiers/news/02a6-20d159741fe9-a2a8fac9839d-1000--scotland-at-the-world-cup-2026-squad-fixtures-group-and-hi/",
+      "reason": "Scotland captain since 2018, captain at the 2026 World Cup."
+    },
+    {
+      "rank": 11,
+      "name": "Rodri",
+      "sourceName": "Rodri",
+      "sofifaId": 231866,
+      "nation": "Spain",
+      "source": "https://www.elgoldigital.com/futbol/seleccion-espana/rodri-entrevista-mundial-2026-capitan-seleccion-espanola/",
+      "reason": "Spain captain at the 2026 World Cup (finalists), started all seven matches with the armband."
+    },
+    {
+      "rank": 12,
+      "name": "Cristiano Ronaldo",
+      "sourceName": "Cristiano Ronaldo",
+      "sofifaId": 20801,
+      "nation": "Portugal",
+      "source": "https://www.flashscore.es/noticias/futebol-campeonato-do-mundo-mundial-2026-cristiano-ronaldo-lidera-portugal-pela-sexta-vez/xWWsC1M5/",
+      "reason": "Portugal captain at his sixth World Cup."
+    },
+    {
+      "rank": 13,
+      "name": "Martin Ødegaard",
+      "sourceName": "M. Ødegaard",
+      "sofifaId": 222665,
+      "nation": "Norway",
+      "source": "https://www.dagbladet.no/sport/moter-pressen/84763654",
+      "reason": "Norway captain since 2021, led the side to the 2026 World Cup quarter-final."
+    },
+    {
+      "rank": 14,
+      "name": "Pierre-Emile Højbjerg",
+      "sourceName": "P. Højbjerg",
+      "sofifaId": 213648,
+      "nation": "Denmark",
+      "source": "https://www.sn.dk/art6653062/koebenhavn-kommune/sport/riemer-spreder-lederansvaret-paa-fodboldlandsholdet/",
+      "reason": "Denmark captain under Brian Riemer."
+    },
+    {
+      "rank": 15,
+      "name": "Mohamed Salah",
+      "sourceName": "M. Salah",
+      "sofifaId": 209331,
+      "nation": "Egypt",
+      "source": "https://www.aljazeera.com/sports/2026/5/21/mohamed-salah-to-captain-egypt-as-squad-announced-for-fifa-world-cup-2026",
+      "reason": "Egypt captain at the 2026 World Cup."
+    },
+    {
+      "rank": 16,
+      "name": "Achraf Hakimi",
+      "sourceName": "A. Hakimi",
+      "sofifaId": 235212,
+      "nation": "Morocco",
+      "source": "https://www.moroccoworldnews.com/2025/05/199801/regragui-hakimi-will-captain-morocco-in-next-afcon/",
+      "reason": "Morocco captain since May 2025, captain at the 2026 World Cup."
+    },
+    {
+      "rank": 17,
+      "name": "Jan Oblak",
+      "sourceName": "J. Oblak",
+      "sofifaId": 200389,
+      "nation": "Slovenia",
+      "source": "https://siol.net/sportal/nogomet/jan-oblak-odkrito-spregovoril-o-reprezentancni-in-klubski-prihodnosti-693141",
+      "reason": "Long-time Slovenia captain."
+    },
+    {
+      "rank": 18,
+      "name": "Hakan Çalhanoğlu",
+      "sourceName": "H. Çalhanoğlu",
+      "sofifaId": 208128,
+      "nation": "Türkiye",
+      "source": "https://www.dailysabah.com/sports/football/turkiye-unveil-26-player-squad-for-historic-2026-world-cup-return",
+      "reason": "Türkiye captain at the 2026 World Cup."
+    },
+    {
+      "rank": 19,
+      "name": "Robert Lewandowski",
+      "sourceName": "R. Lewandowski",
+      "sofifaId": 188545,
+      "nation": "Poland",
+      "source": "https://www.polskieradio.pl/395/7790/Artykul/3571953,football-lewandowski-back-as-captain-as-poland-boss-names-squad-for-world-cup-qualifiers",
+      "reason": "Poland captain, reinstated by Jan Urban in 2025."
+    },
+    {
+      "rank": 20,
+      "name": "Edin Džeko",
+      "sourceName": "E. Džeko",
+      "sofifaId": 180930,
+      "nation": "Bosnia and Herzegovina",
+      "source": "https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/bosnia-veteran-dzeko-relishing-responsibility-of-world-cup-captaincy-2026-06-09",
+      "reason": "Bosnia and Herzegovina captain at the 2026 World Cup, record caps and goals."
+    }
+  ]
+}

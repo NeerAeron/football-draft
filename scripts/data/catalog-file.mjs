@@ -4,6 +4,8 @@
 import { readFileSync } from 'node:fs';
 import { decodeCatalog, indexCatalog } from '../../app/core/players/catalog-codec.js';
 import { reconcileCatalog } from '../../app/core/players/catalog-derived.js';
+import { decodeLegends } from '../../app/core/players/legends-codec.js';
+import { attachLegends } from '../../app/core/players/legends.js';
 import { PATHS } from './paths.mjs';
 
 let text = null;
@@ -14,4 +16,17 @@ export function readCatalogFile(path = PATHS.catalog) {
 }
 export function loadRuntimeCatalog(path = PATHS.catalog) {
   return indexCatalog(reconcileCatalog(decodeCatalog(readCatalogFile(path))));
+}
+let legendsText = null;
+/** The decoded legends file (app/data/legends.v1.json): { legends, primes, … }. */
+export function readLegends() {
+  legendsText ??= readFileSync(PATHS.legends, 'utf8');
+  return decodeLegends(JSON.parse(legendsText));
+}
+/**
+ * The catalog with Legends and Prime versions attached (`catalog.legends`), as the game has it
+ * once a draft starts (services/legends.js).
+ */
+export function loadLegendCatalog() {
+  return attachLegends(loadRuntimeCatalog(), readLegends());
 }
