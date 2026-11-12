@@ -38,12 +38,13 @@ available when only the GK slot is left. All numbers live in `CONFIG.draft` (`na
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
 
-**Wildcard nations.** A nation spin lands on the 48-nation field (pots 1–4) or on a wildcard
-(pot 5, `index.spinField`): a nation outside the field with at least one player rated
+**The nation reel.** A nation spin lands on any of 63 nations, all equally likely and shown as
+one pool (`index.spinField`): the 48-nation field (`index.field`, whose pots 1–4 are used only
+for the World Cup draw) plus every other nation with at least one player rated
 `nations.wildcardStar` (80) and `wildcardPlayers` (9) players — Nigeria, Algeria, DR Congo,
 Kosovo, Guinea, Venezuela, Finland, Tunisia, Saudi Arabia, Iceland, Burkina Faso, New Zealand,
-Egypt, Gabon, Armenia. They are spun, never met as opponents (most have no two keepers in the
-data, which is why they are not in the field).
+Egypt, Gabon, Armenia. Those 15 are spun but never met as opponents: most have fewer than two
+keepers in the data and cannot field a team.
 
 ## Flow
 
