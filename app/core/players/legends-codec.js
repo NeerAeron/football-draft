@@ -158,6 +158,13 @@ export function encodeLegends(data) {
 
 /** The players of a table written by encodeTable. */
 export function decodeTable(file, table, kind, extra) {
+  const steps = decodeTableSteps(file, table, kind, extra);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/** decodeTable as a step-wise generator: yields every `chunk` players, returns them all. */
+export function* decodeTableSteps(file, table, kind, extra, chunk = 200) {
   const n = table.count,
     K = file.attributeKeys.length,
     T = file.tendencyKeys.length,
@@ -166,6 +173,7 @@ export function decodeTable(file, table, kind, extra) {
   const players = new Array(n);
   let evidenceIndex = 0;
   for (let i = 0; i < n; i++) {
+    if (i && i % chunk === 0) yield i;
     const attrs = {},
       tendencies = {};
     for (let k = 0; k < K; k++) attrs[file.attributeKeys[k]] = table.attrs[k * n + i];

@@ -98,15 +98,15 @@ field an XI any more: the ladder draws another opponent, the World Cup draw the 
 Budget — not Quick Match, Versus or the Daily). The side's first spin lands on a nation with a
 legend and offers that nation's legends; the other ten spins are ordinary. Legends are the
 players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
-**best past versions (26 titles, FIFA 98–23: the ratings of 1997–2022) the game shows at
-`legends.minimum` (85) or more** — the rating on the card. Two kinds, 411 in all:
+**best past versions (29 titles, FIFA 98 – FC 26: the ratings of 1997–2025) the game shows at
+`legends.minimum` (85) or more** — the rating on the card. Two kinds, 431 in all:
 
-- 318 **players of the past**, who are not in the catalog (Ronaldo ’03 94, Xavi ’11 and
-  Buffon ’07 93, Zidane ’03, Ronaldinho ’05 and Henry ’04 92, Neymar ’19 92, Kaká ’08 91);
-- 93 **current players at their best** (`legendOf` = the catalog player's `profileId`): a
-  catalog player's best version when it shows 85+ and more than his card today, however far
-  apart the two are (Messi ’15 95 for 89 today; Neuer ’17 92 for 81). A player whose card
-  today is his best is just a normal pick.
+- 307 **players of the past**, who are not in the catalog (Ronaldo ’03 94, Xavi ’11, Zidane
+  ’03 and Ronaldinho ’03 93, Buffon ’07 and Neymar ’19 92, Henry ’04 and Kaká ’08 91);
+- 124 **current players at their best** (`legendOf` = the catalog player's `profileId`): a
+  catalog player's best version when it shows 85+ and **at least 2 more than his card today**
+  (Messi ’15 95 for 89 today; Neuer ’17 92 for 81; Salah ’25 91). A gain of one point is a
+  prime version only; a player whose card today is his best is just a normal pick.
 
 **What a past version is rated** (the compiler, `scripts/legends-calibration.mjs`): its overall
 on EA's modern scale, which its card then shows — the skills are those of its year, all moved
@@ -166,9 +166,9 @@ Rules in `CONFIG.draft.legends`:
   (FIFA 98–14: the launch databases; FIFA 98 → 1997, FIFA 2000 → 1999). Release ratings are
   dated the autumn before the number (FIFA 19: 2018 — every version in the data is one), the
   last ratings of a cycle the year of the number. `editionYear(p)` / `editionLabel(p)` read it;
-  the UI shows "’18" or "’97", never the edition (two digits tell 1997–2022 apart);
+  the UI shows "’18" or "’97", never the edition (two digits tell 1997–2026 apart);
 - `snapshot().legendYears` is `[first, last]` year of the legends' versions (`[1997, 2022]`;
-  `legendIndex().years`): the Legend spin's one line, "Best versions, 1997–2022".
+  `legendIndex().years`): the Legend spin's one line, "Best versions, 1998–2025".
 
 A legend is a club mate through the club of that edition when the catalog has it (401 of the
 411: EA's team id; the early titles name their clubs, matched by name) and a nation mate like
@@ -209,8 +209,11 @@ position }` on pool entries and slot players who have one (a legend version has 
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home), attached to the catalog like the legends. Everything below is synchronous and
-pure once attached.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,300
+cards, 2.4 MB, 0.70 MB gzip / 0.56 MB brotli), attached to the catalog like the legends.
+Everything below is synchronous and pure once attached. In Node: `attachEras(await
+loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
+`node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
 
 ```js
 import {
@@ -249,7 +252,7 @@ ratings (a title's launch ratings: the year before its number).
   players in the pool (≤ 26), `keepers` = how many are goalkeepers.
 - `eraNations(catalog, eraId)` → that era's `nations` array (`[]` for an unknown era).
 - `eraPool(catalog, eraId, nation)` → the pool: an array of ≤ 26 players, best first (shown
-  rating, then the later year, then the id), **the same array every call** (do not mutate);
+  rating, then the later year, then the id), **the same frozen array every call**;
   `[]` when the nation is not spinnable in that era. No minimum rating. Balance where the data
   has the players: 3 keepers, at least 7 defenders, 7 midfielders and 4 forwards (lines as
   `LINE_OF` in `draft/pools.js`), the rest by rating.
@@ -300,11 +303,41 @@ past card. The card may come from an era in which he is not in his nation's 26 (
 the file for this). Swap it in place of the drafted player: same person, its own positions,
 attributes, badges, club and year (`editionLabel(card)` → "’05").
 
-**Which nations can be spun in an era** (decided by the compiler, recorded in the file's
-`selection`): a nation whose pool has at least 18 players with a goalkeeper, at least 5
-defenders, 5 midfielders and 2 forwards; if more than 70 qualify, the 70 strongest; an era
-needs at least 20. Counts per era are in `docs/draft-api.md`'s table below once measured and
-in `data/build/eras.json` (provenance, gitignored).
+**Which nations can be spun in an era** (decided by the compiler, `ERA_SPIN` in
+`scripts/compile-legends.mjs`, recorded in the file's `selection`): a nation whose pool has at
+least 18 players with a goalkeeper, at least 5 defenders, 5 midfielders and 2 forwards (counted
+before a second striker is settled as a striker or a No. 10: a pool can end with 4 midfielders
+or 1 forward); if more than 70 qualify, the 70 strongest; an era needs at least 20 (the build
+fails otherwise). As built:
+
+| era | nations | pools under 26 | fewer than 3 keepers | strongest | weakest |
+| --- | --- | --- | --- | --- | --- |
+| France 98 | 27 | 8 (18–25) | 6 | England 82.6 | Hungary 71.1 |
+| Korea/Japan 02 | 53 | 6 | 15 | Brazil 86.8 | Lithuania 70.5 |
+| Germany 06 | 61 | 3 | 12 | Brazil 89.7 | China PR 71.0 |
+| South Africa 10 | 65 | 7 | 16 | Brazil 88.5 | New Zealand 66.5 |
+| Brazil 14 | 70 of 81 | 1 | 13 | Spain 89.3 | Gabon 71.3 |
+| Russia 18 | 70 of 90 | 1 | 5 | Spain 88.5 | Bulgaria 73.9 |
+| Qatar 22 | 70 of 92 | 0 | 4 | France 87.9 | Tunisia 74.5 |
+| 2026 | 70 of 92 | 1 | 5 | France 88.4 | Iran 73.7 |
+
+Things a draft should know about the data:
+
+- **The early eras are lower at the top.** FIFA 98–2003 have coarse scales (8–16 levels): a
+  card of those years is rated by what the titles within three years say about the player
+  together with the title's average, so it stays nearer the average — Zidane ’98 is 88,
+  Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
+  described 2003–04 versions) is where those players reach 90+. A reel that weighs by
+  `strength` will favour later eras unless it weighs inside an era.
+- **France 98 is thin**: 27 nations, no Brazil-size depth outside Europe and Argentina/Brazil
+  (FIFA 98/99 use their own player ids: a player counts only when FIFA 2000–03 know him by
+  name and team). Japan, Mexico, the United States or Nigeria of 1998 are not spinnable.
+- A pool can have 1 or 2 keepers (never 0), and as few as 18 players.
+- 7,232 people are in a pool; 3,405 of them in two or more eras (Messi in six). 594 best
+  versions are kept outside the pools for the Prime.
+- Era cards and `catalog.legends` are separate objects for the same men (a legend's id ends
+  in `:legend`, an era card's in `:era`): do not mix the two systems in one XI without
+  comparing `personId`.
 
 `catalog.legends` (Legend spin) and its primes keep working unchanged until the draft stops
 using them; the era file does not depend on the legends file.

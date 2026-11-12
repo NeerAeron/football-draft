@@ -1,6 +1,8 @@
-// Legends and Prime versions from 26 past titles: FIFA 15–23 (the legacy CSV) and FIFA 98–14
-// (data/legacy-titles.json), compiled through the same compiler as the current players
-// (compilePlayer: attribute mapping, tendencies, badges).
+// Legends, Prime versions and era pools from 29 past titles: FIFA 15–23 (the legacy CSV),
+// FIFA 98–14 (data/legacy-titles.json) and FC 24–26 (scripts/data/modern-titles.mjs), compiled
+// through the same compiler as the current players (compilePlayer: attribute mapping,
+// tendencies, badges). Era pools ("nation X in era Y", app/data/eras.v1.json): see the `eras`
+// section of compileLegends and the ERA_* rules.
 //   * A past version has an overall on EA's modern scale: the one EA printed (FIFA 09–23), or
 //     for the titles that printed none (FIFA 98–08) the one the chain of shared players gives
 //     it (scripts/legends-calibration.mjs). Its card has the skills of that year, moved
@@ -16,6 +18,7 @@
 //       – a player who is NOT in the current catalog, or
 //       – a catalog player whose card today shows at least LEGEND_GAIN (2) less and whom EA
 //         rates lower today (`legendOf` = his catalog profileId).
+//     FC 24–26 are today's scale: as printed, never lifted.
 //     He has today's name of his nation and the positions of that title, and its club when
 //     that club is in the catalog (EA's team id), so he links with club mates; otherwise he
 //     has no club. A catalog player's legend carries his catalog name.

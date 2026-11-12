@@ -66,6 +66,8 @@ app/                     served statically (deploy = publish this folder); runti
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
   data/catalog.v3.json   compiled columnar catalog (decode via services/catalog.js)
   data/legends.v1.json   Legends + Prime versions, fetched when a World Cup draft starts (services/legends.js)
+  data/eras.v1.json      era pools: per World Cup cycle and nation its best 26, each at his best
+                         version of those years (services/eras.js; core/players/eras.js)
   assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
@@ -141,9 +143,15 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `indexCatalog`), `catalog-derived.js` (precomputed badges/club data, `reconcileCatalog`),
   `legends-codec.js` + `legends.js` (Legends and Prime versions: `attachLegends` puts them on
   `catalog.legends` — never in `catalog.players`; `legendPlayer`, `primeVersion`,
-  `baseProfileId`, `editionLabel`: the UI shows the year of that version's ratings (1997–2022)
+  `baseProfileId`, `editionLabel`: the UI shows the year of that version's ratings (1997–2025)
   — stored with it, never the edition; a legend can be a catalog player's best past version,
-  `legendOf`).
+  `legendOf`, when it shows at least 2 more than today's card), `eras-codec.js` + `eras.js`
+  (era pools for the two-spinner draft: `ERAS` (eight World Cup cycles, 1998 … 2026),
+  `attachEras` puts them on `catalog.eras`, `eraList` (an era's spinnable nations and their
+  strength), `eraPool(catalog, eraId, nation)` (≤ 26, best first), `eraPlayer`, `personId` (one
+  man on all his cards), `personVersions`, `bestVersion` (the Prime: his best card of all
+  titles); step-wise `decodeErasSteps` / `attachErasSteps` for the browser — contract in
+  `docs/draft-api.md` "Eras").
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
   re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
   draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
@@ -288,33 +296,65 @@ Second source (Legends, Prime versions): jsulz/FIFA23 on Hugging Face, `male_pla
 `13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`; pinned in
 `scripts/data/paths.mjs`). `player_id` is the same EA id as the catalog's `profileId`.
 
-Third source (Legends back to 1997): `data/legacy-titles.json` (2.7 MB, in the repository, SHA-256
-pinned as `LEGACY_TITLES` in `scripts/data/paths.mjs`) — the top 1,000 squad players of each of
-FIFA 98 … FIFA 14, extracted from the games' own PC databases (soccergaming.com archive,
+Third source (1997–2013): `data/legacy-titles.json` (7.8 MB, in the repository, SHA-256 pinned
+as `LEGACY_TITLES` in `scripts/data/paths.mjs`) — the squad players of FIFA 98 … FIFA 14,
+extracted from the games' own PC databases (soccergaming.com archive,
 `https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/`; no licence
-stated, player data © Electronic Arts). It is a column-for-column copy of the owner's workbook
-`legends-98-14.xlsx` (SHA-256 `b49592c70e29b71af9d68d6fc53a108ac054473a425dde1ccf1875d7f625de2a`,
-not in the repository), made by `tools/research/legacy-titles.py` — values unchanged; the
-workbook's hash, each title's source file and scale and the ReadMe's links are recorded in it.
-FIFA 2000–14 use EA's player ids, FIFA 98/99 their own (joined by name and team); FIFA 09–14
-store an overall, the older titles do not; FIFA 98–2003 have coarse scales (8–16 levels) and
-8–17 skills, often surnames only. `scripts/data/legacy-titles.mjs` decodes it (positions,
-feet, which skill stands for a missing one, classic/all-star squads, stand-in names).
+stated, player data © Electronic Arts): FIFA 98–2003 whole (their coarse ranking cannot say who
+a nation's best are, and a player of those years is rated only with his rows in the titles
+around), of FIFA 2004–14 per nationality the first 36 outfielders and 4 keepers of the
+workbook's ranking — 70,609 rows. It is a copy of the columns the compiler reads out of the
+owner's workbook `ratings.xlsb` ("FIFA 98–14 lean workbook — 10,000 players maximum per
+title", SHA-256 `86f65a735c150a350fc60b7f6e1355f9a05b53ed9f53bb05149debcc7e796779`, not in the
+repository), made by `tools/research/legacy-titles.py` — values unchanged (a date of birth
+stored as a day number becomes ISO text; unassigned career-pool records, which are invented
+players, are left out); the workbook's hash, each title's source file and scale and the
+ReadMe's links are recorded in it. That workbook has one name column:
+`data/legacy-names.json` (0.35 MB, pinned as `LEGACY_NAMES`) keeps the name parts (first name,
+surname, known-as name) the first workbook (`legends-98-14.xlsx`, the top 1,000 per title,
+SHA-256 `b49592c7…5de2a`) had for FIFA 2003–14, so the best known are "Z. Zidane" and not
+"Zinedine Zidane"; everyone else's whole name is shown as initial + rest.
+FIFA 2000–14 use EA's player ids (EA reused some: rows of one id whose years of birth are
+more than a year apart are two men), FIFA 98/99 their own (joined by name and team); team ids
+come with the shirt numbers from FIFA 2003 on; FIFA 09–14 store an overall, the older titles do
+not; FIFA 98–2003 have coarse scales (8–16 levels) and 8–17 skills, often surnames only.
+`scripts/data/legacy-titles.mjs` decodes it (positions, feet, which skill stands for a missing
+one, classic/all-star squads, stand-in names).
+
+Fourth to sixth source (2023–2025; `MODERN_SOURCES` in `paths.mjs`, read by
+`scripts/data/modern-titles.mjs`; Kaggle, where each was first published, cannot be pinned, so
+each is a public copy at a fixed revision with its SHA-256):
+- **FC 24**: `male_players.csv` of stefanoleone992's "EA Sports FC 24 complete player dataset"
+  (sofifa career mode, FIFA 15 … FC 24 at launch; only its 18,350 FC 24 rows of 22 September
+  2023 are used), copy `Belkin7/fifa24-player-values` on Hugging Face at revision
+  `28877c4f6515d3e9dcd49c7cf15df30975e06f35`, SHA-256 `fd788f78…1a0a7e`; no licence stated.
+- **FC 25**: EA's ratings feed at launch (16,161 men; the same feed as the FC 27 source with
+  older column names: ids only in the ratings page addresses, clubs and nations by name — a
+  club is the one `data/source-map.json` knows by that league and name, else by a name only
+  one club has — and no date: launch ratings, 2024), copy in the GitHub repository
+  `Rayen-khammessi/Football-Data-Engineering-Analytics-Project-EA-Sports-FC-25` at commit
+  `7a9c2f4faa6e1b78e88b8aabfb762f26a46d2039`, SHA-256 `68919598…901a00`; no licence stated.
+  A sofifa-style FC 25 file was not found at a pinnable public address.
+- **FC 26**: rovnez's "FC 26 (FIFA 26) player data" (sofifa, 21 September 2025, CC BY 4.0), the
+  catalog's source before FC 27: copy `Din1225/Data-Mining-Hw1` at commit
+  `2276bf1434028fbd55a564d450d3971e75b425c5`, SHA-256 `4399cb2b…63e3b2`.
 
 ```sh
-npm run data:fetch   # both pinned CSVs -> data/raw/ (SHA-256 checked; no-op when present)
-npm run data:build   # -> app/data/catalog.v3.json, app/data/legends.v1.json, app/assets/flags/,
-                     #    data/build/players.json + legends.json (~30 s; legends.json also holds
-                     #    the calibration: every chain link, who was merged or dropped, and
-                     #    where each card's numbers come from)
-python3 -I tools/research/legacy-titles.py <legends-98-14.xlsx> data/legacy-titles.json
-                     # only for a new workbook (needs openpyxl): then pin the new SHA-256 in
-                     # paths.mjs; the build itself needs neither Python nor the workbook
+npm run data:fetch   # the five pinned CSVs -> data/raw/ (SHA-256 checked; no-op when present)
+npm run data:build   # -> app/data/catalog.v3.json, legends.v1.json, eras.v1.json, app/assets/flags/,
+                     #    data/build/players.json + legends.json + eras.json (~50 s; legends.json
+                     #    also holds the calibration: every chain link, who was merged or
+                     #    dropped, and where each card's numbers come from)
+node tools/research/era-report.mjs [era nation]   # the era pools at a glance, or one pool
+python3 -I tools/research/legacy-titles.py <ratings.xlsb> data/legacy-titles.json
+                     # only for a new workbook (needs pyxlsb, in a venv): then pin the new
+                     # SHA-256 in paths.mjs; the build itself needs neither Python nor the workbook
 ```
 
 `app/data/legends.v1.json` (`core/players/legends-codec.js`, columnar; fetched only by
 `services/legends.js` when a World Cup draft or run opens — never on Home) is compiled by
-`scripts/compile-legends.mjs` through `compilePlayer`, from 26 titles (FIFA 98–23).
+`scripts/compile-legends.mjs` through `compilePlayer`, from 29 titles (FIFA 98 – FC 26; FC
+24–26 are today's scale: as printed).
 **The rule that puts every era on one scale** (`scripts/legends-calibration.mjs`): a past
 version keeps the overall EA printed (FIFA 09–23 — never pulled down to today's cards: the
 all-time best stand above them), and a title that printed none (FIFA 98–08) is chain-linked to
@@ -325,19 +365,34 @@ and 98–08 through FIFA 09) is lifted by that difference at the top, fading to 
 card then has the skills of its year, moved together until the game's `overallRating` shows
 that overall, so every threshold is in the rating a card shows: a player's **best version** is
 his highest overall (ties → the latest title); **legends** = best versions shown 85+, of players
-not in the catalog and of catalog players whose card today shows less (`legendOf`; no rule
-about how far apart), with the club of that title when the catalog has it; **prime versions**
+not in the catalog and of catalog players whose card today shows at least 2 less (`legendOf`,
+`LEGEND_GAIN`), with the club of that title when the catalog has it; **prime versions**
 = catalog players whose best version shows more than today — any gain (and EA rated him higher
 then). FIFA 98–2003 are too coarse to rate a player alone: their cards are pooled over the data
-generations within three years by a measured trust, a player only one of them knows gets
-none, and keepers start with FIFA 2005; classic/all-star squads and stand-in names are no
-source. One person, one place in an XI: `baseProfileId` maps a legend or prime version to the
+generations within three years by a measured trust (0.41; keepers 0.35 — FIFA 2000–04 have two
+keeper skills, FIFA 98/99 none, so a keeper of those years is what the titles around say, and
+never above the best the next title gives the keepers they share), a player only one of them
+knows gets none; classic/all-star squads and stand-in names are no source. One person, one place in an XI: `baseProfileId` maps a legend or prime version to the
 catalog player (two EA ids of one man are merged by rule). Each stores `year`, the year of its
 ratings (`fifa_update_date`, the build fails without one; FIFA 98–14: the year before the
 title's number) — what `editionYear` / `editionLabel` show. What a title lacks comes from the
 player's nearest version that has it (composure for FIFA 11–16, else his reactions; foot and
 weak foot for the early titles). It is stamped with the catalog build (`catalog.ids`)
-and the badge configuration, so rebuild both files together. **Captains** come from the reviewed
+and the badge configuration, so rebuild both files together.
+
+**Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
+player table; 12,305 cards, 2.4 MB / 0.70 MB gzip; fetched by `services/eras.js` with a draft)
+comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
+`scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
+2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
+version inside the era (the same overalls and cards as above; 3 keepers and at least 7
+defenders, 7 midfielders, 4 forwards where the nation has them; no minimum rating). A catalog
+player is in the 2026 pool as he is unless an FC 24–26 version shows more. A nation can be spun
+in an era when its pool has 18 players with a keeper, 5 defenders, 5 midfielders and 2
+forwards; the 70 strongest when more qualify (27 / 53 / 61 / 65 / 70 / 70 / 70 / 70 nations;
+the build fails under 20). Everyone in a pool also has his best version of all titles in the
+file (594 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
+independent; both are stamped with the catalog build. **Captains** come from the reviewed
 list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
 
 Builds are deterministic (byte-identical reruns). Format v3 is columnar

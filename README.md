@@ -160,19 +160,22 @@ Legends and prime versions come from a second pinned source: `male_players (lega
 Hugging Face dataset [jsulz/FIFA23](https://huggingface.co/datasets/jsulz/FIFA23) (MIT; career-mode
 players of FIFA 15–23 from sofifa.com, the same columns; revision
 `0b74dbfc434808cf5573f0f11f4c977185bd0e0c`, 90,933,390 bytes, SHA-256
-`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`). Legends go back to 1997
-with a third one, `data/legacy-titles.json` (in the repository): the top 1,000 players of each
-of FIFA 98 … FIFA 14, extracted from the games' own PC databases
+`13389f463935d257e92811eebbd50405df1a982aa45233a63d1ce075daca133e`). The years back to 1997
+come from a third one, `data/legacy-titles.json` (in the repository): the squad players of
+FIFA 98 … FIFA 14 (FIFA 98–2003 whole, then the best 36 + 4 keepers per nationality and
+title), extracted from the games' own PC databases
 ([soccergaming.com archive](https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/))
-and copied column for column out of a workbook by `tools/research/legacy-titles.py`.
+and copied out of a workbook by `tools/research/legacy-titles.py`. FC 24, FC 25 and FC 26 each
+come from a pinned public copy of an openly published file (`MODERN_SOURCES` in
+`scripts/data/paths.mjs`: revision, SHA-256 and the licence each states).
 
 ```sh
-npm run data:fetch   # downloads both pinned CSVs into data/raw/ and checks their SHA-256
+npm run data:fetch   # downloads the five pinned CSVs into data/raw/ and checks their SHA-256
 npm run data:reconcile  # a new snapshot only: its club, league and nation names -> the reference
-npm run data:build   # compiles app/data/catalog.v3.json, app/data/legends.v1.json, the flags
-                     # and data/build/*.json (provenance)
-python3 -I tools/research/legacy-titles.py legends-98-14.xlsx data/legacy-titles.json
-                     # a new FIFA 98–14 workbook only (openpyxl); the build needs no Python
+npm run data:build   # compiles app/data/catalog.v3.json, legends.v1.json, eras.v1.json, the
+                     # flags and data/build/*.json (provenance)
+python3 -I tools/research/legacy-titles.py ratings.xlsb data/legacy-titles.json
+                     # a new FIFA 98–14 workbook only (pyxlsb); the build needs no Python
 ```
 
 The build is deterministic, so a rerun is byte-identical. The catalog holds every player of every
@@ -182,13 +185,16 @@ precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 411 legends — best past versions of 1997–2022 the game shows at 85+: 318
-players who are not in the catalog and 93 catalog players who were better then — and the prime
-versions of 2,814 catalog players (any gain on today's card), compiled by the same compiler. A
+draft starts) holds 431 legends — best past versions of 1998–2025 the game shows at 85+: 307
+players who are not in the catalog and 124 catalog players who were at least two points better
+then — and the prime versions of 4,815 catalog players (any gain on today's card), compiled by
+the same compiler. `app/data/eras.v1.json` holds the era pools: for each of eight World Cup
+cycles (France 98 … 2026) and each nation that can field a squad then (27 to 70 per era), its
+best 26 players, each at his best version of those years — 12,305 cards of 7,232 people. A
 past version shows the overall EA gave it that year, lifted at the top where EA rated its best
 lower than it does today (FIFA 09–16; never lowered): Messi ’15 95, Cristiano Ronaldo ’18 94.
 FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through the players
-neighbouring titles share (Ronaldo ’03 94, Zidane ’03 and Ronaldinho ’05 92). A draft
+neighbouring titles share (Ronaldo ’03 94, Zidane ’03 and Ronaldinho ’03 93). A draft
 offers only players shown at 65 or more (10,968 of the 15,788); teams field their real players.
 
 ## Deploy
@@ -210,10 +216,16 @@ once under **Settings → Pages → Build and deployment → Source: GitHub Acti
   converted, not invented (see the compiler).
 - **Legends and prime versions:** the [FIFA23 dataset](https://huggingface.co/datasets/jsulz/FIFA23)
   by jsulz on Hugging Face (`male_players (legacy).csv`, FIFA 15–23 career-mode players), MIT
-  licence; upstream data from SoFIFA / EA SPORTS FIFA. The versions of 1997–2013 (FIFA 98–14,
-  the top 1,000 players of each title) were extracted from the games' own databases
+  licence; upstream data from SoFIFA / EA SPORTS FIFA. The versions of 1997–2013 (FIFA 98–14)
+  were extracted from the games' own databases
   ([soccergaming.com archive](https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/);
-  no licence stated — player data belongs to Electronic Arts).
+  no licence stated — player data belongs to Electronic Arts). The versions of 2023–2025:
+  FC 24 from stefanoleone992's "EA Sports FC 24 complete player dataset" (SoFIFA; copy
+  [Belkin7/fifa24-player-values](https://huggingface.co/datasets/Belkin7/fifa24-player-values)
+  on Hugging Face, no licence stated), FC 25 from EA's ratings feed (copy in
+  [Rayen Khammessi's repository](https://github.com/Rayen-khammessi/Football-Data-Engineering-Analytics-Project-EA-Sports-FC-25),
+  no licence stated) and FC 26 from rovnez's "FC 26 (FIFA 26) player data" (SoFIFA, CC BY 4.0;
+  copy in [Din1225/Data-Mining-Hw1](https://github.com/Din1225/Data-Mining-Hw1)).
 - **Club and league strength:** a September 2026 snapshot of the
   [Opta Power Rankings](https://dataviz.theanalyst.com/opta-power-rankings/), stored in
   `data/catalog-reference.json`.

@@ -49,10 +49,6 @@ export function personId(p) {
 export const eraOf = p => p.era ?? CURRENT_ERA;
 
 const poolKey = (era, nation) => `${era}|${nation}`;
-const bestFirst = ratings => (a, b) =>
-  ratings.get(b) - ratings.get(a) ||
-  (b.year ?? ERAS.at(-1).to) - (a.year ?? ERAS.at(-1).to) ||
-  (a.profileId < b.profileId ? -1 : a.profileId > b.profileId ? 1 : 0);
 
 /**
  * Attach decoded eras data (decodeEras) to a catalog (idempotent). Returns the catalog.
@@ -60,6 +56,16 @@ const bestFirst = ratings => (a, b) =>
  * is left out of his pool, a card of a player it does not know is nobody's other version.
  */
 export function attachEras(catalog, data) {
+  const steps = attachErasSteps(catalog, data);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/**
+ * attachEras as a step-wise generator (drive it with `stepped()` of services/catalog.js):
+ * yields every couple of hundred cards and pools, returns the catalog.
+ */
+export function* attachErasSteps(catalog, data, chunk = 200) {
   if (catalog.eras) return catalog;
   const teams = new Map((catalog.teams || []).map(t => [String(t.id), t])),
     current = catalog.byId ?? new Map(catalog.players.map(p => [p.profileId, p])),
@@ -67,8 +73,10 @@ export function attachEras(catalog, data) {
     stale = data.precomputed?.badges !== badgeStamp(),
     byId = new Map(),
     persons = new Map(),
-    ratings = new Map();
+    ratings = new Map(); // filled on demand (bestVersion)
+  let done = 0;
   for (const p of data.cards) {
+    if (++done % chunk === 0) yield done;
     const team = p.source.clubId == null ? null : teams.get(String(p.source.clubId)),
       era = eraOfYear(p.year),
       card = {
@@ -86,7 +94,6 @@ export function attachEras(catalog, data) {
       };
     if (stale) card.tags = normalizeBadges(card, card.tags);
     byId.set(card.profileId, card);
-    ratings.set(card, shown(card));
     if (!persons.has(card.person)) persons.set(card.person, []);
     persons.get(card.person).push(card);
   }
@@ -95,15 +102,15 @@ export function attachEras(catalog, data) {
     nations = new Map(ERAS.map(e => [e.id, []])),
     today = new Map(); // person → the catalog player, when he is his own 2026 card
   for (const pool of data.pools) {
+    if (++done % 20 === 0) yield done;
+    // The file has a pool's members best first (shown rating, the later year, the id).
     const members = [];
     for (const id of pool.members) {
       const p = byId.get(id) ?? current.get(id);
       if (!p) continue;
-      if (!ratings.has(p)) ratings.set(p, shown(p));
       if (!p.era) today.set(personId(p), p);
       members.push(p);
     }
-    members.sort(bestFirst(ratings));
     Object.freeze(members);
     pools.set(poolKey(pool.era, pool.nation), members);
     const info = nationInfo.get(pool.nation);

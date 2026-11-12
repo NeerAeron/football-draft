@@ -275,5 +275,7 @@ test(
     const { compiled } = await compileSource(),
       built = await compileLegendsFile(compiled, toRuntimeCatalog(compiled, codes));
     assert.equal(built.text, text);
+    // The era pools come out of the same compile.
+    assert.equal(built.eras.text, readFileSync(PATHS.eras, 'utf8'));
   },
 );

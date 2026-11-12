@@ -18,8 +18,10 @@
 //    years is rated by what all the data generations within three years say about the player
 //    — each weighed by its trust, a fully described title nearly in full — together with the
 //    title's average, so thin evidence stays near the average. A player whom only one coarse
-//    generation knows gets no card: nothing tells him from an invented name. Keepers get a
-//    card only from titles with at least three keeper skills (FIFA 2005 on).
+//    generation knows gets no card: nothing tells him from an invented name. Keepers are
+//    linked and pooled the same way with a trust of their own (FIFA 2000–04 have two keeper
+//    skills, FIFA 98/99 none: three other skills stand in); a coarse keeper scale says no more
+//    than the best the next title gives the keepers they share.
 // 4. A card has the skills of its year, all moved by the same number of points until the
 //    game's rating model shows the version's overall (`cardFields`): the model is fitted on FC
 //    data and reads older skill sets a few points off what EA printed.

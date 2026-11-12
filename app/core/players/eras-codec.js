@@ -24,7 +24,7 @@
 //                                         number = minus the EA id of a catalog player who is
 //                                         in the pool as he is today) }
 // profileId of a card = 'ea:<sourceId>:fc<edition>:era'.
-import { encodeTable, decodeTable } from './legends-codec.js';
+import { encodeTable, decodeTableSteps } from './legends-codec.js';
 
 export const ERAS_FORMAT = 'football-draft-eras';
 export const ERAS_VERSION = 1;
@@ -102,11 +102,21 @@ export function encodeEras(data) {
  * [profileId] } — a member is a card's id or a catalog player's.
  */
 export function decodeEras(file) {
+  const steps = decodeErasSteps(file);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+/**
+ * decodeEras as a step-wise generator (drive it with `stepped()` of services/catalog.js): the
+ * 12,000 cards are decoded a couple of hundred at a time, so nothing blocks a tap on a phone.
+ */
+export function* decodeErasSteps(file) {
   if (file?.format !== ERAS_FORMAT || file.version !== ERAS_VERSION)
     throw Error('Unsupported eras format');
   const { prefix, suffix } = file.catalog.profileId,
     c = file.cards,
-    cards = decodeTable(file, c, 'era', i => ({
+    cards = yield* decodeTableSteps(file, c, 'era', i => ({
       name: c.name[i],
       fullName: c.fullName[i],
       source: {
