@@ -1006,6 +1006,7 @@ test('auto-sim results convert to CupRun input for the user side', () => {
     outcome: 'D',
     shootout: { winner: 'opponent', score: [4, 5] },
     players: [{ profileId: 'a', rating: 7.1, goals: 1, assists: 0 }],
+    opponents: [{ profileId: 'b', rating: 6, goals: 1, assists: 0 }],
   };
   assert.deepEqual(runSide(result), expected);
   // One rule: the auto-sim's conversion is the match screen's (lib/match-store.js).
