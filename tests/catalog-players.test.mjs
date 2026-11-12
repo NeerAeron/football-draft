@@ -81,9 +81,9 @@ test('hidden tendencies and badges survive swaps, configuration and replay impor
   assert.deepEqual(replay.players[2].tendencies, expected.tendencies);
   assert.ok(!('playerType' in replay.playerProfile(replay.players[2])));
 });
-test('forty draft leagues with full pools; every league has a local logo', () => {
+test('forty-one draft leagues with full pools; every league has a local logo', () => {
   const { leagues } = catalogIndex(catalog);
-  assert.equal(leagues.length, 40);
+  assert.equal(leagues.length, 41);
   assert.ok(leagues.every(l => l.players.length >= CONFIG.draft.minimumLeaguePlayers));
   assert.ok(leagues.every(l => l.clubs.every(c => c.leagueId === l.id)));
   for (const l of catalog.leagues)
@@ -104,11 +104,21 @@ test('squad assignment rejects incomplete clubs and chooses unique players by po
   }
 });
 
-test('every club has reviewed colours; provenance stays in the compiler reference', () => {
-  const colorSources = new Map(reference.colors.map(c => [String(c.id), c.sourceUrl]));
+test('club colours come from the compiler reference; a club without a sourced colour has none', () => {
+  const colors = new Map(reference.colors.map(c => [String(c.id), c]));
+  let without = 0;
   for (const t of catalog.teams) {
+    const c = colors.get(String(t.id));
+    if (!c) {
+      // Sides added by data:reconcile that no colour source knows: they wear the neutral kit.
+      assert.equal(t.primary ?? null, null, t.name);
+      without++;
+      continue;
+    }
+    assert.ok(c.sourceUrl, t.name);
     assert.match(t.primary, /^#[0-9a-f]{6}$/i);
-    assert.match(t.secondary, /^#[0-9a-f]{6}$/i);
-    assert.ok(colorSources.get(String(t.id)));
+    assert.equal(t.primary, c.primary);
+    if (t.secondary != null) assert.match(t.secondary, /^#[0-9a-f]{6}$/i);
   }
+  assert.ok(without <= catalog.teams.length * 0.06, `${without} clubs without colours`);
 });

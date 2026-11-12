@@ -51,11 +51,9 @@ const CREDITS = [
   {
     title: 'Player data',
     body: [
-      '"FC 26 (FIFA 26) player data" by rovnez on ',
-      a('https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data', 'Kaggle'),
-      ', licensed ',
-      a('https://creativecommons.org/licenses/by/4.0/', 'CC BY 4.0'),
-      '. Upstream data from SoFIFA / EA SPORTS FC. Ratings are converted by the catalog compiler, never invented.',
+      'EA SPORTS FC 27 player ratings as published by EA on 12 September 2026, from the copy in ',
+      a('https://github.com/LakshmiKanth11/EA_FC_ANALYSIS', 'EA_FC_ANALYSIS'),
+      ' by Lakshmi Kanth. Player data belongs to Electronic Arts. Ratings are converted by the catalog compiler, never invented.',
     ],
   },
   {

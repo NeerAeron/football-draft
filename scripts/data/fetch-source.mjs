@@ -1,5 +1,5 @@
 // npm run data:fetch — download the pinned source CSVs into data/raw/ and verify their
-// SHA-256: the FC 26 file (current players) and the FIFA 15–23 legacy file (Legends, Prime
+// SHA-256: the FC 27 ratings file (current players) and the FIFA 15–23 legacy file (Legends, Prime
 // versions). No-op for a file whose valid copy is already there.
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';

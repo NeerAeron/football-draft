@@ -15,7 +15,6 @@ export const LEAGUE_FIELDS = [
   'logo',
   'coverage',
   'available',
-  'sourcePlayers',
   'playerCount',
 ];
 export const TEAM_FIELDS = ['id', 'name', 'leagueId', 'optaScore', 'primary', 'secondary'];

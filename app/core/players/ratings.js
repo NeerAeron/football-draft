@@ -180,7 +180,7 @@ export function roleAbility(p, role = p.role) {
     Object.values(weights).reduce((sum, w) => sum + w, 0)
   );
 }
-// FC26-calibrated role weights retain every detailed ability. Nearby wide roles
+// EA-calibrated role weights (fitted on FC 26) retain every detailed ability. Nearby wide roles
 // share the same ability model; familiarity handles the small position penalty.
 // No per-player source overall or hidden correction is used at runtime.
 export const OVERALL_OFFSETS = CONFIG.ratings.roleOffsets;

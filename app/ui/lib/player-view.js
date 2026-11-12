@@ -3,7 +3,7 @@
 // components never read raw catalog records.
 //
 // {
-//   id: 'ea:209331:fc26:u4',
+//   id: 'ea:209331:fc27:u20260912',
 //   name: 'M. Salah',            // short football name (cards, tokens)
 //   fullName?: 'Mohamed Salah',
 //   position: 'RM',              // primary position

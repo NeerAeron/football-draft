@@ -333,7 +333,6 @@ async function addClubs(newClubs, rows, map, reference, { hints, opta, enrich, t
       sourceTeamId: id,
       name: club.club,
       leagueName: league.name,
-      selectedPlayerCount: club.n,
       genericRoster: false,
       idSource: real ? `EA team id (older snapshot: ${names.get(real)})` : 'local id',
       method: 'reconcile',
