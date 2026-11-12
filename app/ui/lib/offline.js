@@ -8,11 +8,13 @@
 // complete copy of the deployed build (app/build.json, written by the deploy). If not — the
 // first launch, or the first one after a deploy — it warms the whole game: the files loaded
 // before the worker took control, the catalog with its flags and league logos, every lazy
-// screen module and every font face. Then <html data-offline-ready> is set and the game opens
+// screen module and stylesheet and every font face. Then <html data-offline-ready> is set and the game opens
 // and plays without a network (~2.3 MB download, once per deploy). The previous complete copy
 // keeps answering offline until the new one is whole (see sw.js).
 // Skipped on loopback hosts (dev server, browser tests) unless the page URL has ?sw=1, which
 // also forces the warm-up; and wherever service workers are unavailable (insecure origins).
+import { loadStyles } from './styles.js';
+
 const LOOPBACK = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 // Module workers (paths relative to app/index.html): created on demand, so not in the
 // performance entries of the first page. Keep in sync when a worker moves.
@@ -50,10 +52,12 @@ async function warmUp(worker, routes, build) {
     cache: [page, ...loaded(), ...[...WORKERS, ...DATA].map(path => new URL(path, page).href)],
   });
   // Fetched through the worker now that it controls the page, so all of it gets cached:
-  // every screen's module graph and every declared font face (fonts load lazily otherwise).
+  // every screen's module graph and stylesheets and every declared font face (fonts load
+  // lazily otherwise).
   await new Promise(idle);
   const settled = await Promise.allSettled([
     ...routes.filter(route => route.load).map(route => route.load()),
+    ...routes.map(route => loadStyles(route.styles)),
     ...[...(document.fonts || [])].map(face => face.load()),
   ]);
   const failed = settled.some(result => result.status === 'rejected');

@@ -16,7 +16,8 @@ test('the preload block of app/index.html lists the first screen (run `npm run p
     html.indexOf('<script type="importmap">') < html.indexOf('<!-- preload:start'),
     'the preload block must come after the import map',
   );
-  // The entry graph: the shell, the Home screen, the vendored libraries, every stylesheet.
+  // The entry graph: the shell, the Home screen, the vendored libraries, the stylesheets of
+  // app.css (the first screen's).
   assert.ok(modules > 20 && styles > 20);
   for (const needed of [
     './ui/shell/app.js',
@@ -26,6 +27,8 @@ test('the preload block of app/index.html lists the first screen (run `npm run p
   ])
     assert.ok(block.includes(`<link rel="modulepreload" href="${needed}" />`), needed);
   assert.ok(block.includes('<link rel="preload" as="style" href="./ui/styles/tokens.css" />'));
-  // Lazy screens stay lazy (Home warms them when idle).
+  // Lazy screens stay lazy, their stylesheets too (Home warms them when idle).
   assert.ok(!block.includes('rel="modulepreload" href="./ui/screens/match/'));
+  assert.ok(!block.includes('./ui/screens/match/match.css'));
+  assert.ok(block.includes('<link rel="preload" as="style" href="./ui/screens/home/home.css" />'));
 });

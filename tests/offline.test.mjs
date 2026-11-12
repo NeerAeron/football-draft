@@ -20,8 +20,10 @@ test('the checked-in build stamp is "dev" and the Pages deploy writes the commit
 
 test('every worker and data file the offline warm-up lists exists', () => {
   const source = read('app/ui/lib/offline.js');
-  const listed = [...source.matchAll(/'(\.\/[\w./-]+\.(?:js|json))'/g)].map(m => m[1]);
-  assert.ok(listed.length >= 4, 'WORKERS and DATA of ui/lib/offline.js');
+  const lists = [...source.matchAll(/const (?:WORKERS|DATA) = \[([^\]]*)\]/g)].map(m => m[1]);
+  assert.equal(lists.length, 2, 'WORKERS and DATA of ui/lib/offline.js');
+  const listed = [...lists.join().matchAll(/'(\.\/[^']+)'/g)].map(m => m[1]);
+  assert.ok(listed.length >= 4);
   for (const path of listed)
     assert.ok(existsSync(new URL(`../app/${path.slice(2)}`, import.meta.url)), path);
 });
