@@ -12,8 +12,9 @@ import { makeIdentity } from '../app/core/sim/player-model.js';
 import { TAGS } from '../app/core/players/traits.js';
 import { compileBadges } from '../app/core/players/badges.js';
 
-export const COMPILER_VERSION = '1.9.0';
-export const SOURCE_URL = 'https://www.kaggle.com/datasets/rovnez/fc-26-fifa-26-player-data';
+import { SOURCE } from './data/paths.mjs';
+
+export const COMPILER_VERSION = '2.0.0';
 const bound = (v, a = 0.05, b = 0.95) => Math.max(a, Math.min(b, v));
 const fields = {
   pace: 'movement_sprint_speed',
@@ -261,8 +262,8 @@ export function compilePlayer(row, sourceRow, options = {}) {
     sourceOverall: number(row, 'overall'),
     source: {
       compilerVersion: COMPILER_VERSION,
-      url: options.source?.url ?? SOURCE_URL,
-      license: options.source?.license ?? 'CC BY 4.0',
+      url: options.source?.url ?? SOURCE.page,
+      license: options.source?.license ?? SOURCE.license,
       row: sourceRow,
       edition: `${Number(row.fifa_version) >= 24 ? 'FC' : 'FIFA'} ${row.fifa_version}`,
       update: row.fifa_update,
@@ -313,11 +314,11 @@ export function compileRows(rows, { first = 1000, goalkeepers = 100, sourceHash 
     schemaVersion: 1,
     compilerVersion: COMPILER_VERSION,
     source: {
-      url: SOURCE_URL,
-      author: 'rovnez',
-      upstream: 'SoFIFA / EA SPORTS FC 26',
-      license: 'CC BY 4.0',
-      licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+      url: SOURCE.page,
+      author: SOURCE.author,
+      upstream: SOURCE.upstream,
+      license: SOURCE.license,
+      licenseUrl: SOURCE.licenseUrl,
       sha256: sourceHash,
       asOf: players[0]?.source.asOf,
     },

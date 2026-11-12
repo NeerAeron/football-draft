@@ -1,6 +1,8 @@
 // npm run data:build — compile the whole catalog deterministically (byte-identical reruns):
-//   data/raw/FC26_20250921.csv (npm run data:fetch) + data/catalog-reference.json
-//   → data/build/players-fc26.json   full catalog with provenance (gitignored, for audits)
+//   data/raw/FC27_20260912.csv (npm run data:fetch; the EA ratings feed) + data/source-map.json
+//   (its club, league and nation names → the reference; npm run data:reconcile) +
+//   data/catalog-reference.json
+//   → data/build/players.json        full catalog with provenance (gitignored, for audits)
 //   → app/data/catalog.v3.json       runtime catalog, format v3 (catalog-codec.js)
 //   → app/assets/flags/*.svg         flag of every nationality in the catalog
 //   data/raw/FIFA15-23_male_players_legacy.csv (past editions) + the compiled catalog
@@ -16,6 +18,7 @@ import { compileLeagueCatalog } from '../compile-league-catalog.mjs';
 import { parseCSV } from '../compile-players.mjs';
 import { encodeCatalog } from '../../app/core/players/catalog-codec.js';
 import { toRuntimeCatalog } from './runtime-catalog.mjs';
+import { adaptSource } from './ea-source.mjs';
 import { writeFlags } from './flags.mjs';
 import { encodeLegends, catalogIds } from '../../app/core/players/legends-codec.js';
 import { badgeStamp } from '../../app/core/players/catalog-derived.js';
@@ -41,12 +44,19 @@ async function readSource(path, source) {
   return { rows: parseCSV(bytes.toString('utf8')), hash };
 }
 
-/** The current catalog from the pinned CSV: { compiled, rows } (rows: the parsed CSV). */
+/**
+ * The current catalog from the pinned CSV: { compiled, rows } (rows: the feed's men, in the
+ * compiler's column names, with the clubs, leagues and nations of the reference).
+ */
 export async function compileSource() {
-  const { rows, hash } = await readSource(PATHS.csv, SOURCE),
+  const source = await readSource(PATHS.csv, SOURCE),
     reference = JSON.parse(await readFile(PATHS.reference, 'utf8')),
+    map = JSON.parse(await readFile(PATHS.sourceMap, 'utf8')),
     captains = JSON.parse(await readFile(PATHS.captains, 'utf8'));
-  return { compiled: compileLeagueCatalog(rows, reference, hash, captains), rows };
+  if (map.source.sha256 !== source.hash)
+    throw Error(`${PATHS.sourceMap} was made for another snapshot: run \`npm run data:reconcile\``);
+  const rows = adaptSource(source.rows, map, reference);
+  return { compiled: compileLeagueCatalog(rows, reference, source.hash, captains), rows };
 }
 
 /**

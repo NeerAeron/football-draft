@@ -1,5 +1,5 @@
 {
-  "description": "Reviewed Captain list (compiler input, scripts/compile-league-catalog.mjs): real national-team captains, current players only, ranked leaders first. The compiler tags the first `size` players as Captain (catalog `captain: true`) and fails when an id, source name or nation does not match the catalog. `sofifaId` is the player_id of the source data (profileId ea:<id>:fc26:…). `size` is cut so that about one drafted World Cup XI in three has a captain (tools/calibration/draft-baselines.mjs --captains).",
+  "description": "Reviewed Captain list (compiler input, scripts/compile-league-catalog.mjs): real national-team captains, current players only, ranked leaders first. The compiler tags the first `size` players as Captain (catalog `captain: true`) and fails when an id, source name or nation does not match the catalog. `sofifaId` is the player_id of the source data (profileId ea:<id>:fc27:…). `size` is cut so that about one drafted World Cup XI in three has a captain (tools/calibration/draft-baselines.mjs --captains).",
   "asOf": "2026-11-12",
   "squadsSource": "https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_squads",
   "size": 10,
@@ -52,7 +52,7 @@
     {
       "rank": 6,
       "name": "Son Heung-min",
-      "sourceName": "H. Son",
+      "sourceName": "Son Heung Min",
       "sofifaId": 200104,
       "nation": "Korea Republic",
       "source": "https://citizen.digital/article/south-korea-boss-backs-son-as-captain-after-rift-rumours-n392964",
