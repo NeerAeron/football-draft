@@ -129,8 +129,8 @@ export function Cabinet({ records }) {
     <${Segmented}
       label="Which trophies"
       options=${[
-        { value: 'normal', label: 'World Cup' },
-        { value: 'budget', label: 'Budget mode' },
+        { value: 'normal', label: 'Classic' },
+        { value: 'budget', label: 'Budget' },
       ]}
       value=${mode}
       onChange=${setMode}

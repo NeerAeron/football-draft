@@ -1164,7 +1164,7 @@ export const flows = [
         // The Legendary title was a Budget one: the standard slot is still to be won.
         if (!/Not played/.test(await best('legendary'))) throw new Error(await best('legendary'));
         // The Budget cabinet is one tap away and has the Legendary cup.
-        await page.click('.cabinet__mode label:has-text("Budget mode")');
+        await page.click('.cabinet__mode label:has-text("Budget")');
         await visible(page, '.cabinet__shelf[data-mode="budget"]');
         if (!/Champions/.test(await best('legendary'))) throw new Error(await best('legendary'));
       });
@@ -1235,10 +1235,10 @@ export const flows = [
         if (!/Quarter-finals/.test(await text('legendary')))
           throw new Error(await text('legendary'));
         await visible(page, '[data-testid="ultimate"][data-done="0"]');
-        await page.click('.cabinet__mode label:has-text("Budget mode")');
+        await page.click('.cabinet__mode label:has-text("Budget")');
         await visible(page, '.cabinet__shelf[data-mode="budget"]');
         if (!/Third place/.test(await text('worldclass'))) throw new Error('budget bronze');
-        await page.click('.cabinet__mode label:has-text("World Cup")');
+        await page.click('.cabinet__mode label:has-text("Classic")');
       });
       await shot('partly');
       await step('an old cabinet migrates: titles become golds, removed levels go', async () => {
