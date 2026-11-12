@@ -15,6 +15,7 @@
 @import url('../components/flag.css') layer(components);
 @import url('../components/crest.css') layer(components);
 @import url('../components/fit-tag.css') layer(components);
+@import url('../components/captain-mark.css') layer(components);
 @import url('../components/player-card.css') layer(components);
 @import url('../components/player-row.css') layer(components);
 @import url('../components/pitch-view.css') layer(components);

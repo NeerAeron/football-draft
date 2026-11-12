@@ -9,6 +9,7 @@ import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
 import { searchKey } from '../../../core/util/text.js';
+import { editionLabel } from '../../../core/players/legends.js';
 import { keyStatsFirst, surname } from '../../lib/player-view.js';
 import { boost as fmtBoost } from '../../lib/format.js';
 
@@ -162,6 +163,10 @@ const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 /** The six summary stats with the position's key stats first (pool rows). */
 export const rowStats = (stats, position) => keyStatsFirst(stats, position);
 
+/** "Prime 94 · ’19": what a Prime boost would make a player (entry/slot `primeVersion`). */
+export const primeNote = version =>
+  version ? `Prime ${version.ovr} · ${editionLabel(version.edition)}` : '';
+
 /** PitchView link lines from mates pairs: nation mates 3 (gold), club mates 2 (volt). */
 export function linkLines(pairs = []) {
   const strength = { nation: 3, club: 2 };
@@ -244,6 +249,16 @@ export function spinHeadline(spin, poolSize = 0) {
   if (!spin) return null;
   const o = spin.option;
   const players = `${poolSize} player${poolSize === 1 ? '' : 's'}`;
+  if (spin.legend)
+    return {
+      title: o.name,
+      kind: 'nation',
+      legend: true,
+      flag: { code: o.code, name: o.name, src: o.flag || undefined },
+      meta: `${poolSize} legend${poolSize === 1 ? '' : 's'}`,
+      big: true,
+      badge: null,
+    };
   if (spin.category === 'nation')
     return {
       title: o.name,
@@ -277,7 +292,7 @@ export function spinHeadline(spin, poolSize = 0) {
 export function landedAnnouncement(spin, poolSize) {
   const h = spinHeadline(spin, poolSize);
   if (!h) return '';
-  return `${CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
+  return `${spin.legend ? 'Legend spin' : CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
 }
 
 /**
@@ -388,6 +403,7 @@ export function mateLines(preview) {
  *                  (nation, club): his mates of that kind (surnames), the boost, and whether
  *                  those mates get it thanks to him ("+1.5 each");
  *   lifts          [{ name, to }] other players whose boost rises, not said by `mates`;
+ *   captain        { boost } when the pick gives the XI its first Captain (+1 to everyone);
  *   budget         Budget mode: { label, slots, left } of the tier he uses up (left = after
  *                  the pick), { free: true, label } for a free player; null without a budget;
  *   links          the mates score after the pick (sum of the mates boosts).
@@ -448,6 +464,10 @@ export function pickPreview(session, side, profileId, slot) {
     boost: me.boost,
     mates,
     lifts,
+    captain:
+      links.captain === slot && before.captain === null && links.captainBoost > 0
+        ? { boost: links.captainBoost }
+        : null,
     budget,
   };
 }

@@ -34,7 +34,8 @@ import { useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../lib/html.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { resolveTier } from '../lib/tiers.js';
-import { surname, mateBoosts } from '../lib/player-view.js';
+import { surname, mateBoosts, captainSlot } from '../lib/player-view.js';
+import { CaptainMark } from './captain-mark.js';
 import { boost as fmtBoost } from '../lib/format.js';
 import { Flag } from './flag.js';
 import { Crest } from './crest.js';
@@ -110,7 +111,7 @@ function PitchMarkings() {
   </svg>`;
 }
 
-function SlotToken({ player, hideRatings, boost }) {
+function SlotToken({ player, hideRatings, boost, captain }) {
   if (!player) return html`<span class="pitch-slot__token pitch-slot__token--empty"></span>`;
   const t = resolveTier(player.tier, player.ovr);
   const face = player.nation
@@ -127,6 +128,12 @@ function SlotToken({ player, hideRatings, boost }) {
     <span class="pitch-slot__face">${face}</span>
     ${!hideRatings && html`<span class="pitch-slot__ovr num">${player.ovr}</span>`}
     ${boost > 0 && html`<span class="pitch-slot__boost num">${fmtBoost(boost)}</span>`}
+    ${captain && html`<${CaptainMark} class="pitch-slot__captain" />`}
+    ${player.era && html`<span class="pitch-slot__era num">${player.era}</span>`}
+    ${
+      player.primeNote &&
+      html`<span class="pitch-slot__prime" title=${player.primeNote} aria-hidden="true"></span>`
+    }
   </span>`;
 }
 
@@ -155,6 +162,7 @@ export function PitchView({
   const [aw, ah] = String(aspect).split('/').map(Number);
   const squat = aw > 0 && ah > 0 && aw / ah > 0.82;
   const slots = useMemo(() => layoutSlots(source, squat ? [86, 11] : TOP_BOTTOM), [source, squat]);
+  const captainAt = useMemo(() => captainSlot(players), [players]);
   const boostAt = useMemo(
     () => (boosts === false ? [] : Array.isArray(boosts) ? boosts : mateBoosts(players)),
     [boosts, players],
@@ -262,6 +270,7 @@ export function PitchView({
               player=${player}
               hideRatings=${hideRatings}
               boost=${player ? boostAt[slot.index] : 0}
+              captain=${slot.index === captainAt}
             />
             ${!player && html`<span class="pitch-slot__role">${slot.role}</span>`}
           </span>

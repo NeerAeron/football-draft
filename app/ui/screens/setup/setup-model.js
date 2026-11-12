@@ -85,6 +85,7 @@ export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
     label: DIFFICULTY_LABELS[level],
     text: DIFFICULTY_TEXT[level] ?? '',
     rerolls,
+    primes: rules.primes?.[level] ?? 0, // Prime boosts (World Cup drafts)
     gap: rules.ladder[level] ?? 0,
     target: Math.round(ladderTarget(draftMode(type), level, { rules })),
   };

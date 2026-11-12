@@ -358,7 +358,11 @@ function Cards2() {
     <//>
     <${Demo} label="Sizes S / M / L" wide>
       <div class="g-cards g-cards--bottom">
-        <${PlayerCard} player=${HAALAND} size="s" />
+        <${PlayerCard} player=${{ ...HAALAND, captain: true }} size="s" />
+        <${PlayerCard}
+          player=${{ ...HAALAND, legend: true, era: '’18', name: 'Legend ’18' }}
+          size="s"
+        />
         <${PlayerCard} player=${HAALAND} size="m" />
         <${PlayerCard} player=${HAALAND} size="l" />
       </div>

@@ -20,6 +20,7 @@ import {
   spinDraft,
   rerollDraft,
   pickPlayer,
+  primeDrafted,
   autoPick,
   autoComplete,
   markLanded,
@@ -37,6 +38,7 @@ import {
   landedAnnouncement,
   pickPreview,
   rowStats,
+  primeNote,
 } from './draft-model.js';
 import { SpinStage } from './spin-stage.js';
 import { PoolPanel } from './pool-list.js';
@@ -50,6 +52,7 @@ import {
   History,
 } from './team-panel.js';
 import { PickSheet, PickDock } from './pick-panel.js';
+import { PrimeButton, PrimeSheet } from './prime-sheet.js';
 import { CompleteSheet } from './complete-sheet.js';
 import { PickMoment, PassDevice, MOMENT_MS } from './moments.js';
 
@@ -118,6 +121,7 @@ function Board({ state, draft, auto }) {
   const [xiOpen, setXiOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(snap.complete && !auto);
   const [busy, setBusy] = useState(false);
+  const [primeOpen, setPrimeOpen] = useState(false);
   const [passAck, setPassAck] = useState(-1);
   const [moment, setMoment] = useState(null);
   const [announcement, announce] = useAnnouncer();
@@ -131,7 +135,13 @@ function Board({ state, draft, auto }) {
       let v = cache.get(e);
       if (!v) {
         const base = toView(session.player(e.profileId));
-        v = { ...base, ovr: e.ovr, tier: e.tier, stats: rowStats(base.stats, base.position) };
+        v = {
+          ...base,
+          ovr: e.ovr,
+          tier: e.tier,
+          stats: rowStats(base.stats, base.position),
+          primeNote: primeNote(e.primeVersion),
+        };
         cache.set(e, v);
       }
       return v;
@@ -180,7 +190,12 @@ function Board({ state, draft, auto }) {
       snap.teams.map(t =>
         t.slots.map(s =>
           s.player
-            ? { ...toView(session.player(s.player.profileId)), ovr: s.rating, tier: s.player.tier }
+            ? {
+                ...toView(session.player(s.player.profileId)),
+                ovr: s.rating,
+                tier: s.player.tier,
+                primeNote: t.primesLeft > 0 ? primeNote(s.player.primeVersion) : '',
+              }
             : null,
         ),
       ),
@@ -293,6 +308,15 @@ function Board({ state, draft, auto }) {
     if (slot === target) confirm();
     else setSel(s => ({ ...s, target: slot }));
   };
+  const doPrime = slot => {
+    const result = primeDrafted(slot);
+    if (!result.ok)
+      return toast({ title: 'No Prime boost', message: result.reason, tone: 'warning' });
+    const p = session.player(result.profileId);
+    playCue(hide ? 'pick' : selectionSound('Superstar'));
+    announce(`${p.name} is now his prime version.`);
+    setPrimeOpen(false);
+  };
   const doAutoPick = () => {
     setPassAck(snap.pickIndex);
     const result = autoPick();
@@ -344,6 +368,9 @@ function Board({ state, draft, auto }) {
     budget=${shownTeam.budget}
     use=${placing && preview?.budget && !preview.budget.free ? preview.budget.id : null}
   />`;
+  const primeButton =
+    !versus &&
+    html`<${PrimeButton} team=${team} primes=${snap.primes} onOpen=${() => setPrimeOpen(true)} />`;
   const pitch = html`<${TeamPitch}
     team=${shownTeam}
     players=${teamPlayers[versus ? shownSide : 0]}
@@ -353,7 +380,9 @@ function Board({ state, draft, auto }) {
     hideRatings=${hide}
     aspect=${wide ? '4 / 4.8' : undefined}
   />`;
-  const spinLabel = `Spin ${versus ? `· ${team.name}` : `a ${CATEGORY_LABEL[snap.category]?.toLowerCase()}`}`;
+  const spinLabel = snap.legendRound
+    ? 'Legend spin'
+    : `Spin ${versus ? `· ${team.name}` : `a ${CATEGORY_LABEL[snap.category]?.toLowerCase()}`}`;
   const spinButton = html`<${Button}
     variant="primary"
     size=${wide ? 'lg' : 'xl'}
@@ -422,7 +451,13 @@ function Board({ state, draft, auto }) {
       selectedId=${entry?.profileId}
       onSelect=${select}
       onDraft=${wide ? quickDraft : undefined}
-      heading=${versus ? `${team.name}: pick a player` : 'Pick a player'}
+      heading=${
+        snap.legendRound
+          ? 'Pick a legend'
+          : versus
+            ? `${team.name}: pick a player`
+            : 'Pick a player'
+      }
       budget=${team.budget}
     />`;
 
@@ -482,7 +517,7 @@ function Board({ state, draft, auto }) {
       ${
         wide
           ? html`<aside class="draft__team" aria-label="Your XI">
-                ${vstrip} ${summary} ${budget} ${pitch}
+                ${vstrip} ${summary} ${budget} ${primeButton} ${pitch}
                 <${LineMeters} team=${shownTeam} hideRatings=${hide} />
               </aside>
               <div class="draft__play">
@@ -490,7 +525,7 @@ function Board({ state, draft, auto }) {
                 ${snap.phase !== 'pick' && html`<${History} entries=${history} hideRatings=${hide} />`}
                 ${bar && html`<div class="action-bar draft__bar">${bar}</div>`}
               </div>`
-          : html`${vstrip} ${summary} ${budget} ${stage}
+          : html`${vstrip} ${summary} ${budget} ${primeButton} ${stage}
               ${
                 snap.phase === 'pick' && !animating
                   ? html`<button
@@ -538,6 +573,17 @@ function Board({ state, draft, auto }) {
         teamPlayers=${teamPlayers}
         onContinue=${onContinue}
         busy=${busy}
+        onPrime=${() => setPrimeOpen(true)}
+      />`
+    }
+    ${
+      snap.primes &&
+      html`<${PrimeSheet}
+        open=${primeOpen}
+        onClose=${() => setPrimeOpen(false)}
+        team=${team}
+        hideRatings=${hide}
+        onPrime=${doPrime}
       />`
     }
     ${

@@ -129,6 +129,12 @@ export function normalizeContext(context = {}) {
   };
 }
 
+/**
+ * A World Cup Run's Nations draft: the one with the Legend spin and the Prime boosts (Quick
+ * Match, Versus and the Daily draft as before).
+ */
+export const worldCupDraft = ctx => ctx?.kind === 'run' && ctx.mode === 'nations';
+
 /** createDraftSession options for a normalised context. */
 export function sessionOptions(ctx) {
   const sides = ctx.kind === 'versus' ? 2 : 1;
@@ -142,6 +148,8 @@ export function sessionOptions(ctx) {
     hideRatings: ctx.options.hideRatings,
     uniqueNations: ctx.options.uniqueNations,
     budget: !!ctx.options.budget,
+    // World Cup drafts: the first spin is the Legend spin, and Prime boosts by difficulty.
+    ...(worldCupDraft(ctx) ? { legendSpin: true, primes: true } : {}),
     ...(ctx.schedule ? { schedule: ctx.schedule } : {}),
     useDefaultRules: ctx.useDefaultRules,
     teams: Array.from({ length: sides }, (_, i) => {
@@ -201,11 +209,20 @@ let catalogRef = null;
 let opponent = null;
 let token = 0;
 let loading = null;
-let catalogLoader = loadWarmCatalog;
+// The catalog for a draft; with `legends`, the Legends and Prime versions are fetched too
+// (services/legends.js — only then, so no other screen pays for that file).
+const defaultLoader = ({ legends = false } = {}) =>
+  legends
+    ? loadWarmCatalog().then(() => import('../../services/legends.js').then(m => m.loadLegends()))
+    : loadWarmCatalog();
+let catalogLoader = defaultLoader;
 
-/** Tests: replace the catalog loader (Node has no fetch for the relative catalog URL). */
+/**
+ * Tests: replace the catalog loader (Node has no fetch for the relative catalog URL). It is
+ * called with { legends: true } when the draft needs catalog.legends.
+ */
 export function setCatalogLoader(fn) {
-  catalogLoader = fn || loadWarmCatalog;
+  catalogLoader = fn || defaultLoader;
 }
 
 function go(path) {
@@ -246,7 +263,7 @@ export async function startDraft(input, { go: navigateTo = true, spin = true } =
   const ctx = normalizeContext(input);
   draftStore.set(s => ({ ...s, status: 'loading', error: null }));
   try {
-    const catalog = await catalogLoader();
+    const catalog = await catalogLoader({ legends: worldCupDraft(ctx) });
     const next = createDraftSession(catalog, sessionOptions(ctx));
     catalogRef = catalog;
     session = next;
@@ -282,7 +299,8 @@ export function loadDraft() {
     return Promise.resolve(null);
   }
   draftStore.set(s => ({ ...s, status: 'loading', error: null }));
-  loading = catalogLoader()
+  const options = saved.session?.options || {};
+  loading = catalogLoader({ legends: !!(options.legendSpin || options.primes) })
     .then(catalog => {
       session = restoreDraftSession(catalog, saved.session);
       catalogRef = catalog;
@@ -356,6 +374,21 @@ export function pickPlayer(profileId, slot = null) {
   if (result.ok) {
     persist();
     publish({ animate: null, lastPick: pickInfo(result) });
+  }
+  return result;
+}
+
+/**
+ * Spend a Prime boost on the player in a slot of the side to act (session.prime): he becomes
+ * his prime version. Returns the session's result ({ ok, … } | { ok: false, reason }).
+ */
+export function primeDrafted(slot) {
+  if (!session) return { ok: false, reason: 'No draft' };
+  const result = session.prime(slot, session.turn);
+  if (result.ok) {
+    opponent = null;
+    persist();
+    publish();
   }
   return result;
 }

@@ -59,6 +59,14 @@ const CREDITS = [
     ],
   },
   {
+    title: 'Legends & prime versions',
+    body: [
+      'Past versions of players (FIFA 15–23, career mode) from the ',
+      a('https://huggingface.co/datasets/jsulz/FIFA23', 'FIFA23 dataset'),
+      ' by jsulz on Hugging Face, MIT licence. Upstream data from SoFIFA / EA SPORTS FIFA; compiled like the current players.',
+    ],
+  },
+  {
     title: 'Club & league strength',
     body: [
       'A September 2026 snapshot of the ',

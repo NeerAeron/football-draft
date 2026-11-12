@@ -4,7 +4,14 @@
 // big pitch on the left lights up instead).
 import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
-import { PlayerCard, FitTag, Button, IconButton, Sheet } from '../../components/index.js';
+import {
+  PlayerCard,
+  FitTag,
+  Button,
+  IconButton,
+  Sheet,
+  CaptainMark,
+} from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
 import { mateLines } from './draft-model.js';
 import { fmt1, signed1 } from '../../lib/format.js';
@@ -34,6 +41,13 @@ function Effects({ team, preview, hideRatings }) {
           html`<span key=${i} class=${cx('pick-effects__mate', `is-${l.tone}`)}>${l.text}</span>`,
       )}
     </li>
+    ${
+      preview.captain &&
+      html`<li class="pick-effects__item pick-effects__captain" data-testid="captain-effect">
+        <${CaptainMark} />
+        <span>Captain: <b class="delta is-up">+${preview.captain.boost}</b> to every player</span>
+      </li>`
+    }
     ${
       budget &&
       html`<li class="pick-effects__item pick-effects__budget" data-testid="budget-effect">
