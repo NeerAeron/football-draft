@@ -189,7 +189,9 @@ export function calibratedRoleAbility(p, role = p.role) {
     ability = roleAbility(p, role) + (ratings.roleOffsets[role] || 0);
   // The weighted attributes compress the very top (a player EA rates 89 came out at 87):
   // every point above `topFrom` is stretched by `topLift`, which puts the best players back
-  // near EA's overall without moving the rest.
+  // near EA's overall without moving the rest. Not for keepers: their overall is their one
+  // goalkeeping attribute, which already is EA's overall.
+  if (role === 'GK') return clamp(ability, 1, 99);
   return clamp(ability + Math.max(0, ability - ratings.topFrom) * ratings.topLift, 1, 99);
 }
 export function overallRating(p, rounded = true, role = p.role) {

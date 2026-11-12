@@ -314,7 +314,9 @@ test('Prime boosts: by difficulty, a drafted player becomes his prime version', 
       now.players.map(e => e.chem),
       mates.players.map(e => e.chem),
     );
-    assert.equal(now.captain, mates.captain);
+    // (The armband goes to the best-rated Captain: it may move to him, to nobody else.)
+    assert.ok(now.captain === mates.captain || now.captain === o.slot);
+    assert.equal(now.captainBoost, mates.captainBoost);
     // His current version stays taken; history follows him.
     assert.equal(s.available(base), false);
     assert.ok(s.history.some(h => h.profileId === o.to.profileId && h.primeOf === o.profileId));

@@ -759,6 +759,8 @@ export function configField(path) {
   return CONFIG_FIELDS.find(f => f.path === path) || null;
 }
 const labels = {
+  topFrom: 'Overall: stretch ratings above',
+  topLift: 'Overall: extra per point above that',
   controlQuality: 'Ball-control stat influence',
   passingQuality: 'Passing stat influence',
   defensiveQuality: 'Defensive reading stat influence',
@@ -838,6 +840,8 @@ const ranges = {
   standardDeviation: [0, 4, 0.1],
   storedTendencyWeight: [0, 1, 0.05],
   attributeCap: [0, 15, 1],
+  topFrom: [50, 99, 0.5],
+  topLift: [0, 1, 0.01],
   familiarityBase: [0.4, 0.9, 0.01],
   familiarityBonus: [0.1, 0.6, 0.01],
   familiarityDecay: [0.05, 3, 0.005],
@@ -849,6 +853,7 @@ const ranges = {
 const DRAFT_FIELDS = {
   'draft.nations.fieldSize': ['Nations in the field', 8, 64, 1],
   'draft.nations.potSize': ['Nations per pot', 1, 64, 1],
+  'draft.nations.playableSize': ['Playable nations: the strongest that can field an XI', 8, 250, 1],
   'draft.nations.fieldCore': ['World Cup draw: nations always in', 0, 64, 1],
   'draft.nations.fieldHalving': [
     'World Cup draw: rating points that halve the odds',
