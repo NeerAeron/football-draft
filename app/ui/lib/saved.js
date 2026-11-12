@@ -1,5 +1,6 @@
 // Read-only views of saved progress that the Home screen shows. The RUN/DAILY screens own
-// the writing side (lib/run-store.js) — keep these readers tolerant of older/partial shapes.
+// the writing side (lib/run-store.js). Readers are tolerant: anything missing, broken or saved
+// in an older format reads as nothing saved — one cut-off, no conversion, never a throw.
 //
 //   'football-draft-run'    World Cup Run summary (written after every match):
 //      { format: 3, mode: 'run', type: 'nations', stage: 'QF', record: { w, d, l },
@@ -7,15 +8,14 @@
 //        place?: 'third', placeLabel?: 'Third place', medal?: 'bronze', perfect?, budget?,
 //        stageLabel?, difficulty?, rounds: 8, updatedAt: ISO string }
 //      stage: the next match ('3P' = the third-place play-off, in the final's slot).
-//      format: the cup format the run was saved in. A run in progress without format: 3 is
-//      from an older format (no play-off, other difficulties): it cannot be resumed and reads
-//      as no run. A finished one still shows as the last run (older ones without a place).
+//      format: the cup format the run was saved in; a summary without format: 3 reads as no
+//      run.
 //   'football-draft-daily'  Daily Challenge record:
 //      { streak: 3, best: 7, lastPlayed: 'YYYY-MM-DD' (UTC day), lastResult?: '5-1-1',
 //        streakState?: { current, best, last }, results?: { [day]: entry }, current?: {…},
 //        draft?: { id, context, session, savedAt } (the day's draft, from its first pick) }
 //   'football-draft-draft'  the draft in progress (lib/draft-store.js writes it):
-//      { format: 1, context: { kind, type, difficulty, … }, session: { type: 'draft-session',
+//      { format: 2, context: { kind, type, difficulty, … }, session: { type: 'draft-session',
 //        state: { picks: [[…11 ids or null], …] } }, savedAt }
 //   The full run state lives in 'football-draft-run-state' (lib/run-store.js).
 //   Lifetime records of finished runs live in 'football-draft-records' (lib/records.js).
@@ -24,7 +24,8 @@ import { readJSON } from './storage.js';
 export const RUN_KEY = 'football-draft-run';
 export const DAILY_KEY = 'football-draft-daily';
 export const DRAFT_KEY = 'football-draft-draft';
-export const DRAFT_FORMAT = 1;
+// Format 2: sessions of core SESSION_FORMAT 2 (the rules of this version).
+export const DRAFT_FORMAT = 2;
 /** The draft modes (core DRAFT_MODES; kept here so Home loads no core code — a test compares). */
 export const DRAFT_TYPES = ['nations', 'leagues', 'clubs'];
 
@@ -52,15 +53,9 @@ export function readSavedRun() {
   const status = ['playing', 'champion', 'eliminated'].includes(run.status)
     ? run.status
     : 'playing';
-  if (status === 'playing' && run.format !== RUN_SUMMARY_FORMAT) return null;
+  if (run.format !== RUN_SUMMARY_FORMAT) return null;
   const playoff = run.stage === PLAYOFF_STAGE.id;
-  // How it finished: the place, or for a run of an older format its stage ('Champions', …).
-  const placeLabel =
-    typeof run.placeLabel === 'string'
-      ? run.placeLabel
-      : status !== 'playing' && typeof run.stageLabel === 'string'
-        ? run.stageLabel
-        : null;
+  const placeLabel = typeof run.placeLabel === 'string' ? run.placeLabel : null;
   return {
     mode: run.mode || 'run',
     type: run.type || 'nations',
@@ -74,7 +69,7 @@ export function readSavedRun() {
     status,
     complete: status !== 'playing',
     placeLabel,
-    medal: MEDALS.includes(run.medal) ? run.medal : status === 'champion' ? 'gold' : null,
+    medal: MEDALS.includes(run.medal) ? run.medal : null,
     perfect: run.perfect === true,
     budget: run.budget === true,
     updatedAt: run.updatedAt || null,
@@ -111,12 +106,7 @@ export function readDailyStatus(now = new Date()) {
       entry && typeof entry === 'object' && Number.isFinite(entry.points)
         ? {
             points: entry.points,
-            placeLabel:
-              typeof entry.placeLabel === 'string'
-                ? entry.placeLabel
-                : typeof entry.stageLabel === 'string'
-                  ? entry.stageLabel
-                  : null,
+            placeLabel: typeof entry.placeLabel === 'string' ? entry.placeLabel : null,
           }
         : null,
   };
@@ -134,6 +124,8 @@ export function readSavedDraft(now = new Date()) {
   if (!DRAFT_TYPES.includes(saved.session.options?.mode)) return null;
   const raw = saved.session.state?.picks,
     picks = Array.isArray(raw) ? raw.flat() : [];
+  // One XI or two (Versus): anything else is not a draft that could be resumed.
+  if (picks.length !== 11 && picks.length !== 22) return null;
   // A Daily draft of another day is over: nothing to resume.
   const day = saved.context?.kind === 'daily' ? saved.context.daily : null;
   if (typeof day === 'string' && day !== dailyKey(now)) return null;

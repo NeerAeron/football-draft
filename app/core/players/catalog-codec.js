@@ -234,8 +234,8 @@ export function* decodeCatalogSteps(file) {
   });
   const players = new Array(n);
   let evidenceIndex = 0;
-  // Captains: indices of the players with the Captain tag (missing in older files).
-  const captains = new Set(c.captains || []);
+  // Captains: indices of the players with the Captain tag.
+  const captains = new Set(c.captains);
   for (let i = 0; i < n; i++) {
     const attrs = {},
       tendencies = {};

@@ -282,84 +282,46 @@ test('trophy cabinet: medals and best finish per difficulty, every run counted o
   assert.deepEqual(records.recordRun(out('qf', 3, 1), 'z'), []);
 });
 
-test('trophy cabinet: older formats migrate (titles become golds, removed levels go)', () => {
-  // Format 2: `best` was the furthest round (3 R32 … 6 SF, 7 final, 8 = won), five levels.
-  store.set(
-    records.RECORDS_KEY,
-    JSON.stringify({
-      format: 2,
-      levels: {
-        amateur: { runs: 9, titles: 4, perfect: 2, best: 8 },
-        semipro: { runs: 3, titles: 1, perfect: 0, best: 8 },
-        pro: { runs: 6, titles: 2, perfect: 1, best: 8 },
-        worldclass: { runs: 4, titles: 0, perfect: 0, best: 7 },
-        legendary: { runs: 5, titles: 0, perfect: 0, best: 6 },
-      },
-      seen: ['old'],
-      last: { id: 'old', level: 'amateur', news: ['title'] },
-    }),
-  );
-  let cabinet = records.readRecords();
-  assert.deepEqual(
-    cabinet.levels.map(l => [l.id, l.runs, l.gold, l.silver, l.bronze, l.perfect, l.bestLabel]),
-    [
-      ['pro', 6, 2, 0, 0, 1, 'Champions'],
-      ['worldclass', 4, 0, 1, 0, 0, 'Runners-up'],
-      ['legendary', 5, 0, 0, 0, 0, 'Fourth place'],
-    ],
-  );
-  assert.deepEqual([cabinet.runs, cabinet.titles, cabinet.won], [15, 2, 1], 'removed levels drop');
-  assert.equal(
-    cabinet.levels.every(l => l.budget.runs === 0),
-    true,
-  );
-  assert.equal(cabinet.ultimate.done, false);
-  assert.deepEqual(cabinet.last, { id: 'old', level: null, budget: false, news: ['title'] });
-  for (const [round, label] of [
-    [0, 'Group stage'],
-    [2, 'Group stage'],
-    [3, 'Round of 32'],
-    [4, 'Round of 16'],
-    [5, 'Quarter-finals'],
-  ]) {
-    store.set(
-      records.RECORDS_KEY,
-      JSON.stringify({ format: 2, levels: { pro: { runs: 1, best: round } } }),
-    );
-    assert.equal(records.readRecords().levels[0].bestLabel, label, `round ${round}`);
+test('trophy cabinet: one cut-off — an older format reads as an empty cabinet', () => {
+  // Formats 1 and 2 (the furthest round as `best`, `titles`, five levels) are not converted.
+  const old = {
+    levels: {
+      amateur: { runs: 9, titles: 4, perfect: 2, best: 8 },
+      pro: { runs: 6, titles: 2, perfect: 1, best: 8 },
+      worldclass: { runs: 4, titles: 0, perfect: 0, best: 7 },
+      legendary: { runs: 5, titles: 0, perfect: 0, best: 6 },
+    },
+    seen: ['old'],
+    last: { id: 'old', level: 'pro', news: ['title'] },
+  };
+  for (const format of [1, 2, undefined, '3', 4]) {
+    store.set(records.RECORDS_KEY, JSON.stringify({ ...old, format }));
+    const cabinet = records.readRecords();
+    assert.deepEqual([cabinet.runs, cabinet.titles, cabinet.won], [0, 0, 0], String(format));
+    assert.ok(cabinet.levels.every(l => l.runs === 0 && l.bestLabel === ''));
+    assert.equal(cabinet.last, null);
+    assert.deepEqual(records.runNews('old').news, []);
   }
-  // Format 1 (seven rounds, no Round of 32): its knockout rounds sit one lower.
-  store.set(
-    records.RECORDS_KEY,
-    JSON.stringify({
-      format: 1,
-      levels: {
-        amateur: { runs: 2, titles: 1, perfect: 1, best: 7 },
-        pro: { runs: 3, best: 3 },
-        worldclass: { runs: 2, titles: 1, perfect: 1, best: 7 },
-        legendary: { runs: 1, best: 2 },
-      },
-      seen: ['old'],
-    }),
-  );
-  cabinet = records.readRecords();
-  assert.deepEqual(
-    cabinet.levels.map(l => [l.bestLabel, l.gold, l.perfect]),
-    [
-      ['Round of 16', 0, 0],
-      ['Champions', 1, 1],
-      ['Group stage', 0, 0],
-    ],
-  );
+  // The next finished run starts the cabinet in today's format; nothing of the old one stays.
   const run = { complete: true, status: 'eliminated', difficulty: 'pro', place: 'r32' };
-  assert.equal(records.recordRun(run, 'old'), null, 'seen ids carry over');
-  assert.deepEqual(records.recordRun(run, 'new'), []);
-  // The next write stores format 3, without the removed levels.
+  assert.deepEqual(records.recordRun(run, 'old'), [], 'old seen ids are gone too');
   const stored = JSON.parse(store.get(records.RECORDS_KEY));
   assert.equal(stored.format, 3);
   assert.deepEqual(Object.keys(stored.levels), ['pro', 'worldclass', 'legendary']);
-  assert.equal(records.readRecords().levels[0].bestLabel, 'Round of 16');
-  assert.equal(records.readRecords().levels[1].gold, 1);
+  assert.deepEqual(
+    records.readRecords().levels.map(l => [l.runs, l.bestLabel]),
+    [
+      [1, 'Round of 32'],
+      [0, ''],
+      [0, ''],
+    ],
+  );
+  // Levels the game does not have are never read or counted.
+  store.set(
+    records.RECORDS_KEY,
+    JSON.stringify({ format: 3, levels: { amateur: { runs: 4, gold: 4 }, pro: { runs: 1 } } }),
+  );
+  assert.equal(records.readRecords().runs, 1);
 });
 
 test('a run in progress is what a new World Cup draft would replace', () => {
@@ -394,7 +356,7 @@ test('a corrupt or foreign saved run is ignored', () => {
   assert.equal(runStore.readRunState(), null);
 });
 
-test('a run saved in an older format reads as no run; a finished one stays on Home', () => {
+test('one cut-off: anything saved in an older format reads as nothing saved', () => {
   const { run, meta } = runStore.createRunFromDraft(catalog, {
     session: draft,
     context: { kind: 'run', type: 'nations', difficulty: 'pro', seed: 42 },
@@ -404,42 +366,171 @@ test('a run saved in an older format reads as no run; a finished one stays on Ho
   const { format, ...summary } = JSON.parse(store.get(saved.RUN_KEY));
   assert.equal(format, saved.RUN_SUMMARY_FORMAT);
   assert.equal(summary.rounds, 8);
-  // What older versions stored: cup format 2 (no play-off) or 1 (seven rounds), and a Home
-  // summary without `format`.
+  assert.equal(runStore.runInProgress(), true);
+  const none = what => {
+    assert.equal(runStore.readRunState(), null, what);
+    assert.equal(runStore.loadRun(catalog), null, what);
+    assert.equal(runStore.runInProgress(), false, what);
+  };
+  // The run state: an older cup format, a removed difficulty or mode, rules of an older shape.
+  for (const [what, patch] of [
+    ['cup format 2', { format: 2 }],
+    ['cup format 1', { format: 1 }],
+    ['Amateur', { difficulty: 'amateur' }],
+    ['Club & Country', { mode: 'clubAndCountry' }],
+    ['no Captain in the rules', { rules: { ...fresh.run.rules, links: { nation: 1.5, club: 1 } } }],
+  ]) {
+    store.set(
+      runStore.RUN_STATE_KEY,
+      JSON.stringify({ ...fresh, run: { ...fresh.run, ...patch } }),
+    );
+    assert.equal(runStore.loadRun(catalog), null, what);
+  }
   for (const old of [2, 1]) {
     store.set(
       runStore.RUN_STATE_KEY,
       JSON.stringify({ ...fresh, run: { ...fresh.run, format: old } }),
     );
-    assert.equal(runStore.readRunState(), null);
-    assert.equal(runStore.loadRun(catalog), null);
+    none(`cup format ${old}`);
   }
+  // Home's summary: without today's format there is no run — in progress or finished (an old
+  // one carried a stage label and a letter grade instead of a place).
   store.set(saved.RUN_KEY, JSON.stringify({ ...summary, stage: 'QF' }));
-  assert.equal(saved.readSavedRun(), null, 'an old run in progress cannot be continued');
-  // A run on a removed difficulty is discarded the same way.
-  store.set(
-    runStore.RUN_STATE_KEY,
-    JSON.stringify({ ...fresh, run: { ...fresh.run, difficulty: 'amateur' } }),
-  );
-  assert.equal(runStore.loadRun(catalog), null);
-  // A finished old run still shows as the last run, by its stage; its grade is gone.
+  assert.equal(saved.readSavedRun(), null);
   store.set(
     saved.RUN_KEY,
     JSON.stringify({
       ...summary,
+      format: 2,
       stage: 'F',
       status: 'champion',
       complete: true,
       grade: 'S+',
-      verdict: 'Perfect Eight',
       stageLabel: 'Champions',
+    }),
+  );
+  assert.equal(saved.readSavedRun(), null);
+  // Today's summary of a finished run reads by its place and medal, nothing else.
+  store.set(
+    saved.RUN_KEY,
+    JSON.stringify({
+      ...summary,
+      format,
+      status: 'champion',
+      complete: true,
+      stageLabel: 'Champions',
+      grade: 'S+',
     }),
   );
   const last = saved.readSavedRun();
   assert.deepEqual(
     [last.complete, last.placeLabel, last.medal, 'grade' in last],
-    [true, 'Champions', 'gold', false],
+    [true, null, null, false],
   );
+  // The draft slot: a draft saved in the older format is nothing to resume.
+  const session = JSON.parse(JSON.stringify(draft.serialize()));
+  store.set(saved.DRAFT_KEY, JSON.stringify({ format: 1, context: { kind: 'run' }, session }));
+  assert.equal(saved.readSavedDraft(), null);
+  store.set(
+    saved.DRAFT_KEY,
+    JSON.stringify({ format: saved.DRAFT_FORMAT, context: { kind: 'run' }, session }),
+  );
+  assert.equal(saved.readSavedDraft().complete, true);
+  // The Daily: an entry from before the places has no place to show; an attempt that does
+  // not restore is no attempt.
+  const today = new Date('2026-11-09T12:00:00Z');
+  store.set(
+    saved.DAILY_KEY,
+    JSON.stringify({
+      lastPlayed: '2026-11-09',
+      results: { '2026-11-09': { points: 500, stageLabel: 'Quarter-finals', grade: 'B' } },
+      current: { id: '2026-11-09', run: { type: 'cup-run', format: 2 } },
+    }),
+  );
+  assert.deepEqual(saved.readDailyStatus(today).todayResult, { points: 500, placeLabel: null });
+  assert.throws(() => restoreCupRun(catalog, runStore.readDaily().current.run), /Not a saved run/);
+});
+
+test('tolerant readers: whatever is in storage, nothing throws and nothing is invented', () => {
+  // Every key the game owns × a pile of junk and half-shapes: each reader answers "nothing".
+  const junk = [
+    '',
+    '{',
+    'null',
+    'true',
+    '7',
+    '"text"',
+    '[]',
+    '[1,2,3]',
+    '{}',
+    '{"format":1}',
+    '{"format":2}',
+    '{"format":3}',
+    '{"format":99,"run":{},"session":{},"levels":7}',
+    '{"format":3,"run":"x","meta":4,"pending":5,"log":6}',
+    '{"format":1,"run":{"type":"cup-run","format":3}}',
+    '{"format":1,"run":{"type":"cup-run","format":3,"mode":"nations"}}',
+    '{"format":2,"session":{"type":"draft-session"}}',
+    '{"format":2,"context":7,"session":{"type":"draft-session","options":{"mode":"nations"}}}',
+    '{"format":2,"session":{"type":"draft-session","options":{"mode":"nations"},"state":{"picks":7}}}',
+    '{"format":3,"levels":{"pro":{"runs":"many","gold":-3,"best":99}},"seen":[1,null],"last":{"id":3}}',
+    '{"format":3,"levels":[],"budget":"x","ultimate":{"count":5,"first":7}}',
+    '{"streak":-4,"best":"x","lastPlayed":"tomorrow","results":[],"current":{"id":7},"draft":[]}',
+    '{"results":{"2026-11-09":"x"},"streakState":{"current":"a","last":9},"current":{"run":1}}',
+    '{"stage":{},"record":"x","status":7,"format":3,"medal":{},"placeLabel":4}',
+    JSON.stringify({ a: 'x'.repeat(5000) }),
+  ];
+  const keys = [
+    saved.RUN_KEY,
+    runStore.RUN_STATE_KEY,
+    saved.DAILY_KEY,
+    saved.DRAFT_KEY,
+    records.RECORDS_KEY,
+  ];
+  const now = new Date('2026-11-09T12:00:00Z');
+  let reads = 0;
+  for (const key of keys)
+    for (const value of junk) {
+      store.clear();
+      store.set(key, value);
+      const what = `${key} = ${value.slice(0, 50)}`;
+      assert.doesNotThrow(() => {
+        const run = saved.readSavedRun();
+        assert.ok(run === null || (typeof run.stage === 'string' && run.record.w >= 0), what);
+        assert.equal(saved.readSavedDraft(now), null, what);
+        assert.equal(runStore.loadRun(catalog), null, what);
+        assert.equal(runStore.runInProgress(), false, what);
+        const status = saved.readDailyStatus(now);
+        assert.ok(status.streak >= 0 && status.todayResult === null, what);
+        assert.equal(status.inProgress, false, what);
+        const daily = runStore.readDaily();
+        assert.equal(daily.draft, null, what);
+        assert.equal(runStore.lockedDailyDraft(daily, '2026-11-09'), null, what);
+        assert.ok(daily.streakState.current >= 0 || daily.streakState.current < 0, what);
+        runStore.displayStreak(daily, '2026-11-09');
+        const cabinet = records.readRecords();
+        assert.ok(cabinet.runs >= 0 && cabinet.levels.length === 3, what);
+        assert.ok(
+          cabinet.levels.every(l => l.gold >= 0 && l.best >= 0 && l.best <= 7),
+          what,
+        );
+        records.runNews('x');
+      }, what);
+      reads++;
+    }
+  assert.equal(reads, keys.length * junk.length);
+  // A result query: the record, optionally with a place — anything else is no result.
+  for (const r of ['5-1-1.sp', '5-1-1.b', '5-1-1.zz', '5-1-1.', '5-1', '12-0-0', 'x', '5-1-1.th.x'])
+    assert.equal(runStore.readChallengeQuery({ c: 'c1.c.n.433.p.0.1a', r }).score, null, r);
+  assert.deepEqual(runStore.readChallengeQuery({ c: 'c1.c.n.433.p.0.1a', r: '5-1-1' }).score, {
+    w: 5,
+    d: 1,
+    l: 1,
+    place: null,
+    placeLabel: null,
+  });
+  for (const query of [undefined, {}, { c: 7 }, { c: [], r: {} }, { c: 'c1.c.n.433.a.0.1a' }])
+    assert.equal(runStore.readChallengeQuery(query).challenge, null);
 });
 
 test('the third-place play-off: the Home summary, the labels and the Budget flag', () => {
@@ -511,10 +602,12 @@ test('the draft type is the core mode; a mode the game no longer has reads as no
   assert.throws(() => restoreCupRun(catalog, state.run), /Not a saved run/);
   // A draft saved in it: Home offers nothing to resume.
   const session = JSON.parse(JSON.stringify(draft.serialize()));
-  store.set(saved.DRAFT_KEY, JSON.stringify({ format: 1, context: { kind: 'quick' }, session }));
+  const slot = () =>
+    JSON.stringify({ format: saved.DRAFT_FORMAT, context: { kind: 'quick' }, session });
+  store.set(saved.DRAFT_KEY, slot());
   assert.equal(saved.readSavedDraft().picks, 11);
   session.options.mode = 'clubAndCountry';
-  store.set(saved.DRAFT_KEY, JSON.stringify({ format: 1, context: { kind: 'quick' }, session }));
+  store.set(saved.DRAFT_KEY, slot());
   assert.equal(saved.readSavedDraft(), null);
   // A link in it is not a link.
   assert.equal(runStore.readChallengeQuery({ c: 'c1.c.x.433.p.0.1a' }).challenge, null);
@@ -617,17 +710,11 @@ test('challenge links carry the draft and the friend result, on this page', () =
   for (const place of PLACES)
     assert.equal(runStore.placeFromToken(runStore.placeToken(place)), place);
   assert.equal(runStore.placeFromToken('zz'), null);
-  // A link from before the places carried a letter grade: the record still reads, no place.
+  // One cut-off: a letter grade where the place goes (links from before the places) is no
+  // result, and a link on a removed difficulty is no link.
   for (const grade of ['sp', 's', 'ap', 'a', 'bp', 'b', 'cp', 'c', 'dp', 'd', 'f'])
-    assert.deepEqual(runStore.readChallengeQuery({ c: query.c, r: `5-1-1.${grade}` }).score, {
-      w: 5,
-      d: 1,
-      l: 1,
-      place: null,
-      placeLabel: null,
-    });
-  // … and one on a removed difficulty opens as Pro.
-  assert.equal(runStore.readChallengeQuery({ c: 'c1.c.n.433.a.0.1a' }).challenge.difficulty, 'pro');
+    assert.equal(runStore.readChallengeQuery({ c: query.c, r: `5-1-1.${grade}` }).score, null);
+  assert.equal(runStore.readChallengeQuery({ c: 'c1.c.n.433.a.0.1a' }).challenge, null);
   assert.ok(decodeChallenge(query.c));
   // A Budget run's link starts a Budget draft for the friend; any other run's does not.
   const meta = { mode: 'nations', seed: 77, formation: '442', difficulty: 'legendary' };
@@ -708,7 +795,7 @@ test('the Daily is locked from the first pick: the draft is kept and can only be
   partial.spin();
   partial.pick(partial.suggestPick().profileId);
   const kept = {
-    format: 1,
+    format: saved.DRAFT_FORMAT,
     context: { kind: 'daily', type: 'nations', daily: day },
     session: JSON.parse(JSON.stringify(partial.serialize())),
     savedAt: '2026-11-08T10:00:00.000Z',

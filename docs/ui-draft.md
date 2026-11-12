@@ -23,7 +23,7 @@ Starting a World Cup draft while a run is in progress asks first (`docs/ui-run.m
 | Param | Values | Notes |
 | --- | --- | --- |
 | `type` | `nations` · `leagues` · `clubs` (Quick Match, Versus) | the World Cup Run is always `nations`; otherwise default: last choice (`prefs.draftType`); anything else reads as `nations` |
-| `difficulty` | `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` (so does a removed `amateur` / `semipro`) |
+| `difficulty` | `pro` · `worldclass` · `legendary` | default: last choice for the mode, else `pro` (so does any unknown id) |
 | `formation` | any `FORMATIONS` key (`433`, `4231-wide`, …) | default: last choice, else `433` |
 | `seed` | digits (uint32) or any string (FNV-1a, like the core) | **implies standard rules** (`useDefaultRules`), shows the Challenge banner |
 | `hide` / `unique` | `1` / `0` | Ball Knower / one player per nation (nation spins only) |
@@ -64,7 +64,7 @@ await resumeDraft(saved);   // make a saved draft the current one → #/draft (t
   `nations`); `seed` numbers, digit strings or any
   string; kind `daily` implies `useDefaultRules`. `normalizeContext()` / `sessionOptions()`
   show exactly what reaches `createDraftSession`.
-* Persisted after **every** action: `{ format: 1, context, session: session.serialize(),
+* Persisted after **every** action: `{ format: 2, context, session: session.serialize(),
   savedAt }` under `football-draft-draft`. A reload restores the board where it was (a spin that
   was animating is shown landed). A Daily draft with a pick made is also kept with the Daily
   record after every action (`lockDailyDraft`, `docs/ui-run.md`): one attempt from the first

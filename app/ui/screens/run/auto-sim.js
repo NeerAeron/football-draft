@@ -62,7 +62,7 @@ export function goalList(m) {
 export function summarizeMatch(m, { id = null, seed = null } = {}) {
   const players = m.players.map(p => ({
     id: p.id,
-    profileId: p.profileId ?? p.sourcePlayerId ?? null,
+    profileId: p.profileId ?? null,
     team: p.team,
     slot: p.slot,
     name: p.name,

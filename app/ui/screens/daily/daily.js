@@ -328,8 +328,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
   useEffect(() => {
     if (fresh && snapshot?.status === 'champion') setFire(1);
   }, []);
-  // The medal of the finish (entries from before the places: a title is still a gold).
-  const medal = entry.medal ?? (entry.status === 'champion' ? 'gold' : null);
+  const medal = entry.medal ?? null;
   const watch = round => {
     const m = matchFor(run, round);
     requestMatch({
@@ -361,7 +360,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
         <div class="daily-card__finish" data-place=${entry.place || ''}>
           <${Prize} medal=${medal} size=${72} glow=${medal === 'gold'} />
           <div class="daily-card__finish-text">
-            <span class="daily-card__place">${entry.placeLabel || entry.stageLabel}</span>
+            <span class="daily-card__place">${entry.placeLabel}</span>
             <span class="daily-card__record num"
               >${`${entry.record.w}–${entry.record.d}–${entry.record.l}`}</span
             >
@@ -452,23 +451,6 @@ function rebuildRun(catalog, entry) {
     /* fall through */
   }
   return null;
-}
-/**
- * Today's attempt being simulated. One saved in an older cup format (before the third-place
- * play-off) does not restore: it starts again with the same XI against today's opponents.
- */
-function resumeAttempt(catalog, day, saved) {
-  try {
-    return restoreCupRun(catalog, saved);
-  } catch (error) {
-    const u = saved?.user;
-    if (!u || !Array.isArray(u.players)) throw error;
-    const { name, color, secondary, formation, players } = u;
-    return createCupRun(catalog, {
-      ...day.cup,
-      user: { name, color, secondary, formation, players },
-    });
-  }
 }
 function matchFor(run, round) {
   const home = run.userSide(),
@@ -592,19 +574,17 @@ export default function DailyScreen() {
         )
           clearDraft();
         if (state.draft && !locked) state = ctx.state = dropDailyDraft(state);
-        if (state.current?.id === today) {
-          const run = resumeAttempt(catalog, day, state.current.run);
-          // A restarted attempt (see resumeAttempt) drops the log of the old format's matches.
-          if (!run.matches.length && state.current.log?.length)
-            ctx.state = { ...ctx.state, current: { ...ctx.state.current, log: [] } };
+        // Today's attempt being simulated; one that does not restore reads as none.
+        const run = state.current?.id === today ? rebuildRun(catalog, state.current) : null;
+        if (run) {
           if (run.complete) finish(ctx, run);
           else simulate(ctx, run);
           return;
         }
         if (state.results[today])
           return setS({ ...ctx, phase: 'result', entry: state.results[today], fresh: false });
-        if (state.current && state.current.id !== today) {
-          // An unfinished attempt from another day cannot be resumed: drop it.
+        if (state.current) {
+          // An unfinished attempt from another day (or an unreadable one) cannot be resumed.
           state = { ...state, current: null };
           ctx.state = state;
         }

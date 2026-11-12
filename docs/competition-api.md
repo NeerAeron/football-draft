@@ -172,8 +172,9 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   place) }` — a seeded 300-run Monte-Carlo (~5 ms) for the live meter.
 * Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~5 KB) and
   `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 3 (the
-  play-off: nine opponents; three difficulties); an older run (format 2 without the play-off,
-  format 1 with seven rounds) or one on a removed difficulty throws 'Not a saved run'.
+  play-off: nine opponents; three difficulties); anything else — an older format, a removed
+  difficulty or draft mode, link rules that are not the three numbers — throws 'Not a saved
+  run' (one cut-off, no conversion).
 
 ### Fast rating model (`model.js`)
 
@@ -255,8 +256,7 @@ Challenge links — two kinds, the ones the game makes: a World Cup run (`cup`) 
 uniqueNations, budget, catalog })` →
 `c1.<kind>.<mode>.<formation>.<level>.<flags>.<seed36>[.<stamp>]` (only `[a-z0-9.-]`; kind `c`
 / `d`; mode `n` / `l` / `c`; flags `h` ratings hidden, `u` one per nation, `b` Budget mode — a
-World Cup run's only — or `0`; level `p` / `w` / `l`; an old link's `a` or `s` — Amateur,
-Semi-pro — decodes as Pro). The UI puts the token in `#/challenge?c=<token>&r=…`
+World Cup run's only — or `0`; level `p` / `w` / `l`). The UI puts the token in `#/challenge?c=<token>&r=…`
 (`challengeLink`, `docs/ui-run.md`). `decodeChallenge(token)` gives the challenge back, or
 null for anything else — never throws; then
 `createDraftSession(catalog, { mode: c.mode, seed: c.seed, formation: c.formation,

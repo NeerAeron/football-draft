@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { createDraftSession } from '../app/core/draft/session.js';
 import { catalogIndex } from '../app/core/draft/pools.js';
+import { lcg } from '../app/core/util/rng.js';
 import { createCupRun } from '../app/core/competition/cup.js';
 import {
   dailyId,
@@ -271,11 +272,30 @@ test('challenge links round-trip and replay the same spins', () => {
     42,
   ])
     assert.equal(decodeChallenge(bad), null, String(bad));
-  // Old links on the removed difficulties (a: Amateur, s: Semi-pro) play as Pro.
-  for (const old of ['a', 's']) {
-    const c = decodeChallenge(`c1.c.n.433.${old}.0.1a`);
-    assert.equal(c.difficulty, 'pro');
+  // One cut-off: a link on a removed difficulty (a: Amateur, s: Semi-pro) is not a link.
+  for (const old of ['a', 's']) assert.equal(decodeChallenge(`c1.c.n.433.${old}.0.1a`), null);
+  // Whatever arrives, decoding never throws.
+  const random = lcg(99),
+    alphabet = 'c1.dnlpwhub0x29-_ ';
+  for (let k = 0; k < 2000; k++) {
+    const text = Array.from(
+      { length: Math.floor(random() * 30) },
+      () => alphabet[Math.floor(random() * alphabet.length)],
+    ).join('');
+    const c = decodeChallenge(text);
+    assert.ok(c === null || ['cup', 'daily'].includes(c.kind), text);
   }
+  for (const junk of [
+    undefined,
+    {},
+    [],
+    3.5,
+    true,
+    'c1',
+    'c1.......',
+    'c1.c.n.433.p.0.' + 'z'.repeat(200),
+  ])
+    assert.equal(decodeChallenge(junk), null);
   assert.throws(() => encodeChallenge({ difficulty: 'amateur', seed: 1 }), /Invalid challenge/);
   // A friend opening the link drafts with the very same spins.
   const original = createDraftSession(catalog, {

@@ -366,13 +366,13 @@ test('re-rolls: count by difficulty, per side, never repeat a seen option', () =
     pro: 2,
     worldclass: 1,
     legendary: 1,
-    // A save or a link from before the three difficulties plays as Pro.
-    amateur: 2,
-    semipro: 2,
   })) {
     const s = createDraftSession(catalog, { seed: 8, difficulty });
     assert.equal(s.snapshot().rerolls[0], n);
   }
+  // The removed levels are unknown, like any other id: one cut-off, no mapping.
+  for (const difficulty of ['amateur', 'semipro', 'nope'])
+    assert.throws(() => createDraftSession(catalog, { seed: 8, difficulty }), /Unknown difficulty/);
   const s = createDraftSession(catalog, { seed: 8, difficulty: 'pro' });
   assert.throws(() => s.reroll(), /Spin first/);
   const seen = [s.spin().option.id];
@@ -520,20 +520,17 @@ test('drafts offer only players shown 65+; teams keep their real players', () =>
     side.players.some(p => shown(p) < min),
     `${weakest.name} fields its real players`,
   );
-  // A draft saved before the rule has none in its rules: it loads and offers everyone.
-  const old = createDraftSession(catalog, {
+  // The rule travels with the session: its rules carry the minimum, and 0 offers everyone.
+  const kept = createDraftSession(catalog, {
     seed: 3,
     schedule: { rounds: [{ spin: nation.id, alternate: null }] },
   });
-  old.spin();
-  const data = JSON.parse(JSON.stringify(old.serialize()));
+  kept.spin();
+  const data = JSON.parse(JSON.stringify(kept.serialize()));
   assert.equal(data.rules.pickMinimum, min);
-  delete data.rules.pickMinimum;
-  const restored = restoreDraftSession(catalog, data);
-  assert.equal(restored.pickMinimum, 0);
-  assert.equal(restored.available(weak), true);
-  assert.ok(restored.snapshot().pool.length >= old.snapshot().pool.length);
-  assert.equal(restored.pick(restored.suggestPick().profileId).ok, true);
+  assert.equal(restoreDraftSession(catalog, data).available(weak), false);
+  data.rules.pickMinimum = 0;
+  assert.equal(restoreDraftSession(catalog, data).available(weak), true);
 });
 
 test('PvP: a seeded coin toss picks the first drafter, then turns alternate', () => {
@@ -700,6 +697,18 @@ test('serialize/restore round-trips mid-spin and continues identically', () => {
     assert.deepEqual(b.serialize(), a.serialize());
   }
   assert.throws(() => restoreDraftSession(catalog, { type: 'other' }), /Not a saved draft/);
+  // One cut-off: a session of an older format is not a saved draft session — there is no
+  // conversion (the rules it carried: numbered Budget bands, link thresholds, removed levels).
+  const current = createDraftSession(catalog, { seed: 1 }).serialize();
+  assert.equal(current.format, 2);
+  for (const format of [1, 0, undefined, '2', 3])
+    assert.throws(
+      () => restoreDraftSession(catalog, { ...current, format }),
+      /Not a saved draft/,
+      String(format),
+    );
+  for (const junk of [null, undefined, 4, 'x', [], {}])
+    assert.throws(() => restoreDraftSession(catalog, junk), /Not a saved draft/);
   const saved = createDraftSession(catalog, { seed: 1 }).serialize();
   saved.state.picks[0][0] = 'missing:player';
   assert.throws(() => restoreDraftSession(catalog, saved), /does not match/);

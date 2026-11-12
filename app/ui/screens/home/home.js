@@ -138,7 +138,7 @@ function ContinueCard({ run }) {
       <div class="continue__titles">
         <p class="eyebrow">${done ? 'Last run' : 'Run in progress'}</p>
         <h2 class="continue__title" id="continue-title">
-          ${done ? run.placeLabel || (run.status === 'champion' ? 'Champions' : 'Run over') : run.stageLabel || stage?.label || 'World Cup Run'}
+          ${done ? run.placeLabel || 'Run over' : run.stageLabel || stage?.label || 'World Cup Run'}
         </h2>
       </div>
       <span

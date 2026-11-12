@@ -85,8 +85,7 @@ export function shareText(snapshot, extras = {}) {
 
 // ---- challenge links ----------------------------------------------------------------------
 // Token: c1.<kind>.<mode>.<formation>.<difficulty>.<flags>.<seed base36>[.<catalog stamp>]
-//   kind c cup run · d daily (the two links the game makes); mode n/l/c; difficulty p/w/l (old
-//   links may carry a or s, the removed Amateur and Semi-pro: they decode as Pro);
+//   kind c cup run · d daily (the two links the game makes); mode n/l/c; difficulty p/w/l;
 //   flags any of h (hide ratings), u (one per nation), b (Budget mode: World Cup runs only),
 //   or 0.
 //   For a daily the seed field is the challenge number (dailyIdFromNumber gives the day).
@@ -95,7 +94,6 @@ export const CHALLENGE_VERSION = 'c1';
 const KINDS = { c: 'cup', d: 'daily' };
 const MODES = { n: 'nations', l: 'leagues', c: 'clubs' };
 const LEVEL_CODES = { p: 'pro', w: 'worldclass', l: 'legendary' };
-const OLD_LEVEL_CODES = { a: 'pro', s: 'pro' };
 const invert = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]));
 
 /**
@@ -139,7 +137,7 @@ export function decodeChallenge(token) {
   const parts = token.trim().split('.');
   if (parts.length < 7 || parts.length > 8 || parts[0] !== CHALLENGE_VERSION) return null;
   const [, k, m, formation, d, flags, seed36, catalog = null] = parts;
-  const difficulty = LEVEL_CODES[d] ?? OLD_LEVEL_CODES[d];
+  const difficulty = LEVEL_CODES[d];
   if (!KINDS[k] || !MODES[m] || !difficulty || !FORMATIONS[formation]) return null;
   if (!/^(0|[hub]{1,3})$/.test(flags) || !/^[0-9a-z]{1,7}$/.test(seed36)) return null;
   const seed = parseInt(seed36, 36);

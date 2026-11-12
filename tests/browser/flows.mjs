@@ -610,7 +610,7 @@ export const flows = [
           await page.goto(`${base}#/play/quick?type=nations&difficulty=amateur&seed=5`);
           await visible(page, '[data-screen="setup"][data-mode="quick"] .setup-challenge');
           if (!(await page.isChecked('input[name="setup-difficulty"][value="pro"]')))
-            throw new Error('a removed difficulty does not fall back to Pro');
+            throw new Error('an unknown difficulty does not fall back to Pro');
         },
       );
       await shot('quick-challenge');
@@ -1637,7 +1637,7 @@ export const flows = [
         await page.click('.cabinet__mode label:has-text("Classic")');
       });
       await shot('partly');
-      await step('an old cabinet migrates: titles become golds, removed levels go', async () => {
+      await step('a cabinet saved in an older format reads as empty', async () => {
         await show({
           format: 2,
           levels: {
@@ -1648,11 +1648,9 @@ export const flows = [
           seen: [],
         });
         const count = await page.getAttribute('.cabinet__count', 'aria-label');
-        if (!/^1 of 3/.test(count)) throw new Error(`count: ${count}`);
-        const legendary = await page.textContent('.cabinet__slot[data-level="legendary"]');
-        if (!/Runners-up/.test(legendary)) throw new Error(`legendary: ${legendary}`);
-        if (!/^7 runs/.test((await page.textContent('.cabinet__foot')).trim()))
-          throw new Error('the removed level is still counted');
+        if (!/^0 of 3/.test(count)) throw new Error(`count: ${count}`);
+        if ((await page.locator('.cabinet__slot', { hasText: 'Not played' }).count()) !== 3)
+          throw new Error('an old cabinet still shows something');
       });
       await step('everything won: the ultimate slot unlocked', async () => {
         await show({
@@ -1800,16 +1798,27 @@ export const flows = [
     name: 'challenge-link',
     async run({ page, shot, step, base }) {
       await seed(page, { ...ONBOARDED, ...FAST_SIM });
-      await step('short link lands on the challenge', async () => {
-        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+      await step('links of older formats are not valid: no crash, the way Home', async () => {
+        // A removed difficulty (a), Club & Country (x), a Quick Match link (q).
+        for (const token of ['c1.c.n.433.a.0.16', 'c1.c.x.433.p.0.16', 'c1.q.n.433.p.0.16']) {
+          await page.goto(`${base}#/challenge?c=${token}&r=5-1-1.bp`);
+          await visible(
+            page,
+            '[data-screen="challenge"] .empty-state, [data-screen="challenge"] h1',
+          );
+          if (await page.locator('[data-testid="accept-challenge"]').count())
+            throw new Error(`${token} can be accepted`);
+        }
+        // A letter grade where the place goes: the challenge opens, without a result.
+        await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=5-1-1.bp`);
         await visible(page, '[data-screen="challenge"] [data-testid="accept-challenge"]');
+        if (await page.locator('.friend-score').count())
+          throw new Error('a grade read as a result');
+        // The short '#c=' form is gone: not a route.
+        await page.goto(`${base}#c=c1.c.n.433.p.0.16`);
+        await visible(page, '[data-screen="placeholder"] h1');
       });
       await step('shared link with a result', async () => {
-        // An old link: a letter grade after the record (ignored) on a removed difficulty (Pro).
-        await page.goto(`${base}#/challenge?c=c1.c.n.433.a.0.16&r=5-1-1.bp`);
-        await visible(page, '[data-screen="challenge"] .friend-score');
-        const old = await page.textContent('[data-screen="challenge"]');
-        if (!/5–1–1/.test(old) || !/Pro/.test(old)) throw new Error('old link does not read');
         await page.goto(`${base}#/challenge?c=c1.c.n.433.p.0.16&r=6-1-1.th`);
         await visible(page, '[data-screen="challenge"] .friend-score .medal');
         const label = await page.textContent('.friend-score__label');

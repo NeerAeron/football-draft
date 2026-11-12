@@ -35,14 +35,12 @@ export const DIFFICULTY_LABELS = {
   worldclass: 'World Class',
   legendary: 'Legendary',
 };
-/**
- * A difficulty id from a save or a link: the removed levels ('amateur', 'semipro') and anything
- * unknown read as 'pro'.
- */
-export const difficultyOf = id => (DIFFICULTIES.includes(id) ? id : 'pro');
 /** Familiarity at or above this counts as a natural position (auto placement prefers it). */
 export const NATURAL_FIT = 0.95;
-export const SESSION_FORMAT = 1;
+// Format 2: the rules of this version (a nation's draft squad, the pick minimum, the three
+// difficulties, the named tiers, mates and the Captain). A session saved in anything older is
+// not a saved draft session: there is one cut-off and no conversion.
+export const SESSION_FORMAT = 2;
 const DEFAULT_TEAMS = [
   { name: 'You', color: '#d9f580', secondary: '#16213a' },
   { name: 'Player 2', color: '#baaff0', secondary: '#16213a' },
@@ -85,9 +83,7 @@ function normalizeOptions(o = {}) {
     (_, i) => o.formations?.[i] ?? o.formations?.[0] ?? o.formation ?? '433',
   );
   for (const f of formations) if (!FORMATIONS[f]) throw Error('Unknown formation: ' + f);
-  // Saves and links from before the three difficulties: the removed levels play as Pro.
-  const difficulty =
-    o.difficulty === 'amateur' || o.difficulty === 'semipro' ? 'pro' : (o.difficulty ?? 'pro');
+  const difficulty = o.difficulty ?? 'pro';
   if (!DIFFICULTIES.includes(difficulty)) throw Error('Unknown difficulty: ' + difficulty);
   if (o.schedule && sides !== 1) throw Error('A scheduled (daily) draft has one side');
   const teams = Array.from({ length: sides }, (_, i) => ({
@@ -144,8 +140,8 @@ export class DraftSession {
     // slots (`bands`, null when off).
     this.tiers = budgetBands(this.rules.budget);
     this.bands = this.options.budget ? this.tiers : null;
-    // Only players shown at this rating or more are offered (0: a draft saved before the rule).
-    this.pickMinimum = this.rules.pickMinimum ?? 0;
+    // Only players shown at this rating or more are offered (0: everyone).
+    this.pickMinimum = this.rules.pickMinimum;
     this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
     this.primesPerSide =
       this.options.primes === true
@@ -168,11 +164,11 @@ export class DraftSession {
       this.turn = this.first;
       this.picks = Array.from({ length: this.sides }, () => Array(11).fill(null));
       this.rerollsLeft = Array(this.sides).fill(this.rerollsPerSide);
+      this.primesLeft = Array(this.sides).fill(this.primesPerSide);
       this.history = [];
       this.current = null;
       this.seen = [];
     }
-    this.primesLeft ??= Array(this.sides).fill(this.primesPerSide);
     this.used = new Set(this.picks.flat().filter(Boolean));
     for (const id of [...this.used]) {
       const p = this.player(id);
@@ -1097,7 +1093,12 @@ export function createDraftSession(catalog, options = {}) {
 }
 /** Rebuild a session from serialize() output (throws if it does not fit the catalog). */
 export function restoreDraftSession(catalog, data) {
-  if (data?.type !== 'draft-session' || data.format !== SESSION_FORMAT)
+  if (
+    data?.type !== 'draft-session' ||
+    data.format !== SESSION_FORMAT ||
+    !data.rules ||
+    typeof data.rules !== 'object'
+  )
     throw Error('Not a saved draft session');
   return new DraftSession(catalog, data.options, { rules: data.rules, state: data.state });
 }

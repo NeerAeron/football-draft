@@ -31,8 +31,8 @@ Club & Country, is gone: a session, a saved draft, a saved run or a link in it i
 ('Unknown draft mode', 'Not a saved run', an invalid link) and the UI reads it as nothing saved.
 
 Every pick is one spin. Re-rolls per drafter by `difficulty` (`DIFFICULTIES`: `pro`, `worldclass`,
-`legendary`): Pro 2 · World Class 1 · Legendary 1 (or `rerolls: n`). A removed id (`amateur`,
-`semipro`) in a saved draft or a link plays as Pro (`difficultyOf`). A re-roll spins again without the options seen
+`legendary`): Pro 2 · World Class 1 · Legendary 1 (or `rerolls: n`); any other id is an
+unknown difficulty. A re-roll spins again without the options seen
 this round. No reveal pacing. **Dead-end guard**: an option whose pool cannot fill
 any open slot class (the GK slot vs outfield slots) gets weight 0 — so a keeper is always
 available when only the GK slot is left. All numbers live in `CONFIG.draft` (`pickMinimum`, `nations`,
@@ -49,9 +49,8 @@ opponents' XIs (nations, clubs, bosses), club squads and ratings, a nation's str
 `playable` / `field`, the ladder and Exhibition sides keep their real players whatever they are
 rated. Today 10,968 of the 15,788 players are selectable (961 of 1,719 keepers); the smallest
 nation squads are Armenia 9 and Egypt 11 (one playable nation, Guinea, has no keeper of 65+,
-so it never lands for the keeper slot), the smallest club pools 11. A draft
-saved before the rule has no `pickMinimum` in its rules: it loads and offers everyone. The UI
-says nothing about it.
+so it never lands for the keeper slot), the smallest club pools 11. A session's
+rules carry the minimum (0 offers everyone). The UI says nothing about it.
 
 **A nation has at most 30 draftable players** (`draftSquad(players, rules)` in `pools.js`,
 stored as `nation.squad` in the index; numbers in `CONFIG.draft.nations`: `squadSize` 30,
@@ -293,9 +292,8 @@ for the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the
 max `maxScore` = 27.5), `total` (sum of `chem`, Captain included: the UI's "Boosts +13"),
 `chem` (mean chem), `linked` (players with a mate), `captain` (slot of the armband or null:
 `captainSlot(players)`, the highest source rating among the Captains, first slot on a tie) and
-`captainBoost`. `linkBoosts(rules)` gives the three numbers; rules saved before the mates rule
-(thresholds per kind) read as the defaults, and rules saved while the game had no Captain
-(`{ nation, club }`) keep playing without one. Real national XIs are all nation mates (+1.5
+`captainBoost`. `linkBoosts(rules)` gives the three numbers; `validLinks(rules)` says whether a rules
+object has them (a saved run must: `restoreCupRun`). Real national XIs are all nation mates (+1.5
 each, +2.5 for club mates inside them, +1 with their captain), real club XIs club mates. A pool
 entry's `boost` says what a player would get in the XI as it stands, `captainBoost` what he
 would give it.
@@ -398,7 +396,10 @@ const again = restoreDraftSession(catalog, JSON.parse(localStorage.getItem('draf
 history, the Prime boosts left, plus `catalog: catalogStamp(catalog)`. Restore throws if a saved
 player is missing from the catalog — a draft with a legend or a primed player needs
 `catalog.legends` attached first; compare the stamp with `catalogStamp(catalog)` to warn about a changed
-database. Restored sessions continue with identical spins.
+database. Restored sessions continue with identical spins. `SESSION_FORMAT` is 2 (the rules
+of this version: a nation's draft squad, the pick minimum, the named tiers, mates and the
+Captain, three difficulties and modes): anything else — an older format, no rules — throws 'Not
+a saved draft session'. There is one cut-off and no conversion of older saves.
 
 ## Determinism contract
 
@@ -435,9 +436,7 @@ used, left }]` (`label: 'Star'`, `range: '84–87'`; or `null`). Helpers: `budge
   nobody is added from deeper in the nation, so a nation whose squad has nobody you can
   afford for an open slot class is off the reel for that spin — France, Spain, Brazil, England
   and Germany have no outfield player under 80 in their 30, Italy three.
-- Serialised with the session (`options.budget`, `rules.budget`); old saves have no budget,
-  and rules saved with numbered bands (`band1`–`band3`) keep their numbers under the tier
-  names.
+- Serialised with the session (`options.budget`, `rules.budget`: the three named tiers).
 - The game offers it in the World Cup Run only (`context.options.budget` → run
   `meta.budget`).
 

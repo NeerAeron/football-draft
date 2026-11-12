@@ -3,7 +3,7 @@
 // the top three start at CONFIG.draft.budget[tier].minimum (88 / 84 / 80). Budget mode (session
 // option `budget`) lets an XI hold only `slots` players of each of those three tiers (2 / 2 /
 // 3); Normal and Bench players are free. Pure helpers; the draft session enforces the caps.
-import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
+import { CONFIG } from '../config/config.js';
 
 /** The capped tiers, highest first (keys of CONFIG.draft.budget). */
 export const BUDGET_TIERS = ['Superstar', 'Star', 'Starter'];
@@ -12,22 +12,14 @@ export const FREE_TIERS = [
   ['Normal', 74],
   ['Bench', 0],
 ];
-// Rules saved before the tiers had names held band1–band3 (same order).
-const OLD_KEYS = ['band1', 'band2', 'band3'];
 
 /**
  * The capped tiers of a rules object, highest first:
  * [{ id: 'superstar', name: 'Superstar', label: 'Superstar', range: '88+', minimum,
  *    below (next tier's minimum or null), slots }].
- * Rules saved before Budget mode existed read as the defaults; rules saved with numbered bands
- * keep their numbers under the tier names.
  */
 export function budgetBands(budget = CONFIG.draft.budget) {
-  const rows = budget?.Superstar
-    ? BUDGET_TIERS.map(name => budget[name])
-    : budget?.band1
-      ? OLD_KEYS.map(key => budget[key])
-      : BUDGET_TIERS.map(name => DEFAULT_CONFIG.draft.budget[name]);
+  const rows = BUDGET_TIERS.map(name => budget[name]);
   return BUDGET_TIERS.map((name, i) => {
     const { minimum, slots } = rows[i],
       below = i ? rows[i - 1].minimum : null;

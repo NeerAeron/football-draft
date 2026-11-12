@@ -7,7 +7,7 @@
 // The sum is the engine boost `chem` (attribute points, added to every skill in Player.skill).
 // Real national XIs are all nation mates (+1.5 each, +2.5 for club mates inside them), real
 // club XIs club mates (+1, +2.5 for compatriots).
-import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
+import { CONFIG } from '../config/config.js';
 
 /** Link kinds, in the order they are listed and drawn (nation first). */
 export const LINK_KINDS = ['nation', 'club'];
@@ -15,27 +15,14 @@ const keyOf = {
   club: p => (p?.source?.clubId == null ? null : String(p.source.clubId)),
   nation: p => p?.source?.nationality || null,
 };
-// Rules saved before the mates rule held thresholds per kind ({ level1, … }): those read as
-// the current defaults, so an old draft or run keeps working.
-const boostOf = (rules, kind) =>
-  typeof rules?.[kind] === 'number' ? rules[kind] : DEFAULT_CONFIG.draft.links[kind];
 const rating = p => p.sourceOverall ?? p.overall ?? 0;
-/**
- * The boosts of a rules object: { nation, club, captain } (numbers). Rules saved while the game
- * had no Captain (nation and club only) keep playing without one: captain 0.
- */
+/** The boosts of a rules object (CONFIG.draft.links or a snapshot): { nation, club, captain }. */
 export function linkBoosts(rules = CONFIG.draft.links) {
-  return {
-    nation: boostOf(rules, 'nation'),
-    club: boostOf(rules, 'club'),
-    captain:
-      typeof rules?.captain === 'number'
-        ? rules.captain
-        : typeof rules?.nation === 'number'
-          ? 0
-          : DEFAULT_CONFIG.draft.links.captain,
-  };
+  return { nation: rules.nation, club: rules.club, captain: rules.captain };
 }
+/** Are these the mates rules of this version: three numbers? (What a saved run must carry.) */
+export const validLinks = rules =>
+  !!rules && ['nation', 'club', 'captain'].every(kind => Number.isFinite(rules[kind]));
 /**
  * The slot of an XI's captain (players in slot order, null = open): of the Captain-tagged
  * players the highest source rating, the first slot on a tie; null when there is none.

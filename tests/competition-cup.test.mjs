@@ -483,12 +483,29 @@ test('serialize/restore round-trips a run mid-tournament', () => {
   while (!copy.complete) copy.simulateNext();
   assert.deepEqual(copy.serialize(), run.serialize());
   assert.throws(() => restoreCupRun(catalog, { type: 'cup-run', format: 99 }), /Not a saved run/);
-  // Saves from before the play-off (format 2) or on a removed difficulty do not restore.
-  assert.throws(() => restoreCupRun(catalog, { ...run.serialize(), format: 2 }), /Not a saved run/);
-  assert.throws(
-    () => restoreCupRun(catalog, { ...run.serialize(), difficulty: 'amateur' }),
-    /Not a saved run/,
-  );
+  // One cut-off: an older format, a removed difficulty or mode, rules of an older shape (no
+  // Captain, link thresholds) — not a saved run. Nothing is converted.
+  const data = () => JSON.parse(JSON.stringify(run.serialize()));
+  for (const old of [
+    { format: 2 },
+    { format: 1 },
+    { format: undefined },
+    { difficulty: 'amateur' },
+    { difficulty: 'semipro' },
+    { mode: 'clubAndCountry' },
+    { opponents: data().opponents.slice(0, 8) },
+    { rules: { ...data().rules, links: { nation: 1.5, club: 1 } } },
+    { rules: { ...data().rules, links: { nation: { level1: 2 }, club: { level1: 2 } } } },
+    { rules: null },
+    { type: 'cup' },
+  ])
+    assert.throws(
+      () => restoreCupRun(catalog, { ...data(), ...old }),
+      /Not a saved run/,
+      JSON.stringify(old).slice(0, 60),
+    );
+  for (const junk of [null, undefined, 'x', 3, [], {}])
+    assert.throws(() => restoreCupRun(catalog, junk), /Not a saved run/);
   assert.ok(JSON.stringify(run.serialize()).length < 20000, 'small enough for localStorage');
 });
 

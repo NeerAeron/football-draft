@@ -209,7 +209,7 @@ const rulesStamp = rules =>
     rules.nations,
     rules.clubs,
     rules.minimumLeaguePlayers,
-    rules.pickMinimum ?? 0,
+    rules.pickMinimum,
     CONFIG.ai.minimumFit,
   ]);
 const indexes = new WeakMap();
@@ -226,8 +226,7 @@ export function draftRules(source = CONFIG.draft) {
     primes: source.primes,
     budget: source.budget,
     minimumLeaguePlayers: source.minimumLeaguePlayers,
-    // Rules saved before the minimum existed have none: such a draft offers everyone.
-    pickMinimum: source.pickMinimum ?? 0,
+    pickMinimum: source.pickMinimum,
   });
 }
 /**
@@ -315,11 +314,10 @@ function* buildIndex(catalog, rules) {
     nation.pot = i < n.fieldSize ? Math.floor(i / n.potSize) + 1 : outside;
   });
   const field = playable.slice(0, n.fieldSize);
-  // Star nations: not playable (no XI, or an XI outside the playable ones) but with a star. Spun in drafts, never met. (Rules
-  // saved before the rename called the two numbers wildcardStar / wildcardPlayers.)
+  // Star nations: not playable (no XI, or an XI outside the playable ones) but with a star.
+  // Spun in drafts, never met.
   const isPlayable = new Set(playable),
-    reelStar = n.reelStar ?? n.wildcardStar,
-    reelPlayers = n.reelPlayers ?? n.wildcardPlayers ?? Infinity,
+    { reelStar, reelPlayers } = n,
     starNations = [...nations.values()]
       .filter(
         nation =>

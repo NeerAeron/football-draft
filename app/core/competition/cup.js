@@ -24,6 +24,7 @@ import {
   isKeeper,
 } from '../draft/pools.js';
 import { buildSide, seedValue, mixSeed, DIFFICULTIES } from '../draft/session.js';
+import { validLinks } from '../draft/links.js';
 import {
   chooseOpponent,
   buildOpponent,
@@ -128,8 +129,8 @@ export const BEST_THIRD = { points: 4 };
 export const thirdQualifies = row => row.points >= BEST_THIRD.points;
 /** Whether a row of the final group table goes through: top two, or a qualifying third. */
 const advances = (row, index) => index < 2 || (index === 2 && thirdQualifies(row));
-// Format 3: the third-place play-off (nine opponents) and three difficulties. Older runs
-// (format 2: no play-off; format 1: seven rounds) do not restore.
+// Format 3: the third-place play-off (nine opponents) and three difficulties. Anything older
+// is not a saved run.
 export const CUP_FORMAT = 3;
 const USER = 'user';
 const round2 = x => Math.round(x * 100) / 100;
@@ -745,13 +746,13 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
  * strongest first. The strongest `nations.fieldCore` are always in; the other seats are drawn
  * without replacement from the rest, a nation's odds halving every `nations.fieldHalving`
  * rating points below the last core nation — so a lower-rated nation sometimes makes it, like
- * real qualification. Rules without those numbers (saved before them) take the strongest 48.
+ * real qualification.
  */
 function qualify(catalog, random, rules) {
   const index = catalogIndex(catalog, draftRules(rules)),
     { fieldSize, fieldCore, fieldHalving } = rules.nations,
     playable = index.playable;
-  if (!(fieldCore >= 0) || !(fieldHalving > 0) || playable.length <= fieldSize) return index.field;
+  if (playable.length <= fieldSize) return index.field;
   const core = Math.min(fieldCore, fieldSize),
     chosen = playable.slice(0, core),
     rest = playable.slice(core),
@@ -904,7 +905,8 @@ export function restoreCupRun(catalog, data) {
   if (
     !DIFFICULTIES.includes(state.difficulty) ||
     !MODE_BASELINES[state.mode] ||
-    state.opponents?.length !== CUP_ROUNDS.length + 1
+    state.opponents?.length !== CUP_ROUNDS.length + 1 ||
+    !validLinks(state.rules?.links)
   )
     throw Error('Not a saved run');
   return new CupRun(catalog, state);

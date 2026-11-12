@@ -85,23 +85,27 @@ test('tiers: 2 Superstars (88+), 2 Stars (84–87), 3 Starters (80–83), the re
     [0, 0, 1, 1, 2, 2, -1, -1],
   );
   assert.deepEqual(bandUse(bands, [90, 85, 85, 81, 70]), [1, 2, 1]);
-  // Rules saved before Budget mode read as the defaults.
-  assert.deepEqual(budgetBands(undefined), bands);
-  assert.deepEqual(budgetBands({}), bands);
+  assert.deepEqual(budgetBands(undefined), bands, 'the live rules by default');
   assert.throws(() =>
     normalizeConfig({ draft: { budget: { Star: { minimum: 90 } } } }, { lenient: false }),
   );
-  // Rules saved with numbered bands (before the tiers had names) keep their numbers.
-  const old = { band1: { minimum: 87, slots: 2 }, band2: { minimum: 83, slots: 2 } };
-  old.band3 = { minimum: 79, slots: 4 };
+  // Other numbers under the tier names are honoured; rules without the tiers (the numbered
+  // bands of an older version, nothing at all) are not rules: there is no conversion.
+  const custom = {
+    Superstar: { minimum: 87, slots: 2 },
+    Star: { minimum: 83, slots: 2 },
+    Starter: { minimum: 79, slots: 4 },
+  };
   assert.deepEqual(
-    budgetBands(old).map(b => [b.label, b.range, b.slots]),
+    budgetBands(custom).map(b => [b.label, b.range, b.slots]),
     [
       ['Superstar', '87+', 2],
       ['Star', '83–86', 2],
       ['Starter', '79–82', 4],
     ],
   );
+  assert.throws(() => budgetBands({ band1: { minimum: 87, slots: 2 } }));
+  assert.throws(() => budgetBands({}));
 });
 
 test('a budget draft never exceeds a band, whatever the policy, and never dead-ends', () => {

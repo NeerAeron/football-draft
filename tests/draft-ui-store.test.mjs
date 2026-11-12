@@ -86,6 +86,59 @@ test('startDraft spins at once, persists, and restores identically after a reloa
   assert.equal(draft.draftStore.get().animate, null, 'a restored spin is shown landed');
 });
 
+test('one cut-off: a draft slot of an older format is nothing saved; a broken one is an error', async () => {
+  reset();
+  await draft.startDraft({ kind: 'quick', type: 'nations', seed: 7 });
+  draft.autoPick();
+  const raw = JSON.parse(storage.get(draft.DRAFT_KEY));
+  assert.equal(raw.format, 2);
+  assert.equal(raw.session.format, 2);
+  const reload = async value => {
+    draft.clearDraft();
+    if (value !== undefined)
+      storage.set(draft.DRAFT_KEY, typeof value === 'string' ? value : JSON.stringify(value));
+    return [await draft.loadDraft(), draft.draftStore.get().status, draft.readSavedDraft()];
+  };
+  // Older formats and junk: nothing to resume, anywhere.
+  for (const value of [
+    { ...raw, format: 1 },
+    { ...raw, format: undefined },
+    '{broken',
+    'null',
+    '[]',
+    '7',
+    undefined,
+  ]) {
+    const [loaded, status, summary] = await reload(value);
+    assert.equal(loaded, null, String(value?.format));
+    assert.equal(status, 'empty');
+    assert.equal(summary, null);
+    assert.equal(draft.completedDraft(), null);
+  }
+  // Today's slot with a session that is not today's (an older session format, a removed
+  // difficulty, rules of an older shape, a player who is gone): the existing error path —
+  // no throw, nothing half-restored.
+  for (const [what, patch] of [
+    ['session format 1', s => (s.format = 1)],
+    ['Amateur', s => (s.options.difficulty = 'amateur')],
+    ['no rules', s => (s.rules = null)],
+    ['numbered Budget bands', s => (s.rules.budget = { band1: { minimum: 87, slots: 2 } })],
+    ['a missing player', s => (s.state.picks[0][s.state.picks[0].findIndex(Boolean)] = 'ea:0')],
+    ['no state', s => (s.state = { picks: 3 })],
+  ]) {
+    const session = structuredClone(raw.session);
+    patch(session);
+    const [loaded, status] = await reload({ ...raw, session });
+    assert.equal(loaded, null, what);
+    assert.equal(status, 'error', what);
+    assert.equal(draft.currentDraft(), null, what);
+  }
+  // The untouched save still restores.
+  const [loaded, status] = await reload(raw);
+  assert.equal(status, 'ready');
+  assert.equal(loaded.session.history.length, 1);
+});
+
 test('a World Cup draft: Legend spin first, Prime boosts, legends data only for it', async () => {
   reset();
   loads.length = 0;

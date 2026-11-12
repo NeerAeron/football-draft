@@ -113,9 +113,7 @@ function normalizeSide(side, i) {
 
 function storedView() {
   const own = readJSON(VIEW_KEY, null);
-  if (MATCH_VIEWS.includes(own)) return own;
-  const pref = readJSON('football-draft-ui', null)?.matchView;
-  return MATCH_VIEWS.includes(pref) ? pref : 'key';
+  return MATCH_VIEWS.includes(own) ? own : 'key';
 }
 
 /** Fill defaults and validate an openPrematch() payload (throws on malformed sides). */
@@ -382,11 +380,7 @@ export function engineCompetition(data) {
   const mode = ['ai', 'pvp', 'sandbox'].includes(c.mode) ? c.mode : humans === 2 ? 'pvp' : 'ai';
   return {
     mode,
-    // A request saved on a removed level (Amateur, Semi-pro) is coached as Pro.
-    difficulty:
-      COACH_LEVEL[c.difficulty] ||
-      (c.difficulty === 'amateur' || c.difficulty === 'semipro' ? COACH_LEVEL.pro : c.difficulty) ||
-      'medium',
+    difficulty: COACH_LEVEL[c.difficulty] || c.difficulty || 'medium',
     knockout: !!c.knockout,
     ...(c.extraTime ? { extraTime: true } : {}),
   };

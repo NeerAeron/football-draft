@@ -18,7 +18,7 @@ import {
 import { outcomeProbabilities } from '../../core/competition/model.js';
 import { encodeChallenge, decodeChallenge } from '../../core/competition/share.js';
 import { dailyId, updateStreak, currentStreak, previousDay } from '../../core/competition/daily.js';
-import { seedNumber, difficultyOf, draftModeOf, DRAFT_MODES } from '../../core/draft/session.js';
+import { seedNumber, draftModeOf, DRAFT_MODES } from '../../core/draft/session.js';
 import { readJSON, writeJSON, removeKey } from './storage.js';
 import {
   RUN_KEY,
@@ -173,7 +173,7 @@ const randomId = () => {
 export function createRunFromDraft(catalog, { session, context = {} }, { now = Date.now() } = {}) {
   const options = session.options || {};
   const mode = modeOf(context.type ?? session.mode);
-  const difficulty = difficultyOf(context.difficulty ?? options.difficulty);
+  const difficulty = context.difficulty ?? options.difficulty;
   const seed = context.seed ?? options.seed ?? 1;
   const challenge = context.meta?.challenge ?? context.challenge ?? null;
   const defaultRules = !!(options.useDefaultRules || context.useDefaultRules || challenge);
@@ -263,10 +263,8 @@ export function patchRunState(patch) {
   return next;
 }
 /**
- * The raw saved state (tolerant: null for anything that does not look like ours). A run saved
- * in an older cup format (before the third-place play-off and the three difficulties, or the
- * seven-match format before that) cannot be resumed: it reads as no run (Home's summary of a
- * finished one stays, see lib/saved.js).
+ * The raw saved state (tolerant: null for anything that does not look like ours — also a run
+ * saved in an older cup format: it reads as no run).
  */
 export function readRunState() {
   const state = readJSON(RUN_STATE_KEY, null);
@@ -413,8 +411,7 @@ export function pageBase(loc = globalThis.location) {
   if (!loc) return 'https://world-cup-draft.example/';
   return `${loc.origin}${loc.pathname}`;
 }
-// Where the friend finished, in the link: two letters per place (core cup.js PLACES). Links
-// from before the places carried a letter grade there ('sp', 'b', …): those read as no place.
+// Where the friend finished, in the link: two letters per place (core cup.js PLACES).
 const PLACE_TOKENS = {
   champion: 'ch',
   final: 'ru',
@@ -444,15 +441,17 @@ export function challengeLink(challenge, { record = null, place = null, base = p
 }
 /**
  * Parse the landing query: { challenge (decoded) | null, score: { w, d, l, place, placeLabel }
- * | null }. An old link's grade token is ignored (place: null).
+ * | null }. The result is the record and, after a dot, a place token; anything else (a place
+ * that is not one) reads as no result.
  */
 export function readChallengeQuery(query = {}) {
   const challenge = decodeChallenge(String(query.c || '').toLowerCase());
-  const m = /^(\d)-(\d)-(\d)(?:\.([a-z]{1,2}))?$/.exec(String(query.r || ''));
-  const place = m ? placeFromToken(m[4]) : null;
-  const score = m
-    ? { w: +m[1], d: +m[2], l: +m[3], place, placeLabel: place ? PLACE_LABELS[place] : null }
-    : null;
+  const m = /^(\d)-(\d)-(\d)(?:\.([a-z]{2}))?$/.exec(String(query.r || ''));
+  const place = m?.[4] ? placeFromToken(m[4]) : null;
+  const score =
+    m && (!m[4] || place)
+      ? { w: +m[1], d: +m[2], l: +m[3], place, placeLabel: place ? PLACE_LABELS[place] : null }
+      : null;
   return { challenge, score };
 }
 /** The challenge describing a run (for its "Challenge a friend" link). */
@@ -462,7 +461,7 @@ export function runChallenge(meta, snapshot) {
     mode: meta.mode || snapshot.mode,
     seed: meta.seed ?? 1,
     formation: meta.formation || '433',
-    difficulty: difficultyOf(meta.difficulty || snapshot.difficulty),
+    difficulty: meta.difficulty || snapshot.difficulty,
     hideRatings: !!meta.hideRatings,
     uniqueNations: !!meta.uniqueNations,
     // A Budget run challenges the friend to a Budget draft.
