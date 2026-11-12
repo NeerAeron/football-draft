@@ -243,7 +243,9 @@ function ResultBanner({ snapshot, before, round, entry }) {
     data-testid="result-banner"
   >
     <div class="ft">
-      <p class="eyebrow">${`Full time · ${roundLabel(r)}`}</p>
+      <p class="eyebrow">
+        ${`${res.extraTime && !res.shootout ? 'After extra time' : 'Full time'} · ${roundLabel(r)}`}
+      </p>
       <h2 class="run-flash__title" id="ft-title">${headline}</h2>
       <div class="ft__score">
         <span class="ft__team"

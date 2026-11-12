@@ -84,6 +84,7 @@ export function summarizeMatch(m, { id = null, seed = null } = {}) {
     view: 'auto',
     teams: m.teams.map(t => ({ name: t.name, short: t.short, color: t.color })),
     score: [h, a],
+    extraTime: m.half > 2,
     shootout,
     winner: winner ?? null,
     outcomes: [h > a ? 'W' : h < a ? 'L' : 'D', a > h ? 'W' : a < h ? 'L' : 'D'],
@@ -213,6 +214,7 @@ export function runSide(result) {
   return {
     goalsFor: h,
     goalsAgainst: a,
+    extraTime: !!result.extraTime,
     shootout: result.shootout
       ? {
           winner: result.shootout.winner === 0 ? 'user' : 'opponent',

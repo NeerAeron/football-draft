@@ -730,14 +730,26 @@ export class Match {
       this.mode = 'halftime';
       this.phase = 'Half-time';
       this.addEvent('Half-time. Time to recover and adjust tactics.', null, 'half');
-    } else if (this.half === 2 && this.knockoutLevel() && this.competition.extraTime)
-      this.startExtraHalf(3);
-    else if (this.half === 3) this.startExtraHalf(4);
+    } else if (this.half === 2 && this.knockoutLevel() && this.competition.extraTime) {
+      // The break before extra time: like half-time, the match waits here for resumeHalf()
+      // (pauseAtHalf) — the moment for a team talk — and goes straight on otherwise.
+      for (const p of this.activePlayers) p.vx = p.vy = 0;
+      this.mode = 'halftime';
+      this.phase = 'Extra time';
+      this.addEvent('Full-time. Level, so it goes to extra time.', null, 'full', {
+        extraTime: true,
+      });
+    } else if (this.half === 3) this.startExtraHalf(4);
     else if (this.knockoutLevel()) {
       for (const p of this.activePlayers) p.vx = p.vy = 0;
-      this.addEvent('Full-time. Level, so it goes to penalties.', null, 'full', {
-        shootout: true,
-      });
+      this.addEvent(
+        this.half > 2
+          ? 'Still level after extra time. Penalties.'
+          : 'Full-time. Level, so it goes to penalties.',
+        null,
+        'full',
+        { shootout: true, ...(this.half > 2 ? { afterExtraTime: true } : {}) },
+      );
       this.startShootout();
     } else {
       this.finished = true;
@@ -745,7 +757,11 @@ export class Match {
       this.phase = 'Full time';
       for (const p of this.activePlayers) p.vx = p.vy = 0;
       this.finalizeStory();
-      this.addEvent('Full-time. The final whistle.', null, 'full');
+      if (this.half > 2)
+        this.addEvent('The final whistle, after extra time.', null, 'full', {
+          afterExtraTime: true,
+        });
+      else this.addEvent('Full-time. The final whistle.', null, 'full');
     }
   }
   // The side that won (0 / 1), null for a draw or while undecided. A shootout
@@ -756,8 +772,13 @@ export class Match {
     if (this.score[0] !== this.score[1]) return this.score[0] > this.score[1] ? 0 : 1;
     return this.shootout?.winner ?? null;
   }
+  // Out of a break: the second half after half-time, extra time after the one at 90'.
   resumeHalf() {
     if (this.mode !== 'halftime') return false;
+    if (this.half === 2) {
+      this.startExtraHalf(3);
+      return true;
+    }
     this.half = 2;
     this.periodStart = this.elapsed;
     this.time = 2700;

@@ -3,7 +3,8 @@
  *   home, away  { name, short?: 'BRA', code?: flag code, flagSrc?, colors?: [p, s], score,
  *                 reds?: number of players sent off (a red card by the name, as on TV) }
  *               (a flag when code/flagSrc is given, otherwise a club Crest in its colours)
- *   clock       "67'" or '67:12' (string);  period  '1H' | '2H' | 'HT' | 'FT' | 'ET' | 'PENS'
+ *   clock       "67'" or '67:12' (string);  period  '1H' | '2H' | 'HT' | 'FT' | 'ET1' | 'ET2' |
+ *               'AET' (after extra time) | 'PENS'
  *   live        red pulsing dot
  *   pens        [home, away] shoot-out score, shown under the clock
  *   size        'sm' (overlay) | 'md' (default) | 'lg' (result header, full names)

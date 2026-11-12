@@ -171,13 +171,15 @@ function Halftime({ controller, teams, onTactics }) {
   if (h.phase !== 'halftime' || !h.halftime) return null;
   const users = controller.userSides;
   const st = h.halftime.stats;
+  // The same panel serves the break before extra time (a team talk, then 30 more minutes)
+  const extra = !!h.halftime.extraTime;
   return html`<div
     class="stage-panel halftime"
     role="dialog"
     aria-labelledby="ht-title"
     data-testid="halftime"
   >
-    <p class="eyebrow">Half-time</p>
+    <p class="eyebrow">${extra ? 'Level after 90 minutes' : 'Half-time'}</p>
     <h2 id="ht-title" class="halftime__score num">
       <span class="truncate">${teams[0].short}</span> ${h.halftime.score[0]}–${h.halftime.score[1]}
       <span class="truncate">${teams[1].short}</span>
@@ -226,9 +228,9 @@ function Halftime({ controller, teams, onTactics }) {
         variant="primary"
         size="lg"
         icon="whistle"
-        data-testid="second-half"
+        data-testid=${extra ? 'extra-time' : 'second-half'}
         onClick=${() => controller.secondHalf()}
-        >Second half<//
+        >${extra ? 'Extra time' : 'Second half'}<//
       >
     </div>
   </div>`;
@@ -509,7 +511,7 @@ function FullTime({ controller, teams }) {
   if (h.phase !== 'fulltime' || !h.result) return null;
   const r = h.result;
   return html`<div class="stage-panel fulltime" role="status">
-    <p class="eyebrow">Full time</p>
+    <p class="eyebrow">${r.extraTime ? 'After extra time' : 'Full time'}</p>
     <p class="fulltime__score num">
       <span>${teams[0].short}</span> ${r.score[0]}–${r.score[1]} <span>${teams[1].short}</span>
     </p>

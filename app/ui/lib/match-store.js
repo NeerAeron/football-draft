@@ -110,7 +110,9 @@ function normalizeSide(side, i) {
  *                   players: 11 profiles in formation slot order (catalog players or
  *                   draft.matchSide(i).players — `chem` is kept), kind?, id?, code? }]
  *   competition  { mode: 'ai' | 'pvp' | 'sandbox', difficulty, knockout, extraTime }
- *                (default { mode: 'ai', difficulty: 'medium' }: the AI coach runs side 1)
+ *                (default { mode: 'ai', difficulty: 'medium' }: the AI coach runs side 1).
+ *                A knockout match — one that must have a winner — plays extra time before
+ *                penalties unless `extraTime: false` says otherwise.
  *   tuning       config snapshot (default: the live CONFIG)
  * Kit clash: the away side wears its secondary colour (draft matchSetup rules). The result is
  * round-tripped through a Match (importConfig → exportConfig), so it is exactly what the engine
@@ -122,11 +124,9 @@ export function buildMatchConfig({ sides, competition = {}, tuning } = {}) {
   const [home, away] = sides.map(normalizeSide);
   const match = new Match(1, FULL_DURATION);
   if (tuning) match.tuning = structuredClone(tuning);
-  const config = applyMatchSetup(match.exportConfig(), matchSetup(home, away), {
-    mode: 'ai',
-    difficulty: 'medium',
-    ...competition,
-  });
+  const rules = { mode: 'ai', difficulty: 'medium', ...competition };
+  if (rules.knockout) rules.extraTime = rules.extraTime !== false;
+  const config = applyMatchSetup(match.exportConfig(), matchSetup(home, away), rules);
   config.tuning = structuredClone(tuning || CONFIG);
   config.teams = config.teams.map((team, i) => {
     // A side that did not choose a mentality plays the game state ('auto': push when
@@ -271,7 +271,8 @@ export function clearMatch(id) {
 
 /**
  * A result from one side's point of view, in the shape CupRun.recordResult takes:
- *   { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L' (90/120-minute score),
+ *   { goalsFor, goalsAgainst, outcome: 'W'|'D'|'L' (the final score: after extra time when
+ *     the match went there), extraTime: boolean,
  *     shootout: null | { winner: 'user' | 'opponent', score: [for, against] },
  *     players: [{ profileId, rating, goals, assists }] }   // that side's XI
  */
@@ -284,6 +285,7 @@ export function runResultFor(result, side = 0) {
     goalsFor,
     goalsAgainst,
     outcome: goalsFor > goalsAgainst ? 'W' : goalsFor < goalsAgainst ? 'L' : 'D',
+    extraTime: !!result.extraTime,
     shootout: result.shootout
       ? {
           winner: result.shootout.winner === side ? 'user' : 'opponent',
