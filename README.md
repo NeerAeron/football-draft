@@ -43,7 +43,7 @@ Everything you do is saved in your own browser.
 
 | Type | One spin lands on | You pick from |
 | --- | --- | --- |
-| **Nations** | one of the 48 strongest football nations (in four pots) | its best 23 available call-ups |
+| **Nations** | one of 63 football nations, all equally likely | its best 23 available call-ups |
 | **Leagues** | one of 40 leagues (stronger tiers more likely) | anyone who plays in it |
 | **Clubs** | a league, then one of its clubs | that club's squad |
 
