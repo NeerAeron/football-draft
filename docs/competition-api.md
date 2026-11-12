@@ -222,9 +222,9 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 * `projectRun({ rating: team.effective, mode, difficulty })` → `{ stage ('group' … 'sf', 'final',
   'champion': the round reached), place, label: 'Projected: Quarter-finals', probabilities (by
   place) }` — a seeded 300-run Monte-Carlo (~5 ms) for the live meter.
-* Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~5 KB at the
-  start, more on Legendary with its field; each match adds its player lines, ~1.5 KB with both
-  sides) and
+* Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~6 KB at the
+  start, ~11 KB on Legendary with its field; each match adds its player lines, ~1.8 KB with
+  both sides: a finished run is 21–25 KB) and
   `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 3 (the
   play-off: nine opponents; three difficulties); anything else — an older format, a removed
   difficulty or draft mode, link rules that are not the three numbers — throws 'Not a saved
