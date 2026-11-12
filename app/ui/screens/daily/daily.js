@@ -67,15 +67,10 @@ import {
 } from '../run/run-parts.js';
 import { SharePanel } from '../run/share-panel.js';
 import { xiViews, shareCardFor } from '../run/team-view.js';
-import { fmt1, int } from '../../lib/format.js';
+import { fmt1, int, fmtDate } from '../../lib/format.js';
 
-const dateLabel = id =>
-  new Date(id + 'T12:00:00Z').toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
+/** The day of a Daily (its UTC day id): "12 Nov 2026". */
+const dateLabel = id => fmtDate(id);
 
 /** Daily engine config: DEFAULT_CONFIG tuning so every device plays the same matches. */
 function dailyConfig(m) {

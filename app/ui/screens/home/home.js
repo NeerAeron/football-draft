@@ -5,7 +5,13 @@ import { html, cx } from '../../lib/html.js';
 import { useStore } from '../../lib/store.js';
 import { href } from '../../lib/router.js';
 import { prefs, setPref } from '../../lib/prefs.js';
-import { readSavedRun, readDailyStatus, readSavedDraft, STAGES } from '../../lib/saved.js';
+import {
+  readSavedRun,
+  readDailyStatus,
+  readSavedDraft,
+  dailyKey,
+  STAGES,
+} from '../../lib/saved.js';
 import { readRecords } from '../../lib/records.js';
 import { Button, IconButton } from '../../components/button.js';
 import { Card } from '../../components/card.js';
@@ -15,7 +21,7 @@ import { HowToSteps } from '../../shell/how-to-play.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { HeroPitch } from './hero-art.js';
 import { Cabinet } from './cabinet.js';
-import { int } from '../../lib/format.js';
+import { int, fmtDate } from '../../lib/format.js';
 
 export const DRAFT_TYPE_OPTIONS = [
   { value: 'nations', label: 'Nations' },
@@ -219,12 +225,8 @@ function DraftCard({ draft }) {
 
 function DailyCard({ daily }) {
   const played = daily.playedToday;
-  const date = new Date().toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  });
+  // The Daily's day is the UTC day.
+  const date = fmtDate(dailyKey());
   return html`<${Card} variant="gold" class="home-daily" as="section" aria-labelledby="daily-title">
     <div class="home-daily__head">
       <span class="home-daily__icon" aria-hidden="true"

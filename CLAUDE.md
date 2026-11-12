@@ -161,8 +161,8 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `run-store.js` (run/daily persistence, links), `records.js` (trophy cabinet: medals per difficulty, the Budget cabinet, the
   ultimate achievement; `recordRun`, `readRecords`), `saved.js` (tolerant readers for Home, incl. `readSavedDraft`), `storage.js` (safe localStorage), `player-view.js`, `share-image.js`,
   `tiers.js`, `color.js`, `kits.js` (nation kits, FIFA trigrams, `teamCode`), `format.js` (the
-  only way to format displayed numbers: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, never
-  `toLocaleString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
+  only way to format displayed numbers and dates: `fmt1`/`fmt2`/`int`/`signed1`/`pct`, `fmtDate`, never
+  `toLocaleString` / `toLocaleDateString`), `catalog-warm.js` (`loadWarmCatalog`, `warmOpponents`), `offline.js`
   (`registerOffline`: service worker + one-time warm-up of the installed app).
   The match stage (`ui/screens/match/renderer/`): the pitch is a DOM layer (`pitch.js`) under a
   transparent token canvas (`draw.js`), framed by `camera.js` (action camera: follows the ball,
@@ -314,7 +314,7 @@ real squads. Never invent ratings or club metadata: a club without a sourced col
   main-thread task over ~50 ms (heavy work goes to a worker or a step-wise generator).
 - Screen CSS is global (every stylesheet is imported by `styles/app.css`): prefix screen classes
   with the screen's name (`.draft-…`, `.pm-…`, `.match-…`) — bare names like `.stage` collided.
-- Displayed numbers go through `ui/lib/format.js` ('.' decimals everywhere, whatever the locale).
+- Displayed numbers and dates go through `ui/lib/format.js` ('.' decimals and "12 Nov 2026" everywhere, whatever the locale; a test fails on `toLocale…String` / `Intl` formatting in `app/`).
 - After UI changes: `npm run shots -- --only <flow>` and look at the PNGs; update
   `tests/browser/flows.mjs` when selectors or flows change; `npm run test:browser` must pass.
 - Commit in logical steps with clear messages; run `npm run check` first.
