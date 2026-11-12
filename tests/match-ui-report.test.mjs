@@ -47,7 +47,9 @@ test('commentary: goals with story tags, saves by type, misses, cards, shootout'
   assert.equal(late.tone, 'goal');
   assert.equal(late.minute, "86'");
   assert.match(late.text, /^GOAL! /);
-  assert.match(late.text, /Late winner!/);
+  // Never "winner": a highlight reel plays this line before the result is known.
+  assert.doesNotMatch(late.text, /winner/i);
+  assert.match(late.text, /Late drama!/);
   assert.ok(late.text.includes(a.name.split(' ').pop()), 'assist named');
   assert.match(goal(42, ['brace', 'hat-trick']).text, /Hat-trick for/);
   assert.match(goal(43, ['equaliser']).text, /are level/);

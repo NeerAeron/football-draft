@@ -284,8 +284,10 @@ const STORY_LABELS = {
 };
 const STORY_ORDER = Object.keys(STORY_LABELS);
 
-export function storyTag(story = []) {
-  const tag = STORY_ORDER.find(s => story.includes(s));
+// A goal that turns out to be the winner is only called that once the match is over
+// (`final`): the banner over a highlight must not give the result away.
+export function storyTag(story = [], final = false) {
+  const tag = STORY_ORDER.find(s => story.includes(s) && (final || !s.includes('winner')));
   if (!tag) return null;
   if (tag === 'late' && story.includes('equaliser')) return 'Late equaliser';
   return STORY_LABELS[tag];

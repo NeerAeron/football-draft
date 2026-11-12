@@ -14,7 +14,7 @@ import { createStore } from '../../lib/store.js';
 import { playCue } from '../../lib/audio.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import { markMatchLive, saveMatchResult, FULL_DURATION } from '../../lib/match-store.js';
-import { commentary } from './commentary.js';
+import { commentary, minuteLabel } from './commentary.js';
 import { summarizeMatch } from './report.js';
 import { forceShootout } from './demo.js';
 import { readCameraPrefs, saveCameraPref, CAMERA_MODES } from './camera-prefs.js';
@@ -72,7 +72,7 @@ function shotStop(e) {
     case 'red':
       return 0.4;
     case 'shot':
-      return e.bigChance || (e.xg ?? 0) >= 0.14 ? 1.1 : null;
+      return e.bigChance || (e.xg ?? 0) >= 0.5 ? 1.1 : null; // the best tenth of shots
     case 'post':
     case 'near-miss':
       return 0.6;
@@ -177,6 +177,8 @@ export class MatchController {
       replay: false,
       skipping: false,
       clip: null,
+      minute: "1'",
+      reds: [0, 0], // players sent off per side (a red card by the name in the score bug)
       progress: 0,
       shootout: null,
       tactics: this.preview.teams.map(t => ({ ...t.tactics })),
@@ -399,7 +401,7 @@ export class MatchController {
     this.hud.set({
       phase: 'playing',
       presenting: 'reel',
-      clip: { n: 1, total: rec.clips.length },
+      clip: { n: 1 },
       progress: 1,
     });
     this.applyReel();
@@ -416,7 +418,7 @@ export class MatchController {
       this.resetScene();
       this.sounds.reset(this.display);
       this.hud.set({
-        clip: { n, total: r.total },
+        clip: { n },
         cut: first ? 0 : this.hud.get().cut + 1,
         ticker: null, // a new clip starts without the previous clip's line
       });
@@ -1235,11 +1237,15 @@ export class MatchController {
     const patch = {
       clock: m.mode === 'shootout' || m.penaltyEnd != null ? 'PENS' : matchClock(m.time, m.half),
       period: periodLabel(m),
+      minute: m.mode === 'shootout' || m.penaltyEnd != null ? 'PENS' : minuteLabel(m.time, m.half),
       score: this.score,
       xg: [m.stats[0].xg || 0, m.stats[1].xg || 0],
     };
     const cur = this.hud.get();
     if (cur.score[0] === this.score[0] && cur.score[1] === this.score[1]) patch.score = cur.score;
+    const r0 = m.stats[0].redCards || 0,
+      r1 = m.stats[1].redCards || 0;
+    if (cur.reds[0] !== r0 || cur.reds[1] !== r1) patch.reds = [r0, r1];
     const samples = m.momentum?.samples || [];
     if (samples.length !== cur.momentum.n || force)
       patch.momentum = { samples: samples.map(s => s.values[0] - s.values[1]), n: samples.length };

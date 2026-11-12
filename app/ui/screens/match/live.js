@@ -35,13 +35,14 @@ import { commonName } from '../../../core/players/player-labels.js';
 
 const SPEED_OPTIONS = [1, 2, 4].map(v => ({ value: String(v), label: `${v}×` }));
 
-function bugTeam(team, score) {
+function bugTeam(team, score, reds = 0) {
   return {
     name: team.name,
     short: team.short,
     code: team.flagCode || undefined,
     colors: teamColors(team),
     score,
+    reds,
   };
 }
 
@@ -84,6 +85,7 @@ function Scoreline({ controller, teams }) {
       period: h.period,
       pens: h.pens,
       phase: h.phase,
+      reds: h.reds,
       goal: !!h.goal && !h.replay,
     }),
     shallowEqual,
@@ -92,8 +94,8 @@ function Scoreline({ controller, teams }) {
   return html`<${ScoreBug}
     class=${cx('match-bug', s.goal && 'is-flash')}
     size=${small ? 'sm' : 'md'}
-    home=${bugTeam(teams[0], s.score[0])}
-    away=${bugTeam(teams[1], s.score[1])}
+    home=${bugTeam(teams[0], s.score[0], s.reds[0])}
+    away=${bugTeam(teams[1], s.score[1], s.reds[1])}
     clock=${s.period === 'PENS' || s.period === 'HT' ? null : s.clock}
     period=${s.pens ? null : s.period}
     pens=${s.pens}
@@ -326,6 +328,7 @@ function StageChips({ controller }) {
     controller.hud,
     s => ({
       clip: s.clip,
+      minute: s.minute,
       skipping: s.skipping,
       presenting: s.presenting,
       paused: s.paused,
@@ -334,7 +337,13 @@ function StageChips({ controller }) {
     shallowEqual,
   );
   return html`<div class="stage-chips" aria-hidden="true">
-    ${h.clip && html`<span class="stage-chip">Clip ${h.clip.n}/${h.clip.total}</span>`}
+    ${
+      // When the moment happens, big; never which clip of how many (that gives the story away).
+      h.clip &&
+      html`<span class="stage-chip stage-chip--minute num" key=${h.clip.n} data-testid="clip-minute"
+        >${h.minute}</span
+      >`
+    }
     ${h.skipping && html`<span class="stage-chip is-ff"><${Icon} name="fast-forward" size=${14} /> Fast-forward</span>`}
     ${h.presenting === 'rewind' && html`<span class="stage-chip">Build-up</span>`}
   </div>`;
@@ -534,7 +543,7 @@ function TickerLine({ controller }) {
     : h.rewind
       ? 'The build-up…'
       : h.clip
-        ? `${h.period === '1H' ? 'First-half' : h.period === 'PENS' ? 'Shootout' : 'Second-half'} highlights · clip ${h.clip.n} of ${h.clip.total}`
+        ? `${h.period === '1H' ? 'First-half' : h.period === 'PENS' ? 'Shootout' : 'Second-half'} highlights`
         : '';
   return html`<${Ticker} line=${h.skipping ? null : h.ticker} fallback=${fallback} />`;
 }

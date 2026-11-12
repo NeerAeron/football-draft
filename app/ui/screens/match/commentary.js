@@ -26,7 +26,7 @@ const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const FINISH = {
   Header: ['rises highest and heads it in', 'powers a header into the net', 'nods it home'],
   Volley: ['volleys it into the net', 'catches it sweetly on the volley'],
-  Penalty: ['sends the keeper the wrong way', 'converts from the spot', 'buries the penalty'],
+  Penalty: ['scores from the spot', 'converts from the spot', 'buries the penalty'],
   Curler: ['curls it into the top corner', 'bends a beauty inside the post'],
   'Power shot': ['smashes it in', 'lashes it into the roof of the net', 'leathers it home'],
   'Driven shot': ['drills it low into the corner', 'fires it past the keeper'],
@@ -46,10 +46,8 @@ function goalLine(e, ctx) {
     text = `GOAL! ${scorer || team} ${e.shotType === 'Knuckleball' ? `— ${finish}` : finish}!`;
   }
   const tags = [];
-  if (story.includes('late winner')) tags.push('Late winner!');
-  else if (story.includes('winner') && story.includes('stoppage'))
-    tags.push('Winner in added time!');
-  else if (story.includes('hat-trick')) tags.push(`Hat-trick for ${scorer}!`);
+  // Never "the winner": a highlight reel plays these lines before the result is known.
+  if (story.includes('hat-trick')) tags.push(`Hat-trick for ${scorer}!`);
   else if (story.includes('haul')) tags.push(`${scorer} again — what a day!`);
   else if (story.includes('comeback')) tags.push(`${team} complete the comeback!`);
   else if (story.includes('equaliser'))
@@ -90,7 +88,7 @@ function shootoutLine(e, ctx) {
   const prefix = e.suddenDeath ? 'Sudden death: ' : '';
   const body =
     e.outcome === 'goal'
-      ? pick([`${n} scores.`, `${n} makes no mistake.`, `${n} sends ${k} the wrong way.`], e.id)
+      ? pick([`${n} scores.`, `${n} makes no mistake.`, `${n} tucks it away.`], e.id)
       : e.outcome === 'saved'
         ? pick([`Saved! ${k} guesses right.`, `${k} saves from ${n}!`], e.id)
         : e.outcome === 'post'

@@ -491,6 +491,33 @@
 .stage-chip.is-ff {
   color: var(--volt-300);
 }
+/* Key Moments: when this moment happens — the minute, large; it pops in with each clip. */
+.stage-chip--minute {
+  padding: 4px 12px;
+  border-color: var(--volt-300);
+  color: var(--volt-300);
+  font-size: var(--text-xl);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  transform-origin: 100% 0;
+  animation: stage-minute-in 0.9s var(--ease-out, ease-out) both;
+}
+@keyframes stage-minute-in {
+  0% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.7);
+  }
+  70% {
+    transform: scale(1.7);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 .stage-play {
   position: absolute;
   top: 50%;
