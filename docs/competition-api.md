@@ -181,9 +181,16 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 
 ### Fast rating model (`model.js`)
 
-Independent Poisson goals on effective ratings: `λA = 1.84·e^{0.0525(rA−rB)}`,
-`λB = 1.84·e^{−0.0525(rA−rB)}` — gap 0: 39% W / 22% D / 39% L; gap 6: 63 / 18 / 19; gap 10:
-77 / 13 / 10. Fitted to 2,592 matches of the engine in the game's 180 s match
+Independent Poisson goals on effective ratings: `λA = 1.33·e^{0.0525(rA−rB)}`,
+`λB = 1.33·e^{−0.0525(rA−rB)}` — gap 0: 37% W / 26% D / 37% L; gap 6: 61 / 22 / 17 — refitted
+(624 engine matches, `cup-calibration.mjs gaps` + `fit`) after the engine was brought to about
+three goals a match in every mode (docs/calibration.md, Phase 9): 2.9 goals a match on those
+gaps, engine against model −4…−1.5 24/28/48 vs 27/25/48, +4…+8 67/22/11 vs 61/21/18, +8…+13
+83/11/6 vs 75/15/10; the user's XI now does about 2.5 rating points better than its rating
+(0.14 in the exponent: the favourite's edge, Legend and Prime versions), not in the model.
+Title odds of the fast model (`runs --runs 400`, `CUP_TUNING` unchanged) 1.71 → 1.33: Pro
+18.3% → 18.5%, World Class 11.3% → 9.3%, Legendary 4.3% → 5.0%. The paragraph below is the
+previous fit (goals 1.84, later scaled to 1.71), kept for its method. It was fitted to 2,592 matches of the engine in the game's 180 s match
 (`cup-calibration.mjs gaps`: a typically drafted XI against ladder opponents at gaps of
 −12…+20, the AI coach at each difficulty's level, both sides on the game-state mentality).
 The engine by gap (W/D/L) against the model: −8…−4 19/20/61 vs 21/19/61; −4…−1.5 25/23/51 vs
