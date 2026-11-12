@@ -39,25 +39,30 @@ test('the legends file is the pinned source compiled for this catalog, and round
   assert.deepEqual(file.attributeKeys, catalog.attributeKeys);
   // encode(decode(file)) is the file, byte for byte.
   assert.equal(JSON.stringify(encodeLegends(data)) + '\n', text);
-  assert.ok(text.length < 400_000, 'a lazily fetched file stays small: ' + text.length);
+  assert.ok(text.length < 450_000, 'a lazily fetched file stays small: ' + text.length);
 });
 
-test('legends are players outside the catalog: valid, best version 85+, catalog nations', () => {
+test('legends are best past versions shown 85+: valid, catalog nations, the year of the snapshot', () => {
   assert.equal(legends.length, data.legends.length);
   assert.equal(file.selection.legendMinimum, 85);
-  assert.equal(legends.length, 90);
-  const current = new Set(catalog.players.map(p => p.profileId.split(':')[1])),
+  const current = new Map(catalog.players.map(p => [p.profileId.split(':')[1], p])),
     badges = new Set(BADGES.map(b => b.id)),
     nations = new Set(catalog.nations.map(n => n.name)),
     teams = new Map(catalog.teams.map(t => [t.id, t]));
   assert.equal(new Set(legends.map(p => p.profileId)).size, legends.length);
+  let pure = 0,
+    past = 0;
   for (const p of legends) {
     assert.match(p.profileId, /^ea:\d+:fc(1[5-9]|2[0-3]):legend$/);
-    assert.ok(!current.has(p.profileId.split(':')[1]), p.name + ' is in the catalog');
     assert.equal(p.legend, true);
     assert.equal(p.captain, false);
     assert.equal(p.edition, Number(p.profileId.split(':')[2].slice(2)));
-    assert.ok(p.sourceOverall >= file.selection.legendMinimum && p.sourceOverall <= 99);
+    // Nobody under 85 as the game shows him — the number on the card, not EA's.
+    assert.ok(shown(p) >= file.selection.legendMinimum, `${p.name} shows ${shown(p)}`);
+    // The year is the year of that version's ratings: these are all release snapshots, the
+    // autumn before the edition's number.
+    assert.equal(p.year, 1999 + p.edition);
+    assert.equal(editionYear(p), p.year);
     assert.ok(POSITIONS.includes(p.primaryPosition));
     assert.ok(p.secondaryPositions.every(s => POSITIONS.includes(s) && s !== p.primaryPosition));
     assert.ok(p.tags.every(t => badges.has(t)));
@@ -73,26 +78,56 @@ test('legends are players outside the catalog: valid, best version 85+, catalog 
       assert.deepEqual([p.source.club, p.source.leagueId], [t.name, t.leagueId]);
     }
     assert.equal(legendPlayer(catalog, p.profileId), p);
+    const now = current.get(p.profileId.split(':')[1]);
+    if (!now) {
+      // A player of the past: nobody else's version.
+      pure++;
+      assert.equal(p.legendOf, undefined);
+      assert.equal(baseProfileId(p), p.profileId);
+      continue;
+    }
+    // A current player's best past version: the same person, better than his card today —
+    // however far apart the two are.
+    past++;
+    assert.equal(p.legendOf, now.profileId);
+    assert.equal(baseProfileId(p), now.profileId);
+    assert.ok(shown(p) > shown(now), `${p.name}: ${shown(p)} vs ${shown(now)} today`);
+    assert.deepEqual(
+      [p.name, p.fullName, p.source.nationality],
+      [now.name, now.fullName, now.source.nationality],
+    );
+    assert.equal(primeVersion(catalog, p), null); // a legend is his best already: no boost
+    // When he also has a prime version it is that same version.
+    const prime = primeVersion(catalog, now);
+    if (prime) assert.deepEqual([prime.edition, prime.attrs], [p.edition, p.attrs]);
   }
-  // Best first; names everyone knows, at the edition of their best version.
-  for (let i = 1; i < legends.length; i++)
-    assert.ok(legends[i - 1].sourceOverall >= legends[i].sourceOverall);
+  assert.ok(pure >= 60 && past >= 60, `${pure} past players, ${past} current ones`);
+  // Best first, as shown; names everyone knows, at their best version.
+  for (let i = 1; i < legends.length; i++) assert.ok(shown(legends[i - 1]) >= shown(legends[i]));
   const neymar = legends.find(p => p.name === 'Neymar Jr');
   assert.deepEqual(
-    [neymar.sourceOverall, neymar.edition, neymar.primaryPosition, neymar.source.nationality],
-    [92, 20, 'LW', 'Brazil'],
+    [neymar.sourceOverall, neymar.edition, neymar.year, neymar.primaryPosition],
+    [92, 20, 2019, 'LW'],
   );
-  assert.equal(neymar.source.club, 'Paris Saint-Germain');
+  assert.deepEqual(
+    [neymar.source.nationality, neymar.source.club],
+    ['Brazil', 'Paris Saint-Germain'],
+  );
+  const messi = legends.find(p => p.name === 'L. Messi');
+  assert.equal(messi.legendOf, catalog.players.find(p => p.name === 'L. Messi').profileId);
+  assert.ok(shown(messi) >= 93);
   assert.ok(legends.filter(p => p.source.clubId != null).length > legends.length * 0.7);
   // Legends never join the catalog's pools.
   assert.ok(!catalog.players.some(p => p.legend || p.prime));
   assert.ok(!catalog.byId.has(neymar.profileId));
+  assert.ok(!catalog.byId.has(messi.profileId));
 });
 
-test('prime versions: a catalog player at his best past edition, +3 or 88+, identity kept', () => {
+test('prime versions: a catalog player at his best past version, shown +2 or 88+, identity kept', () => {
   assert.equal(primes.size, data.primes.length);
-  assert.ok(primes.size > 1500);
+  assert.ok(primes.size > 2000);
   const { primeGap, primeMinimum } = file.selection;
+  assert.deepEqual([primeGap, primeMinimum], [2, 88]);
   for (const [id, p] of primes) {
     const base = catalog.byId.get(id);
     assert.ok(base, id);
@@ -102,12 +137,12 @@ test('prime versions: a catalog player at his best past edition, +3 or 88+, iden
     assert.match(p.profileId, /^ea:\d+:fc(1[5-9]|2[0-3]):prime$/);
     assert.equal(p.profileId.split(':')[1], id.split(':')[1]);
     assert.equal(p.prime, true);
+    assert.equal(p.year, 1999 + p.edition);
+    // The rule is in the rating the game shows: what the player sees on the two cards.
     assert.ok(
-      p.sourceOverall >= base.sourceOverall + primeGap ||
-        (p.sourceOverall >= primeMinimum && p.sourceOverall > base.sourceOverall),
-      base.name,
+      shown(p) >= shown(base) + primeGap || (shown(p) >= primeMinimum && shown(p) > shown(base)),
+      `${base.name}: ${shown(base)} → ${shown(p)}`,
     );
-    assert.ok(shown(p) > shown(base), `${base.name}: the shown rating rises`);
     // He is the same person: name, nation, current club and the Captain tag.
     assert.deepEqual([p.name, p.fullName, p.captain], [base.name, base.fullName, base.captain]);
     assert.deepEqual(p.source, base.source);
@@ -120,8 +155,12 @@ test('prime versions: a catalog player at his best past edition, +3 or 88+, iden
     prime = primeVersion(catalog, messi);
   assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [86, 94, 20]);
   assert.equal(prime.captain, true); // the armband goes with him
-  assert.equal(editionLabel(prime.edition), '’19'); // FIFA 20 came out in 2019
-  assert.equal(editionYear(prime.edition), 2019);
+  assert.equal(editionLabel(prime), '’19'); // FIFA 20's release ratings: 2019
+  assert.equal(editionYear(prime), 2019);
+  // The year is the stored one; an edition alone reads as its release year.
+  assert.equal(editionYear({ edition: 23, year: 2023 }), 2023);
+  assert.equal(editionLabel({ edition: 23, year: 2023 }), '’23');
+  assert.equal(editionLabel(20), '’19');
   assert.equal(editionLabel(null), '');
   // A player at his best today has none.
   assert.equal(

@@ -12,7 +12,8 @@
 // so "default" means 2 with 2 re-rolls and 1 otherwise, as the difficulties have it), spent
 // after the draft on the players who gain most in their slot. Extra columns: `captain` = share
 // of XIs with a Captain, `legend` = the legend's slot rating, `primeGain` = slot-rating points
-// the boosts added (sum per XI). --captains N: tag the first N players of data/captains.json
+// the boosts added (sum per XI), `primeEligible` = XI players with a prime version (before
+// boosting), `primeEligible2` = share of XIs with two or more. --captains N: tag the first N players of data/captains.json
 // instead of the catalog's own Captain flags (to choose the list size).
 //
 // --catalog: a v3 catalog (default: app/data/catalog.v3.json) or a v2 runtime JSON.
@@ -210,6 +211,8 @@ function draft(mode, seed, rerolls, policy, scheme) {
     if (!r.ok) throw Error(r.reason);
     if (s.player(r.profileId).legend) legend = r.rating;
   }
+  // Players of the XI with a stored prime version (what the Prime boost sheet can offer).
+  const primeEligible = s.primesPerSide ? s.primeOptions(0).length : 0;
   // Prime boosts, used sensibly: each on the player who gains most in his slot.
   for (;;) {
     const options = s
@@ -242,6 +245,7 @@ function draft(mode, seed, rerolls, policy, scheme) {
     legend,
     primeGain,
     primesUsed: s.primesPerSide - s.primesLeft[0],
+    primeEligible,
     superstars: xi.filter(p => naturalRating(p) >= 84.5).length,
     oop: xi.filter((p, i) => roleFit(p, rows[i][2]) < 0.95).length,
     duds,
@@ -297,6 +301,8 @@ for (const scheme of schemes)
           ...(PRIMES !== null
             ? {
                 primesUsed: r2(mean(rows.map(r => r.primesUsed))),
+                primeEligible: r2(mean(rows.map(r => r.primeEligible))),
+                primeEligible2: r2(mean(rows.map(r => (r.primeEligible >= 2 ? 1 : 0)))),
                 primeGain: r2(mean(rows.map(r => r.primeGain))),
               }
             : {}),

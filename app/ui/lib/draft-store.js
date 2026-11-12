@@ -28,6 +28,7 @@ import {
 } from '../../core/draft/session.js';
 import { pickOpponent } from '../../core/draft/opponents.js';
 import { FORMATIONS } from '../../core/players/formations.js';
+import { baseProfileId } from '../../core/players/legends.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import { loadWarmCatalog } from './catalog-warm.js';
 import { sideColors, teamCode, nationTrigram } from './kits.js';
@@ -426,7 +427,11 @@ export function autoComplete() {
 export function quickOpponent() {
   if (!session?.complete) return null;
   if (!opponent) {
-    const exclude = session.picks.flat().filter(Boolean);
+    // A prime or legend version counts as the current player: the opponent never fields him.
+    const exclude = session.picks
+      .flat()
+      .filter(Boolean)
+      .map(id => baseProfileId(session.player(id)));
     opponent = pickOpponent(catalogRef, {
       mode: context.mode,
       level: context.difficulty,

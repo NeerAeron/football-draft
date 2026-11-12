@@ -12,7 +12,7 @@ import {
 import { bandIndex, bandUse, budgetBands } from '../app/core/draft/budget.js';
 import { teamLinks } from '../app/core/draft/links.js';
 import { createCupRun, restoreCupRun } from '../app/core/competition/cup.js';
-import { primeVersion } from '../app/core/players/legends.js';
+import { primeVersion, baseProfileId } from '../app/core/players/legends.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { Match } from '../app/core/sim/engine.js';
@@ -49,13 +49,18 @@ test('the Legend reel: nations with an 85+ legend, slightly weighted by their le
     weightPerLegend: 0.15,
     weightCap: 20,
   });
-  assert.equal(legends.reel.length, 25);
-  assert.ok(catalog.legends.players.every(p => p.sourceOverall >= rules.minimum));
+  // Every nation with a legend is on the reel, and a legend is 85+ as the game shows him: the
+  // number on his card, never EA's.
+  assert.ok(legends.reel.length >= 25, 'nations on the reel: ' + legends.reel.length);
+  assert.equal(legends.reel.length, legends.nations.size);
+  assert.equal(
+    legends.reel.reduce((sum, n) => sum + n.count, 0),
+    catalog.legends.players.filter(p => shown(p) >= rules.minimum).length,
+  );
   for (const n of legends.reel) {
-    assert.ok(
-      n.players.some(p => p.sourceOverall >= rules.reelStar),
-      n.name,
-    );
+    assert.ok(n.players.every(p => shown(p) >= rules.minimum));
+    assert.equal(n.best, shown(n.players[0]));
+    assert.ok(n.best >= rules.reelStar, n.name);
     assert.equal(n.count, n.players.length);
     assert.equal(n.weight, Math.round((1 + 0.15 * Math.min(n.count, 20)) * 1000) / 1000);
     // Shown order: the rating on the card, then the name.
@@ -68,11 +73,20 @@ test('the Legend reel: nations with an 85+ legend, slightly weighted by their le
   }
   const weights = legends.reel.map(n => n.weight);
   assert.equal(Math.min(...weights), 1.15);
-  assert.equal(Math.max(...weights), 3.55);
+  assert.equal(Math.max(...weights), 4); // capped at twenty legends
   assert.ok(Math.max(...weights) / Math.min(...weights) < 4, 'gentle: under 4× apart');
-  // Twelve nations are on the reel for their one legend.
-  assert.equal(legends.reel.filter(n => n.count === 1).length, 12);
-  assert.equal(catalog.legends.players.length, 90);
+  // Some nations are on the reel for their one legend.
+  assert.ok(legends.reel.filter(n => n.count === 1).length >= 8);
+  // A raised minimum is applied to what is shown too, whatever the file holds.
+  const strict = legendIndex(catalog, { legends: { ...rules, minimum: 88, reelStar: 88 } });
+  assert.ok(strict.reel.length < legends.reel.length);
+  for (const n of strict.reel) assert.ok(n.players.every(p => shown(p) >= 88));
+  // The years the legends come from (the Legend spin's one line).
+  const years = catalog.legends.players.map(p => p.year);
+  assert.deepEqual(legends.years, [Math.min(...years), Math.max(...years)]);
+  assert.deepEqual(legends.years, [2014, 2022]);
+  assert.deepEqual(worldCup(1).snapshot().legendYears, legends.years);
+  assert.equal(createDraftSession(catalog, { seed: 1 }).snapshot().legendYears, null);
   for (const name of ['Brazil', 'Spain', 'Wales', 'Sweden', 'Uruguay'])
     assert.ok(
       legends.reel.some(n => n.name === name),
@@ -94,7 +108,7 @@ test('the first spin of a World Cup draft is the Legend spin: honest odds, ten l
       reel = spin.reels[0];
     assert.equal(spin.legend, true);
     assert.equal(spin.category, 'nation');
-    assert.equal(reel.options.length, 25);
+    assert.equal(reel.options.length, legends.reel.length);
     assert.equal(reel.options[reel.landing].id, spin.option.id);
     const total = reel.options.reduce((sum, o) => sum + o.weight, 0);
     for (const o of reel.options) {
@@ -117,8 +131,10 @@ test('the first spin of a World Cup draft is the Legend spin: honest odds, ten l
     for (const e of pool) {
       assert.equal(e.legend, true);
       assert.equal(e.available, true);
+      assert.ok(e.ovr >= 85, `${e.name} is offered at ${e.ovr}`);
       assert.ok(e.edition >= 15 && e.edition <= 23);
-      assert.equal(e.year, 1999 + e.edition); // FIFA 19 came out in 2018
+      assert.equal(e.year, s.player(e.profileId).year); // the year of that version's ratings
+      assert.ok(e.year >= legends.years[0] && e.year <= legends.years[1]);
       assert.equal(e.nation, spin.option.id);
       assert.equal(e.captain, false);
     }
@@ -134,13 +150,16 @@ test('the first spin of a World Cup draft is the Legend spin: honest odds, ten l
     finish(s);
     assert.equal(s.lineup(0).filter(p => p.legend).length, 1);
   }
-  // Landing frequencies follow the shown odds (chi-square, 24 dof, p = 0.001 -> 51.2).
+  // Landing frequencies follow the shown odds (chi-square at p = 0.001; Wilson–Hilferty for
+  // the reel's degrees of freedom: 36 -> 68).
   const total = legends.reel.reduce((sum, n) => sum + n.weight, 0),
     chi = legends.reel.reduce((sum, n) => {
       const expected = (N * n.weight) / total;
       return sum + ((counts.get(n.id) || 0) - expected) ** 2 / expected;
-    }, 0);
-  assert.ok(chi < 51.2, 'legend reel chi-square ' + chi.toFixed(1));
+    }, 0),
+    dof = legends.reel.length - 1,
+    limit = dof * (1 - 2 / (9 * dof) + 3.09 * Math.sqrt(2 / (9 * dof))) ** 3;
+  assert.ok(chi < limit, `legend reel chi-square ${chi.toFixed(1)} (limit ${limit.toFixed(1)})`);
   // Drafts without the option are what they were: no legend round, same spins.
   const plain = createDraftSession(catalog, { seed: 9 });
   assert.equal(plain.snapshot().legendRound, false);
@@ -174,7 +193,7 @@ test('the Legend spin can be re-rolled, respects exclusions and Budget mode, and
   const brazil = legends.nations.get('Brazil'),
     top = brazil.players.slice(0, 10).map(p => p.profileId),
     rest = brazil.players.slice(10).map(p => p.profileId);
-  assert.equal(rest.length, 7);
+  assert.ok(rest.length >= 5, 'Brazil has more than ten legends');
   const s = worldCup(3, { excludeNations: ['Spain'], excludePlayers: top });
   const spin = s.spin();
   assert.equal(spin.reels[0].options.find(o => o.id === 'Spain').weight, 0);
@@ -218,7 +237,92 @@ test('the Legend spin can be re-rolled, respects exclusions and Budget mode, and
     const [a, b] = [0, 1].map(side => d.lineup(side).find(p => p?.legend));
     assert.notEqual(a.profileId, b.profileId);
   }
-  assert.ok(single > 100, 'one-legend nations landed: ' + single);
+  assert.ok(single > 50, 'one-legend nations landed: ' + single);
+});
+
+test('one player, one place in an XI: a legend version blocks his current version and back', () => {
+  const past = catalog.legends.players.filter(p => p.legendOf);
+  assert.ok(past.length >= 60);
+  // Force a nation whose shown legends include a current player's version, by walking seeds.
+  let checked = 0;
+  for (let seed = 1; seed <= 400 && checked < 12; seed++) {
+    const s = worldCup(seed, { difficulty: 'pro' });
+    s.spin();
+    const entry = s.snapshot().pool.find(e => e.available && s.player(e.profileId).legendOf);
+    if (!entry) continue;
+    checked++;
+    const legend = s.player(entry.profileId),
+      now = catalog.byId.get(legend.legendOf);
+    assert.equal(entry.legend, true);
+    assert.equal(entry.name, now.name);
+    assert.ok(entry.ovr > shown(now));
+    // A legend version already is his best: nothing says a boost is available.
+    assert.equal(entry.primeVersion, null);
+    assert.equal(s.available(now), true);
+    assert.equal(s.pick(legend.profileId).ok, true);
+    // His current version is gone: from availability, from his nation's pool, from placement.
+    assert.equal(s.available(now), false);
+    assert.equal(s.available(legend), false);
+    for (let turn = 0; turn < 40 && !s.complete; turn++) {
+      s.spin();
+      const pool = s.snapshot().pool;
+      assert.ok(!pool.some(e => baseProfileId(s.player(e.profileId)) === now.profileId));
+      assert.ok(s.placementOptions(now.profileId).every(o => o.reason === 'Already drafted'));
+      assert.equal(s.pick(now.profileId).ok, false);
+      const move = s.suggestPick();
+      assert.equal(s.pick(move.profileId, move.slot).ok, true);
+    }
+    const xi = s.lineup(0);
+    assert.equal(new Set(xi.map(baseProfileId)).size, 11);
+    // No Prime boost for the legend: his slot offers none, and the options never list him.
+    const slot = xi.indexOf(legend);
+    assert.equal(s.primeOption(slot, 0), null);
+    assert.equal(s.snapshot().teams[0].slots[slot].prime, null);
+    assert.ok(s.primeOptions(0).every(o => o.slot !== slot));
+    assert.deepEqual(s.prime(slot, 0), { ok: false, reason: 'No prime version' });
+    // Restored: still one of him.
+    const copy = restoreDraftSession(catalog, JSON.parse(JSON.stringify(s.serialize())));
+    assert.equal(copy.available(now), false);
+    // Opponents of his run never field his current version either.
+    if (checked <= 3) {
+      const user = s.matchSide(0),
+        run = createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed, user });
+      for (const o of run.opponents)
+        assert.ok(!o.players.includes(now.profileId), `${o.name} fields ${now.name}`);
+    }
+  }
+  assert.equal(checked, 12);
+  // The other direction: with his current version taken (the other side's pick, an excluded
+  // player) his legend version is not offered — and a nation whose only legend he is leaves
+  // the reel.
+  const only = legends.reel.find(n => n.count === 1 && n.players[0].legendOf),
+    many = legends.reel.find(n => n.count > 3 && n.players.slice(0, 10).some(p => p.legendOf)),
+    star = many.players.find(p => p.legendOf);
+  assert.ok(only && star);
+  const blocked = worldCup(7, { excludePlayers: [only.players[0].legendOf, star.legendOf] });
+  const spin = blocked.spin();
+  assert.equal(spin.reels[0].options.find(o => o.id === only.id).weight, 0);
+  assert.ok(spin.reels[0].options.find(o => o.id === many.id).weight > 0);
+  for (let seed = 1; seed < 600; seed++) {
+    const d = worldCup(seed, { excludePlayers: [star.legendOf] });
+    if (d.spin().option.id !== many.id) continue;
+    assert.ok(!d.snapshot().pool.some(e => e.profileId === star.profileId));
+    assert.equal(d.pick(star.profileId).ok, false);
+    break;
+  }
+  // Local Versus: the first side's legend version takes his current version from the second
+  // side's pools too, and a Prime boost can never bring a second one of him.
+  for (let seed = 1; seed <= 60; seed++) {
+    const d = worldCup(seed, { sides: 2, rerolls: 0 });
+    while (!d.complete) {
+      d.spin();
+      const move = d.suggestPick();
+      assert.equal(d.pick(move.profileId, move.slot).ok, true);
+    }
+    for (const side of [0, 1]) for (const o of d.primeOptions(side)) d.prime(o.slot, side);
+    const people = [...d.lineup(0), ...d.lineup(1)].map(baseProfileId);
+    assert.equal(new Set(people).size, 22, `seed ${seed}: a player is drafted twice`);
+  }
 });
 
 test('with only the goalkeeper slot left, a spin lands only where a keeper is available', () => {
@@ -424,7 +528,7 @@ test('a World Cup run keeps the legend and the primed player; opponents never fi
     );
     assert.equal(run.userSide().effective, user.effective);
     // Nobody plays for both sides — the current version of a primed player included.
-    const taken = new Set(user.players.flatMap(p => [p.profileId, p.primeOf ?? p.profileId]));
+    const taken = new Set(user.players.flatMap(p => [p.profileId, baseProfileId(p)]));
     for (const o of run.opponents)
       assert.ok(
         o.players.every(id => !taken.has(id)),

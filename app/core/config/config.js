@@ -85,10 +85,11 @@ export const DEFAULT_CONFIG = {
       club: 1,
       captain: 1,
     },
-    // The Legend spin (World Cup drafts: the first spin). A legend is a past player whose best
-    // version EA rated `minimum` or more (the data ships exactly those); the reel holds the
-    // nations with a legend EA rated `reelStar` or better; a landing shows the nation's `shown`
-    // highest-rated legends. A nation's weight on the reel grows gently with how many legends
+    // The Legend spin (World Cup drafts: the first spin). A legend is a best past version the
+    // game shows at `minimum` or more — the rating on his card, not EA's — of a player of the
+    // past or of a current player who was better then (the data ships exactly those); the reel
+    // holds the nations with a legend shown at `reelStar` or better; a landing shows the
+    // nation's `shown` highest-rated legends. A nation's weight on the reel grows gently with how many legends
     // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
     legends: {
       minimum: 85,
@@ -879,8 +880,8 @@ const DRAFT_FIELDS = {
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
-  'draft.legends.minimum': ['Legend: best version rated at least', 80, 95, 1],
-  'draft.legends.reelStar': ['Legend spin: a nation needs a legend rated at least', 80, 95, 1],
+  'draft.legends.minimum': ['Legend: best version shown at least', 80, 95, 1],
+  'draft.legends.reelStar': ['Legend spin: a nation needs a legend shown at least', 80, 95, 1],
   'draft.legends.shown': ['Legend spin: legends shown', 1, 23, 1],
   'draft.legends.weightPerLegend': ['Legend spin: reel weight per legend', 0, 1, 0.05],
   'draft.legends.weightCap': ['Legend spin: legends that count for the weight', 1, 50, 1],

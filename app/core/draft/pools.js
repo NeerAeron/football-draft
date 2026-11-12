@@ -4,6 +4,7 @@
 import { CONFIG } from '../config/config.js';
 import { overallRating, positionFamiliarity } from '../players/ratings.js';
 import { FORMATIONS } from '../players/formations.js';
+import { editionYear } from '../players/legends.js';
 import { NATION_CODES } from './nation-codes.js';
 
 export const ROLES = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW', 'ST'];
@@ -426,11 +427,13 @@ const byShown = (a, b) =>
   (a.profileId < b.profileId ? -1 : 1);
 /**
  * Index of a catalog's Legends (catalog.legends, players/legends.js) for the Legend spin, or
- * null when none are attached. A legend counts when EA rated his best version
- * `rules.legends.minimum` or more. `nations`: Map name → { id, name, code, flag, players
- * (highest shown rating first, then name), goalkeepers, count, best (the top EA rating),
- * weight }; `reel`: the nations with a legend EA rated `reelStar` or better, most legends
- * first. weight = 1 + weightPerLegend × min(count, weightCap).
+ * null when none are attached. A legend counts when the game shows him at
+ * `rules.legends.minimum` or more (the rating on his card, not EA's) — nobody under it is ever
+ * offered, whatever the file holds. `nations`: Map name → { id, name, code, flag, players
+ * (highest shown rating first, then name), goalkeepers, count, best (the top shown rating),
+ * weight }; `reel`: the nations with a legend shown at `reelStar` or better, most legends
+ * first; `years`: [first, last] year of those legends' versions (null without any).
+ * weight = 1 + weightPerLegend × min(count, weightCap).
  */
 export function legendIndex(catalog, rules = draftRules()) {
   const data = catalog?.legends;
@@ -441,8 +444,16 @@ export function legendIndex(catalog, rules = draftRules()) {
   if (cached?.stamp === stamp) return cached.index;
   const meta = new Map((catalog.nations || []).map(n => [n.name, n])),
     nations = new Map();
+  let first = Infinity,
+    last = -Infinity;
   for (const p of data.players) {
-    if (p.sourceOverall < r.minimum) continue;
+    const rating = Math.round(naturalRating(p));
+    if (rating < r.minimum) continue;
+    const year = editionYear(p);
+    if (year) {
+      first = Math.min(first, year);
+      last = Math.max(last, year);
+    }
     const name = p.source.nationality;
     if (!nations.has(name)) {
       const info = meta.get(name);
@@ -458,7 +469,7 @@ export function legendIndex(catalog, rules = draftRules()) {
     }
     const nation = nations.get(name);
     nation.players.push(p);
-    nation.best = Math.max(nation.best, p.sourceOverall);
+    nation.best = Math.max(nation.best, rating);
     if (isKeeper(p)) nation.goalkeepers++;
   }
   for (const nation of nations.values()) {
@@ -470,7 +481,7 @@ export function legendIndex(catalog, rules = draftRules()) {
   const reel = [...nations.values()]
     .filter(n => n.best >= r.reelStar)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  const index = { nations, reel, shown: r.shown };
+  const index = { nations, reel, shown: r.shown, years: first <= last ? [first, last] : null };
   legendIndexes.set(data, { stamp, index });
   return index;
 }
