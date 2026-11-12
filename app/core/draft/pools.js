@@ -280,6 +280,25 @@ function* buildIndex(catalog, rules) {
     nation.pot = Math.floor(i / n.potSize) + 1;
     return nation;
   });
+  // Wildcards: nations outside the field with a star. Spun in drafts (pot 5), not opponents.
+  const inField = new Set(field),
+    wildcards = [...nations.values()]
+      .filter(
+        nation =>
+          !inField.has(nation) &&
+          nation.players.length >= (n.wildcardPlayers ?? Infinity) &&
+          nation.players.some(p => Math.round(naturalRating(p)) >= n.wildcardStar),
+      )
+      .map(nation => {
+        const best = nation.players
+          .map(naturalRating)
+          .sort((a, b) => b - a)
+          .slice(0, 11);
+        nation.strength = best.reduce((a, b) => a + b, 0) / best.length;
+        nation.pot = Math.floor(field.length / n.potSize) + 1;
+        return nation;
+      })
+      .sort((a, b) => b.strength - a.strength || a.name.localeCompare(b.name));
   // Leagues and clubs
   const teamsById = new Map((catalog.teams || []).map(t => [String(t.id), t]));
   const leagueGroups = new Map();
@@ -345,6 +364,8 @@ function* buildIndex(catalog, rules) {
     byId,
     nations,
     field,
+    // What a nation spin can land on: the field and the wildcards.
+    spinField: [...field, ...wildcards],
     leagues,
     leagueById: new Map(leagues.map(l => [l.id, l])),
     clubs,

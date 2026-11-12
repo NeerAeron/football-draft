@@ -38,6 +38,13 @@ available when only the GK slot is left. All numbers live in `CONFIG.draft` (`na
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
 
+**Wildcard nations.** A nation spin lands on the 48-nation field (pots 1–4) or on a wildcard
+(pot 5, `index.spinField`): a nation outside the field with at least one player rated
+`nations.wildcardStar` (80) and `wildcardPlayers` (9) players — Nigeria, Algeria, DR Congo,
+Kosovo, Guinea, Venezuela, Finland, Tunisia, Saudi Arabia, Iceland, Burkina Faso, New Zealand,
+Egypt, Gabon, Armenia. They are spun, never met as opponents (most have no two keepers in the
+data, which is why they are not in the field).
+
 ## Flow
 
 ```js

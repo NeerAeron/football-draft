@@ -152,9 +152,21 @@ export function slotHighlights(options = [], auto = null, { hideRatings = false 
   return out;
 }
 
-const GROUP_ORDER = ['Pot 1', 'Pot 2', 'Pot 3', 'Pot 4', 'S', 'A', 'B', 'C', 'D', 'F'].map(
-  (k, i) => [k.length === 1 ? `Tier ${k}` : k, i],
-);
+/** Pots 1–4 are the World Cup field; pot 5 the wildcard nations (a star, not the depth). */
+const potName = pot => (pot > 4 ? 'Wildcard' : `Pot ${pot}`);
+const GROUP_ORDER = [
+  'Pot 1',
+  'Pot 2',
+  'Pot 3',
+  'Pot 4',
+  'Wildcard',
+  'S',
+  'A',
+  'B',
+  'C',
+  'D',
+  'F',
+].map((k, i) => [k.length === 1 ? `Tier ${k}` : k, i]);
 const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 
 /** The six summary stats with the position's key stats first (pool rows). */
@@ -176,7 +188,7 @@ export function reelItems(reel, { league = null } = {}) {
       return {
         id: o.id,
         label: o.name,
-        sub: o.pot ? `Pot ${o.pot}` : '',
+        sub: o.pot ? potName(o.pot) : '',
         flag: { code: o.code, name: o.name, src: o.flag || undefined },
       };
     if (reel.category === 'league')
@@ -208,7 +220,7 @@ export function oddsSummary(spin) {
   return spin.reels.map(reel => {
     const live = reel.options.filter(o => o.weight > 0);
     const landed = reel.options[reel.landing];
-    const groupKey = o => (reel.category === 'nation' ? `Pot ${o.pot}` : `Tier ${o.tier}`);
+    const groupKey = o => (reel.category === 'nation' ? potName(o.pot) : `Tier ${o.tier}`);
     const groups = new Map();
     for (const o of live) {
       const k = groupKey(o);
@@ -247,7 +259,7 @@ export function spinHeadline(spin, poolSize = 0) {
       title: o.name,
       kind: 'nation',
       flag: { code: o.code, name: o.name, src: o.flag || undefined },
-      meta: `Pot ${o.pot} · ${poolSize} call-up${poolSize === 1 ? '' : 's'}`,
+      meta: `${potName(o.pot)} · ${poolSize} call-up${poolSize === 1 ? '' : 's'}`,
       big: o.pot === 1,
       badge: o.pot === 1 ? 'Pot 1' : null,
     };

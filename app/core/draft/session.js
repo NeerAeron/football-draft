@@ -310,7 +310,7 @@ export class DraftSession {
       const reel = this.#land(
         this.#reel(
           'nation',
-          ix.field.map(n => ({
+          ix.spinField.map(n => ({
             id: n.id,
             name: n.name,
             code: n.code,

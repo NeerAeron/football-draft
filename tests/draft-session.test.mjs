@@ -116,7 +116,14 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
   const spin = s.spin();
   assert.equal(spin.category, 'nation');
   assert.equal(spin.reels.length, 1);
-  assert.equal(spin.reels[0].options.length, 48);
+  // The reel: the 48-nation field plus the wildcard nations (a star, not the depth).
+  assert.equal(spin.reels[0].options.length, index.spinField.length);
+  assert.equal(index.spinField.length, 63);
+  for (const name of ['Egypt', 'Nigeria', 'Guinea', 'Algeria'])
+    assert.ok(
+      index.spinField.some(n => n.name === name && n.pot === 5),
+      name,
+    );
   assert.equal(spin.reels[0].options[spin.reels[0].landing].id, spin.option.id);
   // Call-ups: best available 23 with 3 GK and the line minimums.
   const pool = s.poolPlayers();
@@ -161,17 +168,20 @@ test('call-ups refill from the next best player and skip drafted ones', () => {
 });
 
 test('honest weights: landing frequencies match the shown reel probabilities', () => {
-  // Nations: uniform over the 48-nation field (chi-square, 47 dof, p = 0.001 -> 82.7).
+  // Nations: uniform over the 63 nations of the reel (chi-square, 62 dof, p = 0.001 -> 102.2).
   const counts = new Map(),
     n = 2400;
   for (let seed = 1; seed <= n; seed++) {
     const spin = createDraftSession(catalog, { mode: 'nations', seed }).spin();
-    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.021));
+    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.016));
     counts.set(spin.option.id, (counts.get(spin.option.id) || 0) + 1);
   }
-  const expected = n / 48,
-    chi = index.field.reduce((s, x) => s + ((counts.get(x.id) || 0) - expected) ** 2 / expected, 0);
-  assert.ok(chi < 82.7, 'nation chi-square ' + chi.toFixed(1));
+  const expected = n / 63,
+    chi = index.spinField.reduce(
+      (s, x) => s + ((counts.get(x.id) || 0) - expected) ** 2 / expected,
+      0,
+    );
+  assert.ok(chi < 102.2, 'nation chi-square ' + chi.toFixed(1));
   // Leagues: tier frequencies follow the flat weights A4/B2/C1/D.5/F.25 (4 dof -> 18.5).
   const weight = { A: 4, B: 2, C: 1, D: 0.5, F: 0.25 },
     total = index.leagues.reduce((s, l) => s + weight[l.tier], 0),

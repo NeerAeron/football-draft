@@ -12,6 +12,11 @@ export const DEFAULT_CONFIG = {
       potSize: 12,
       minimumPlayers: 23,
       minimumGoalkeepers: 2,
+      // Wildcards: nations outside the field that the reel still lands on (pot 5), because
+      // they have a star — at least one player rated wildcardStar or better and
+      // wildcardPlayers players (no keeper needed: they are spun, never met as opponents).
+      wildcardStar: 80,
+      wildcardPlayers: 9,
       squadSize: 23,
       squadGoalkeepers: 3,
       squadDefenders: 7,
@@ -809,6 +814,8 @@ const ranges = {
 const DRAFT_FIELDS = {
   'draft.nations.fieldSize': ['Nations in the field', 8, 64, 1],
   'draft.nations.potSize': ['Nations per pot', 1, 64, 1],
+  'draft.nations.wildcardStar': ['Wildcard nation: best player at least', 60, 99, 1],
+  'draft.nations.wildcardPlayers': ['Wildcard nation: minimum players', 1, 30, 1],
   'draft.nations.minimumPlayers': ['Eligible nation: minimum players', 11, 60, 1],
   'draft.nations.minimumGoalkeepers': ['Eligible nation: minimum goalkeepers', 1, 5, 1],
   'draft.nations.squadSize': ['Call-ups per spin', 11, 40, 1],
