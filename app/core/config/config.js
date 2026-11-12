@@ -91,7 +91,7 @@ export const DEFAULT_CONFIG = {
     // highest-rated legends. A nation's weight on the reel grows gently with how many legends
     // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
     legends: {
-      minimum: 83,
+      minimum: 85,
       reelStar: 85,
       shown: 10,
       weightPerLegend: 0.15,
