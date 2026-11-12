@@ -670,7 +670,7 @@ export const flows = [
         await page.click('[data-testid="start-budget"]');
         await visible(page, '[data-screen="setup"][data-mode="run"] [data-testid="setup-budget"]');
         const text = await page.textContent('[data-screen="setup"]');
-        if (!/1 Superstar \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)/.test(text))
+        if (!/2 Superstars \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)/.test(text))
           throw new Error('Budget mode does not say its caps');
       });
       await page.evaluate(() => document.fonts.ready);

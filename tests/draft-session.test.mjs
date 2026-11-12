@@ -10,7 +10,8 @@ import {
   DRAFT_MODES,
   NATURAL_FIT,
 } from '../app/core/draft/session.js';
-import { catalogIndex, callUps, LINE_OF, isKeeper } from '../app/core/draft/pools.js';
+import { catalogIndex, callUps, bestEleven, LINE_OF, isKeeper } from '../app/core/draft/pools.js';
+import { CONFIG } from '../app/core/config/config.js';
 import { overallRating, positionFamiliarity } from '../app/core/players/ratings.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 import { lcg } from '../app/core/util/rng.js';
@@ -109,7 +110,17 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
     [1, 2, 3, 4].map(pot => index.field.filter(n => n.pot === pot).length),
     [12, 12, 12, 12],
   );
-  assert.ok(index.field.every(n => n.players.length >= 23 && n.goalkeepers >= 2));
+  // A field nation can field an XI: eleven players, a real keeper, nobody out of position.
+  assert.ok(index.field.every(n => n.players.length >= 11 && n.goalkeepers >= 1));
+  assert.deepEqual(index.field, index.playable.slice(0, 48));
+  for (const n of index.playable) {
+    const xi = bestEleven(n.players, { strict: true });
+    assert.ok(xi && xi.players.filter(isKeeper).length === 1, n.name);
+    FORMATIONS[xi.formation].forEach(([, , role], i) =>
+      assert.ok(positionFamiliarity(xi.players[i], role) >= CONFIG.ai.minimumFit, n.name),
+    );
+  }
+  assert.ok(index.field.some(n => n.name === 'Nigeria'));
   for (let i = 1; i < index.field.length; i++)
     assert.ok(index.field[i - 1].strength >= index.field[i].strength);
   const s = createDraftSession(catalog, { mode: 'nations', seed: 5 });
@@ -118,8 +129,9 @@ test('spins follow the mode: nation field in pots, call-ups, leagues, clubs, alt
   assert.equal(spin.reels.length, 1);
   // The reel: the 48-nation field plus the wildcard nations (a star, not the depth).
   assert.equal(spin.reels[0].options.length, index.spinField.length);
-  assert.equal(index.spinField.length, 63);
-  for (const name of ['Egypt', 'Nigeria', 'Guinea', 'Algeria'])
+  assert.equal(index.playable.length, 80);
+  assert.equal(index.spinField.length, 93);
+  for (const name of ['Egypt', 'Wales', 'Guinea', 'Algeria'])
     assert.ok(
       index.spinField.some(n => n.name === name && n.pot === 5),
       name,
@@ -168,20 +180,20 @@ test('call-ups refill from the next best player and skip drafted ones', () => {
 });
 
 test('honest weights: landing frequencies match the shown reel probabilities', () => {
-  // Nations: uniform over the 63 nations of the reel (chi-square, 62 dof, p = 0.001 -> 102.2).
+  // Nations: uniform over the 93 nations of the reel (chi-square, 92 dof, p = 0.001 -> 139.7).
   const counts = new Map(),
     n = 2400;
   for (let seed = 1; seed <= n; seed++) {
     const spin = createDraftSession(catalog, { mode: 'nations', seed }).spin();
-    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.016));
+    assert.ok(spin.reels[0].options.every(o => o.weight === 1 && o.probability === 0.011));
     counts.set(spin.option.id, (counts.get(spin.option.id) || 0) + 1);
   }
-  const expected = n / 63,
+  const expected = n / 93,
     chi = index.spinField.reduce(
       (s, x) => s + ((counts.get(x.id) || 0) - expected) ** 2 / expected,
       0,
     );
-  assert.ok(chi < 102.2, 'nation chi-square ' + chi.toFixed(1));
+  assert.ok(chi < 139.7, 'nation chi-square ' + chi.toFixed(1));
   // Leagues: tier frequencies follow the flat weights A4/B2/C1/D.5/F.25 (4 dof -> 18.5).
   const weight = { A: 4, B: 2, C: 1, D: 0.5, F: 0.25 },
     total = index.leagues.reduce((s, l) => s + weight[l.tier], 0),
@@ -474,7 +486,7 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
   assert.equal(home.players.length, 11);
   home.players.forEach((p, i) => {
     assert.equal(p.role, FORMATIONS['4231'][i][2]);
-    assert.ok([0, 1, 1.5, 2.5].includes(p.chem), `chem ${p.chem}`);
+    assert.ok([0, 1, 1.5, 2.5, 2, 3.5].includes(p.chem), `chem ${p.chem}`); // +1 with a Captain
   });
   const setup = matchSetup(home, { ...away, color: home.color });
   assert.notEqual(setup.teams[1].color, setup.teams[0].color, 'clashing kits switch');
@@ -487,20 +499,27 @@ test('match setup builds engine-ready sides with roles, kits and link chem', () 
     match.players.map(p => p.profileId),
     [...home.players, ...away.players].map(p => p.profileId),
   );
-  const nation = index.nations.get('Brazil'),
-    xi = buildSide({
-      name: 'Brazil',
+  const side = name =>
+    buildSide({
+      name,
       color: '#ffdf00',
       secondary: '#009c3b',
       formation: '433',
-      players: assignXI(nation.players),
+      players: assignXI(index.nations.get(name).players),
     });
-  // A national XI is all nation mates: +1.5 each (+2.5 for club mates inside it). A Captain
-  // tag (Brazil has one) adds nothing.
-  assert.ok(nation.players.some(p => p.captain));
-  assert.ok(xi.players.every(p => p.chem === 1.5 || p.chem === 2.5));
-  assert.ok(xi.links.score >= 16.5 && xi.links.score <= 27.5);
-  assert.equal(xi.links.total, xi.links.score);
+  // A national XI is all nation mates: +1.5 each (+2.5 for club mates inside it).
+  const brazil = side('France');
+  assert.ok(!index.nations.get('France').players.some(p => p.captain));
+  assert.ok(brazil.players.every(p => p.chem === 1.5 || p.chem === 2.5));
+  assert.ok(brazil.links.score >= 16.5 && brazil.links.score <= 27.5);
+  assert.equal(brazil.links.total, brazil.links.score);
+  assert.equal(brazil.links.captain, null);
+  // With its Captain in the XI (van Dijk), everyone gets +1 on top.
+  const dutch = side('Netherlands');
+  assert.equal(dutch.players[dutch.links.captain].name, 'V. van Dijk');
+  assert.equal(dutch.links.captainBoost, 1);
+  assert.ok(dutch.players.every(p => p.chem === 2.5 || p.chem === 3.5));
+  assert.equal(dutch.links.total, dutch.links.score + 11);
 });
 
 function assignXI(players) {

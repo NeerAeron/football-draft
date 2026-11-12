@@ -132,8 +132,17 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
     ['group1', 'group2', 'group3', 'r32', 'r16', 'qf', 'sf', 'final'],
   );
   const offsets = cupOffsets('pro');
+  // (The group plays weakest first by what the XI is worth, which need not be target order.)
+  const targets = offsets.map(offset => ladderTarget('nations', 'pro', { offset }));
+  assert.deepEqual(
+    run.opponents
+      .slice(0, 3)
+      .map(o => o.target)
+      .sort(),
+    targets.slice(0, 3).sort(),
+  );
   run.opponents.forEach((o, i) => {
-    assert.equal(o.target, ladderTarget('nations', 'pro', { offset: offsets[i] }));
+    if (i >= 3) assert.equal(o.target, targets[i]);
     assert.ok(Math.abs(o.nominal - o.target) <= 1.5, o.name);
   });
   const group = run.opponents.slice(0, 3).map(o => o.effective),
@@ -270,9 +279,12 @@ test('places: the semi-final loser plays for third; runners-up, third and fourth
 });
 
 test('Legendary plays the real field: a drawn and simulated 48-nation World Cup', () => {
+  // Every run qualifies its own 48 of the playable nations: the strongest 30 always, the rest
+  // drawn with odds falling with the rating.
   const index = catalogIndex(catalog),
-    pot = new Map(index.field.map(n => ['nation:' + n.id, n.pot])),
-    weakest = 'nation:' + index.field.filter(n => n.pot === 1).at(-1).id;
+    playable = new Set(index.playable.map(n => 'nation:' + n.id)),
+    core = index.playable.slice(0, 30).map(n => 'nation:' + n.id),
+    weakest = 'nation:' + index.playable[11].id;
   const make = seed =>
     createCupRun(catalog, { mode: 'nations', difficulty: 'legendary', seed, user });
   const run = make(31);
@@ -280,20 +292,16 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   assert.equal(new Set(run.opponents.map(o => o.key)).size, 9);
   // The group: one nation from each of pots 2, 3 and 4 (you have the pot-1 seat).
   assert.deepEqual(
-    run.opponents
-      .slice(0, 3)
-      .map(o => pot.get(o.key))
-      .sort(),
-    [2, 3, 4],
-  );
-  assert.deepEqual(
     run
       .snapshot()
       .rounds.slice(0, 3)
-      .map(r => r.opponent.pot),
-    run.opponents.slice(0, 3).map(o => pot.get(o.key)),
+      .map(r => r.opponent.pot)
+      .sort(),
+    [2, 3, 4],
   );
-  assert.ok(run.opponents.every(o => o.kind === 'nation' && pot.has(o.key) && o.target === null));
+  assert.ok(
+    run.opponents.every(o => o.kind === 'nation' && playable.has(o.key) && o.target === null),
+  );
   // Deterministic for the seed, different for another.
   assert.deepEqual(
     make(31).opponents.map(o => o.key),
@@ -315,12 +323,26 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   // mates never come back, and the bracket gets harder round by round.
   const rating = new Map(opponentCandidates(catalog).map(c => [c.key, c.effective]));
   const sums = Array(9).fill(0),
+    qualified = new Map(),
     N = 300;
   for (let seed = 1; seed <= N; seed++) {
-    const draw = worldCupDraw(catalog, { random: lcg(seed) });
+    const draw = worldCupDraw(catalog, { random: lcg(seed) }),
+      pot = draw.pots;
     assert.equal(new Set(draw.keys).size, 9);
     assert.ok(!draw.keys.includes(weakest));
     assert.deepEqual(draw.group.map(k => pot.get(k)).sort(), [2, 3, 4]);
+    // 48 qualifiers in four pots of twelve by strength, the core among them.
+    assert.equal(pot.size, 48);
+    assert.ok(core.every(k => pot.has(k)));
+    assert.ok([...pot.keys()].every(k => playable.has(k)));
+    assert.deepEqual(
+      [1, 2, 3, 4].map(n => [...pot.values()].filter(v => v === n).length),
+      [12, 12, 12, 12],
+    );
+    assert.ok(
+      [...pot].every(([k, v], i, all) => !i || (rating.get(k) !== undefined && v >= all[i - 1][1])),
+    );
+    for (const k of pot.keys()) qualified.set(k, (qualified.get(k) || 0) + 1);
     assert.deepEqual(draw.keys, [...draw.group, ...draw.knockouts, draw.third]);
     draw.keys.forEach((k, i) => (sums[i] += rating.get(k)));
   }

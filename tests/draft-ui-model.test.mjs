@@ -191,7 +191,7 @@ test('oddsSummary reports uniform nation odds and tiered league odds honestly', 
   const nations = createDraftSession(catalog, { mode: 'nations', seed: 2 });
   const [n] = oddsSummary(nations.spin());
   assert.equal(n.uniform, true);
-  assert.equal(n.eligible, 63);
+  assert.equal(n.eligible, 93);
   const clubs = createDraftSession(catalog, { mode: 'clubs', seed: 2 });
   const [league, club] = oddsSummary(clubs.spin());
   assert.equal(league.uniform, false);
@@ -311,7 +311,16 @@ test('pickPreview says who the mates are and what everyone gets', () => {
 });
 
 test('Budget mode: rows show their tier, closed rows say which tier is full, the preview what it uses', () => {
-  const d = createDraftSession(catalog, { mode: 'nations', seed: 11, budget: true, rerolls: 0 });
+  let checked = 0,
+    d;
+  for (const seed of [11, 12, 13, 14, 15, 16]) {
+    d = createDraftSession(catalog, { mode: 'nations', seed, budget: true, rerolls: 0 });
+    checked += budgetRows(d);
+  }
+  assert.ok(checked > 0);
+  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
+});
+function budgetRows(d) {
   let checked = 0;
   while (!d.complete) {
     d.spin();
@@ -347,9 +356,8 @@ test('Budget mode: rows show their tier, closed rows say which tier is full, the
     else assert.deepEqual(preview.budget, { free: true, label: 'Under 80' });
     d.pick(e.profileId, auto.slot);
   }
-  assert.ok(checked > 0);
-  assert.equal(rowCost(d.snapshot().pool[0] || { band: null }, null), null);
-});
+  return checked;
+}
 
 test('Budget mode travels from the setup to the session and the run, World Cup only', async () => {
   const { normalizeContext, sessionOptions } = await import('../app/ui/lib/draft-store.js');
@@ -370,7 +378,7 @@ test('Budget mode travels from the setup to the session and the run, World Cup o
   assert.equal(sessionOptions(normalizeContext({ kind: 'daily' })).budget, false);
   assert.match(
     budgetCopy(),
-    /^Harder: your XI may hold only 1 Superstar \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)\. Everyone else must be under 80\.$/,
+    /^Harder: your XI may hold only 2 Superstars \(88\+\), 2 Stars \(84–87\) and 3 Starters \(80–83\)\. Everyone else must be under 80\.$/,
   );
 });
 

@@ -121,16 +121,16 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
     });
   };
   const none = new Set();
-  for (const n of index.nations.values())
-    if (n.players.length >= 11 && n.goalkeepers >= 1) {
-      add(
-        'nation',
-        n.id,
-        { name: n.name, code: n.code, flag: n.flag, color: null, secondary: null },
-        xiFor(index, 'nation', n.id, none),
-      );
-      yield;
-    }
+  // Every playable nation (an XI with a real keeper and nobody out of position).
+  for (const n of index.playable) {
+    add(
+      'nation',
+      n.id,
+      { name: n.name, code: n.code, flag: n.flag, color: null, secondary: null },
+      xiFor(index, 'nation', n.id, none),
+    );
+    yield;
+  }
   // Club XIs: the catalog's precomputed best lineups when they match the live configuration
   // (same assignment and tie-break as bestEleven), otherwise computed here (~0.3 s).
   const squads =

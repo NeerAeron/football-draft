@@ -74,9 +74,11 @@ test('real XIs are all mates and bosses top the ladder', () => {
     stars = list.find(c => c.key === 'boss:all-stars');
   // National XIs are all nation mates (+1.5, +2.5 for club mates inside them), club XIs all
   // club mates (+1, +2.5 for compatriots).
-  const { nation, club } = DEFAULT_CONFIG.draft.links;
+  // A side with a Captain gets his +1 for everyone too.
+  const { nation, club, captain } = DEFAULT_CONFIG.draft.links;
   const real = list.filter(c => c.kind !== 'boss');
-  assert.ok(real.every(c => c.chem >= Math.min(nation, club) && c.chem <= nation + club));
+  assert.ok(real.every(c => c.chem >= Math.min(nation, club) && c.chem <= nation + club + captain));
+  assert.equal(list.find(c => c.key === 'nation:Netherlands').chem >= nation + captain, true);
   assert.ok(real.some(c => c.chem === nation) && real.some(c => c.chem > nation));
   assert.ok(real.filter(c => c.kind === 'nation').every(c => c.chem >= nation));
   assert.ok(real.filter(c => c.kind === 'club').every(c => c.chem >= club));
