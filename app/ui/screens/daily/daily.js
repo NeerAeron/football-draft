@@ -67,6 +67,7 @@ import {
 } from '../run/run-parts.js';
 import { SharePanel } from '../run/share-panel.js';
 import { xiViews, shareCardFor } from '../run/team-view.js';
+import { Awards, SquadTable, useAwards, honoursFor } from '../run/honours.js';
 import { fmt1, int, fmtDate } from '../../lib/format.js';
 
 /** The day of a Daily (its UTC day id): "12 Nov 2026". */
@@ -281,6 +282,9 @@ function Result({ catalog, day, entry, state, today, fresh }) {
   const run = useMemo(() => rebuildRun(catalog, entry), [catalog, entry]);
   const snapshot = useMemo(() => run?.snapshot() ?? null, [run]);
   const views = useMemo(() => (run ? xiViews(catalog, run.userSide()) : []), [run]);
+  // The tournament's awards and the squad's table, as on a run's end screen.
+  const squad = useMemo(() => run?.squadStats() ?? [], [run]);
+  const awards = useAwards(run);
   const link = challengeLink(
     {
       kind: 'daily',
@@ -301,10 +305,11 @@ function Result({ catalog, day, entry, state, today, fresh }) {
             perfectPct: entry.perfect,
             points: entry.points,
             hideRatings: hide,
+            honours: honoursFor(run, awards),
             url: link,
           })
         : entry.share,
-    [snapshot],
+    [snapshot, awards],
   );
   const card = useMemo(
     () =>
@@ -384,6 +389,7 @@ function Result({ catalog, day, entry, state, today, fresh }) {
         <${Countdown} />
       </div>
     </section>
+    ${run?.complete && html`<${Awards} catalog=${catalog} awards=${awards} />`}
     <div class="daily-result__grid">
       <div class="daily-result__main stack stack-lg">
         <${SharePanel}
@@ -394,6 +400,13 @@ function Result({ catalog, day, entry, state, today, fresh }) {
           title=${`Daily #${day.number}`}
           filename=${`world-cup-draft-daily-${day.number}.png`}
         />
+        ${
+          squad.some(r => r.matches) &&
+          html`<section class="card card--pad-md" aria-labelledby="daily-squad-title">
+            <h2 class="section-title" id="daily-squad-title">Your squad</h2>
+            <${SquadTable} rows=${squad} />
+          </section>`
+        }
         ${
           snapshot &&
           html`<section

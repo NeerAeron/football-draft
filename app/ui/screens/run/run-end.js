@@ -1,7 +1,8 @@
 // The end of a World Cup Run: where it finished — champions (gold cup + confetti), runners-up
 // (silver), third place (bronze), fourth, or the round it went out in — with the record, Player
 // of the Tournament, "Held you back", the XI, share text + image, "Challenge a friend" and Play
-// again.
+// again. Under the headline: the tournament's three awards (honours.js) and, with the Player of
+// the Tournament, the squad's table.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { href } from '../../lib/router.js';
@@ -19,6 +20,7 @@ import { challengeLink, runChallenge, pageBase, userTeamName } from '../../lib/r
 import { runNews } from '../../lib/records.js';
 import { PathStrip, FlagMosaic, scoreText, wonResult } from './run-parts.js';
 import { SharePanel } from './share-panel.js';
+import { Awards, SquadTable, useAwards, honoursFor } from './honours.js';
 import {
   xiViews,
   nationList,
@@ -136,6 +138,9 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
   const nations = useMemo(() => nationList(views), [views]);
   const pott = useMemo(() => run.playerOfTheTournament(), [run, snapshot]);
   const held = useMemo(() => run.heldYouBack(2), [run, snapshot]);
+  const squad = useMemo(() => run.squadStats(), [run, snapshot]);
+  const awards = useAwards(run);
+  const honours = useMemo(() => honoursFor(run, awards), [run, snapshot, awards]);
   const [fire, setFire] = useState(0);
   useEffect(() => {
     if (champion) setFire(1);
@@ -150,6 +155,7 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
     hideRatings: meta.hideRatings,
     uniqueNations: meta.uniqueNations,
     budget: !!meta.budget,
+    honours,
     url: link,
   });
   const card = useMemo(
@@ -162,8 +168,15 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
         hideRatings: meta.hideRatings,
         detail: endLine(snapshot),
         budget: !!meta.budget,
+        stats: [
+          { label: 'Team OVR', value: meta.hideRatings ? '??' : fmt1(snapshot.user.rating) },
+          { label: 'Goals', value: `${snapshot.record.gf}–${snapshot.record.ga}` },
+          ...(honours.scorer
+            ? [{ label: 'Top scorer', value: `${honours.scorer.name} ${honours.scorer.goals}` }]
+            : []),
+        ],
       }),
-    [snapshot, views],
+    [snapshot, views, honours],
   );
   const cleanSheets = snapshot.rounds.filter(r => r.result && r.result.goalsAgainst === 0).length;
   const pottView = pott && awardView(catalog, pott);
@@ -224,6 +237,8 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
       <${PathStrip} snapshot=${snapshot} class="run-end__path" />
     </section>
 
+    <${Awards} catalog=${catalog} awards=${awards} />
+
     <div class="run-end__stats">
       <${StatTile} label="Record" value=${record} tone=${champion ? 'gold' : 'default'} />
       <${StatTile} label="Goals" value=${`${snapshot.record.gf}–${snapshot.record.ga}`} />
@@ -245,7 +260,7 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
           filename=${`world-cup-run-${snapshot.record.w}-${snapshot.record.d}-${snapshot.record.l}.png`}
         />
         <section class="card card--pad-md run-end__awards" aria-labelledby="awards-title">
-          <h2 class="section-title" id="awards-title">Awards</h2>
+          <h2 class="section-title" id="awards-title">Your squad</h2>
           ${
             pottView
               ? html`<div class="pott">
@@ -274,6 +289,7 @@ export function RunEnd({ catalog, run, snapshot, meta, onCelebrated }) {
                   Play matches on the pitch to crown a Player of the Tournament.
                 </p>`
           }
+          <${SquadTable} rows=${squad} />
           ${
             held.length > 0 &&
             html`<div class="held">

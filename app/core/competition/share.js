@@ -34,15 +34,33 @@ const flagsLine = ({ mode, difficulty, hideRatings, uniqueNations, budget }) =>
     .join(' · ');
 const thousands = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
+// "⚽ Kane 6 · 👟 Mbappé 9 · ⭐ Yamal · 🧤 Raya": the XI's top scorer, then the Golden Boot (with
+// his goals), the Golden Ball and the Golden Glove. Whatever is missing is left out.
+function honoursLine(honours) {
+  if (!honours) return '';
+  const { scorer, boot, ball, glove } = honours;
+  return [
+    scorer?.name && `⚽ ${scorer.name} ${scorer.goals}`,
+    boot?.name && `👟 ${boot.name} ${boot.goals}`,
+    ball?.name && `⭐ ${ball.name}`,
+    glove?.name && `🧤 ${glove.name}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 /**
  * Share text for a finished (or in-progress) run. `snapshot` is CupRun.snapshot().
  * extras: { title, daily: { number, id }, rating (team OVR), perfectPct, points, hideRatings,
- *           uniqueNations, budget, url }
+ *           uniqueNations, budget, url,
+ *           honours: { scorer, boot, ball, glove: { name, goals } | null } — the XI's top
+ *           scorer and the tournament's award winners, one line }
  *
  *   ⚽ World Cup Draft · Daily #7
  *   🟩🟩🟨 🟩🟩🟩🟥🟩 🥉
  *   6-1-1 · Third place                       (where the run finished, or the stage it is in)
  *   XI 82.9 · 98.6% of perfect · 1,104 pts
+ *   ⚽ Kane 6 · 👟 Mbappé 9 · ⭐ Yamal · 🧤 Raya     (top scorer · Golden Boot, Ball, Glove)
  *   Nations · Pro · 🙈 Ratings hidden
  *   https://example.com/#/challenge?c=…
  *
@@ -76,6 +94,7 @@ export function shareText(snapshot, extras = {}) {
     isUltimate(snapshot, extras.budget) &&
       `${ULTIMATE.emoji} ${ULTIMATE.name}: Legendary · Budget · ${r.w}-${r.d}-${r.l}`,
     numbers,
+    honoursLine(extras.honours),
     flagsLine({ mode: snapshot.mode, difficulty: snapshot.difficulty, ...extras }),
     url,
   ]
