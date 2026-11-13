@@ -85,7 +85,8 @@ export function* attachErasSteps(catalog, data, chunk = 200) {
       era = eraOfYear(p.year),
       card = {
         ...p,
-        captain: false,
+        captain: !!p.captain,
+        goat: !!p.goat,
         era: era ? era.id : null,
         person: personId(p),
         ...(p.eraOf != null && !current.has(p.eraOf) ? { eraOf: undefined } : {}),

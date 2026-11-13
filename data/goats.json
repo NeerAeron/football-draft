@@ -1,0 +1,86 @@
+{
+  "description": "Reviewed GOAT list (compiler input, scripts/compile-legends.mjs): the handful of players the game’s followers put in the greatest-of-all-time conversation, each at the World Cup cycles of his peak — a GOAT card is a player AND an era (his card in his nation’s pool of that era, app/data/eras.v1.json `goat: true`). The build fails when an id, source name, nation or era does not match the data (the player must be in that pool). `sofifaId` is EA’s player id (the person: profileId ea:<id>:…). Never a player of data/captains.json.",
+  "asOf": "2026-11-13",
+  "players": [
+    {
+      "name": "Lionel Messi",
+      "sourceName": "L. Messi",
+      "sofifaId": 158023,
+      "nation": "Argentina",
+      "eras": [
+        2010,
+        2014,
+        2018,
+        2022
+      ],
+      "reason": "Eight Ballons d’Or between 2009 and 2023, the 2022 World Cup: the best player of four World Cup cycles running — the sextuple side (2010), the 91-goal year (2014), the 2015 treble (2018), the Copa América and the World Cup (2022)."
+    },
+    {
+      "name": "Cristiano Ronaldo",
+      "sourceName": "Cristiano Ronaldo",
+      "sofifaId": 20801,
+      "nation": "Portugal",
+      "eras": [
+        2010,
+        2014,
+        2018
+      ],
+      "reason": "Five Ballons d’Or (2008, 2013, 2014, 2016, 2017), five Champions Leagues, Euro 2016: Manchester United’s 2008 winner (2010) and the Real Madrid goal machine of 2011–18 (2014, 2018)."
+    },
+    {
+      "name": "Ronaldo",
+      "sourceName": "Ronaldo",
+      "sofifaId": 37576,
+      "nation": "Brazil",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "O Fenômeno: Ballon d’Or 1997 and 2002, the best player of the 1998 World Cup and the top scorer and winner of 2002 — for many the highest peak a striker has had."
+    },
+    {
+      "name": "Zinedine Zidane",
+      "sourceName": "Z. Zidane",
+      "sofifaId": 1397,
+      "nation": "France",
+      "eras": [
+        1998,
+        2002,
+        2006
+      ],
+      "reason": "Ballon d’Or 1998, two goals in the 1998 final, Euro 2000’s best player, the 2002 Champions League final volley, the Golden Ball of the 2006 World Cup."
+    },
+    {
+      "name": "Ronaldinho",
+      "sourceName": "Ronaldinho",
+      "sofifaId": 28130,
+      "nation": "Brazil",
+      "eras": [
+        2006
+      ],
+      "reason": "FIFA World Player 2004 and 2005, Ballon d’Or 2005, the 2006 Champions League: two or three years as the most gifted player anyone had seen. One cycle only — his 2002 World Cup was a young man’s, and he faded after 2006."
+    },
+    {
+      "name": "Xavi",
+      "sourceName": "Xavi",
+      "sofifaId": 10535,
+      "nation": "Spain",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "The brain of the Spain of 2008–12 and of Guardiola’s Barcelona: player of Euro 2008, third for the Ballon d’Or three years running (2009–11). A close call: the midfield of the greatest national and club sides of the era, rather than a best-player-in-the-world."
+    },
+    {
+      "name": "Andrés Iniesta",
+      "sourceName": "Iniesta",
+      "sofifaId": 41,
+      "nation": "Spain",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "The 2010 World Cup final’s goal, player of Euro 2012, runner-up for the Ballon d’Or 2010: with Xavi, the midfield everybody else was measured against. A close call, as Xavi."
+    }
+  ]
+}
