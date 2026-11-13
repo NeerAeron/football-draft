@@ -175,7 +175,7 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
   assert.deepEqual(facts(card('G. Buffon', 'Italy')).slice(0, 4), [92, 2007, 8, 'GK']);
   assert.deepEqual(facts(card('Kaká', 'Brazil')).slice(0, 3), [92, 2007, 8]); // Ballon d'Or
   assert.ok(shown(card('D. Beckham', 'England')) <= 92);
-  // The lift is for the top: it fades to nothing at 84, so it makes hardly anyone a legend.
+  // The lift is for the top: nothing at 87 and under, in full from 90 — it makes nobody a legend.
   assert.match(file.selection.lift, /never lowered/);
   assert.ok(legends.length > 440 && legends.length < 520, 'legends: ' + legends.length);
   assert.ok(shown(card('P. Maldini', 'Italy')) >= 87);
