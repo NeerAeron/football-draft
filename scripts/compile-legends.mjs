@@ -64,6 +64,103 @@ export const TITLES = {
   upstream: "EA SPORTS FIFA 98–14, the games' own PC databases",
   license: 'No licence stated (community archive; player data © Electronic Arts)',
 };
+// The judgement (see `judged` in compileLegends): per title number, `top` points at the level
+// of the title's 30 best, in proportion above and below, nothing at `from` and under; `why` is
+// the reviewed reason. Titles that are not listed read right as they are.
+export const TITLE_JUDGEMENT = {
+  98: {
+    top: 4.8,
+    from: 60,
+    why: 'FIFA 98 (1997): the coarse scale and the pooling leave the whole title five to six points under every later one — its best 50 average 82 against 87–89 — in the years of Ronaldo, Zidane, Del Piero, Baggio and Batistuta. Raised most of the way (its ranking of players is too noisy to trust with all of it).',
+  },
+  99: {
+    top: 3.4,
+    from: 60,
+    why: 'FIFA 99 (1998): as FIFA 98, a little less far under.',
+  },
+  0: {
+    top: 4.1,
+    from: 60,
+    why: 'FIFA 2000 (1999): as FIFA 98.',
+  },
+  1: {
+    top: 1.0,
+    from: 70,
+    why: 'FIFA 2001 (2000): a point under its neighbours of 2003–05 at every level; the top of world football was not weaker in 2000.',
+  },
+  2: { top: 1.0, from: 70, why: 'FIFA 2002 (2001): as FIFA 2001.' },
+  3: { top: 1.0, from: 70, why: 'FIFA 2003 (2002): as FIFA 2001.' },
+  4: {
+    top: -0.8,
+    from: 84,
+    why: 'FIFA 2004 (2003): generous at the top only — ten cards at 92+ (Beckham, Kahn, Owen, Vieri and Figo next to Ronaldo and Zidane), its ten best a point above FIFA 2005 and 06 while its best 200 are level with them. Its link to FIFA 2005 is the loosest of the fully described titles. Brought level with its neighbours.',
+  },
+  7: {
+    top: 0.8,
+    from: 80,
+    why: 'FIFA 07 (2006): a little stingy — its best 50 average 87.2 against 87.9–88.9 around it, in a World Cup year (Cannavaro, Henry, Kaká, Buffon).',
+  },
+};
+// The cards of single players the title rules cannot put right: the peaks the game's
+// followers agree on, where a title's flat top hides them, and cards that are plainly wrong.
+// { id (EA's, the person's), name (checked against the data), cards: { title number → points },
+// why }. Kept to a handful of players.
+export const PLAYER_JUDGEMENT = [
+  {
+    id: 37576,
+    name: 'Ronaldo',
+    cards: { 98: 2, 99: 3, 1: -2, 3: 3 },
+    why: 'The best player in the world in 1996–98 (Ballon d’Or 1997, World Cup Golden Ball 1998) and the man of the 2002 World Cup (Ballon d’Or): the coarse titles have him level with Denilson and Del Piero, and FIFA 2003 at 89 after his injury years. FIFA 2001 (2000, a year he did not play) has him as its best player: two points off.',
+  },
+  {
+    id: 1397,
+    name: 'Zidane',
+    cards: { 98: 2, 99: 2, 0: 1, 1: 1, 2: 1, 3: 2 },
+    why: 'The best midfielder of 1998–2002 (Ballon d’Or 1998, FIFA World Player 1998 and 2000, Euro 2000, the 2002 Champions League final): the coarse titles rate him with Kluivert and Möller.',
+  },
+  {
+    id: 28130,
+    name: 'Ronaldinho',
+    cards: { 5: 3, 6: 2, 7: 2 },
+    why: 'FIFA World Player 2004 and 2005, Ballon d’Or 2005, the Champions League of 2006: the best player in the world for three years, rated 90–92 beside Giggs and Scholes.',
+  },
+  {
+    id: 158023,
+    name: 'Messi',
+    cards: { 10: 2, 11: 2 },
+    why: 'Ballon d’Or 2009 and 2010 (the sextuple, 47 and 53 goals): EA printed 90, level with Casillas; his 2011–15 cards (94–95) are his own.',
+  },
+  {
+    id: 20801,
+    name: 'Cristiano Ronaldo',
+    cards: { 9: 1 },
+    why: 'Ballon d’Or 2008 (42 goals, the Champions League): a point clear of Casillas and Kaká.',
+  },
+  {
+    id: 4231,
+    name: 'Rivaldo',
+    cards: { 99: 3, 0: 4 },
+    why: 'Ballon d’Or and FIFA World Player 1999, La Liga’s best in 1998–99: the coarse titles have him outside their top twenty.',
+  },
+  {
+    id: 1625,
+    name: 'Henry',
+    cards: { 4: 2, 5: 1, 6: 4 },
+    why: 'Runner-up for the Ballon d’Or 2003 and the FIFA World Player 2003 and 2004, the Invincibles’ forward, four Premier League Golden Boots in five years: FIFA 2004–05 have him level with Trezeguet and Makaay, FIFA 06 (2005) at 87 under Valerón.',
+  },
+  {
+    id: 138449,
+    name: 'Kaká',
+    cards: { 8: 2 },
+    why: 'Ballon d’Or and FIFA World Player 2007, the Champions League’s best player: FIFA 08 has him fourth among outfielders.',
+  },
+  {
+    id: 93,
+    name: 'Denilson',
+    cards: { 98: -6, 99: -4, 0: -4, 1: -3, 2: -3 },
+    why: 'The coarse scales max out his dribbling and speed: second or third best in the world in FIFA 98–2000. A fine winger and a record transfer, never that.',
+  },
+];
 // Era pools (app/data/eras.v1.json): a World Cup squad per nation and cycle.
 export const ERA_KEEPERS = 3;
 export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nation has them
@@ -387,8 +484,20 @@ export function compileLegends(
     const share = Math.max(0, Math.min(1, (overall - LIFT_FROM) / (full - LIFT_FROM)));
     return overall + lift * share;
   };
+  // ---- the judgement ----------------------------------------------------------------------
+  // After the measured calibration, a reviewed correction per title (TITLE_JUDGEMENT): where a
+  // title as a whole reads too generous, too stingy or too flat at the top next to what the
+  // game's followers think of those players, every card of the title is moved by one rule —
+  // `top` points at the level of the title's LIFT_TOP best (after the lift), in proportion
+  // above and below it, nothing at `from` and under. No title is made equal to another.
+  const levels = new Map(); // edition → mean of its LIFT_TOP best after the lift
+  const judged = (edition, overall) => {
+    const rule = TITLE_JUDGEMENT[edition];
+    if (!rule || overall <= rule.from) return overall;
+    return overall + (rule.top * (overall - rule.from)) / (levels.get(edition) - rule.from);
+  };
   // ---- versions --------------------------------------------------------------------------
-  const versions = one => [
+  const rawVersions = one => [
     ...one.old
       .filter(p => p.given != null)
       .map(p => ({
@@ -396,16 +505,44 @@ export function compileLegends(
         year: p.year,
         edition: p.edition,
         printed: Math.round(p.given),
-        overall: Math.round(lifted(p.edition, p.given)),
+        calibrated: lifted(p.edition, p.given),
       })),
     ...one.legacy.map(entry => ({
       entry,
       year: snapshotYear(entry.row),
       edition: Number(entry.row.fifa_version),
       printed: Number(entry.row.overall),
-      overall: Math.round(lifted(Number(entry.row.fifa_version), Number(entry.row.overall))),
+      calibrated: lifted(Number(entry.row.fifa_version), Number(entry.row.overall)),
     })),
   ];
+  {
+    const byTitle = new Map();
+    for (const one of persons.values())
+      for (const v of rawVersions(one)) {
+        if (!byTitle.has(v.edition)) byTitle.set(v.edition, []);
+        byTitle.get(v.edition).push(v.calibrated);
+      }
+    for (const [edition, list] of byTitle) levels.set(edition, topMean(list));
+  }
+  const versionCache = new Map(),
+    playerFix = new Map(PLAYER_JUDGEMENT.map(fix => [String(fix.id), fix])),
+    fixed = new Set();
+  const versions = one => {
+    if (!versionCache.has(one))
+      versionCache.set(
+        one,
+        rawVersions(one).map(v => {
+          const points = playerFix.get(one.key)?.cards[v.edition] ?? 0;
+          if (points) fixed.add(`${one.key}:${v.edition}`);
+          return {
+            ...v,
+            before: Math.round(v.calibrated),
+            overall: Math.min(99, Math.round(judged(v.edition, v.calibrated)) + points),
+          };
+        }),
+      );
+    return versionCache.get(one);
+  };
   const bestVersion = one => {
     let best = null;
     for (const v of versions(one))
@@ -877,6 +1014,97 @@ export function compileLegends(
       sameName: eraStats.sameName,
     },
   };
+  // Per title, before and after the judgement: its best cards and the level of its top.
+  const judgement = {},
+    careers = {};
+  // The single players' corrections must meet the data: the man, and every card named.
+  for (const fix of PLAYER_JUDGEMENT) {
+    const one = persons.get(String(fix.id)),
+      name =
+        one &&
+        (current.get(one.key)?.name ?? one.legacy.at(-1)?.row.short_name ?? nameSource(one)?.name);
+    if (!name || !words(name).includes(words(fix.name)))
+      throw Error(`PLAYER_JUDGEMENT: id ${fix.id} is ${name ?? 'nobody'}, not ${fix.name}`);
+    const list = versions(one);
+    for (const edition of Object.keys(fix.cards))
+      if (!fixed.has(`${one.key}:${edition}`))
+        throw Error(`PLAYER_JUDGEMENT: ${fix.name} has no card in title ${edition}`);
+    careers[fix.name] = list
+      .map(
+        v =>
+          `’${String(v.year % 100).padStart(2, '0')} ${v.before === v.overall ? v.overall : `${v.before}→${v.overall}`}`,
+      )
+      .join(', ');
+  }
+  for (const id of (process.env.WATCH_IDS || '').split(',').filter(Boolean)) {
+    const one = persons.get(id);
+    if (one)
+      careers[`watch ${id} ${nameSource(one)?.name ?? one.legacy.at(-1)?.row.short_name}`] =
+        versions(one)
+          .map(
+            v =>
+              `’${String(v.year % 100).padStart(2, '0')} ${v.before === v.overall ? v.overall : `${v.before}→${v.overall}`}`,
+          )
+          .join(', ');
+  }
+  {
+    const byTitle = new Map();
+    for (const one of persons.values()) {
+      const now = current.get(one.key);
+      for (const v of versions(one)) {
+        if (!byTitle.has(v.edition)) byTitle.set(v.edition, []);
+        byTitle.get(v.edition).push({ one, now, v });
+      }
+    }
+    const label = edition =>
+      edition >= 90 ? `FIFA ${edition}` : titleName(String(edition).padStart(2, '0'));
+    const titleOrder = edition => (edition >= 90 ? edition - 100 : edition);
+    for (const [edition, list] of [...byTitle].sort(
+      (a, b) => titleOrder(a[0]) - titleOrder(b[0]),
+    )) {
+      const mean = (key, n) => {
+        const best = list
+          .map(x => x.v[key])
+          .sort((a, b) => b - a)
+          .slice(0, n);
+        return Math.round((best.reduce((sum, x) => sum + x, 0) / best.length) * 10) / 10;
+      };
+      const name = ({ one, now }) =>
+        now?.name ??
+        one.legacy.findLast(e => e.row.fifa_version !== '25')?.row.short_name ??
+        nameSource(one)?.name ??
+        one.old.at(-1)?.name ??
+        one.legacy.at(-1)?.row.short_name;
+      judgement[label(edition)] = {
+        rule: TITLE_JUDGEMENT[edition] ?? null,
+        level: Math.round(levels.get(edition) * 10) / 10,
+        before: {
+          top10: mean('before', 10),
+          top50: mean('before', 50),
+          top200: mean('before', 200),
+        },
+        after: {
+          top10: mean('overall', 10),
+          top50: mean('overall', 50),
+          top200: mean('overall', 200),
+        },
+        top: [...list]
+          .sort(
+            (a, b) =>
+              b.v.overall - a.v.overall ||
+              b.v.before - a.v.before ||
+              Number(a.one.key) - Number(b.one.key),
+          )
+          .slice(0, 30)
+          .map(x => ({
+            name: name(x),
+            position: x.v.entry ? rowPositions(x.v.entry.row)[0] : x.v.old.positions[0],
+            before: x.v.before,
+            after: x.v.overall,
+          })),
+      };
+    }
+  }
   const { yardstick, links, pool } = calibration;
   return {
     legends,
@@ -888,6 +1116,9 @@ export function compileLegends(
       links,
       pool,
       poolYears: POOL_YEARS,
+      judgement,
+      players: PLAYER_JUDGEMENT,
+      careers,
       lift: {
         baseline: Math.round(baseline * 100) / 100,
         top: LIFT_TOP,

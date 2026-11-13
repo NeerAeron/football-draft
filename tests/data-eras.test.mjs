@@ -158,8 +158,8 @@ test('every era has 20–70 nations that can field a pool — with or without a 
   }
   assert.deepEqual(eraNations(catalog, 1990), []);
   assert.deepEqual(pool(1998, 'Japan'), []); // not spinnable then
-  assert.equal(list[0].nations[0].name, 'England');
-  assert.equal(list[1].nations[0].name, 'Brazil');
+  assert.equal(list[0].nations[0].name, 'Italy');
+  assert.ok(list[1].nations.slice(0, 3).some(n => n.name === 'Brazil'));
   assert.equal(list.at(-1).nations[0].name, 'France');
   for (const name of ['Brazil', 'Italy', 'Germany', 'Argentina', 'France', 'Netherlands'])
     for (const era of list) assert.ok(pool(era.id, name).length === ERA_SQUAD, name);
@@ -236,7 +236,7 @@ test('the pools read like football', () => {
   assert.ok(top(2002, 'Brazil', 6).includes('Rivaldo'));
   assert.ok(top(2002, 'France', 3).includes('Z. Zidane'));
   assert.ok(top(1998, 'France', 5).includes('Z. Zidane'));
-  assert.equal(top(2006, 'Brazil', 1)[0], 'Ronaldo');
+  assert.equal(top(2006, 'Brazil', 1)[0], 'Ronaldinho');
   assert.equal(top(2014, 'Argentina', 1)[0], 'L. Messi');
   assert.equal(top(2018, 'Portugal', 1)[0], 'Cristiano Ronaldo');
   assert.equal(top(2010, 'Spain', 1)[0], 'Casillas');
@@ -275,12 +275,12 @@ test('the pools read like football', () => {
 });
 
 test('the Prime: a drafted player’s best version across all titles, any gain', () => {
-  // "Brazil 2002 Ronaldinho" → the Ronaldinho of 2003 (FIFA 2004).
+  // "Brazil 2002 Ronaldinho" → the Ronaldinho of 2006 (FIFA 07).
   const young = named(2002, 'Brazil', 'Ronaldinho'),
     prime = bestVersion(catalog, young);
   assert.equal(prime, named(2006, 'Brazil', 'Ronaldinho'));
   assert.ok(shown(prime) > shown(young));
-  assert.equal(editionLabel(prime), '’03');
+  assert.equal(editionLabel(prime), '’06');
   assert.equal(bestVersion(catalog, prime), null); // already his best
   // Every pool member: the best version is the same person, shows more, and is the most any
   // of his cards shows; a card that is his best has none.

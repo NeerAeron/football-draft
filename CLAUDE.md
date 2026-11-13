@@ -381,6 +381,20 @@ player's nearest version that has it (composure for FIFA 11–16, else his react
 weak foot for the early titles). It is stamped with the catalog build (`catalog.ids`)
 and the badge configuration, so rebuild both files together.
 
+**The judgement** (after the measured calibration; `TITLE_JUDGEMENT` and `PLAYER_JUDGEMENT` in
+`scripts/compile-legends.mjs`, each entry with its reviewed reason, all of it in the provenance
+`data/build/legends.json` → `calibration.judgement` / `players` / `careers`): where a title as a
+whole reads too generous, too stingy or too flat next to what the game's followers think of its
+players, **every card of the title** moves by one rule — `top` points at the level of the
+title's 30 best, in proportion above and below, nothing at `from` and under (FIFA 98–2000
++3.4…+4.8, FIFA 2001–03 +1, FIFA 2004 −0.8, FIFA 07 +0.8; the other 21 titles as they are). No
+era is made equal to another. A handful of players have corrections of their own, for the peaks
+everyone agrees on that a title's flat top hides (Ronaldo 1997–98 and 2002, Zidane 1997–2002,
+Ronaldinho 2004–06, Messi 2009–10, Cristiano Ronaldo 2008, Rivaldo 1998–99, Henry 2003–05, Kaká
+2007) and for one plainly wrong card (Denilson in the coarse titles); the build fails when an
+id, name or title of that list does not meet the data. Do not add per-player edits beyond such
+cases: fix the title.
+
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
 player table; 12,486 cards, 2.4 MB / 0.71 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in

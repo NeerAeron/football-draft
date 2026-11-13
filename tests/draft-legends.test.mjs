@@ -84,7 +84,7 @@ test('the Legend reel: nations with an 85+ legend, slightly weighted by their le
   // The years the legends come from (the Legend spin's one line).
   const years = catalog.legends.players.map(p => p.year);
   assert.deepEqual(legends.years, [Math.min(...years), Math.max(...years)]);
-  assert.deepEqual(legends.years, [1998, 2025]); // FIFA 99 … FC 26
+  assert.deepEqual(legends.years, [1997, 2025]); // FIFA 98 … FC 26
   assert.deepEqual(worldCup(1).snapshot().legendYears, legends.years);
   assert.equal(createDraftSession(catalog, { seed: 1 }).snapshot().legendYears, null);
   for (const name of ['Brazil', 'Spain', 'Wales', 'Sweden', 'Uruguay'])

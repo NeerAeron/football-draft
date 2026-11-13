@@ -168,7 +168,7 @@ Rules in `CONFIG.draft.legends`:
   last ratings of a cycle the year of the number. `editionYear(p)` / `editionLabel(p)` read it;
   the UI shows "’18" or "’97", never the edition (two digits tell 1997–2026 apart);
 - `snapshot().legendYears` is `[first, last]` year of the legends' versions (`[1997, 2022]`;
-  `legendIndex().years`): the Legend spin's one line, "Best versions, 1998–2025".
+  `legendIndex().years`): the Legend spin's one line, "Best versions, 1997–2025".
 
 A legend is a club mate through the club of that edition when the catalog has it (401 of the
 411: EA's team id; the early titles name their clubs, matched by name) and a nation mate like

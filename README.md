@@ -185,7 +185,7 @@ precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
 `data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
 with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
-draft starts) holds 431 legends — best past versions of 1998–2025 the game shows at 85+: 307
+draft starts) holds 431 legends — best past versions of 1997–2025 the game shows at 85+: 307
 players who are not in the catalog and 124 catalog players who were at least two points better
 then — and the prime versions of 4,815 catalog players (any gain on today's card), compiled by
 the same compiler. `app/data/eras.v1.json` holds the era pools: for each of eight World Cup
