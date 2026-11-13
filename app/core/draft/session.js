@@ -30,6 +30,7 @@ import {
   LINE_OF,
 } from './pools.js';
 import { teamLinks, linkBoosts } from './links.js';
+import { reelWeights } from './reels.js';
 import { budgetBands, bandIndex, bandUse, tierOfRating } from './budget.js';
 
 export const DRAFT_MODES = {
@@ -348,7 +349,13 @@ export class DraftSession {
     return { ...shown, landing };
   }
   // ---- era drafts: an era reel, then the reel of that era's nations ------------------------
+  // The weights of the reels (draft/reels.js): famous, deep squads come up more often; an
+  // option the guards close has weight 0. Never shown.
+  #weights() {
+    return reelWeights(this.#catalog, this.rules.reels ?? DEFAULT_CONFIG.draft.reels);
+  }
   #eraReel(weightOf) {
+    const weights = this.#weights();
     return this.#reel(
       'era',
       // `name` is the era's full label, `short` the one for a reel or a tight spot (ERAS).
@@ -359,12 +366,13 @@ export class DraftSession {
         from: e.from,
         to: e.to,
       })),
-      o => (weightOf(o.id) ? 1 : 0),
+      o => (weightOf(o.id) ? (weights.get(o.id)?.weight ?? 1) : 0),
     );
   }
   #eraNationReel(era, side, exclude = null) {
     const nations = eraList(this.#catalog).find(e => e.id === era)?.nations ?? [],
-      landable = this.#landable(era, side, exclude);
+      landable = this.#landable(era, side, exclude),
+      weights = this.#weights().get(era)?.nations;
     return this.#reel(
       'nation',
       nations.map(n => ({
@@ -374,7 +382,7 @@ export class DraftSession {
         flag: n.flag,
         strength: n.strength,
       })),
-      o => (landable.has(o.id) ? 1 : 0),
+      o => (landable.has(o.id) ? (weights?.get(o.id) ?? 1) : 0),
     );
   }
   /**
@@ -412,7 +420,7 @@ export class DraftSession {
   #eraOpen(era, side, exclude = null) {
     return this.#landable(era, side, exclude).size > 0;
   }
-  // All eras equally likely, then the era's nations equally likely — less the ones a pick could
+  // An era by its weight, then a nation of it by its weight — less the ones a pick could
   // not come from. `forced`: { era, nation } ids a schedule fixed (taken when they can land).
   #drawEra(side, forced = null) {
     const eras = this.#land(

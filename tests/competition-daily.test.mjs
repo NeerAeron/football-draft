@@ -4,6 +4,7 @@ import { loadRuntimeCatalog, loadEraCatalog } from '../scripts/data/catalog-file
 import { createDraftSession } from '../app/core/draft/session.js';
 import { eraNations, eraPool, ERAS } from '../app/core/players/eras.js';
 import { DEFAULT_CONFIG } from '../app/core/config/config.js';
+import { reelWeights } from '../app/core/draft/reels.js';
 import { lcg } from '../app/core/util/rng.js';
 import { createCupRun } from '../app/core/competition/cup.js';
 import {
@@ -75,7 +76,26 @@ test('same date, same spins, respin landings and opponents', () => {
     assert.ok(has(r.eraAlternate.era, r.eraAlternate.nation));
     if (has(r.eraAlternate.era, r.spin)) assert.equal(r.eraAlternate.nation, r.spin);
   }
-  // Group ×3, five knockouts and the third-place play-off opponent: real nations only.
+  // The schedule is drawn with the draft's reel weights: over many days a deep squad comes
+  // up more often than a thin one of the same era.
+  const count = new Map();
+  for (let d = 1; d <= 150; d++)
+    for (const r of dailyChallenge(catalog, dailyIdFromNumber(d)).schedule.rounds)
+      count.set(`${r.era}|${r.spin}`, (count.get(`${r.era}|${r.spin}`) || 0) + 1);
+  const weights = reelWeights(catalog),
+    share = pick => {
+      let n = 0,
+        hits = 0;
+      for (const [era, w] of weights)
+        for (const [nation, weight] of w.nations)
+          if (pick(weight)) {
+            n++;
+            hits += count.get(`${era}|${nation}`) || 0;
+          }
+      return hits / n;
+    };
+  assert.ok(share(w => w >= 3) > 1.5 * share(w => w < 1.5), 'heavy squads come up more');
+
   assert.equal(new Set(a.opponents).size, 9);
   assert.ok(a.opponents.every(k => k.startsWith('nation:')));
   // The draft follows the schedule: spins land on it, and so do the respins.

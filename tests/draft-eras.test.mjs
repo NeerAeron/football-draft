@@ -23,6 +23,7 @@ import {
   personId,
   bestVersion,
 } from '../app/core/players/eras.js';
+import { reelWeights, nationWeight, eraWeight } from '../app/core/draft/reels.js';
 import { pickOpponent } from '../app/core/draft/opponents.js';
 import { baseProfileId } from '../app/core/players/legends.js';
 
@@ -77,7 +78,12 @@ test('a World Cup draft spins an era, then a nation of that era: two reels, no o
     eras.options.map(o => o.id),
     ERAS.map(e => e.id),
   );
-  assert.ok(eras.options.every(o => o.weight === 1 && o.probability === 0.125));
+  // Every era is on the reel with its weight (draft/reels.js): close to one in eight each.
+  const weights = reelWeights(catalog);
+  for (const o of eras.options) {
+    assert.equal(o.weight, weights.get(o.id).weight);
+    assert.ok(o.probability > 0.1 && o.probability < 0.14, `${o.name} ${o.probability}`);
+  }
   assert.equal(spin.era.id, eras.options[eras.landing].id);
   // The labels are the data's (ERAS): the full one, and the short one for tight spots.
   const cycle = ERAS.find(e => e.id === spin.era.id);
@@ -88,8 +94,9 @@ test('a World Cup draft spins an era, then a nation of that era: two reels, no o
     nations.options.map(o => o.id),
     eraNations(catalog, spin.era.id).map(n => n.name),
   );
-  assert.ok(nations.options.every(o => o.weight === 1 || o.weight === 0));
-  assert.ok(nations.options.filter(o => o.weight === 1).length >= nations.options.length / 2);
+  for (const o of nations.options)
+    assert.ok(o.weight === 0 || o.weight === weights.get(spin.era.id).nations.get(o.id), o.id);
+  assert.ok(nations.options.filter(o => o.weight > 0).length >= nations.options.length / 2);
   assert.equal(spin.option.id, nations.options[nations.landing].id);
   assert.ok(spin.option.code && spin.option.name);
   // The pool is that nation's squad of that era, as the data has it.
@@ -703,7 +710,7 @@ test('keepers: pools without one are fine, but half the reel has a keeper while 
     t.pick(t.suggestPick().profileId);
   }
   const spin = t.spin();
-  assert.ok(spin.reels[1].options.every(o => o.weight === 1));
+  assert.ok(spin.reels[1].options.every(o => o.weight >= 1));
   // Both respins keep to it.
   for (let seed = 1; seed <= 20; seed++) {
     const d = eraDraft({ seed, excludePlayers: BARE });
@@ -711,4 +718,64 @@ test('keepers: pools without one are fine, but half the reel has a keeper while 
     assertHonest(d, d.respin('era'), `respin ${seed}`);
     assertHonest(d, d.respin('nation'), `respin ${seed}`);
   }
+});
+
+test('reel weights: deep, famous squads come up more, nobody is shut out, all-timers stay rare', () => {
+  const rules = DEFAULT_CONFIG.draft.reels,
+    weights = reelWeights(catalog),
+    ratings = (era, nation) =>
+      eraPool(catalog, era, nation)
+        .map(shown)
+        .sort((a, b) => b - a);
+  let total = 0,
+    allTimer = 0,
+    ninety = 0;
+  for (const era of eraList(catalog)) {
+    const w = weights.get(era.id);
+    // An era: a slight bump, never more than a few points of share.
+    assert.ok(w.weight >= 1 && w.weight <= 1 + rules.era.nations + rules.era.top);
+    assert.equal(w.nations.size, era.nations.length);
+    const sum = [...w.nations.values()].reduce((a, b) => a + b, 0);
+    for (const n of era.nations) {
+      const weight = w.nations.get(n.name),
+        r = ratings(era.id, n.name);
+      // Every spinnable nation can come up; the best squad is a few times likelier, not more.
+      assert.ok(weight >= 1 && weight <= 1 + rules.nation.lift, `${n.name} ${weight}`);
+      assert.equal(weight, nationWeight(r));
+      const p = (w.weight / 1) * (weight / sum);
+      total += p;
+      if (r[0] >= 93) allTimer += p;
+      if (r[0] >= 90) ninety += p;
+    }
+    const list = [...w.nations.values()];
+    assert.ok(Math.max(...list) / Math.min(...list) < 6, String(era.id));
+  }
+  // The owner's rough targets, per draft of eleven spins: an all-timer's squad about once every
+  // 5–10 drafts, a 90+ player on offer in one to three spins.
+  const perSpin = allTimer / total,
+    drafts = 1 / (1 - (1 - perSpin) ** 11);
+  assert.ok(drafts >= 5 && drafts <= 10, `an all-timer every ${drafts} drafts`);
+  const spins = (11 * ninety) / total;
+  assert.ok(spins >= 1 && spins <= 3, `90+ in ${spins} spins`);
+  // The formula: depth counts more than one star; size counts; an all-timer costs most of the lift.
+  const squad = (top, rest, n = 26) => [...top, ...Array(n - top.length).fill(rest)];
+  const deep = nationWeight(squad([88, 88, 87, 86], 80)),
+    oneStar = nationWeight(squad([92, 78, 77, 76], 72)),
+    nobody = nationWeight(squad([74, 73, 72, 72], 68)),
+    small = nationWeight(squad([88, 88, 87, 86], 80, 18)),
+    goat = nationWeight(squad([94, 88, 87, 86], 80));
+  assert.ok(deep > oneStar && oneStar > nobody && nobody >= 1);
+  assert.ok(small < deep && goat < deep && goat > nobody);
+  assert.ok(eraWeight(70, 85) > eraWeight(27, 80) && eraWeight(0, 0) === 1);
+  // The session draws by them — respins too — and the guards only ever zero a weight.
+  const s = eraDraft({ seed: 31 });
+  for (const spin of [s.spin(), s.respin('era'), s.respin('nation')]) {
+    const w = weights.get(spin.era.id);
+    for (const o of spin.reels[1].options)
+      assert.ok(o.weight === 0 || o.weight === w.nations.get(o.id));
+    for (const o of spin.reels[0].options)
+      assert.ok(o.weight === 0 || o.weight === weights.get(o.id).weight);
+  }
+  // A session saved with other weights keeps them (rules are snapshotted).
+  assert.deepEqual(s.rules.reels, rules);
 });

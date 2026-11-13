@@ -80,6 +80,33 @@ export const DEFAULT_CONFIG = {
       era: 1,
       prime: 1,
     },
+    // Reel weights of a World Cup draft (draft/reels.js; never shown): famous, deep squads come
+    // up more often, nobody is shut out. A nation: quality q(r) = (r − floor) / span (0…1) of
+    // its 2nd, 3rd and 4th best, of the mean of its 5th–8th and of its best player, plus its
+    // size (players / 26), each times its points; weight = 1 + lift · (score / top score)^curve.
+    // An era: 1 + nations · (its nations / 70) + top · q(median of its nations' best players).
+    reels: {
+      era: {
+        nations: 0.25,
+        top: 0.25,
+      },
+      nation: {
+        floor: 72,
+        span: 20,
+        second: 5,
+        third: 3,
+        fourth: 2,
+        depth: 1,
+        best: 1,
+        size: 2.5,
+        lift: 4,
+        curve: 2,
+        // A squad with an all-timer (its best shown rareFrom or more) keeps this share of its
+        // weight: the greatest stay an event.
+        rareFrom: 93,
+        rare: 0.25,
+      },
+    },
     // Opponent strength vs the mode's typical drafted XI (effective rating, links included).
     ladder: {
       pro: 0,
@@ -902,6 +929,30 @@ const DRAFT_FIELDS = {
   'draft.tokens.nation': ['Tokens: nation respins (re-rolls)', 0, 5, 1],
   'draft.tokens.era': ['Tokens: era respins', 0, 5, 1],
   'draft.tokens.prime': ['Tokens: Primes', 0, 5, 1],
+  'draft.reels.era.nations': ['Era reel: bump for the number of nations', 0, 3, 0.05],
+  'draft.reels.era.top': ['Era reel: bump for the median best player', 0, 3, 0.05],
+  'draft.reels.nation.floor': ['Nation reel: rating that counts for nothing', 50, 90, 1],
+  'draft.reels.nation.span': ['Nation reel: rating points to full quality', 5, 40, 1],
+  'draft.reels.nation.second': ['Nation reel: points for the second best', 0, 10, 0.5],
+  'draft.reels.nation.third': ['Nation reel: points for the third best', 0, 10, 0.5],
+  'draft.reels.nation.fourth': ['Nation reel: points for the fourth best', 0, 10, 0.5],
+  'draft.reels.nation.depth': ['Nation reel: points for the 5th–8th best', 0, 10, 0.5],
+  'draft.reels.nation.best': ['Nation reel: points for the best player', 0, 10, 0.5],
+  'draft.reels.nation.size': ['Nation reel: points for the size of the squad', 0, 10, 0.5],
+  'draft.reels.nation.lift': [
+    'Nation reel: how much the best squad outweighs the weakest',
+    0,
+    30,
+    0.5,
+  ],
+  'draft.reels.nation.curve': ['Nation reel: curve of the weight', 0.5, 4, 0.25],
+  'draft.reels.nation.rareFrom': ['Nation reel: an all-timer is shown at least', 85, 99, 1],
+  'draft.reels.nation.rare': [
+    'Nation reel: share of its weight an all-timer squad keeps',
+    0.05,
+    1,
+    0.05,
+  ],
   'draft.ladder.': [null, -15, 15, 0.5],
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],

@@ -179,6 +179,7 @@ export function draftRules(source = CONFIG.draft) {
     leagueTierWeights: source.leagueTierWeights,
     clubs: source.clubs,
     tokens: source.tokens,
+    reels: source.reels,
     ladder: source.ladder,
     links: source.links,
     budget: source.budget,

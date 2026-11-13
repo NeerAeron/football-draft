@@ -7,6 +7,7 @@ import { lcg } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
 import { roleRating, isKeeper } from '../draft/pools.js';
 import { eraList, eraPool, bestVersion } from '../players/eras.js';
+import { reelWeights } from '../draft/reels.js';
 import { seedValue } from '../draft/session.js';
 import { chooseOpponent } from '../draft/opponents.js';
 import { cupOffsets } from './cup.js';
@@ -67,24 +68,37 @@ export function dailyChallenge(catalog, date) {
     random = lcg(seedValue(seed));
   if (!eras.length) throw Error('The Daily needs the era data (catalog.eras)');
   const formation = DAILY_RULES.formations[Math.floor(random() * DAILY_RULES.formations.length)];
-  // One of `n` at random, and another one that is not `a`.
-  const one = n => Math.floor(random() * n),
-    other = (n, a) => {
-      const b = Math.floor(random() * (n - 1));
-      return b >= a ? b + 1 : b;
-    };
+  // The draft's own reel weights (draft/reels.js): one of `weights` by its weight, never
+  // index `skip`. One draw each.
+  const reels = reelWeights(catalog, rules.reels),
+    one = (weights, skip = -1) => {
+      let total = 0;
+      weights.forEach((w, i) => (total += i === skip ? 0 : w));
+      let r = random() * total,
+        last = -1;
+      for (let i = 0; i < weights.length; i++) {
+        if (i === skip) continue;
+        last = i;
+        if ((r -= weights[i]) < 0) return i;
+      }
+      return last;
+    },
+    eraWeights = eras.map(e => reels.get(e.id).weight),
+    nationWeights = eras.map(e => e.nations.map(n => reels.get(e.id).nations.get(n.name)));
   const rounds = Array.from({ length: 11 }, () => {
-    const e = one(eras.length),
+    const e = one(eraWeights),
       era = eras[e],
-      n = one(era.nations.length),
+      n = one(nationWeights[e]),
       nation = era.nations[n].name,
-      next = eras[other(eras.length, e)],
+      alternate = era.nations[one(nationWeights[e], n)].name,
+      e2 = one(eraWeights, e),
+      next = eras[e2],
       // Drawn every time, so a round always takes the same number of draws.
-      drawn = next.nations[one(next.nations.length)].name;
+      drawn = next.nations[one(nationWeights[e2])].name;
     return {
       era: era.id,
       spin: nation,
-      alternate: era.nations[other(era.nations.length, n)].name,
+      alternate,
       eraAlternate: {
         era: next.id,
         nation: next.nations.some(x => x.name === nation) ? nation : drawn,
