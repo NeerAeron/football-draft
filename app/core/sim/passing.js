@@ -359,13 +359,15 @@ export class PassingMethods {
     }
     return list.sort((a, b) => b.score - a.score);
   }
-  // The goal kick (restart.routine, set up in setupGoalKick). Short: only a ball that is
-  // really on — along the ground to a team-mate with nobody within 13 m of where he takes it,
-  // no opponent near the lane and a second to spare. Otherwise long: to the best header of
-  // the ball up the pitch, away from the touchlines, where the midfield is waiting for the
-  // second ball. Losing that one costs a header on halfway, not a chance.
-  goalKickOption(p, opts) {
-    if (this.restart?.routine !== 'long') {
+  // The ball out of a build-up shape (restarts.js buildUpSpot): a goal kick, a deep free kick,
+  // the keeper's kick or throw from his hands. Short (never when the routine is 'long'): only
+  // a ball that is really on — along the ground to a team-mate with nobody within 13 m of
+  // where he takes it, no opponent near the lane and a second to spare. Otherwise long: to
+  // the best header of the ball up the pitch (onside, unless it is a goal kick), away from
+  // the touchlines, where the midfield is waiting for the second ball. Losing that one costs
+  // a header on halfway, not a chance. `shortOnly`: null when no short ball is on.
+  buildUpOption(p, opts, routine, shortOnly = false, goalKick = false) {
+    if (routine !== 'long') {
       let best = null,
         value = -Infinity;
       for (const o of opts) {
@@ -384,19 +386,36 @@ export class PassingMethods {
       }
       if (best) return best;
     }
+    if (shortOnly) return null;
     const dir = this.direction(p.team),
-      reach = 56 + p.skill('power') * 0.15;
+      reach = 56 + p.skill('power') * 0.15,
+      from = this.rel(p.x, p.team),
+      beyond = Math.max(52, from + 30);
+    // The offside line: the second-last opponent, the ball or halfway.
+    let line = Math.max(52.5, from),
+      deepest = -Infinity,
+      second = -Infinity;
+    for (const q of this.activePlayers) {
+      if (q.team === p.team) continue;
+      const x = this.rel(q.x, p.team);
+      if (x > deepest) {
+        second = deepest;
+        deepest = x;
+      } else if (x > second) second = x;
+    }
+    line = goalKick ? Infinity : Math.max(line, second) - 0.5;
     let target = null,
       value = -Infinity;
     for (const r of this.activePlayers) {
-      if (r.team !== p.team || r.role === 'GK') continue;
+      if (r.team !== p.team || r.role === 'GK' || r === p) continue;
       const depth = this.rel(r.x, p.team);
+      if (depth > line) continue;
       let v =
         r.skill('heading') * 0.6 +
         r.skill('strength') * 0.25 +
         r.tendency('aerial') * 10 +
         (r.has('aerial') ? 5 : 0) -
-        Math.max(0, 52 - depth) * 2 -
+        Math.max(0, beyond - depth) * 2 -
         Math.max(0, dist(p, r) - reach) * 1.5 -
         Math.max(0, Math.abs(r.y - 34) - 16) * 1.2;
       // Team-mates near him for the knock-down; opponents beside him make it a duel.

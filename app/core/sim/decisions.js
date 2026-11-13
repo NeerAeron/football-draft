@@ -24,12 +24,18 @@ export class DecisionMethods {
     if (p.role === 'GK') {
       p.action = 'Checking the receiver’s next touch';
       if (p.hold < (this.ball.kind === 'held' ? this.profile.release : 0.55)) return;
-      if (p.goalKickExempt) {
-        const kick = this.goalKickOption(p, opts);
+      // In his hands: both sides run to the build-up shape (planning.js). A short ball that
+      // is really on goes at once — a quick throw to a free man; otherwise he waits until
+      // the sides are set, or `buildUpWait` at most, and then goes long to a header.
+      if (this.ball.kind === 'held') {
+        const routine = this.buildUpRoutine(p.team),
+          ready = p.hold >= this.tuning.gameplay.buildUpWait || this.buildUpSet(p.team),
+          kick = this.buildUpOption(p, opts, routine, !ready);
         if (kick) {
           this.pass(p, kick);
           return;
         }
+        if (!ready) return;
       }
       const outlet = this.keeperOutlet(p, opts);
       if (outlet) {

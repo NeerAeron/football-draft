@@ -253,8 +253,7 @@ function analyse(m, spec) {
           : prev.mode === 'restart'
             ? prev.restart === 'Offside'
               ? 'offside-fk'
-              : ['Free kick', 'Indirect free kick'].includes(prev.restart) &&
-                  relX(k.x, k.team) < 40
+              : ['Free kick', 'Indirect free kick'].includes(prev.restart) && relX(k.x, k.team) < 40
                 ? 'deep-fk'
                 : null
             : prev.kind === 'held' && k.role === 'GK' && b.restartTaker == null
@@ -645,7 +644,12 @@ function printSummary(report, baseline = null) {
     );
   }
   // Keeper distributions and deep free kicks: what became of them, per 100.
-  const REASONS = ['to an opponent', 'out of play', 'receiver robbed', 'lost after it was received'],
+  const REASONS = [
+      'to an opponent',
+      'out of play',
+      'receiver robbed',
+      'lost after it was received',
+    ],
     rate = (t, n) => (t?.n ? ((n || 0) / t.n) * 100 : 0).toFixed(1).padStart(5),
     row = t =>
       `${String(t?.n ?? 0).padStart(4)} ${rate(t, t?.lost)} ${rate(t, t?.ownHalf)}  ` +

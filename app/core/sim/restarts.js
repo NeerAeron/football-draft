@@ -8,11 +8,20 @@ const KICKOFFS = new Set(['Goal', 'Second half', 'Kickoff', 'Extra time']);
 // 3.4 m behind it he arrives as he hits it (starting at 0.8 s and stopping short of the ball
 // he was still 1.5 m away at the strike, and jumped onto it).
 const PENALTY_RUN_UP = 1.0;
+// Free kicks that are built up from like a goal kick when they are deep in the taker's half.
+const FREE_KICKS = new Set(['Free kick', 'Indirect free kick', 'Offside']),
+  DEEP_FREE_KICK = 40,
+  BUILD_SPOT = { x: 0, y: 0 };
 
 export class RestartMethods {
   startRestart(type, team, x, y, timer) {
     timer ??=
       type === 'Goal kick' ? 1.7 : type === 'Corner' ? 2.8 : type === 'Throw-in' ? 1.15 : 1.2;
+    // Goal kicks and deep free kicks are built up from: both sides run to a shape and the
+    // taker waits for them (stepRestart), so the timer is only the least he waits.
+    const build =
+      type === 'Goal kick' || (FREE_KICKS.has(type) && this.rel(x, team) < DEEP_FREE_KICK);
+    if (build) timer = 1;
     if (!KICKOFFS.has(type)) timer *= this.tuning.gameplay.restartSetup;
     // A side holding a lead takes its time over restarts; one chasing hurries.
     if (type !== 'Penalty') timer *= 1 + this.mentalityShift(team).restartTime;
@@ -57,11 +66,17 @@ export class RestartMethods {
             c.skill('composure') * 0.6 -
             (a.skill('penalties') + a.skill('composure') * 0.6),
         )[0];
-    else
-      taker = this.activePlayers
+    else {
+      // A deep free kick is a defender's or a midfielder's to take when one is near.
+      const near = this.activePlayers
         .filter(p => p.team === team && p.role !== 'GK')
-        .sort((a, c) => dist(a, b) - dist(c, b))[0];
-    this.restart = { type, team, x, y, timer, taker: taker.id };
+        .sort((a, c) => dist(a, b) - dist(c, b));
+      taker =
+        (build &&
+          near.find(p => this.formation(p)[0] < 58 && dist(p, b) < dist(near[0], b) + 12)) ||
+        near[0];
+    }
+    this.restart = { type, team, x, y, timer, taker: taker.id, build, routine: null, waited: 0 };
     if (!['Goal', 'Second half', 'Extra time', 'Penalty', 'Free kick', 'Offside'].includes(type))
       this.addEvent(`${type} · ${this.teams[team].name}`, team, 'restart', { restart: type });
     this.planTimer = 0;
@@ -101,7 +116,7 @@ export class RestartMethods {
       }
     }
     if (type === 'Corner') this.setupCorner(team, taker, y);
-    if (type === 'Goal kick') this.setupGoalKick(team, taker);
+    if (build) this.setupBuildUp(team, taker);
     if (type === 'Throw-in') this.setupThrowIn(team, taker, x, y);
     taker.tx = x - this.direction(team) * 0.6;
     taker.ty = clamp(y, 1, 67);
@@ -199,60 +214,92 @@ export class RestartMethods {
     }
     return safest ?? opts[0];
   }
-  // Goal kick: a cut in the action, like a corner — both sides are set when it is awarded (they
-  // used to get 1.7 s to walk away from wherever the attack had ended, so the kick was played
-  // short into a crowd on the edge of the box and lost there). The side defending it either
-  // drops into a mid-block (its front line 44 m from the goal line) or, when it presses high
-  // or is chasing the game, comes up to the edge of the box. The kicking side answers: against
-  // a mid-block it splits its centre-backs beside the box and builds up short; against the
-  // press — or when it is the one chasing — everybody pushes up and the keeper goes long, to
-  // its best header of the ball with the midfield around him for the second ball
-  // (goalKickOption decides at the kick; `restart.routine` is the plan).
-  setupGoalKick(team, taker) {
-    const other = 1 - team,
-      pressing = this.teams[other].tactics.press >= 4 || this.lean(other) > 0,
-      routine = pressing || this.lean(team) > 0 ? 'long' : 'short',
-      long = routine === 'long';
+  // Building up from the back — a goal kick, a free kick deep in the taker's half (after an
+  // offside or a foul) and the keeper with the ball in his hands share one shape. Nobody is
+  // placed: every player gets a target and runs there (restart mode: stepRestart waits for
+  // them; keeper's hands: planning.js aims them and decisions.js waits). The side without the
+  // ball either drops into a mid-block (its front line 44 m from the goal line at a goal
+  // kick) or, when it presses high or is chasing the game, comes up to the edge of the box.
+  // The side with it answers: against a mid-block it splits its centre-backs beside the box,
+  // full-backs wide and higher, and builds up short; against the press — or when it is the
+  // one chasing — everybody pushes up and the ball goes long, to its best header with the
+  // midfield around him for the second ball (buildUpOption decides at the kick).
+  buildUpRoutine(team) {
+    return this.buildUpPressed(team) || this.lean(team) > 0 ? 'long' : 'short';
+  }
+  buildUpPressed(team) {
+    return this.teams[1 - team].tactics.press >= 4 || this.lean(1 - team) > 0;
+  }
+  // p's spot in that shape (absolute, in BUILD_SPOT — read it before the next call). `team`
+  // has the ball, `o` is how far up the pitch it is from a goal kick's 5.5 m: both sides'
+  // lines move up with it, the defending side never nearer than 11 m to the ball and the
+  // attackers short of the last line (offside counts at a free kick).
+  buildUpSpot(p, team, long, pressing, o = 0) {
+    const [base, by] = this.formation(p),
+      y = this.direction(p.team) > 0 ? by : H - by,
+      off = y - 34,
+      wide = Math.abs(off) >= 14,
+      last = 70 + o * 0.4;
+    let x, ty;
+    if (p.team === team) {
+      if (base < 30) {
+        // Back line: centre-backs either side of the box (the middle one of three stays
+        // in front of it), full-backs wide and higher.
+        x = (long ? (wide ? 33 : 29) : wide ? 22 : Math.abs(off) < 3 ? 21 : 11) + o * 0.6;
+        ty =
+          long || Math.abs(off) < 3
+            ? y
+            : wide
+              ? 34 + Math.sign(off) * 24
+              : 34 + Math.sign(off) * 16;
+      } else if (base < 58) {
+        x = (long ? 48 + (base - 30) * 0.3 : 30 + (base - 30) * 0.6) + o * 0.5;
+        ty = long ? 34 + off * 0.8 : y;
+      } else {
+        x = Math.min((long ? 64 + (base - 58) * 0.1 : 62) + o * 0.5, last - 2);
+        ty = long ? 34 + off * 0.7 : y;
+      }
+    } else {
+      // Measured from the goal line of the side with the ball; the defenders stay goal-side
+      // of the forwards they mark.
+      x =
+        base >= 58
+          ? (pressing ? 23 : 44) + o * 0.45
+          : base >= 30
+            ? (pressing ? 40 : 56) + o * 0.45
+            : last;
+      x = Math.max(x, 16.5 + o);
+      ty = 34 + off * (base < 30 ? 0.75 : 0.85);
+    }
+    BUILD_SPOT.x = this.abs(x, team);
+    BUILD_SPOT.y = clamp(ty, 2, 66);
+    return BUILD_SPOT;
+  }
+  setupBuildUp(team, taker) {
+    const r = this.restart,
+      pressing = this.buildUpPressed(team),
+      o = Math.max(0, this.rel(r.x, team) - 5.5);
+    r.routine = this.buildUpRoutine(team);
     for (const p of this.activePlayers) {
       if (p.id === taker.id || p.role === 'GK') continue;
-      const [base, by] = this.formation(p),
-        y = this.direction(p.team) > 0 ? by : H - by,
-        off = y - 34,
-        wide = Math.abs(off) >= 14;
-      let x, ty;
-      if (p.team === team) {
-        if (base < 30) {
-          // Back line: centre-backs either side of the box (the middle one of three stays
-          // in front of it), full-backs wide and higher.
-          x = long ? (wide ? 33 : 29) : wide ? 22 : Math.abs(off) < 3 ? 21 : 11;
-          ty =
-            long || Math.abs(off) < 3
-              ? y
-              : wide
-                ? 34 + Math.sign(off) * 24
-                : 34 + Math.sign(off) * 16;
-        } else if (base < 58) {
-          x = long ? 48 + (base - 30) * 0.3 : 30 + (base - 30) * 0.6;
-          ty = long ? 34 + off * 0.8 : y;
-        } else {
-          x = long ? 64 + (base - 58) * 0.1 : 62;
-          ty = long ? 34 + off * 0.7 : y;
-        }
-        x = this.abs(x, team);
-      } else {
-        // Measured from the kicking side's goal line; the defenders stay goal-side of the
-        // forwards they mark.
-        x = base >= 58 ? (pressing ? 23 : 44) : base >= 30 ? (pressing ? 40 : 56) : 70;
-        x = this.abs(x, team);
-        ty = 34 + off * (base < 30 ? 0.75 : 0.85);
-      }
-      p.x = p.tx = x;
-      p.y = p.ty = clamp(ty, 2, 66);
-      p.vx = p.vy = 0;
-      p.facing = Math.atan2(34 - p.y, this.abs(5.5, team) - p.x) + (p.team === team ? Math.PI : 0);
-      p.trail = [];
+      const spot = this.buildUpSpot(p, team, r.routine === 'long', pressing, o);
+      p.tx = spot.x;
+      p.ty = spot.y;
+      p.action = p.team === team ? 'Offering for the build-up' : 'Dropping off';
     }
-    this.restart.routine = routine;
+  }
+  // Are the sides set? The back line and midfield of the side with the ball within 5 m of
+  // their spots, everybody else within 14 m of his, the other side at its distance (out of
+  // the box at a goal kick, 9.15 m at a free kick).
+  buildUpSet(team, r = null) {
+    for (const p of this.activePlayers) {
+      if (p.role === 'GK' || p.id === r?.taker) continue;
+      const own = p.team === team;
+      if (hypot(p.tx - p.x, p.ty - p.y) > (own && this.formation(p)[0] < 58 ? 5 : 14)) return false;
+      if (own || !r) continue;
+      if (r.type === 'Goal kick' ? this.inBox(p, p.team) : dist(p, r) < 9.15) return false;
+    }
+    return true;
   }
   // Corner routine: near-post flick-on, far-post header or a ball to the
   // edge. The best headers take the box spots (the best of all attacks the
@@ -345,6 +392,7 @@ export class RestartMethods {
   stepRestart(dt) {
     const r = this.restart;
     r.timer -= dt;
+    r.waited += dt;
     const taker = this.players[r.taker],
       kickoff = KICKOFFS.has(r.type);
     // Penalty run-up: the taker stands over it, then comes at the ball in the last moments.
@@ -354,6 +402,13 @@ export class RestartMethods {
     }
     for (const p of this.activePlayers) this.move(p, dt, true);
     if (r.timer > 0) return;
+    // Built up from: the taker waits until he is at the ball and the sides are set, or the
+    // cap runs out (two seconds more for a taker who is still on his way).
+    if (r.build) {
+      const cap = this.tuning.gameplay.buildUpWait,
+        there = hypot(taker.x - taker.tx, taker.y - taker.ty) < 1.2;
+      if (r.waited < cap + (there ? 0 : 2) && !(there && this.buildUpSet(r.team, r))) return;
+    }
     if (kickoff) this.positionKickoff(r.team);
     for (const p of this.activePlayers) {
       if (r.type === 'Penalty') {
@@ -392,7 +447,7 @@ export class RestartMethods {
     this.ball.y = r.y;
     this.ball.owner = taker.id;
     this.ball.lastTouch = r.team;
-    this.ball.kind = r.type === 'Goal kick' ? 'held' : 'dribble';
+    this.ball.kind = 'dribble';
     this.mode = 'play';
     this.lastTeam = r.team;
     this.startChain(r.team, r.x, r.type);
@@ -405,13 +460,6 @@ export class RestartMethods {
       return;
     }
     const opts = this.options(taker);
-    if (r.type === 'Goal kick') {
-      taker.hold = 0;
-      taker.think = 0.2;
-      taker.goalKickExempt = true;
-      this.plan();
-      return;
-    }
     if (r.type === 'Corner') {
       const target = r.target != null ? this.players[r.target] : null;
       if (target && !target.sentOff && r.aim) {
@@ -438,6 +486,13 @@ export class RestartMethods {
         this.pass(taker, { ...box, delivery: 'cross' }, r.type);
         return;
       }
+    }
+    if (r.build) {
+      const kick = this.buildUpOption(taker, opts, r.routine, false, r.type === 'Goal kick');
+      if (kick) this.pass(taker, kick, r.type);
+      else if (opts.length) this.pass(taker, this.restartOption(opts, r.type), r.type);
+      else this.own(taker);
+      return;
     }
     if (
       r.type === 'Free kick' &&

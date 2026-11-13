@@ -390,7 +390,17 @@ export class Match {
       p.lastShotChance = null;
     }
     this.positionKickoff(0);
-    this.restart = { type: 'Kickoff', team: 0, x: 52.5, y: 34, timer: 0.6, taker: 9 };
+    this.restart = {
+      type: 'Kickoff',
+      team: 0,
+      x: 52.5,
+      y: 34,
+      timer: 0.6,
+      taker: 9,
+      build: false,
+      routine: null,
+      waited: 0,
+    };
     this.kickoffTeam = this.seed % 2;
     this.positionKickoff(this.kickoffTeam);
     this.restart.team = this.kickoffTeam;

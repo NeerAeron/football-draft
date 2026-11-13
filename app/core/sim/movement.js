@@ -89,7 +89,9 @@ export class MovementMethods {
     let max =
       p.topSpeed(carrying) *
       (restart
-        ? 0.6
+        ? this.restart.build
+          ? 0.82
+          : 0.6
         : sprint
           ? 0.84 + 0.16 * clamp(p.sprint / 0.45, 0, 1)
           : p.intent === 'hold'
