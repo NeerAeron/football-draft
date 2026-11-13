@@ -240,11 +240,14 @@ openPrematch({
   Auto-pick / Continue ignore taps for 400 ms after a sheet is closed (`hush()` in `draft.js`):
   those buttons sit exactly under the sheet's button, and a second tap used to respin
   or start the World Cup. Players with a better version carry
-  a gold dot on the pitch and "Prime 94 +8" in their pool row while the Prime is left.
+  a gold dot on the pitch and "Prime 94 +8" in their pool row while the Prime is left. The
+  marks are the card's: a Captain whose best version is no Captain card reads "· not Captain"
+  in his row (`prime.to.captain`), a best version that is a GOAT card wears the GOAT mark.
 * **GOAT** (`player.goat`): his row, card and pitch token wear a holographic edge
   (`.is-goat-edge`: gold and ice, a sheen that crosses it on `transform` every few seconds and
   stands still with reduced motion) and the small **GOAT** mark (`GoatMark`,
-  `components/captain-mark.js`) — in the pool, the pick sheet, the pitch and the team view; the
+  `components/captain-mark.js`) — in the pool, the pick sheet, the pitch (in the armband's
+  corner, clear of the boost chip) and the team view; the
   green chips include his +1.5, and the pick preview says "GOAT +1.5 to every player"
   (`data-testid="goat-effect"`). No other text.
 * **Captain**: the "C" (`CaptainMark`) on his row, card and pitch token (the armband: the

@@ -437,12 +437,12 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
     0 0 0 4px rgb(155 231 255 / 0.45),
     0 0 14px rgb(245 200 76 / 0.6);
 }
+/* In the armband's corner (a card is never both), clear of the boost chip on the right. */
 .pitch-slot__goat {
   position: absolute;
   top: -6px;
-  left: 50%;
+  left: calc(var(--token) * -0.3);
   z-index: 1;
-  translate: -50% 0;
   height: 13px;
   padding: 0 4px;
   font-size: 8px;
