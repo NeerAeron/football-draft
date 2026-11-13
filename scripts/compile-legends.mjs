@@ -32,7 +32,7 @@
 // Deterministic.
 import { writeFileSync } from 'node:fs';
 import { compilePlayer, positions as rowPositions } from './compile-players.mjs';
-import { overallRating } from '../app/core/players/ratings.js';
+import { overallRating, POSITIONS } from '../app/core/players/ratings.js';
 import { normalizeBadges } from '../app/core/players/badges.js';
 import { explicitEvidence } from '../app/core/players/catalog-derived.js';
 import { foldDiacritics } from '../app/core/util/text.js';
@@ -52,8 +52,14 @@ export const LEGEND_MINIMUM = 85;
 export const LEGEND_GAIN = 2;
 // The lift of a stingy title (see `lifts` below): measured on the title's LIFT_TOP best,
 // nothing under LIFT_FROM, in full from the level of those best.
+// The most a card may show above the number its title has for the man (see `checked`).
+export const MOST_ABOVE = 9;
 export const LIFT_TOP = 30;
-export const LIFT_FROM = 84;
+// The least the cap on a card's rating at a role that is not its own (see offRoleCap): level.
+export const OFF_ROLE = 0;
+export const LIFT_FROM = 87;
+// … and in full from here: the very top (an 88 gets a third of it, an 89 two thirds).
+export const LIFT_FULL = 90;
 export const LEGACY = {
   url: 'https://huggingface.co/datasets/jsulz/FIFA23',
   author: 'jsulz',
@@ -121,13 +127,13 @@ export const PLAYER_JUDGEMENT = [
   {
     id: 37576,
     name: 'Ronaldo',
-    cards: { 98: 2, 99: 3, 1: -2, 3: 3 },
+    cards: { 98: 3, 99: 4, 1: -2, 3: 4 },
     why: 'The best player in the world in 1996–98 (Ballon d’Or 1997, World Cup Golden Ball 1998) and the man of the 2002 World Cup (Ballon d’Or): the coarse titles have him level with Denilson and Del Piero, and FIFA 2003 at 89 after his injury years. FIFA 2001 (2000, a year he did not play) has him as its best player: two points off.',
   },
   {
     id: 1397,
     name: 'Zidane',
-    cards: { 98: 2, 99: 2, 0: 1, 1: 1, 2: 1, 3: 2 },
+    cards: { 98: 3, 99: 3, 0: 1, 1: 1, 2: 1, 3: 2 },
     why: 'The best midfielder of 1998–2002 (Ballon d’Or 1998, FIFA World Player 1998 and 2000, Euro 2000, the 2002 Champions League final): the coarse titles rate him with Kluivert and Möller.',
   },
   {
@@ -503,14 +509,14 @@ export const PLAYER_JUDGEMENT = [
     id: 10535,
     name: 'Xavi',
     kind: 'breakout',
-    cards: { 10: 2, 11: 2 },
+    cards: { 10: 4, 11: 4 },
     why: 'Player of Euro 2008, third for the Ballon d’Or 2009 and 2010, world champion: EA kept him at 89 until FIFA 12’s 93.',
   },
   {
     id: 41,
     name: 'Iniesta',
     kind: 'breakout',
-    cards: { 11: 2 },
+    cards: { 11: 4 },
     why: 'World Cup 2010: the final’s goal and man of the match, second for the Ballon d’Or (89; 92 a year later).',
   },
   {
@@ -682,6 +688,11 @@ export const ERA_STAR = 85;
 // What a place its pool cannot fill counts in a nation's strength (a pool of eight is not a
 // strong side because its eight are good).
 export const ERA_FILL = 60;
+// A card that shows this much in an era is in the file even when it is in no pool — or null:
+// only pool cards and best versions. Measured: 75 → 23,300 cards, 4.5 MB / 1.30 MB gzip (over
+// the 1.2 MB the owner set), 76 → about 1.17 MB, 77 → about 1.06 MB; today 0.8 MB. Off until
+// the owner picks one (ERA_KEPT=76 npm run data:build tries a value).
+export const ERA_KEPT = process.env.ERA_KEPT ? Number(process.env.ERA_KEPT) : null;
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 // France 98 keeps fewer. FIFA 98/99 know most players by a surname, some national squads by
 // first names or invented ones: a pool there needs three in ten of its players to be men a
@@ -726,7 +737,7 @@ export const ERA_SELECTION = {
 export const SELECTION = {
   overall:
     'EA’s printed overall (FIFA 09–23); FIFA 98–08 print none and are chain-linked to the next title through the players both have',
-  lift: `A title whose ${LIFT_TOP} best are rated lower on average than FC 27's is lifted by the difference (never lowered): in full from the level of those best, fading to nothing at ${LIFT_FROM}; FIFA 98–08 carry the lift of FIFA 09, whose scale they are linked to`,
+  lift: `A title whose ${LIFT_TOP} best are rated lower on average than FC 27's is lifted by the difference (never lowered) at the very top only: in full from ${LIFT_FULL}, fading to nothing at ${LIFT_FROM}; FIFA 98–08 carry the lift of FIFA 09, whose scale they are linked to`,
   card: 'The skills of that year, moved together until the game shows that overall',
   bestVersion: 'Highest overall; ties: the latest title',
   legends: `Best versions shown ${LEGEND_MINIMUM}+: players who are not in the catalog, and catalog players whose card today shows at least ${LEGEND_GAIN} less; of a catalog nation; the club of that title when it is in the catalog`,
@@ -849,6 +860,7 @@ export function compileLegends(
     footBorrowed: 0,
     footUnknown: 0,
     shownOffOverall: 0,
+    reshaped: 0,
     otherNations: [],
     dropped: [...calibration.dropped],
     merged: calibration.merged,
@@ -1053,9 +1065,9 @@ export function compileLegends(
     if (!lifts.has(t.edition) && official.length)
       lifts.set(t.edition, lifts.get(official[0].edition));
   const lifted = (edition, overall) => {
-    const { lift, full } = lifts.get(edition) ?? { lift: 0 };
+    const { lift } = lifts.get(edition) ?? { lift: 0 };
     if (!lift) return overall;
-    const share = Math.max(0, Math.min(1, (overall - LIFT_FROM) / (full - LIFT_FROM)));
+    const share = Math.max(0, Math.min(1, (overall - LIFT_FROM) / (LIFT_FULL - LIFT_FROM)));
     return overall + lift * share;
   };
   // ---- the judgement ----------------------------------------------------------------------
@@ -1115,6 +1127,14 @@ export function compileLegends(
     if (!rule || !rule.editions.includes(edition) || overall <= rule.from) return overall;
     return overall + (rule.top * (overall - rule.from)) / (rule.level - rule.from);
   };
+  // No card shows an overall far above the title's own number for that man: the lift, the
+  // title, nation and player judgements together move a card MOST_ABOVE points at most (a
+  // hand-made card is its own number).
+  const checked = (one, v) => {
+    if (v.hand == null && v.overall - v.printed > MOST_ABOVE)
+      throw Error(`${one.key} (title ${v.edition}): ${v.overall}, the title says ${v.printed}`);
+    return v;
+  };
   const versions = one => {
     if (!versionCache.has(one))
       versionCache.set(
@@ -1122,7 +1142,7 @@ export function compileLegends(
         rawVersions(one).map(v => {
           const points = playerFix.get(one.key)?.cards[v.edition] ?? 0;
           if (points) fixed.add(`${one.key}:${v.edition}`);
-          return {
+          return checked(one, {
             ...v,
             before: Math.round(v.calibrated),
             overall:
@@ -1131,7 +1151,7 @@ export function compileLegends(
                 99,
                 Math.round(judgedNation(one, v.edition, judged(v.edition, v.calibrated))) + points,
               ),
-          };
+          });
         }),
       );
     return versionCache.get(one);
@@ -1203,6 +1223,21 @@ export function compileLegends(
   const fullNameSource = one => real(one).find(q => /\s/.test(q.fullName));
   const notes = {};
   // The compiled card of a version: its skills moved to show its overall.
+  // What a real card does at a role that is not its own: per position and other role, the
+  // most any catalog player shown 75+ rates there above his own position (never under 0: level
+  // with his own). Past cards are held to it (cardFields) — a central midfielder may be a
+  // point or two better as a holding one, never a better centre-back.
+  const offRoleCap = new Map(); // position → { role: points }
+  for (const p of catalog.players) {
+    if (p.primaryPosition === 'GK') continue;
+    const own = shown(p);
+    if (own < 75) continue;
+    if (!offRoleCap.has(p.primaryPosition)) offRoleCap.set(p.primaryPosition, {});
+    const caps = offRoleCap.get(p.primaryPosition);
+    for (const role of POSITIONS)
+      if (role !== 'GK' && role !== p.primaryPosition)
+        caps[role] = Math.max(caps[role] ?? OFF_ROLE, overallRating(p, true, role) - own);
+  }
   const card = (one, v, suffix, count) => {
     const inference = {},
       note = { overall: v.overall };
@@ -1276,7 +1311,18 @@ export function compileLegends(
       inference.composure = donor ? `from his ${donor.year} version` : 'his reactions';
       if (count) stats[donor ? 'composureBorrowed' : 'composureFromReactions']++;
     }
-    const moved = cardFields(skills, position, v.overall);
+    const moved = cardFields(
+      skills,
+      position,
+      v.overall,
+      10,
+      offRoleCap.get(position) ?? {},
+      rowPositions(row).slice(1),
+    );
+    if (moved.reshaped) {
+      note.reshaped = moved.reshaped;
+      if (count) stats.reshaped++;
+    }
     Object.assign(row, moved.fields, { overall: v.overall });
     note.shift = moved.shift;
     const p = compilePlayer(row, index, {
@@ -1680,6 +1726,18 @@ export function compileLegends(
         });
       }
     }
+  // Everyone who shows ERA_KEPT or more in an era has that card in the file, in a pool or not
+  // (never offered by a spin: `eraPlayer`, `personVersions`).
+  let keptOnly = 0;
+  for (const [one, inEra] of versionsOf) {
+    const now = current.get(one.key) ?? null,
+      nationality = now ? now.source.nationality : nationOf(one);
+    for (const v of inEra.values()) {
+      if (ERA_KEPT == null || v.now || cardOf.has(v) || v.overall < ERA_KEPT) continue;
+      eraCard(one, v, now, nationality);
+      keptOnly++;
+    }
+  }
   // GOATs and Captains: reviewed lists of player + era. The card must be there — that man, by
   // EA's id, name and nation, in his nation's pool of that era — or the build fails. Every
   // entry is checked, also the Captains behind the list's `size` cut (so the cut can be moved
@@ -1765,6 +1823,7 @@ export function compileLegends(
       displaced,
       handCards: handMade,
       bestOnly,
+      keptOnly,
       noNation: eraStats.noNation,
       noName: eraStats.noName,
       otherNations: Object.fromEntries([...eraStats.otherNations].sort()),

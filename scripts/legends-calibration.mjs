@@ -27,7 +27,7 @@
 //    data and reads older skill sets a few points off what EA printed.
 // Deterministic; no rating of any player is typed in.
 import { sourceAttributes } from './compile-players.mjs';
-import { overallRating, normalizeAttributes } from '../app/core/players/ratings.js';
+import { overallRating, normalizeAttributes, POSITIONS } from '../app/core/players/ratings.js';
 import { foldDiacritics } from '../app/core/util/text.js';
 import { SKILL_FIELDS } from './data/legacy-titles.mjs';
 
@@ -98,18 +98,92 @@ export function secondStrikerRoles(skills) {
  * shows `target` at `position` (the closest it can get). → { fields, shift }. A keeper's
  * rating is his one goalkeeping number, so his skills stay as they are.
  */
-export function cardFields(skills, position, target, keeping = 10) {
+export function cardFields(
+  skills,
+  position,
+  target,
+  keeping = 10,
+  offRole = null,
+  secondary = NONE,
+) {
   if (position === 'GK') return { fields: shiftFields(skills), shift: 0 };
-  const at = shift => fieldRating(shiftFields(skills, shift), position, 50, keeping);
-  let lo = -60,
-    hi = 60;
-  for (let i = 0; i < 20; i++) {
-    const mid = (lo + hi) / 2;
-    if (at(mid) < target) lo = mid;
-    else hi = mid;
+  const fit = base => {
+    const at = shift => fieldRating(shiftFields(base, shift), position, 50, keeping);
+    let lo = -60,
+      hi = 60;
+    for (let i = 0; i < 20; i++) {
+      const mid = (lo + hi) / 2;
+      if (at(mid) < target) lo = mid;
+      else hi = mid;
+    }
+    const shift = Math.abs(at(lo) - target) <= Math.abs(at(hi) - target) ? lo : hi;
+    return { fields: shiftFields(base, shift), shift: round(shift, 2) };
+  };
+  let card = fit(skills);
+  if (offRole == null) return card;
+  // No card rates higher at a role that is not its own than a real card of its position does
+  // (`offRole`: per other role, the points over its own rating, as shown). The coarse titles describe a player with
+  // a handful of numbers that may be another role's — a winger with a centre-back's tackling
+  // and strength, moved up twenty points to his pooled overall, was an 88 centre-back. The
+  // skills that count more for the other role than for his own come down a point at a time,
+  // and the card is fitted to his overall again.
+  let base = { ...skills },
+    reshaped = 0;
+  for (let i = 0; i < 120; i++) {
+    let worst = null,
+      over = 0;
+    for (const role of OUTFIELD) {
+      if (role === position) continue;
+      const excess =
+        roleRating(card.fields, position, role, keeping, secondary) -
+        (target + (offRole[role] ?? 0) + 0.49);
+      if (excess > over) ((over = excess), (worst = role));
+    }
+    if (!worst) break;
+    const down = favours(position, worst);
+    if (!down.length) break;
+    base = { ...base };
+    for (const f of down) base[f] = Math.max(1, Number(base[f]) - 1);
+    card = fit(base);
+    reshaped++;
   }
-  const shift = Math.abs(at(lo) - target) <= Math.abs(at(hi) - target) ? lo : hi;
-  return { fields: shiftFields(skills, shift), shift: round(shift, 2) };
+  return reshaped ? { ...card, reshaped } : card;
+}
+const OUTFIELD = POSITIONS.filter(p => p !== 'GK');
+/** What the game shows (unrounded) at `role` for a card of `position` with these columns. */
+export function roleRating(fields, position, role, keeping = 10, secondary = NONE) {
+  const row = { ...fields, overall: 50 };
+  for (const k of KEEPING) row[k] = keeping;
+  return overallRating(
+    {
+      attrs: normalizeAttributes(sourceAttributes(row, position)),
+      primaryPosition: position,
+      secondaryPositions: secondary,
+      role,
+    },
+    false,
+    role,
+  );
+}
+// The columns that count more at `role` than at `position` (per ten points of the column).
+const favoured = new Map();
+function favours(position, role) {
+  const key = `${position}>${role}`;
+  if (!favoured.has(key)) {
+    const flat = Object.fromEntries(SKILL_FIELDS.map(f => [f, 50])),
+      own = roleRating(flat, position, position),
+      other = roleRating(flat, position, role);
+    favoured.set(
+      key,
+      SKILL_FIELDS.filter(f => {
+        const up = { ...flat, [f]: 60 };
+        return (
+          roleRating(up, position, role) - other > roleRating(up, position, position) - own + 0.01
+        );
+      }),
+    );
+  }
+  return favoured.get(key);
 }
 
 // ---------------------------------------------------------------------------------------

@@ -7,6 +7,8 @@ import { PATHS, MODERN_SOURCES } from '../scripts/data/paths.mjs';
 import {
   PLAYER_JUDGEMENT,
   NATION_JUDGEMENT,
+  LIFT_FROM,
+  LIFT_FULL,
   ERA_STAR,
   ERA_FILL,
 } from '../scripts/compile-legends.mjs';
@@ -367,7 +369,9 @@ test('the judgement: breakout lag, the icons of 1998–2002, England’s home ti
   const breakoutCards = kinds('breakout').reduce((n, f) => n + Object.keys(f.cards).length, 0);
   assert.ok(breakoutCards >= 30 && breakoutCards <= 48, 'breakout cards: ' + breakoutCards);
   // Modest: one to three points (Xavi and Iniesta 2010 apart).
-  for (const f of kinds('breakout')) assert.ok(Object.values(f.cards).every(v => v >= 1 && v <= 3));
+  for (const f of kinds('breakout'))
+    if (!['Xavi', 'Iniesta'].includes(f.name))
+      assert.ok(Object.values(f.cards).every(v => v >= 1 && v <= 3));
   for (const f of PLAYER_JUDGEMENT) assert.ok(f.why.length > 30 && f.id > 0, f.name);
   assert.equal(new Set(PLAYER_JUDGEMENT.map(f => f.id)).size, PLAYER_JUDGEMENT.length);
   // A key man of his World Cup is in his nation's pool of that era, next to his team-mates.
@@ -439,6 +443,45 @@ test('a player a World Cup starter pushed out keeps his card in the file, in no 
     );
     assert.ok(!card.goat && !card.captain);
   }
+});
+
+test('no card is better at a role that is not its own than a real card of its position is', () => {
+  // What FC 27's own cards do: per position and other role, the most a player shown 75+ rates
+  // there above his own position (never under level).
+  const caps = new Map();
+  const roles = POSITIONS.filter(r => r !== 'GK');
+  for (const p of catalog.players) {
+    if (p.primaryPosition === 'GK' || shown(p) < 75) continue;
+    for (const role of roles) {
+      if (role === p.primaryPosition) continue;
+      const key = `${p.primaryPosition}>${role}`;
+      caps.set(key, Math.max(caps.get(key) ?? 0, overallRating(p, true, role) - shown(p)));
+    }
+  }
+  assert.ok(Math.max(...caps.values()) <= 4);
+  // Every era card is held to it: the coarse titles' winger with a centre-back's numbers
+  // ("Lewis ’02", a left midfielder shown 77, was an 88 centre-back) is no more.
+  let worst = 0;
+  for (const p of data.cards) {
+    if (p.primaryPosition === 'GK') continue;
+    const own = shown(p);
+    for (const role of roles) {
+      if (role === p.primaryPosition) continue;
+      const over =
+        overallRating(p, true, role) - own - (caps.get(`${p.primaryPosition}>${role}`) ?? 0);
+      if (over > worst) worst = over;
+      assert.ok(
+        over <= 1,
+        `${p.profileId} ${p.name}: ${p.primaryPosition} ${own}, ${role} ${own + over}`,
+      );
+    }
+  }
+  const lewis = pool(2002, 'United States').find(p => p.fullName === 'Eddie Lewis');
+  assert.ok(lewis && overallRating(lewis, true, 'CB') <= shown(lewis));
+  // The lift is for the very top only: nothing at 87 and under, in full from 90.
+  assert.deepEqual([LIFT_FROM, LIFT_FULL], [87, 90]);
+  const arshavin = pool(2010, 'Russia').find(p => p.name === 'A. Arshavin');
+  assert.equal(shown(arshavin), 86); // as EA printed him
 });
 
 test('the pools read like football', () => {
