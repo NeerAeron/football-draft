@@ -99,6 +99,7 @@ test('a back still marks the dangerous cutback receiver behind the ball inside t
   Object.assign(back, { x: 94, y: 36 });
   Object.assign(m.players[15], { x: 101, y: 12 });
   m.own(carrier);
+  Object.assign(m.ball, { x: carrier.x, y: carrier.y });
   m.plan();
   assert.equal(back.markId, runner.id);
   assert.ok(back.tx > runner.x);

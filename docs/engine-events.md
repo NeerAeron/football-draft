@@ -209,6 +209,21 @@ plays on from where he is — no return to formation spots.
   only a ball that is really on — risk under 0.3, 0.3 s to spare, completion over 72% — or,
   unpressed, takes it on a few steps and looks again (decisions.js).
 
+### The back line and first touches
+
+* **One line a side** (planning.js `planTeam`: `c.line`, `c.hold`; `gameplay.lineAwareness`,
+  0 switches all of this off). With the ball: 18 m behind it up to 48 m from the own goal
+  line, 24 m behind beyond that, deeper as a unit for slow centre-backs or a pressed carrier,
+  and goal-side of an opposing forward who is level with it or in front of it; a forward
+  clearly behind it (an offside position) is left, nobody covers, the keeper stands up to 13 m
+  out. Without the ball: the block's line; a back-line defender whose man is beyond it shows
+  the action `Holding the line` (intent `shape`) when `holdsLine` says stepping up is the
+  better bet — the man standing or coming back, or the carrier pressed, moving away or far
+  off — and goes with a runner otherwise. Poor readers sometimes go anyway.
+* **First touch** (`firstTouchChance`, `gameplay.freeTouch`): for a receiver with no opponent
+  within 4.5 m the height, delivery demand and in-the-air speed of a team-mate's ball count
+  30%; full from a pressure of 0.3.
+
 ### The final whistle
 
 The referee does not blow for half-time or full time (or the end of an extra-time period) in
