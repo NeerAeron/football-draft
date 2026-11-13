@@ -11,6 +11,7 @@ import { STYLES, DEFAULT_TAGS } from '../players/traits.js';
 import { normalizeBadges } from '../players/badges.js';
 import { stoppageMinutes, PERIOD_START, PERIOD_SHARE } from './periods.js';
 import { normalizeAttributes, overallRating } from '../players/ratings.js';
+import { unitLevels, unitLean } from '../players/unit-levels.js';
 import {
   W,
   H,
@@ -395,6 +396,7 @@ export class Match {
     this.shootoutState = null;
     this.penaltyEnd = null;
     this.edge = null; // [team 0, team 1]: set at kick-off (kickoffEdge)
+    this.level = null; // [team 0, team 1]: the level each side attacks at (kickoffLevel)
     this.resetInsights();
   }
   addEvent(text, team, type = 'play', extra = {}) {
@@ -816,9 +818,32 @@ export class Match {
     if (lead > 0) edge[0] = Math.min(lead * rule.perPoint, rule.cap);
     return edge;
   }
+  // The level each side attacks at (tuning.gameplay.levelScatter / levelSaves), read once at
+  // kick-off like the edge: [team 0's attack, team 1's attack], in points.
+  // 1. The match: the mean overall of the two line-ups above 78, plus levelGap points for
+  //    every point between them — the same for both sides, so the number of goals does not
+  //    climb with the general level of the players or with a mismatch.
+  // 2. The units (levelUnits): what a side scores is judged against the defence it faces.
+  //    The opponent's defence level (keeper, back line, holding midfield: players/unit-levels.js)
+  //    above the opponent's own overall raises the level this side attacks at (its shots
+  //    scatter more and are saved more); its own attack level (forwards, wide and attacking
+  //    midfielders) above its own overall lowers it. A balanced side is at 0,
+  //    so this adds to what better defenders and keepers already do in play and leaves the
+  //    average alone: a modest side with a fine defence and keeper concedes less than its
+  //    overall says, a star side with a poor back line more.
+  kickoffLevel() {
+    const g = this.tuning.gameplay,
+      units = [0, 1].map(t => unitLevels(this.players.filter(p => p.team === t))),
+      match =
+        (units[0].overall + units[1].overall) / 2 -
+        78 +
+        Math.abs(units[0].overall - units[1].overall) * g.levelGap;
+    return [0, 1].map(t => clamp(match + unitLean(units[t], units[1 - t]) * g.levelUnits, -14, 14));
+  }
   stepInner(dt) {
     if (this.finished) return;
     if (this.edge === null) this.edge = this.kickoffEdge();
+    if (this.level === null) this.level = this.kickoffLevel();
     if (this.mode === 'halftime') {
       if (!this.pauseAtHalf) this.resumeHalf();
       return;

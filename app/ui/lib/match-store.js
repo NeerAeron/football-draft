@@ -250,10 +250,20 @@ export function clearMatch(id) {
  *     the match went there), extraTime: boolean,
  *     shootout: null | { winner: 'user' | 'opponent', score: [for, against] | null (a level
  *               match with a winner and no shootout: abandoned) },
- *     players: [{ profileId, rating, goals, assists }] }   // that side's XI
+ *     players: [{ profileId, rating, goals, assists }],    // that side's XI
+ *     opponents: the same for the other side (the tournament's awards count them) }
  */
 export function runResultFor(result, side = 0) {
   if (!result) return null;
+  const lines = team =>
+    result.players
+      .filter(p => p.team === team)
+      .map(p => ({
+        profileId: p.profileId,
+        rating: p.rating,
+        goals: p.goals,
+        assists: p.assists,
+      }));
   const o = 1 - side,
     goalsFor = result.score[side],
     goalsAgainst = result.score[o];
@@ -274,13 +284,7 @@ export function runResultFor(result, side = 0) {
       : decided
         ? { winner: result.winner === side ? 'user' : 'opponent', score: null }
         : null,
-    players: result.players
-      .filter(p => p.team === side)
-      .map(p => ({
-        profileId: p.profileId,
-        rating: p.rating,
-        goals: p.goals,
-        assists: p.assists,
-      })),
+    players: lines(side),
+    opponents: lines(o),
   };
 }

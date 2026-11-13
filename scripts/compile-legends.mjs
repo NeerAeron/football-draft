@@ -1,6 +1,8 @@
-// Legends and Prime versions from 26 past titles: FIFA 15–23 (the legacy CSV) and FIFA 98–14
-// (data/legacy-titles.json), compiled through the same compiler as the current players
-// (compilePlayer: attribute mapping, tendencies, badges).
+// Legends, Prime versions and era pools from 29 past titles: FIFA 15–23 (the legacy CSV),
+// FIFA 98–14 (data/legacy-titles.json) and FC 24–26 (scripts/data/modern-titles.mjs), compiled
+// through the same compiler as the current players (compilePlayer: attribute mapping,
+// tendencies, badges). Era pools ("nation X in era Y", app/data/eras.v1.json): see the `eras`
+// section of compileLegends and the ERA_* rules.
 //   * A past version has an overall on EA's modern scale: the one EA printed (FIFA 09–23), or
 //     for the titles that printed none (FIFA 98–08) the one the chain of shared players gives
 //     it (scripts/legends-calibration.mjs). Its card has the skills of that year, moved
@@ -14,8 +16,9 @@
 //     latest title (the richer data).
 //   * Legend = a best version shown at LEGEND_MINIMUM or more, of
 //       – a player who is NOT in the current catalog, or
-//       – a catalog player whose card today shows less and whom EA rates lower today
-//         (`legendOf` = his catalog profileId).
+//       – a catalog player whose card today shows at least LEGEND_GAIN (2) less and whom EA
+//         rates lower today (`legendOf` = his catalog profileId).
+//     FC 24–26 are today's scale: as printed, never lifted.
 //     He has today's name of his nation and the positions of that title, and its club when
 //     that club is in the catalog (EA's team id), so he links with club mates; otherwise he
 //     has no club. A catalog player's legend carries his catalog name.
@@ -32,6 +35,7 @@ import { overallRating } from '../app/core/players/ratings.js';
 import { normalizeBadges } from '../app/core/players/badges.js';
 import { explicitEvidence } from '../app/core/players/catalog-derived.js';
 import { foldDiacritics } from '../app/core/util/text.js';
+import { ERAS, ERA_SQUAD } from '../app/core/players/eras.js';
 import { SKILL_FIELDS } from './data/legacy-titles.mjs';
 import {
   calibrateTitles,
@@ -42,6 +46,9 @@ import {
 } from './legends-calibration.mjs';
 
 export const LEGEND_MINIMUM = 85;
+// A catalog player's past version is a legend version only when it shows at least this much
+// more than his card today (a prime version: any gain).
+export const LEGEND_GAIN = 2;
 // The lift of a stingy title (see `lifts` below): measured on the title's LIFT_TOP best,
 // nothing under LIFT_FROM, in full from the level of those best.
 export const LIFT_TOP = 30;
@@ -57,6 +64,37 @@ export const TITLES = {
   upstream: "EA SPORTS FIFA 98–14, the games' own PC databases",
   license: 'No licence stated (community archive; player data © Electronic Arts)',
 };
+// Era pools (app/data/eras.v1.json): a World Cup squad per nation and cycle.
+export const ERA_KEEPERS = 3;
+export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nation has them
+// A nation can be spun in an era when its pool can field a team with a bench and a keeper.
+// (No goalkeeper needed: `keepers` tells the draft which pools have one.)
+export const ERA_SPIN = { players: 18, DEF: 5, MID: 5, ATT: 2 };
+export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
+export const ERA_MINIMUM = 20; // an era with fewer nations is not an era: the build fails
+const ERA_LINE = {
+  CB: 'DEF',
+  LB: 'DEF',
+  RB: 'DEF',
+  DM: 'MID',
+  CM: 'MID',
+  AM: 'MID',
+  LM: 'MID',
+  RM: 'MID',
+  LW: 'ATT',
+  RW: 'ATT',
+  ST: 'ATT',
+};
+/** The era rules in words, for the eras file's `selection` block. */
+export const ERA_SELECTION = {
+  pool: `A nation's best ${ERA_SQUAD} players of the era, each at his best version inside its years (highest overall; ties: the later year); ${ERA_KEEPERS} goalkeepers and at least ${ERA_LINES.DEF} defenders, ${ERA_LINES.MID} midfielders and ${ERA_LINES.ATT} forwards where the nation has them; no minimum rating`,
+  today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
+  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
+  best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
+  squad: ERA_SQUAD,
+  spin: ERA_SPIN,
+  maximumNations: ERA_NATIONS,
+};
 /** The rules in words, for the file's `selection` block. */
 export const SELECTION = {
   overall:
@@ -64,12 +102,13 @@ export const SELECTION = {
   lift: `A title whose ${LIFT_TOP} best are rated lower on average than FC 27's is lifted by the difference (never lowered): in full from the level of those best, fading to nothing at ${LIFT_FROM}; FIFA 98–08 carry the lift of FIFA 09, whose scale they are linked to`,
   card: 'The skills of that year, moved together until the game shows that overall',
   bestVersion: 'Highest overall; ties: the latest title',
-  legends: `Best versions shown ${LEGEND_MINIMUM}+: players who are not in the catalog, and catalog players whose card today shows less; of a catalog nation; the club of that title when it is in the catalog`,
+  legends: `Best versions shown ${LEGEND_MINIMUM}+: players who are not in the catalog, and catalog players whose card today shows at least ${LEGEND_GAIN} less; of a catalog nation; the club of that title when it is in the catalog`,
   primes: 'Catalog players whose best version shows more than their card today: any gain',
   year: 'The year of the ratings: the snapshot date (FIFA 15–23), the year before the title’s number (FIFA 98–14)',
   borrowed:
     'Composure (FIFA 11–16), foot and weak foot (early titles): the player’s nearest version that has one',
   legendMinimum: LEGEND_MINIMUM,
+  legendGain: LEGEND_GAIN,
 };
 
 const shown = p => overallRating(p, true, p.primaryPosition);
@@ -84,9 +123,18 @@ const words = text =>
 // An unlicensed stand-in ("No 9", "No. 11") is not a name.
 const PLACEHOLDER = /^no\.?\s*\d+$/i;
 
-/** The year of a legacy row's ratings snapshot; the build fails without one. */
+// The first title of the FC series: its files and the later ones are the "modern" sources.
+const FIRST_FC = 24;
+const titleName = edition => `${Number(edition) >= FIRST_FC ? 'FC' : 'FIFA'} ${edition}`;
+/**
+ * The year of a row's ratings snapshot; the build fails without one. EA's launch feed (FC 25)
+ * has no date: like every launch database, its ratings are those of the year before the
+ * title's number.
+ */
 function snapshotYear(row) {
   const m = /^(\d{4})-\d{2}-\d{2}/.exec(row.fifa_update_date || '');
+  if (!m && row.fifa_update_date === '' && Number(row.fifa_version) >= FIRST_FC)
+    return 1999 + Number(row.fifa_version);
   if (!m)
     throw Error(
       `${row.short_name} (FIFA ${row.fifa_version}): no snapshot date (fifa_update_date "${row.fifa_update_date}"), so the year of this version is unknown`,
@@ -121,12 +169,20 @@ function runtimePlayer(p, extra) {
  * @param catalog the compiled current catalog (compileLeagueCatalog output)
  * @param hash SHA-256 of the legacy CSV
  * @param older the decoded FIFA 98–14 titles ({ titles, sha256 }, scripts/data/legacy-titles.mjs)
- * @returns {{ legends, primes, stats, calibration, notes }} runtime players, each with
+ * @param modern FC 24–26: [{ edition, rows (scripts/data/modern-titles.mjs), source: { url,
+ *   license, sha256 } }], oldest first
+ * @returns {{ legends, primes, eras, stats, calibration, notes }} runtime players, each with
  *   `edition` and `year`; a catalog player's legend carries `legendOf`, a prime `primeOf` (the
  *   current player's profileId) and no name, club or nation (those are the current player's).
  *   `calibration` and `notes` (per card: where its numbers come from) are the provenance.
  */
-export function compileLegends(legacyRows, catalog, hash = null, older = { titles: [] }) {
+export function compileLegends(
+  legacyRows,
+  catalog,
+  hash = null,
+  older = { titles: [] },
+  modern = [],
+) {
   const calibration = calibrateTitles(older.titles),
     teams = new Map(catalog.teams.map(t => [String(t.id), t])),
     current = new Map(catalog.players.map(p => [String(p.sourcePlayerId), p])),
@@ -138,6 +194,14 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     return persons.get(key);
   };
   legacyRows.forEach((row, index) => person(row.player_id).legacy.push({ row, index }));
+  // FC 24–26 follow the legacy file: a person's `legacy` rows stay oldest first.
+  const sourceOf = new Map(); // row → { url, license, sha256 } of a modern file
+  for (const title of modern)
+    title.rows.forEach((row, index) => {
+      sourceOf.set(row, title.source);
+      person(row.player_id).legacy.push({ row, index });
+    });
+  const allRows = [...legacyRows, ...modern.flatMap(title => title.rows)];
   const stats = {
     pureLegends: 0,
     currentLegends: 0,
@@ -181,7 +245,8 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
   for (const one of persons.values()) {
     const now = current.get(one.key);
     if (!now || !one.legacy.length) continue;
-    const id = one.legacy.at(-1).row.nationality_id;
+    const id = one.legacy.findLast(({ row }) => row.nationality_id)?.row.nationality_id;
+    if (!id) continue;
     if (!nationVotes.has(id)) nationVotes.set(id, new Map());
     const votes = nationVotes.get(id);
     votes.set(now.source.nationality, (votes.get(now.source.nationality) || 0) + 1);
@@ -198,41 +263,48 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
       key = teamWords(name).join(' ');
     if (nation && key && !nationByName.has(key)) nationByName.set(key, nation);
   };
-  for (const row of legacyRows) spell(row.nationality_name, row.nationality_id);
-  for (const t of older.titles)
-    if (t.edition >= 5 && t.edition < 90)
-      for (const p of t.players) if (p.nationName) spell(p.nationName, p.nationCode);
+  for (const row of allRows)
+    if (row.nationality_id) spell(row.nationality_name, row.nationality_id);
   const teamNation = name => nationByName.get(teamWords(name).join(' ')) ?? null;
-  // A person's nation from his own rows: FIFA 15–23, else EA's nationality id (FIFA 2005–14),
-  // else the national team he is in.
+  // A person's nation from his own rows: FIFA 15–23, else EA's nationality id (FIFA 2005) or
+  // the nation's name (FIFA 06–14) where the catalog or FIFA 15–23 spell it that way, else
+  // the national team he is in.
   const ownNation = one => {
     if (one.legacy.length) {
       const row = one.legacy.at(-1).row;
-      return nationNames.get(row.nationality_id) ?? row.nationality_name;
+      return (
+        nationNames.get(row.nationality_id) ??
+        teamNation(row.nationality_name) ??
+        row.nationality_name
+      );
     }
-    for (const p of [...one.old].reverse())
-      if (p.edition >= 5 && p.edition < 90 && p.nationCode != null) {
-        const nation = nationNames.get(String(p.nationCode)) ?? teamNation(p.nationName ?? '');
-        if (nation) return nation;
-      }
+    for (const p of [...one.old].reverse()) {
+      const nation =
+        (p.edition === 5 ? nationNames.get(String(p.nationCode)) : null) ??
+        teamNation(p.nationName ?? '');
+      if (nation) return nation;
+    }
     for (const p of [...one.old].reverse())
       for (const team of p.clubs) if (teamNation(team)) return teamNation(team);
     return null;
   };
-  // The nationality codes of FIFA 98–2003 differ per title: a code is the nation most of its
-  // players with a known nation have (at least three, four in five agreeing).
+  // What a title calls a nationality — a code of its own (FIFA 98–2002), an adjective (FIFA
+  // 2003), a name spelled another way (FIFA 06–14: "Holland", "Korea Republic") — is the
+  // nation most of its players with a known nation have (at least three, four in five
+  // agreeing).
   const byOldRow = new Map();
   for (const one of persons.values()) for (const p of one.old) byOldRow.set(p, one);
+  const nationKey = p => p.nationCode ?? p.nationName;
   const codeNation = new Map(); // title → Map(code → nation)
   for (const t of older.titles) {
-    if (!(t.edition <= 3 || t.edition >= 90)) continue;
     const votes = new Map();
     for (const p of t.players) {
       const one = byOldRow.get(p),
-        nation = one && ownNation(one);
-      if (!nation || p.nationCode == null) continue;
-      if (!votes.has(p.nationCode)) votes.set(p.nationCode, new Map());
-      votes.get(p.nationCode).set(nation, (votes.get(p.nationCode).get(nation) || 0) + 1);
+        nation = one && ownNation(one),
+        key = nationKey(p);
+      if (!nation || key == null) continue;
+      if (!votes.has(key)) votes.set(key, new Map());
+      votes.get(key).set(nation, (votes.get(key).get(nation) || 0) + 1);
     }
     const codes = new Map();
     for (const [code, list] of votes) {
@@ -242,14 +314,17 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     }
     codeNation.set(t.edition, codes);
   }
+  const nationCache = new Map();
   const nationOf = one => {
-    const own = ownNation(one);
-    if (own) return own;
-    for (const p of [...one.old].reverse()) {
-      const nation = codeNation.get(p.edition)?.get(p.nationCode);
-      if (nation) return nation;
-    }
-    return null;
+    if (nationCache.has(one)) return nationCache.get(one);
+    let found = ownNation(one);
+    if (!found)
+      for (const p of [...one.old].reverse()) {
+        found = codeNation.get(p.edition)?.get(nationKey(p)) ?? null;
+        if (found) break;
+      }
+    nationCache.set(one, found);
+    return found;
   };
   // ---- clubs of the early titles (names only): the EA team id a later title gives that name
   const teamIds = new Map();
@@ -284,7 +359,7 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
   };
   const baseline = topMean(catalog.players.map(p => p.sourceOverall)),
     printed = new Map(); // edition → the printed overalls of the title
-  for (const row of legacyRows) {
+  for (const row of allRows) {
     const edition = Number(row.fifa_version);
     if (!printed.has(edition)) printed.set(edition, []);
     printed.get(edition).push(Number(row.overall));
@@ -298,7 +373,9 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
   const lifts = new Map();
   for (const [edition, list] of printed) {
     const top = topMean(list);
-    lifts.set(edition, { lift: Math.max(0, Math.round((baseline - top) * 100) / 100), full: top });
+    // FC 24–26 are today's scale: as printed.
+    const lift = edition >= FIRST_FC && edition < 90 ? 0 : Math.max(0, baseline - top);
+    lifts.set(edition, { lift: Math.round(lift * 100) / 100, full: top });
   }
   // The chain titles are on the scale of the first official title: its lift, not a second one.
   for (const t of older.titles)
@@ -388,8 +465,11 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     groups.sort((a, b) => b.rows.length - a.rows.length); // a tie: the earlier name
     return [...(groups[0]?.rows ?? [])].reverse();
   };
+  // A whole name in one string ("David Seaman") is shown as today's cards show one: "D. Seaman".
+  const abbreviated = q =>
+    q.named === 'whole' ? `${q.name[0]}. ${q.name.slice(q.name.indexOf(' ') + 1)}` : q.name;
   const nameSource = one =>
-    ['parts', 'short', 'whole'].map(kind => real(one).find(q => q.named === kind)).find(Boolean);
+    ['parts', 'whole', 'short'].map(kind => real(one).find(q => q.named === kind)).find(Boolean);
   const fullNameSource = one => real(one).find(q => /\s/.test(q.fullName));
   const notes = {};
   // The compiled card of a version: its skills moved to show its overall.
@@ -412,11 +492,17 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
         row.player_positions = [...roles, ...list.slice(1)].join(', ');
         note.position = `CF → ${roles[0]}`;
       }
+      // EA's feed (FC 25) has the full name only: the name of his nearest sofifa-style row.
+      if (row.fifa_version === '25') {
+        const styled = one.legacy.findLast(e => e.row.fifa_version !== '25')?.row;
+        if (styled)
+          Object.assign(row, { short_name: styled.short_name, long_name: styled.long_name });
+      }
       position = rowPositions(row)[0];
-      note.title = `FIFA ${row.fifa_version}`;
+      note.title = titleName(row.fifa_version);
     } else {
       const p = v.old,
-        legacy = one.legacy.at(-1)?.row,
+        legacy = (one.legacy.findLast(e => e.row.fifa_version !== '25') ?? one.legacy.at(-1))?.row,
         named = nameSource(one) ?? p,
         club = clubOf(p),
         foot = p.foot ? null : nearest(one, v.year, footOf),
@@ -434,7 +520,7 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
         fifa_version: String(p.edition),
         fifa_update: '1',
         fifa_update_date: '',
-        short_name: legacy?.short_name ?? named.name,
+        short_name: legacy?.short_name ?? abbreviated(named),
         long_name: legacy?.long_name ?? fullNameSource(one)?.fullName ?? named.fullName,
         player_positions: p.positions.join(', '),
         preferred_foot: p.foot ?? foot?.found ?? 'right',
@@ -465,10 +551,12 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
     note.shift = moved.shift;
     const p = compilePlayer(row, index, {
       suffix,
-      source: v.entry ? LEGACY : { url: older.source?.archive, license: TITLES.license },
+      source: v.entry
+        ? (sourceOf.get(v.entry.row) ?? LEGACY)
+        : { url: older.source?.archive, license: TITLES.license },
       inference,
     });
-    p.source.sha256 = v.entry ? hash : older.sha256;
+    p.source.sha256 = v.entry ? (sourceOf.get(v.entry.row)?.sha256 ?? hash) : older.sha256;
     if (v.old) p.source.edition = note.title;
     if (Object.keys(inference).length) note.borrowed = inference;
     notes[p.profileId] = note;
@@ -519,7 +607,7 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
       primeOf: now.profileId,
     });
     primes.push(rest);
-    if (shown(prime) >= LEGEND_MINIMUM) {
+    if (shown(prime) >= LEGEND_MINIMUM && shown(prime) >= today + LEGEND_GAIN) {
       // His best version is a Legend-spin option: the same player, so the same name and nation.
       legend(
         one,
@@ -552,10 +640,248 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
   }
   const order = new Map(catalog.players.map((p, i) => [p.profileId, i]));
   primes.sort((a, b) => order.get(a.primeOf) - order.get(b.primeOf));
+  // ---- eras ------------------------------------------------------------------------------
+  // "Nation X in era Y": the nation's best ERA_SQUAD players of a World Cup cycle, each at his
+  // best version inside the era's years (the overall decides; ties: the later year). The 2026
+  // era also has today's card of everyone in the catalog: a catalog player is in it as he is
+  // unless one of his FC 24–26 versions shows more. Three keepers and ERA_LINES of each line
+  // where the nation has them, the rest by rating; no minimum rating. A nation can be spun in
+  // an era when its pool can field a team (ERA_SPIN), at most ERA_NATIONS per era.
+  const eraOfYear = year => ERAS.find(e => year >= e.from && year <= e.to) ?? null,
+    lineOf = position => (position === 'GK' ? 'GK' : ERA_LINE[position]),
+    positionOf = v =>
+      v.now ? v.now.primaryPosition : v.entry ? rowPositions(v.entry.row)[0] : v.old.positions[0],
+    better = (a, b) => !b || a.overall > b.overall || (a.overall === b.overall && a.year > b.year);
+  // The name a person's cards carry (as `card` gives it), to tell two ids of one man.
+  const fullNameOf = (one, now) =>
+    now?.fullName ??
+    one.legacy.at(-1)?.row.long_name ??
+    fullNameSource(one)?.fullName ??
+    nameSource(one)?.fullName ??
+    null;
+  const candidates = new Map(), // `${era}|${nation}` → [{ one, now, v, rating, line }]
+    eraStats = { noNation: 0, noName: 0, otherNations: new Map(), sameName: [] };
+  const candidate = (era, nationality, entry) => {
+    const key = `${era}|${nationality}`;
+    if (!candidates.has(key)) candidates.set(key, []);
+    candidates.get(key).push(entry);
+  };
+  const versionsOf = new Map(); // person → Map(era id → best version in it)
+  for (const one of persons.values()) {
+    const now = current.get(one.key) ?? null,
+      nationality = now ? now.source.nationality : nationOf(one);
+    const inEra = new Map();
+    for (const v of versions(one)) {
+      const era = eraOfYear(v.year);
+      if (era && better(v, inEra.get(era.id))) inEra.set(era.id, v);
+    }
+    if (now) {
+      const today = { now, overall: shown(now), year: ERAS.at(-1).to },
+        past = inEra.get(ERAS.at(-1).id);
+      if (!past || past.overall <= today.overall) inEra.set(ERAS.at(-1).id, today);
+    }
+    if (!inEra.size) continue;
+    if (!nationality) {
+      eraStats.noNation++;
+      continue;
+    }
+    if (!nations.has(nationality)) {
+      eraStats.otherNations.set(nationality, (eraStats.otherNations.get(nationality) || 0) + 1);
+      continue;
+    }
+    const fullName = fullNameOf(one, now);
+    if (!fullName || PLACEHOLDER.test(fullName)) {
+      eraStats.noName++;
+      continue;
+    }
+    versionsOf.set(one, inEra);
+    for (const [era, v] of inEra)
+      candidate(era, nationality, {
+        one,
+        now,
+        v,
+        rating: v.overall,
+        line: lineOf(positionOf(v)),
+        name: words(fullName),
+      });
+  }
+  // Catalog players the past sources do not know (new in FC 27): today's card only.
+  for (const now of catalog.players)
+    if (!persons.has(String(now.sourcePlayerId)))
+      candidate(ERAS.at(-1).id, now.source.nationality, {
+        one: null,
+        now,
+        v: { now, overall: shown(now), year: ERAS.at(-1).to },
+        rating: shown(now),
+        line: lineOf(now.primaryPosition),
+        name: words(now.fullName),
+      });
+  const idOf = c => Number(c.now ? c.now.sourcePlayerId : c.one.key),
+    byRating = (a, b) => b.rating - a.rating || b.v.year - a.v.year || idOf(a) - idOf(b);
+  const squads = []; // { era, nation, members, strength }
+  for (const [key, list] of candidates) {
+    const [era, nation] = [Number(key.slice(0, 4)), key.slice(5)];
+    list.sort(byRating);
+    // One man once: of two candidates of one name the lower-rated goes (two EA ids of a man).
+    const names = new Map(),
+      unique = [];
+    for (const c of list) {
+      // (A surname alone, as the early titles have it, is not one man's name.)
+      const first = c.name.includes(' ') ? names.get(c.name) : null;
+      if (first)
+        eraStats.sameName.push(`${era} ${nation}: ${c.name} (ids ${idOf(first)}, ${idOf(c)})`);
+      else {
+        names.set(c.name, c);
+        unique.push(c);
+      }
+    }
+    const chosen = new Set(),
+      take = (line, count) => {
+        for (const c of unique) {
+          if (count <= 0) break;
+          if (c.line === line && !chosen.has(c)) {
+            chosen.add(c);
+            count--;
+          }
+        }
+      };
+    take('GK', ERA_KEEPERS);
+    for (const [line, count] of Object.entries(ERA_LINES)) take(line, count);
+    for (const c of unique) {
+      if (chosen.size >= ERA_SQUAD) break;
+      if (c.line !== 'GK') chosen.add(c);
+    }
+    const members = [...chosen].sort(byRating),
+      count = line => members.filter(c => c.line === line).length,
+      keeper = members.find(c => c.line === 'GK'),
+      outfield = members.filter(c => c.line !== 'GK').slice(0, 10);
+    // A goalkeeper is not required: the draft's own guards see to it that one can be drafted.
+    if (
+      members.length < ERA_SPIN.players ||
+      count('DEF') < ERA_SPIN.DEF ||
+      count('MID') < ERA_SPIN.MID ||
+      count('ATT') < ERA_SPIN.ATT
+    )
+      continue;
+    squads.push({ era, nation, members, keeper, outfield });
+  }
+  // Strength = the mean overall of the pool's best XI: its best keeper and ten best
+  // outfielders. A pool without a keeper is rated with the weakest first-choice keeper any
+  // qualifying nation of that era has (`keeperLevel`): the least a drafted keeper would be.
+  const keeperLevels = new Map();
+  for (const era of ERAS) {
+    const firsts = squads.filter(sq => sq.era === era.id && sq.keeper).map(sq => sq.keeper.rating);
+    if (!firsts.length) throw Error(`${era.label}: no pool has a goalkeeper`);
+    keeperLevels.set(era.id, Math.min(...firsts));
+  }
+  for (const sq of squads) {
+    const sum =
+      (sq.keeper ? sq.keeper.rating : keeperLevels.get(sq.era)) +
+      sq.outfield.reduce((total, c) => total + c.rating, 0);
+    sq.strength = Math.round((sum / (sq.outfield.length + 1)) * 10) / 10;
+  }
+  const eraCards = new Map(), // profileId → runtime card
+    cardOf = new Map(); // candidate version → profileId (a card's, or the catalog player's)
+  const eraCard = (one, v, now, nationality) => {
+    if (v.now) return v.now.profileId;
+    if (cardOf.has(v)) return cardOf.get(v);
+    const p = card(one, v, 'era', false),
+      team = v.entry ? teams.get(String(v.entry.row.club_team_id)) : clubOf(v.old),
+      player = runtimePlayer(p, {
+        ...(now ? { name: now.name, fullName: now.fullName, eraOf: now.profileId } : {}),
+        year: v.year,
+        source: { clubId: team ? team.id : null, nationality },
+      });
+    eraCards.set(player.profileId, player);
+    cardOf.set(v, player.profileId);
+    return player.profileId;
+  };
+  const eraPools = [],
+    eraSummary = [];
+  for (const era of ERAS) {
+    const all = squads
+        .filter(sq => sq.era === era.id)
+        .sort((a, b) => b.strength - a.strength || (a.nation < b.nation ? -1 : 1)),
+      spun = all.slice(0, ERA_NATIONS);
+    if (spun.length < ERA_MINIMUM)
+      throw Error(
+        `${era.label}: only ${spun.length} nations can field a pool (${ERA_MINIMUM} needed)`,
+      );
+    for (const sq of spun)
+      eraPools.push({
+        era: era.id,
+        nation: sq.nation,
+        strength: sq.strength,
+        members: sq.members.map(c => eraCard(c.one, c.v, c.now, sq.nation)),
+        people: sq.members,
+      });
+    eraSummary.push({
+      era: era.id,
+      label: era.label,
+      nations: spun.length,
+      withoutKeeper: spun.filter(sq => !sq.keeper).map(sq => sq.nation),
+      keeperLevel: keeperLevels.get(era.id),
+      qualified: all.length,
+      left: all.slice(ERA_NATIONS).map(sq => sq.nation),
+    });
+  }
+  // The Prime: everyone in a pool has his best version of all titles in the file, also when
+  // it is in no pool (his nation cannot be spun in that era, or he is not among its 26 then).
+  let bestOnly = 0;
+  for (const pool of eraPools)
+    for (const c of pool.people) {
+      if (!c.one) continue;
+      let best = null;
+      for (const v of versionsOf.get(c.one).values()) if (better(v, best)) best = v;
+      if (best.now || cardOf.has(best) || best.overall <= c.rating) continue;
+      eraCard(c.one, best, c.now, pool.nation);
+      bestOnly++;
+    }
+  const sourceId = p => Number(p.profileId.split(':')[1]),
+    eraOrder = new Map(ERAS.map((e, i) => [e.id, i])),
+    cardList = [...eraCards.values()].sort(
+      (a, b) =>
+        eraOrder.get(eraOfYear(a.year).id) - eraOrder.get(eraOfYear(b.year).id) ||
+        (a.source.nationality < b.source.nationality
+          ? -1
+          : a.source.nationality > b.source.nationality
+            ? 1
+            : 0) ||
+        shown(b) - shown(a) ||
+        sourceId(a) - sourceId(b) ||
+        a.edition - b.edition,
+    );
+  const eras = {
+    eras: ERAS.map(({ id: eraId, label, short, from, to }) => ({
+      id: eraId,
+      label,
+      short,
+      from,
+      to,
+      keeperLevel: keeperLevels.get(eraId),
+    })),
+    cards: cardList,
+    pools: eraPools.map(({ era, nation, strength, members }) => ({
+      era,
+      nation,
+      strength,
+      members,
+    })),
+    summary: eraSummary,
+    stats: {
+      cards: cardList.length,
+      bestOnly,
+      noNation: eraStats.noNation,
+      noName: eraStats.noName,
+      otherNations: Object.fromEntries([...eraStats.otherNations].sort()),
+      sameName: eraStats.sameName,
+    },
+  };
   const { yardstick, links, pool } = calibration;
   return {
     legends,
     primes,
+    eras,
     stats,
     calibration: {
       yardstick,
@@ -568,7 +894,7 @@ export function compileLegends(legacyRows, catalog, hash = null, older = { title
         from: LIFT_FROM,
         titles: Object.fromEntries(
           [...lifts].map(([edition, l]) => [
-            edition >= 90 ? `FIFA ${edition}` : `FIFA ${String(edition).padStart(2, '0')}`,
+            edition >= 90 ? `FIFA ${edition}` : titleName(String(edition).padStart(2, '0')),
             l.lift,
           ]),
         ),

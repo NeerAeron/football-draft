@@ -1,16 +1,17 @@
 // npm run data:fetch — download the pinned source CSVs into data/raw/ and verify their
-// SHA-256: the FC 27 ratings file (current players) and the FIFA 15–23 legacy file (Legends, Prime
-// versions). No-op for a file whose valid copy is already there.
+// SHA-256: the FC 27 ratings file (current players), the FIFA 15–23 legacy file and the FC 24,
+// FC 25 and FC 26 files (era pools, Legends, Prime versions). No-op for a file whose valid copy is already there.
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { PATHS, SOURCE, LEGACY_SOURCE } from './paths.mjs';
+import { PATHS, SOURCE, LEGACY_SOURCE, MODERN_SOURCES } from './paths.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const FILES = [
   { source: SOURCE, path: PATHS.csv },
   { source: LEGACY_SOURCE, path: PATHS.legacyCsv },
+  ...MODERN_SOURCES.map(source => ({ source, path: PATHS.modernCsv(source.edition) })),
 ];
 
 export async function verifySource(path = PATHS.csv, source = SOURCE) {

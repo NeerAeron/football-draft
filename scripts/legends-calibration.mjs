@@ -18,8 +18,10 @@
 //    years is rated by what all the data generations within three years say about the player
 //    — each weighed by its trust, a fully described title nearly in full — together with the
 //    title's average, so thin evidence stays near the average. A player whom only one coarse
-//    generation knows gets no card: nothing tells him from an invented name. Keepers get a
-//    card only from titles with at least three keeper skills (FIFA 2005 on).
+//    generation knows gets no card: nothing tells him from an invented name. Keepers are
+//    linked and pooled the same way with a trust of their own (FIFA 2000–04 have two keeper
+//    skills, FIFA 98/99 none: three other skills stand in); a coarse keeper scale says no more
+//    than the best the next title gives the keepers they share.
 // 4. A card has the skills of its year, all moved by the same number of points until the
 //    game's rating model shows the version's overall (`cardFields`): the model is fitted on FC
 //    data and reads older skill sets a few points off what EA printed.
@@ -160,7 +162,24 @@ const nameKeys = p => {
 const shareTeam = (p, q) =>
   p.clubIds.some((id, i) => id != null && q.clubIds.includes(id)) ||
   p.clubs.some(a => q.clubs.some(b => sameTeam(teamWords(a), teamWords(b))));
+// The year a row says its player was born: his date of birth (FIFA 2004 on), else from his
+// age — FIFA 2002 counts it in 2000, FIFA 2003 in 2003 (measured on the players both share
+// with FIFA 2004) — or null. Two rows more than a year apart there are two men, whatever their
+// names: EA reused ids.
+const AGE_YEAR = { 2: 2000, 3: 2003 };
+const birthYear = p =>
+  p.born
+    ? Number(p.born.slice(0, 4))
+    : Number.isFinite(p.age) && p.age > 0 && AGE_YEAR[p.edition]
+      ? AGE_YEAR[p.edition] - p.age
+      : null;
+const agesClash = (p, q) => {
+  const a = birthYear(p),
+    b = birthYear(q);
+  return a != null && b != null && Math.abs(a - b) > 1;
+};
 const sameMan = (p, q) => {
+  if (agesClash(p, q)) return false;
   if (p.standIn !== q.standIn) return p.standIn ? standsFor(p, q) : standsFor(q, p);
   if (p.born && q.born && p.born === q.born) return true;
   const a = nameWords(p);
@@ -194,7 +213,7 @@ export function linkPersons(titles) {
   for (const t of titles)
     for (const p of t.players) {
       p.person = null;
-      if (p.representativeOnly) continue;
+      if (p.representativeOnly || p.otherMan) continue;
       const map = byId[era(t)];
       if (!map.has(p.id)) map.set(p.id, []);
       map.get(p.id).push(p);
@@ -260,6 +279,7 @@ export function linkPersons(titles) {
             b.rows.some(q => Math.abs(p.year - q.year) <= 2 && together(p, q)),
           );
         if (!apart || !near || (dated && !born(a, b))) continue;
+        if (a.rows.some(p => b.rows.some(q => agesClash(p, q)))) continue;
         const [keep, gone] = a.rows.at(-1).year >= b.rows.at(-1).year ? [a, b] : [b, a];
         keep.rows = [...keep.rows, ...gone.rows].sort((p, q) => p.year - q.year);
         for (const p of keep.rows) p.person = keep;
@@ -280,17 +300,26 @@ export function linkPersons(titles) {
   const locals = [];
   for (const [id, rows] of byId.local)
     for (const part of groups(rows)) {
+      // A namesake is a candidate when he shares a club with the FIFA 98/99 player, or a
+      // national team and the part of the pitch he plays in (the names are surnames: a Brazil
+      // striker "Lucio" is not the centre-back Lúcio). Of several, the one with the club.
       const candidates = new Set(),
+        clubMates = new Set(),
         named = new Set();
       for (const p of part)
         for (const k of nameKeys(p))
           for (const q of byName.get(k) || []) {
             named.add(q);
-            if (q.rows.some(r => r.edition <= 3 && shareNation(p, r))) candidates.add(q);
+            const early = q.rows.filter(r => r.edition <= 3);
+            if (early.some(r => shareClub(p, r))) {
+              clubMates.add(q);
+              candidates.add(q);
+            } else if (early.some(r => shareNation(p, r) && zone(r) === zone(p))) candidates.add(q);
           }
-      const local = { id: part[0].edition * LOCAL_ID + id, rows: part, named: named.size };
-      if (candidates.size === 1) {
-        const [q] = candidates;
+      const local = { id: part[0].edition * LOCAL_ID + id, rows: part, named: named.size },
+        chosen = candidates.size > 1 && clubMates.size === 1 ? clubMates : candidates;
+      if (chosen.size === 1) {
+        const [q] = chosen;
         if (!claims.has(q)) claims.set(q, []);
         claims.get(q).push(local);
       } else locals.push(local);
@@ -312,6 +341,9 @@ export function linkPersons(titles) {
   }
   return { persons, dropped, merged };
 }
+// Keeper, defender or further up: as much of a position as two titles five years apart agree on.
+const zone = p =>
+  p.positions[0] === 'GK' ? 'GK' : ['CB', 'LB', 'RB'].includes(p.positions[0]) ? 'DEF' : 'UP';
 // A team in common, clubs or national teams (the early titles list both).
 function shareNation(p, q) {
   const a = p.teams.map(teamWords),
@@ -526,6 +558,10 @@ export function calibrateLink(title, next, yardstick, read) {
         slope: (sd(y) * yardstick[kind].spread) / sd(x),
         at: avg(x),
         to: avg(y) - yardstick[kind].drift,
+        // A coarse keeper scale (two skills of eight levels, or none at all) has the best and
+        // the merely good on its top level: it says no more than the best the next title gives
+        // the keepers they share.
+        top: coarse && kind === 'keepers' ? Math.max(...y) : Infinity,
       };
     link[name] = {
       shared: pairs.length,
@@ -544,14 +580,15 @@ export function calibrateLink(title, next, yardstick, read) {
     const pairs = outfield.filter(([p]) => groupOf(p.positions[0]) === g);
     lines[g] = pairs.length >= MIN_SHARED ? fit(pairs, 'outfield', g) : lines.outfield;
   }
-  // Keepers: only a title with enough keeper skills, and enough keepers in common.
-  if (title.keeperRated && keepers.length >= MIN_SHARED)
-    lines.GK = fit(keepers, 'keepers', 'keepers');
+  // Keepers: their own line, when the two titles have enough keepers in common. (FIFA 98/99
+  // have no keeper skills: reaction, agility and awareness stand in, and the pooling below
+  // weighs them by what they turn out to be worth.)
+  if (keepers.length >= MIN_SHARED) lines.GK = fit(keepers, 'keepers', 'keepers');
   else link.keepers = { shared: keepers.length, skills: title.keeper.length, cards: false };
   for (const p of players) {
     const line = lines[groupOf(p.positions[0])];
     if (!line) continue;
-    p.scale = line.to + line.slope * (p.reading - line.at);
+    p.scale = Math.min(line.top, line.to + line.slope * (p.reading - line.at));
     if (!coarse) p.given = p.scale;
   }
   return link;
@@ -563,9 +600,13 @@ export function calibrateLink(title, next, yardstick, read) {
  * yardstick, squared, is the product of the two sides' reliabilities — both coarse at
  * FIFA 99→2000 and 2001→2002, one coarse at 2003→2004. One number for all three.
  */
-export function coarseTrust(links, yardstick) {
+export function coarseTrust(links, yardstick, kind = 'outfield') {
   const share = from =>
-    (links.find(l => l.title === from).outfield.correlation / yardstick.outfield.correlation) ** 2;
+    Math.min(
+      1,
+      ((links.find(l => l.title === from)[kind].correlation ?? 0) / yardstick[kind].correlation) **
+        2,
+    );
   return round(
     avg([Math.sqrt(share('FIFA 99')), Math.sqrt(share('FIFA 2001')), share('FIFA 2003')]),
   );
@@ -577,46 +618,52 @@ export function coarseTrust(links, yardstick) {
  * is trusted `trust`, any other FULL_TRUST) and of the title's average. A row that no other
  * generation backs stays without (`given` null). Returns the counts.
  */
-export function poolCoarse(titles, trust) {
-  const stats = { trust, cards: 0, unbacked: 0 };
+export function poolCoarse(titles, trust, keeperTrust = 0) {
+  const stats = { trust, keeperTrust, cards: 0, keepers: 0, unbacked: 0 };
   for (const title of titles) {
     if (!COARSE(title.edition)) continue;
-    const rows = title.players.filter(p => p.person && p.scale != null && !isKeeper(p)),
-      mean = avg(rows.map(p => p.scale)),
-      own = generation(title.edition);
-    for (const p of rows) {
-      const nearest = new Map([[own, p]]);
-      for (const q of p.person.rows) {
-        const g = generation(q.edition),
-          gap = Math.abs(q.year - p.year);
-        if (g === own || q.scale == null || isKeeper(q) || gap > POOL_YEARS) continue;
-        const best = nearest.get(g);
-        if (
-          !best ||
-          gap < Math.abs(best.year - p.year) ||
-          (gap === Math.abs(best.year - p.year) && q.year > best.year)
-        )
-          nearest.set(g, q);
+    const own = generation(title.edition);
+    for (const keepers of [false, true]) {
+      const rows = title.players.filter(
+          p => p.person && p.scale != null && isKeeper(p) === keepers,
+        ),
+        coarse = keepers ? keeperTrust : trust;
+      if (!rows.length || !(coarse > 0)) continue;
+      const mean = avg(rows.map(p => p.scale));
+      for (const p of rows) {
+        const nearest = new Map([[own, p]]);
+        for (const q of p.person.rows) {
+          const g = generation(q.edition),
+            gap = Math.abs(q.year - p.year);
+          if (g === own || q.scale == null || isKeeper(q) !== keepers || gap > POOL_YEARS) continue;
+          const best = nearest.get(g);
+          if (
+            !best ||
+            gap < Math.abs(best.year - p.year) ||
+            (gap === Math.abs(best.year - p.year) && q.year > best.year)
+          )
+            nearest.set(g, q);
+        }
+        if (nearest.size < 2) {
+          stats.unbacked++;
+          continue;
+        }
+        // A witness of reliability r weighs r / (1 − r) against the one part of "an average
+        // player of this title": three coarse witnesses of 0.3 together are trusted 0.56.
+        let weight = 1,
+          sum = mean;
+        for (const [g, q] of nearest) {
+          const r = typeof g === 'string' ? coarse : FULL_TRUST,
+            w = r / (1 - r);
+          weight += w;
+          sum += w * q.scale;
+        }
+        p.given = sum / weight;
+        p.backing = [...nearest.keys()]
+          .filter(g => g !== own)
+          .map(g => (typeof g === 'string' ? g : `FIFA ${String(g).padStart(2, '0')}`));
+        stats[keepers ? 'keepers' : 'cards']++;
       }
-      if (nearest.size < 2) {
-        stats.unbacked++;
-        continue;
-      }
-      // A witness of reliability r weighs r / (1 − r) against the one part of "an average
-      // player of this title": three coarse witnesses of 0.3 together are trusted 0.56.
-      let weight = 1,
-        sum = mean;
-      for (const [g, q] of nearest) {
-        const r = typeof g === 'string' ? trust : FULL_TRUST,
-          w = r / (1 - r);
-        weight += w;
-        sum += w * q.scale;
-      }
-      p.given = sum / weight;
-      p.backing = [...nearest.keys()]
-        .filter(g => g !== own)
-        .map(g => (typeof g === 'string' ? g : `FIFA ${String(g).padStart(2, '0')}`));
-      stats.cards++;
     }
   }
   return stats;
@@ -641,6 +688,11 @@ export function calibrateTitles(titles) {
     links = [];
   for (let i = first - 1; i >= 0; i--)
     links.push(calibrateLink(titles[i], titles[i + 1], yardstick, read));
-  const pool = poolCoarse(titles, coarseTrust(links, yardstick));
+  const keepersLinked = links.every(l => l.keepers.correlation != null),
+    pool = poolCoarse(
+      titles,
+      coarseTrust(links, yardstick),
+      keepersLinked ? coarseTrust(links, yardstick, 'keepers') : 0,
+    );
   return { persons, dropped, merged, yardstick, links, pool };
 }

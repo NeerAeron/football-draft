@@ -17,18 +17,21 @@ import {
   FULL_TRUST,
   POOL_YEARS,
 } from '../scripts/legends-calibration.mjs';
-import { PATHS, LEGACY_TITLES } from '../scripts/data/paths.mjs';
+import { PATHS, LEGACY_TITLES, LEGACY_NAMES } from '../scripts/data/paths.mjs';
 
-const older = await loadLegacyTitles(PATHS.legacyTitles, LEGACY_TITLES.sha256),
+const nameFile = { path: PATHS.legacyNames, sha256: LEGACY_NAMES.sha256 },
+  older = await loadLegacyTitles(PATHS.legacyTitles, LEGACY_TITLES.sha256, nameFile),
   title = edition => older.titles.find(t => t.edition === edition),
   named = (edition, name) =>
     title(edition).players.find(p => p.name === name || p.fullName === name);
 const calibration = calibrateTitles(older.titles);
 
-test('data/legacy-titles.json is the pinned copy of the workbook: 17 titles of 1,000 players', () => {
+test('data/legacy-titles.json is the pinned copy of the workbook: 17 titles of squad players — FIFA 98–2003 whole, then 36 + 4 keepers per nationality', () => {
   assert.equal(older.sha256, LEGACY_TITLES.sha256);
   assert.equal(older.source.sha256, LEGACY_TITLES.workbookSha256);
   assert.equal(older.source.archive, LEGACY_TITLES.archive);
+  assert.equal(older.names.sha256, LEGACY_NAMES.sha256);
+  assert.equal(older.names.source.sha256, LEGACY_NAMES.workbookSha256); // the first workbook
   assert.ok(older.source.references.length >= 10); // the ReadMe's source links
   assert.deepEqual(
     older.titles.map(t => [t.title, t.edition, t.year]),
@@ -53,7 +56,10 @@ test('data/legacy-titles.json is the pinned copy of the workbook: 17 titles of 1
     ],
   );
   for (const t of older.titles) {
-    assert.equal(t.players.length, 1000, t.title);
+    assert.ok(t.players.length >= 1900 && t.players.length <= 8600, t.title);
+    // The coarse titles are whole; the others are cut per nationality.
+    assert.equal(t.players.length === t.pool, t.edition <= 3 || t.edition >= 90, t.title);
+    assert.ok(t.players.filter(p => p.positions[0] === 'GK').length >= 150, t.title);
     assert.ok(t.sourceFile && t.scale && t.pool >= 5000, t.title);
     // Only FIFA 09–14 print an overall.
     assert.equal(t.players[0].overall != null, t.edition >= 9 && t.edition <= 14, t.title);
@@ -69,12 +75,27 @@ test('data/legacy-titles.json is the pinned copy of the workbook: 17 titles of 1
       assert.ok(p.foot === null || p.foot === 'left' || p.foot === 'right');
       assert.ok(p.weakFoot === null || (p.weakFoot >= 1 && p.weakFoot <= 5));
     }
-    // Keepers are rated from FIFA 2005 on: at least three keeper skills.
+    // Keeper skills: three or more from FIFA 2005 on, two in FIFA 2000–04, none in FIFA 98/99.
     assert.equal(t.keeperRated, t.edition >= 5 && t.edition < 90, t.title);
+    assert.equal(t.keeper.length === 2, t.edition <= 4, t.title);
+    // Team ids come with the shirt numbers from FIFA 2003 on.
+    assert.equal(
+      t.players.some(p => p.clubIds.some(id => id != null)),
+      t.edition >= 3 && t.edition < 90,
+      t.title,
+    );
   }
+  assert.equal(
+    older.titles.reduce((n, t) => n + t.players.length, 0),
+    70609,
+  );
   // A re-read of the raw JSON decodes to the same thing (no hidden state).
   const again = decodeLegacyTitles(JSON.parse(readFileSync(PATHS.legacyTitles, 'utf8')));
   assert.deepEqual(again.titles[16].players[0].native, title(14).players[0].native);
+  // Without the name parts a name is the workbook's one column; with them, today's style.
+  assert.equal(again.titles[8].players.find(p => p.id === 1397).name, 'Zinedine Zidane');
+  assert.equal(title(6).players.find(p => p.id === 1397).name, 'Z. Zidane');
+  assert.deepEqual(title(6).players.find(p => p.id === 1397).clubIds, ['243', '1335']);
 });
 
 test('the titles are decoded as they are: positions, feet, what stands for a missing skill', () => {
@@ -109,13 +130,19 @@ test('the titles are decoded as they are: positions, feet, what stands for a mis
   assert.deepEqual(zidane.clubs, ['Real Madrid C.F.', 'France']); // without the World XI
   // An unlicensed stand-in name, and an invented one under an id of its own (Adrian Mutu).
   assert.equal(named(2, 'No 9').standIn, true);
+  // FIFA 2003 names a nationality by its adjective: a code, not a nation's name.
+  assert.deepEqual(
+    [named(3, 'R. Keane').nationCode, named(3, 'R. Keane').nationName],
+    ['Irish', null],
+  );
+  assert.equal(named(8, 'Kaká').nationName, 'Brazil');
   const murgu = title(9).players.find(p => p.fullName === 'Andrei Murgu');
   assert.deepEqual([murgu.id, murgu.standIn], [21195, true]);
 });
 
 test('one person across the titles: EA ids, two ids of one man, stand-ins, FIFA 98/99 by name', () => {
   const { persons, dropped, merged } = calibration;
-  assert.ok(persons.size > 6000 && persons.size < 6400, 'persons: ' + persons.size);
+  assert.ok(persons.size > 29000 && persons.size < 33000, 'persons: ' + persons.size);
   // Zidane is one person from FIFA 98 (its own id space) to FIFA 06.
   const zidane = named(6, 'Z. Zidane').person;
   assert.equal(zidane.id, 1397);
@@ -147,8 +174,8 @@ test('FIFA 09–14 keep the overall EA printed; FIFA 98–08 are chain-linked to
     for (const p of title(edition).players)
       if (p.person) assert.equal(p.given, p.overall, `${p.name} (${edition})`);
   const { yardstick, links, pool } = calibration;
-  // A year on, the players two official titles share lose a little and keep their spread.
-  assert.ok(yardstick.outfield.drift < 0 && yardstick.outfield.drift > -0.5);
+  // A year on, the players two official titles share are where they were, spread and all.
+  assert.ok(Math.abs(yardstick.outfield.drift) < 0.5);
   assert.ok(Math.abs(yardstick.outfield.spread - 1) < 0.05);
   assert.ok(yardstick.outfield.correlation > 0.7);
   assert.deepEqual(
@@ -168,29 +195,38 @@ test('FIFA 09–14 keep the overall EA printed; FIFA 98–08 are chain-linked to
     ],
   );
   for (const l of links) {
-    assert.ok(l.shared >= 150, `${l.title}: ${l.shared} shared players`);
+    assert.ok(l.shared >= 200, `${l.title}: ${l.shared} shared players`);
     assert.ok(l.outfield.slope > 0.3 && l.outfield.slope < 1.2, l.title);
-    // The shared players keep their level: around 80–83, a title's top is not forced anywhere.
-    assert.ok(l.outfield.to > 79 && l.outfield.to < 84, l.title);
+    // The shared players keep their level: around 72–75, a title's top is not forced anywhere.
+    assert.ok(l.outfield.to > 71 && l.outfield.to < 76, l.title);
     assert.equal('skills' in l, !/FIFA (0[678]|2004|2005)/.test(l.title), l.title); // coarse scales
   }
-  // Keepers: from FIFA 2005 on.
-  assert.ok(links.slice(0, 4).every(l => l.keepers.shared >= 20 && l.keepers.slope > 0));
-  assert.ok(links.slice(4).every(l => l.keepers.cards === false));
-  assert.ok(title(4).players.every(p => p.positions[0] !== 'GK' || p.given === null));
-  // The coarse titles are trusted about three parts in ten, a full one nine in ten; a coarse
-  // row no other data generation backs within three years gets no overall at all.
-  assert.ok(pool.trust > 0.2 && pool.trust < 0.4, 'trust: ' + pool.trust);
+  // Keepers have a line of their own in every title; the coarse ones (FIFA 98–2003) say no
+  // more than the best the next title gives the keepers they share.
+  assert.ok(links.every(l => l.keepers.shared >= 20 && l.keepers.slope > 0));
+  assert.ok(title(4).players.some(p => p.positions[0] === 'GK' && p.given > 85));
+  assert.ok(
+    Math.max(
+      ...title(0)
+        .players.filter(p => p.positions[0] === 'GK')
+        .map(p => p.given ?? 0),
+    ) < 87,
+  );
+  // The coarse titles are trusted about four parts in ten (their keepers a third), a full
+  // one nine in ten; a coarse row no other data generation backs within three years gets no
+  // overall at all.
+  assert.ok(pool.trust > 0.3 && pool.trust < 0.55, 'trust: ' + pool.trust);
+  assert.ok(pool.keeperTrust > 0.25 && pool.keeperTrust < 0.5, 'trust: ' + pool.keeperTrust);
   assert.deepEqual([FULL_TRUST, POOL_YEARS], [0.9, 3]);
-  assert.ok(pool.cards > 1500 && pool.unbacked > 2000);
+  assert.ok(pool.cards > 15000 && pool.keepers > 1500 && pool.unbacked > 10000);
   // What comes out reads like football: the best of 2003 is Ronaldo, of 2005 Ronaldinho, of
   // 2007 Buffon — and a year's best is not the same number every year.
   const best = edition =>
     title(edition)
       .players.filter(p => p.given != null)
       .sort((a, b) => b.given - a.given)[0];
-  assert.deepEqual([best(4).name, Math.round(best(4).given)], ['Ronaldo', 92]);
-  assert.deepEqual([best(8).name, Math.round(best(8).given)], ['G. Buffon', 92]);
+  assert.deepEqual([best(4).name, Math.round(best(4).given)], ['Ronaldo', 93]);
+  assert.deepEqual([best(8).name, Math.round(best(8).given)], ['G. Buffon', 91]);
   assert.equal(
     title(6)
       .players.filter(p => p.given != null && p.positions[0] !== 'GK')
@@ -198,7 +234,7 @@ test('FIFA 09–14 keep the overall EA printed; FIFA 98–08 are chain-linked to
     'Ronaldinho',
   );
   // FIFA 98's raw ranking has Hierro first, every skill at 99: on the scale he is a good
-  // 84–85, well under his fully described later self — and under Zidane.
+  // 83, well under his fully described later self — and under Zidane.
   const hierro = named(98, 'Hierro');
   assert.equal(title(98).players[0], hierro);
   assert.ok(hierro.given < 86 && hierro.given < named(99, 'Zidane').given);

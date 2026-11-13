@@ -67,7 +67,16 @@ const CREDITS = [
         'https://soccergaming.com/forums/threads/fifa-dbs-since-fifa-98-download.6469756/',
         'soccergaming.com archive',
       ),
-      ').',
+      '). The versions of 2023–2025: FC 24 from the “EA Sports FC 24 complete player dataset” by stefanoleone992 (SoFIFA; ',
+      a('https://huggingface.co/datasets/Belkin7/fifa24-player-values', 'public copy'),
+      ', no licence stated), FC 25 from EA’s ratings feed (',
+      a(
+        'https://github.com/Rayen-khammessi/Football-Data-Engineering-Analytics-Project-EA-Sports-FC-25',
+        'public copy',
+      ),
+      ', no licence stated) and FC 26 from “FC 26 (FIFA 26) player data” by rovnez (SoFIFA, CC BY 4.0; ',
+      a('https://github.com/Din1225/Data-Mining-Hw1', 'public copy'),
+      '). Player data belongs to Electronic Arts.',
     ],
   },
   {

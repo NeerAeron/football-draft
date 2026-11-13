@@ -13,8 +13,8 @@ export class DecisionMethods {
       dGoal = hypot(105 - rx, p.y - 34),
       pressure = this.pressure(p),
       opts = this.options(p),
-      best = opts[0],
       tac = this.settings(p.team);
+    let best = opts[0];
     p.think =
       ((0.19 + (100 - p.vision()) * 0.003 + this.rand() * 0.08) *
         (1.18 - tac.tempo * 0.06) *
@@ -24,6 +24,13 @@ export class DecisionMethods {
     if (p.role === 'GK') {
       p.action = 'Checking the receiver’s next touch';
       if (p.hold < (this.ball.kind === 'held' ? this.profile.release : 0.55)) return;
+      if (p.goalKickExempt) {
+        const kick = this.goalKickOption(p, opts);
+        if (kick) {
+          this.pass(p, kick);
+          return;
+        }
+      }
       const outlet = this.keeperOutlet(p, opts);
       if (outlet) {
         this.pass(p, outlet);
@@ -35,6 +42,27 @@ export class DecisionMethods {
       )
         this.clearKeeper(p, opts);
       return;
+    }
+    // Building up from the keeper: the man he gave it to in their own half has time. For
+    // two seconds he plays only a ball that is really on (no first-time pass into the
+    // midfield's press); with none and nobody on him he carries it and looks again.
+    if (
+      p.lastReceipt &&
+      rx < 45 &&
+      this.elapsed - p.receivedAt < 2 &&
+      this.players[p.lastReceipt.from]?.role === 'GK'
+    ) {
+      let safe = null;
+      for (const o of opts)
+        if (o.risk < 0.3 && o.margin > 0.3 && o.chance > 0.72 && o.r.role !== 'GK') {
+          safe = o;
+          break;
+        }
+      if (safe) best = safe;
+      else if (pressure < 0.5) {
+        p.action = 'Looking up';
+        return;
+      }
     }
     const quickTouch = !!p.lastReceipt && this.elapsed - p.receivedAt < 0.8,
       releaseAfter = quickTouch ? (p.has('onetouch') ? 0.07 : 0.1) : 0.16;

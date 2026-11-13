@@ -33,6 +33,8 @@ import {
   MODE_BASELINES,
 } from '../draft/opponents.js';
 import { simulateResult } from './model.js';
+import { matchPerformances } from './scorers.js';
+import { tournamentSteps } from './awards.js';
 import { legendPlayer, baseProfileId } from '../players/legends.js';
 
 export const CUP_ROUNDS = [
@@ -256,9 +258,18 @@ function plainTactics(tactics) {
 /** A recorded match the user got through: won, or won on penalties. */
 const wonMatch = m => m.outcome === 'W' || m.shootout?.winner === 'user';
 
+// One recorded player line of a match.
+const playerLine = p => ({
+  profileId: String(p.profileId),
+  rating: Number(p.rating) || 0,
+  goals: p.goals | 0,
+  assists: p.assists | 0,
+});
+
 export class CupRun {
   #catalog;
   #index;
+  #awards = null;
   constructor(catalog, state) {
     this.#catalog = catalog;
     this.#index = catalogIndex(catalog);
@@ -385,14 +396,25 @@ export class CupRun {
     return this.aiRng / LCG_RANGE;
   }
   /**
-   * Report the user's match: { goalsFor, goalsAgainst, extraTime?, shootout?, players? }.
+   * Report the user's match: { goalsFor, goalsAgainst, extraTime?, shootout?, players?,
+   * opponents? }.
    * The goals are the final score: a knockout tie that went to extra time (`extraTime: true`)
    * reports the score after it, and counts as a win or a defeat when that decided it.
    * shootout (knockout draws only): { winner: 'user' | 'opponent', score?: [for, against] }.
-   * players: [{ profileId, rating (engine performance 3–10), goals?, assists? }] for the
-   * Player of the Tournament / Held you back helpers.
+   * players: [{ profileId, rating (engine performance 3–10), goals?, assists? }]: the user's
+   * XI in that match — the squad's stats, Player of the Tournament, Held you back and the
+   * tournament awards count them. A result without them (the fast model, simulateNext) gets
+   * the lines of competition/scorers.js, from the match's seed, so every match has its scorers.
+   * opponents: the same lines for the other side, when the engine played the match.
    */
-  recordResult({ goalsFor, goalsAgainst, extraTime = false, shootout = null, players = [] }) {
+  recordResult({
+    goalsFor,
+    goalsAgainst,
+    extraTime = false,
+    shootout = null,
+    players = [],
+    opponents = [],
+  }) {
     if (this.complete) throw Error('The run is over');
     for (const v of [goalsFor, goalsAgainst])
       if (!Number.isInteger(v) || v < 0) throw Error('Goals must be whole numbers');
@@ -414,13 +436,13 @@ export class CupRun {
       // Knockouts only: the tie went to extra time (the goals include it).
       extraTime: info.knockout && !!extraTime,
       shootout: pens,
-      players: players.map(p => ({
-        profileId: String(p.profileId),
-        rating: Number(p.rating) || 0,
-        goals: p.goals | 0,
-        assists: p.assists | 0,
-      })),
+      players: players.length
+        ? players.map(playerLine)
+        : this.#modelled(round, goalsFor, goalsAgainst),
+      // The other side's lines when the engine played the match (else modelled for the awards).
+      ...(opponents.length ? { against: opponents.map(playerLine) } : {}),
     });
+    this.#awards = null;
     if (!info.knockout) {
       const md = round,
         [, a, b, c] = this.group.teams,
@@ -442,6 +464,16 @@ export class CupRun {
     else if (info.id === 'third') this.status = 'eliminated';
     else if (!won && info.id !== 'sf') this.status = 'eliminated';
     return this.snapshot();
+  }
+  // The user's lines for a result that has none: scorers.js, seeded by the match.
+  #modelled(round, goalsFor, goalsAgainst) {
+    const rows = FORMATIONS[this.user.formation],
+      xi = this.#players(this.user.players).map((p, slot) => ({ ...p, role: rows[slot][2] }));
+    return matchPerformances(xi, {
+      goalsFor,
+      goalsAgainst,
+      random: lcg(mixSeed(this.matchSeed(round) ^ 0x51ed270b)),
+    });
   }
   /** Play the next match with the fast rating model (auto-sim / tests). */
   simulateNext(random = lcg(this.matchSeed(this.matches.length))) {
@@ -498,7 +530,7 @@ export class CupRun {
     const stats = new Map(
       this.user.players.map((id, slot) => [
         id,
-        { profileId: id, slot, ratings: [], goals: 0, assists: 0 },
+        { profileId: id, slot, ratings: [], goals: 0, assists: 0, cleanSheets: 0 },
       ]),
     );
     for (const m of this.matches)
@@ -508,6 +540,7 @@ export class CupRun {
         s.ratings.push(p.rating);
         s.goals += p.goals;
         s.assists += p.assists;
+        if (m.goals[1] === 0) s.cleanSheets++;
       }
     const rows = FORMATIONS[this.user.formation];
     return [...stats.values()].map(s => {
@@ -523,11 +556,41 @@ export class CupRun {
           : null,
         goals: s.goals,
         assists: s.assists,
+        // Matches without a goal against — the keeper's number.
+        cleanSheets: s.cleanSheets,
         slotRating: Math.round(roleRating(p, role)),
         natural: Math.round(naturalRating(p)),
         familiarity: round2(roleFit(p, role)),
       };
     });
+  }
+  /**
+   * The XI's tournament so far, in slot order: [{ profileId, name, role, matches, goals,
+   * assists, average (match rating, null before a match), cleanSheets, slotRating, … }] —
+   * whichever way the matches were played.
+   */
+  squadStats() {
+    return this.#playerStats();
+  }
+  /**
+   * The tournament's awards (competition/awards.js), once the run is over: { teams, boot,
+   * ball, glove } — null while it is being played. awardsSteps() is the same work as a
+   * step-wise generator (a Legendary run builds the 38 other squads of its World Cup): drive it
+   * with services/catalog.js stepped(); its return value is the awards.
+   */
+  awards() {
+    const steps = this.awardsSteps();
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    return step.value;
+  }
+  *awardsSteps() {
+    if (!this.complete) return null;
+    this.#awards ??= yield* tournamentSteps(this, {
+      catalog: this.#catalog,
+      player: id => this.#player(id),
+    });
+    return this.#awards;
   }
   /** Best average match rating (played at least half the matches); ties: goals, assists. */
   playerOfTheTournament() {
@@ -683,8 +746,9 @@ const GROUP_PAIRS = [
  * the user, so its outcome is not known here): the 31 other places go to the 22 top-two
  * finishers of the other groups and the nine best of their eleven thirds.
  * Deterministic for `random`. Returns { group: 3 keys (pots 2, 3, 4), knockouts: 5 keys (R32 …
- * final), third: key, keys: all nine in opponent order } or null when the catalog's field is
- * not 4 × 12 nations.
+ * final), third: key, keys: all nine in opponent order, matches: every tie played here as
+ * [stage, home key, away key, goals, goals, winner?] } or null when the catalog's field is not
+ * 4 × 12 nations.
  */
 export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
   const nations = opponentCandidates(catalog, { rules }).filter(c => c.kind === 'nation'),
@@ -701,7 +765,10 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
     overall(a, b) || rating.get(b.key) - rating.get(a.key) || (a.key < b.key ? -1 : 1);
   const winners = [],
     seconds = [],
-    thirds = [];
+    thirds = [],
+    // Every tie played here, for the tournament's awards: [stage, home, away, goals, goals,
+    // winner (knockouts: 0 | 1)].
+    matches = [];
   let mates = null;
   for (let g = 0; g < 12; g++) {
     const ids = seats.map(pot => pot[g]);
@@ -715,6 +782,7 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
         score: simulateResult(rating.get(ids[h]), rating.get(ids[a]), random).goals,
       })),
       table = standings(ids, fixtures);
+    for (const f of fixtures) matches.push(['group', f.home, f.away, ...f.score]);
     winners.push(table[0]);
     seconds.push(table[1]);
     thirds.push(table[2]);
@@ -728,7 +796,8 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
   shuffle(rest, random);
   let alive = seeded.flatMap((key, i) => [key, rest[i]]),
     third = null;
-  const knockouts = [];
+  const knockouts = [],
+    stages = { 32: 'r32', 16: 'r16', 8: 'qf', 4: 'sf', 2: 'final' };
   while (alive.length > 1) {
     const next = [];
     for (let i = 0; i < alive.length; i += 2) {
@@ -741,6 +810,7 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
       }
       const r = simulateResult(rating.get(a), rating.get(b), random, { knockout: true }),
         first = r.goals[0] > r.goals[1] || r.shootout?.winner === 0;
+      matches.push([stages[alive.length], a, b, ...r.goals, first ? 0 : 1]);
       next.push(first ? a : b);
       if (alive.length === 4) third = first ? b : a;
     }
@@ -748,7 +818,12 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
   }
   const key = id => 'nation:' + id,
     draw = { group: mates.map(key), knockouts: knockouts.map(key), third: key(third) };
-  return { ...draw, keys: [...draw.group, ...draw.knockouts, draw.third], pots: potOf };
+  return {
+    ...draw,
+    keys: [...draw.group, ...draw.knockouts, draw.third],
+    pots: potOf,
+    matches: matches.map(([stage, a, b, ...rest]) => [stage, key(a), key(b), ...rest]),
+  };
 }
 /**
  * Qualification for one World Cup: 48 of the playable nations (catalogIndex playable),
@@ -838,6 +913,7 @@ export function createCupRun(catalog, options) {
     if (!built && fixed) throw Error('Opponent cannot field an XI: ' + fixed);
     // A field nation left without an XI by the user's picks: the nearest nation steps in.
     if (!built && field) {
+      const left = ref.key;
       const others = candidates
         .filter(c => c.kind === 'nation' && !avoid.includes(c.key))
         .sort(
@@ -848,6 +924,8 @@ export function createCupRun(catalog, options) {
         if ((built = build(other))) break;
       }
       if (!built) throw Error('No opponent can field an XI');
+      for (const m of field.matches)
+        for (const side of [1, 2]) if (m[side] === left) m[side] = built.key;
     }
     // A club weakened below an XI by the user's picks is skipped; the ladder draws again.
     if (built)
@@ -902,6 +980,8 @@ export function createCupRun(catalog, options) {
     matches: [],
     status: 'playing',
     aiRng: mixSeed(rngSeed ^ 0x2545f491),
+    // Legendary's World Cup: the ties played around the user (the awards count their players).
+    ...(field ? { field: { matches: field.matches } } : {}),
   };
   return new CupRun(catalog, state);
 }

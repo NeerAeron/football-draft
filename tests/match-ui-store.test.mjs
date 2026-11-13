@@ -117,6 +117,7 @@ test('requests get defaults, results round-trip and convert for the run', () => 
     extraTime: false,
     shootout: { winner: 'opponent', score: [4, 5] },
     players: [{ profileId: 'a', rating: 7.1, goals: 1, assists: 0 }],
+    opponents: [{ profileId: 'b', rating: 6.4, goals: 1, assists: 0 }],
   });
   assert.equal(runResultFor(result, 1).shootout.winner, 'user');
   // Decided in extra time: the final score counts, a win for one side and a defeat for the other.

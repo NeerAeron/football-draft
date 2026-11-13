@@ -129,7 +129,7 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | Type | Extra fields |
 | --- | --- |
 | `kickoff` | — |
-| `restart` | `restart`: the restart type (corners, goal kicks, throw-ins, indirect free kicks). For a corner, `m.restart` also has `routine` (`'near post' | 'far post' | 'edge'`), `target` (player id) and `aim` (`{ x, y }`) while it is set up |
+| `restart` | `restart`: the restart type (corners, goal kicks, throw-ins, indirect free kicks). For a corner, `m.restart` also has `routine` (`'near post' | 'far post' | 'edge'`), `target` (player id) and `aim` (`{ x, y }`) while it is set up; for a goal kick `routine` (`'short' | 'long'`, see _Goal kicks_) |
 | `shot` | `playerId`, `assistId` (key pass, or `null`), `shotType` (`Placed finish`, `Driven shot`, `Power shot`, `Curler`, `Knuckleball`, `Header`, `Volley`, `Penalty`), `xg` (0–1), `bigChance`, `oneOnOne`, `situation`, `setPiece`, `direct` (direct free kick), `penalty`, `distance` (m), `box`, `zone`, `foot`, `origin` (`{ x, y, attackX, box, zone }`), `chance` (estimated on-target probability), `outcome`: `'in flight'` → `'goal' | 'saved' | 'blocked' | 'post' | 'off target'`, `resolvedAt` |
 | `save` | `playerId` (keeper), `shooterId`, `shotEventId`, `xg`, `bigChance`, `saveType`: `'catch' | 'parry' | 'parry into danger' | 'tip over'`, `difficulty` (0 routine … 1 spectacular: 1 − the save probability from the dive model — stretch, power, height), `chance` (save probability). The ball does what the type says: a catch is held, a tip over clears the bar and goes behind for a corner (the lift is computed from the distance left to the line), a parry goes wide/behind outside the post or back into play — a saved ball never crosses the line under the bar (tests/set-pieces-and-keepers.test.mjs). `'parry into danger'` = an attacker is first to the rebound; a goal from it is a new shot |
 | `block` | `playerId` (blocker), `shooterId`, `shotEventId`, `xg`, `bigChance`; a blocked cross, or a delivery a pressed defender stabs away in his own box (text "… deflects it."), has `cross: true` and no shot fields |
@@ -152,6 +152,41 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `shootout-start` | `first` (team taking the first kick) |
 | `shootout` | one kick, at its outcome: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive`, `kickedAt` (elapsed of the strike) |
 | `shootout-end` | `winner` (team), `shootoutScore` |
+
+### The level of the match
+
+`m.level` is `null` until the first step, then `[team 0, team 1]`: the level each side attacks
+at (`kickoffLevel`, read once from the line-ups like `m.edge`). The match part is the same for
+both — the mean overall of the 22 in points above 78, plus `gameplay.levelGap` per point
+between the two sides; `gameplay.levelUnits` adds, per side, the opponent's defence level
+above the opponent's overall less its own attack level above its own (`unitLevels` /
+`unitLean`, `players/unit-levels.js`); clamped to ±14. Per point a side's shots scatter
+`gameplay.levelScatter` × 4% more and are saved `levelSaves` × 0.4% more (penalties and
+shootouts excepted). It keeps the goals of a match from following the general level of the
+players while a side's scoring still follows its attack against the defence it meets
+(docs/calibration.md, Phases 9 and 10). No RNG, nothing per step.
+
+### Goal kicks
+
+A goal kick is a cut, like a corner: `setupGoalKick` (restarts.js) places both sides when it is
+awarded (positions and targets; the UI shows a reposition of several players as a cut), and
+`m.restart.routine` says what the kicking side intends.
+
+* The defending side drops into a mid-block — forwards 44 m, midfield 56 m, back line 70 m from
+  the kicking side's goal line — or, when its `press` is 4+ or its mentality in effect is Push,
+  comes up to the edge of the box (23 / 40 / 70 m).
+* `'short'` (against a mid-block): centre-backs either side of the box (the middle one of a
+  three in front of it), full-backs wide at 22 m, midfield from 30 m. `'long'` (against the
+  press, or when the kicking side itself is on Push): back line at 29–33 m, midfield around
+  50 m, forwards at 64 m and narrower.
+* The kick (`goalKickOption`, passing.js, when the keeper's release time is up): short only to
+  a team-mate along the ground, 8–31 m away, with nobody within 13 m of where he takes it, lane
+  risk under 0.25 and 0.8 s to spare, not on a touchline; otherwise long — a lofted pass to the
+  best header of the ball beyond halfway (heading, strength, aerial tendency, team-mates within
+  16 m for the second ball), aimed no closer than 13 m to a touchline.
+* The man the keeper gives it to in their own half (any pass from the keeper, for 2 s) plays
+  only a ball that is really on — risk under 0.3, 0.3 s to spare, completion over 72% — or,
+  unpressed, takes it on a few steps and looks again (decisions.js).
 
 ### The final whistle
 

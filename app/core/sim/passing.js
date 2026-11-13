@@ -359,6 +359,76 @@ export class PassingMethods {
     }
     return list.sort((a, b) => b.score - a.score);
   }
+  // The goal kick (restart.routine, set up in setupGoalKick). Short: only a ball that is
+  // really on — along the ground to a team-mate with nobody within 13 m of where he takes it,
+  // no opponent near the lane and a second to spare. Otherwise long: to the best header of
+  // the ball up the pitch, away from the touchlines, where the midfield is waiting for the
+  // second ball. Losing that one costs a header on halfway, not a chance.
+  goalKickOption(p, opts) {
+    if (this.restart?.routine !== 'long') {
+      let best = null,
+        value = -Infinity;
+      for (const o of opts) {
+        if (o.loft || o.r.role === 'GK' || o.d < 8 || o.d > 31) continue;
+        if (o.risk > 0.25 || o.margin < 0.8 || !this.keeperReleaseClear(p, o.aim)) continue;
+        if (o.aim.y < 6 || o.aim.y > 62) continue;
+        let space = 99;
+        for (const q of this.activePlayers)
+          if (q.team !== p.team) space = Math.min(space, dist(q, o.aim));
+        if (space < 13) continue;
+        const v = o.score + o.margin * 0.8 + Math.min(space, 25) * 0.12;
+        if (v > value) {
+          value = v;
+          best = o;
+        }
+      }
+      if (best) return best;
+    }
+    const dir = this.direction(p.team),
+      reach = 56 + p.skill('power') * 0.15;
+    let target = null,
+      value = -Infinity;
+    for (const r of this.activePlayers) {
+      if (r.team !== p.team || r.role === 'GK') continue;
+      const depth = this.rel(r.x, p.team);
+      let v =
+        r.skill('heading') * 0.6 +
+        r.skill('strength') * 0.25 +
+        r.tendency('aerial') * 10 +
+        (r.has('aerial') ? 5 : 0) -
+        Math.max(0, 52 - depth) * 2 -
+        Math.max(0, dist(p, r) - reach) * 1.5 -
+        Math.max(0, Math.abs(r.y - 34) - 16) * 1.2;
+      // Team-mates near him for the knock-down; opponents beside him make it a duel.
+      for (const q of this.activePlayers) {
+        if (q === r || q.role === 'GK') continue;
+        const d = dist(q, r);
+        if (q.team === p.team) v += d < 16 ? 1.5 : 0;
+        else if (d < 4) v -= 3;
+      }
+      if (v > value) {
+        value = v;
+        target = r;
+      }
+    }
+    if (!target) return null;
+    // Dropped just short of him, so he comes onto it facing the play, and never by the line.
+    const aim = { x: target.x - dir * 1.5, y: clamp(target.y, 13, 55) },
+      length = dist(p, aim);
+    if (length > reach) {
+      aim.x = p.x + ((aim.x - p.x) * reach) / length;
+      aim.y = p.y + ((aim.y - p.y) * reach) / length;
+    }
+    return {
+      r: target,
+      aim,
+      d: dist(p, aim),
+      delivery: 'pass',
+      loft: true,
+      risk: 0.3,
+      chance: 0.5,
+    };
+  }
   keeperReleaseClear(p, aim) {
     const length = dist(p, aim) || 1,
       end = {
