@@ -101,6 +101,17 @@ export const TITLE_JUDGEMENT = {
     why: 'FIFA 07 (2006): a little stingy — its best 50 average 87.2 against 87.9–88.9 around it, in a World Cup year (Cannavaro, Henry, Kaká, Buffon).',
   },
 };
+// A nation's players in some titles (`judgedNation` in compileLegends): `top` points at
+// `level`, in proportion above and below, nothing at `from` and under.
+export const NATION_JUDGEMENT = {
+  England: {
+    editions: [98, 99, 0, 1, 2, 3, 4],
+    top: -2,
+    level: 90,
+    from: 76,
+    why: 'FIFA 98–2004 were made in and for England and rate its players, stars and squad men alike, as the game’s followers never did: Beckham, Owen and Scholes at 90–93, Dyer, James and Heskey at 85–87 — England’s best XI of 2002 level with Italy’s and above Brazil’s, the world champions’. Not measurable against FIFA 2005/06 (which keep the habit; England’s players fall no more than others’ there), so this is a judgement: two points off at 90, fading to nothing at 76 — a strong quarter-final side. No other nation reads the same way in those titles (per-nation drift against FIFA 2005/06: within a point for every nation with six or more players at 82+).',
+  },
+};
 // The cards of single players the title rules cannot put right: the peaks the game's
 // followers agree on, where a title's flat top hides them, and cards that are plainly wrong.
 // { id (EA's, the person's), name (checked against the data), cards: { title number → points },
@@ -166,6 +177,466 @@ export const PLAYER_JUDGEMENT = [
     cards: { 98: 4, 99: 4, 0: 3 },
     why: 'The best goalkeeper of the 1990s (IFFHS World’s Best Goalkeeper 1992 and 1993, UEFA’s club goalkeeper of 1998, the 1999 treble): FIFA 98/99 have no keeper skills and he retired before a fully described title could vouch for him, so he came out at 84, level with Rossi and Letizi.',
   },
+  // The icons of 1997–2002 the coarse titles plainly under-rate (`kind: 'icon'`).
+  {
+    id: 240,
+    name: 'Keane',
+    kind: 'icon',
+    cards: { 98: 4, 99: 4, 0: 4, 1: 3, 2: 3, 3: 3 },
+    why: 'Manchester United’s driving force through the 1999 Treble, PFA and FWA Player of the Year 2000: the coarse titles have him at 81–85, an ordinary midfielder.',
+  },
+  {
+    id: 1030,
+    name: 'Batistuta',
+    kind: 'icon',
+    cards: { 98: 3, 99: 3, 0: 3, 1: 4 },
+    why: 'The centre-forward of the 1990s — Serie A’s top scorer, five goals at the 1998 World Cup, third for the FIFA World Player 1999, Roma’s title in 2001: 87 and then 84 undersells him.',
+  },
+  {
+    id: 4000,
+    name: 'Bergkamp',
+    kind: 'icon',
+    cards: { 98: 3, 99: 4 },
+    why: 'PFA and FWA Player of the Year 1998, third for the FIFA World Player 1997, the goal against Argentina: 85–87 for the best player in England.',
+  },
+  {
+    id: 5003,
+    name: 'Cafu',
+    kind: 'icon',
+    cards: { 99: 4, 0: 3, 1: 3, 2: 3, 3: 3 },
+    why: 'The right-back of his generation: three World Cup finals running, captain of the 2002 champions, Roma’s 2001 title. 83–85 has him behind club full-backs.',
+  },
+  {
+    id: 1615,
+    name: 'Thuram',
+    kind: 'icon',
+    cards: { 98: 3, 99: 4, 0: 3, 1: 2 },
+    why: 'World champion 1998 (both goals of the semi-final) and European champion 2000, the best defender in Serie A at Parma: 83–86.',
+  },
+  {
+    id: 7332,
+    name: 'Suker',
+    kind: 'icon',
+    cards: { 98: 2, 99: 7 },
+    why: 'Golden Boot and Silver Ball of the 1998 World Cup, second for the Ballon d’Or 1998: FIFA 99 has him at 80.',
+  },
+  {
+    id: 51,
+    name: 'Shearer',
+    kind: 'icon',
+    cards: { 98: 3, 99: 2 },
+    why: 'The Premier League’s record scorer at his peak, top scorer of Euro 96, England’s captain: 85.',
+  },
+  {
+    id: 10967,
+    name: 'Chilavert',
+    kind: 'icon',
+    cards: { 98: 3, 99: 4, 0: 3 },
+    why: 'IFFHS World’s Best Goalkeeper 1995, 1997 and 1998, in the 1998 World Cup’s all-star team: FIFA 98/99 have no keeper skills.',
+  },
+  {
+    id: 98002616,
+    name: 'Djorkaeff',
+    kind: 'icon',
+    cards: { 98: 3, 99: 3 },
+    why: 'The No. 10 of the 1998 world champions, Inter’s best in 1997–98 (UEFA Cup): only FIFA 98/99 know him, so he is pulled to the titles’ average.',
+  },
+  {
+    id: 98006900,
+    name: 'Dunga',
+    kind: 'icon',
+    cards: { 98: 5, 99: 6 },
+    why: 'Captain of the 1994 world champions and of the 1998 finalists, in the 1998 all-star team: only in FIFA 98/99, in the national squad alone — rated like a squad player.',
+  },
+  {
+    id: 7557,
+    name: 'Taffarel',
+    kind: 'icon',
+    cards: { 98: 4, 99: 5 },
+    why: 'Brazil’s keeper in the 1994 and 1998 finals (the semi-final shoot-out of 1998): FIFA 98/99 have no keeper skills.',
+  },
+  {
+    id: 1607,
+    name: 'Barthez',
+    kind: 'icon',
+    cards: { 99: 3, 0: 3, 1: 4 },
+    why: 'Yashin Award of the 1998 World Cup, European champion 2000, IFFHS World’s Best Goalkeeper 2000: 83–84.',
+  },
+  {
+    id: 10961,
+    name: 'Salas',
+    kind: 'icon',
+    cards: { 98: 4, 99: 4 },
+    why: 'South American Footballer of the Year 1997, four goals at the 1998 World Cup, Lazio’s striker: 82–83.',
+  },
+  {
+    id: 98000111,
+    name: 'Romário',
+    kind: 'icon',
+    cards: { 98: 4, 99: 5 },
+    why: 'Top scorer of the 1997 Copa América and Confederations Cup with Ronaldo beside him, out of the 1998 World Cup only through injury: only FIFA 98/99 know him.',
+  },
+  {
+    id: 5602,
+    name: 'Mijatovic',
+    kind: 'icon',
+    cards: { 98: 4, 99: 3 },
+    why: 'Second for the Ballon d’Or 1997, the goal that won the 1998 Champions League final: 83.',
+  },
+  {
+    id: 1040,
+    name: 'Roberto Carlos',
+    kind: 'icon',
+    cards: { 98: 3, 99: 2, 0: 2, 1: 4, 2: 4, 3: 6 },
+    why: 'Second for the FIFA World Player 1997 and for the Ballon d’Or 2002, three Champions Leagues and the 2002 World Cup: the coarse titles keep the best left-back of his time at 84–87.',
+  },
+  {
+    id: 1088,
+    name: 'Nesta',
+    kind: 'icon',
+    cards: { 99: 3 },
+    why: 'Serie A’s Young Player of 1998 and Lazio’s captain at 22, a starter at the 1998 World Cup: 83 the year before the titles have him at 87–89.',
+  },
+  {
+    id: 1183,
+    name: 'Cannavaro',
+    kind: 'icon',
+    cards: { 99: 3, 0: 3, 1: 4, 2: 4, 3: 3 },
+    why: 'Parma’s and Italy’s centre-back from 1998, in the team of Euro 2000: 81–83 until his 2006 card.',
+  },
+  {
+    id: 1041,
+    name: 'Zanetti',
+    kind: 'icon',
+    cards: { 99: 4, 2: 2, 3: 2 },
+    why: 'Argentina’s right-back at the 1998 World Cup (the free-kick goal against England) and Inter’s captain from 2001: 80–84.',
+  },
+  {
+    id: 5672,
+    name: 'Davids',
+    kind: 'icon',
+    cards: { 99: 2 },
+    why: 'Juventus’s engine and in the 1998 World Cup’s all-star team: 86, four under his cards of 2000.',
+  },
+  {
+    id: 5590,
+    name: 'Guardiola',
+    kind: 'icon',
+    cards: { 98: 5, 99: 5 },
+    why: 'Barcelona’s captain and playmaker of the 1990s: the coarse titles rate a passer by his speed and shooting — 79–80.',
+  },
+  {
+    id: 10758,
+    name: 'Mendieta',
+    kind: 'icon',
+    cards: { 1: 5, 2: 5 },
+    why: 'UEFA’s Club Midfielder of the Year 2000 and 2001, Valencia’s captain in two Champions League finals, the most expensive Spanish player in 2001: FIFA 2001 has him as one of its very best on its own scale, pooled down to 82.',
+  },
+  {
+    id: 13128,
+    name: 'Shevchenko',
+    kind: 'icon',
+    cards: { 5: 2 },
+    why: 'Ballon d’Or 2004 (Serie A’s top scorer, champion): 90, level with five others.',
+  },
+  {
+    id: 49131,
+    name: 'Luis Enrique',
+    kind: 'icon',
+    cards: { 0: 3, 1: 6, 2: 6 },
+    why: 'Barcelona’s captain and a Spain starter to the 2002 World Cup: FIFA 2000–02 list him under two ids, and the rows of 2000–02 fall from 86 to 77.',
+  },
+  // Breakout lag (`kind: 'breakout'`): a key man of his national team at that World Cup —
+  // starter, award winner — whose card of the tournament year still shows a prospect or a
+  // squad player. Lifted to what reads fair for that tournament: inside the squad, right
+  // next to his team-mates, not above established stars without cause.
+  {
+    id: 246,
+    name: 'Scholes',
+    kind: 'breakout',
+    cards: { 99: 4 },
+    why: 'World Cup 1998: a starter who scored for England at 23; his card is still a squad player’s (80), two years before 88.',
+  },
+  {
+    id: 11141,
+    name: 'Klose',
+    kind: 'breakout',
+    cards: { 3: 4, 7: 2 },
+    why: 'World Cup 2002: five goals, Silver Boot (81). World Cup 2006: Golden Boot (86).',
+  },
+  {
+    id: 3647,
+    name: 'Ballack',
+    kind: 'breakout',
+    cards: { 3: 2 },
+    why: 'World Cup 2002: carried Germany to the final, Germany’s Footballer of the Year and UEFA’s midfielder of the year 2002 (86).',
+  },
+  {
+    id: 52582,
+    name: 'Reçber',
+    kind: 'breakout',
+    cards: { 3: 5 },
+    why: 'World Cup 2002: Rüştü, the all-star team’s goalkeeper of third-placed Türkiye; FIFA 2003 has him at 80, FIFA 2004 at 88.',
+  },
+  {
+    id: 726,
+    name: 'Hasan',
+    kind: 'breakout',
+    cards: { 3: 4 },
+    why: 'World Cup 2002: in the all-star team for third-placed Türkiye (79; 84 a year later).',
+  },
+  {
+    id: 39943,
+    name: 'Park',
+    kind: 'breakout',
+    cards: { 3: 3 },
+    why: 'World Cup 2002: the goal that beat Portugal, a starter of the semi-finalists (79).',
+  },
+  {
+    id: 121939,
+    name: 'Lahm',
+    kind: 'breakout',
+    cards: { 7: 5 },
+    why: 'World Cup 2006: the opening goal, every minute played, all-star team (80; 88 two years later).',
+  },
+  {
+    id: 121944,
+    name: 'Schweinsteiger',
+    kind: 'breakout',
+    cards: { 7: 4 },
+    why: 'World Cup 2006: a starter of the hosts’ run, two goals in the third-place match (80).',
+  },
+  {
+    id: 150516,
+    name: 'Podolski',
+    kind: 'breakout',
+    cards: { 7: 2 },
+    why: 'World Cup 2006: Best Young Player, three goals (82).',
+  },
+  {
+    id: 156616,
+    name: 'Ribéry',
+    kind: 'breakout',
+    cards: { 7: 2 },
+    why: 'World Cup 2006: the discovery of the finalists, a starter from the second match (83; 86–89 after).',
+  },
+  {
+    id: 7763,
+    name: 'Pirlo',
+    kind: 'breakout',
+    cards: { 7: 3 },
+    why: 'World Cup 2006: Bronze Ball, man of the match in the final and twice more (86).',
+  },
+  {
+    id: 189596,
+    name: 'Müller',
+    kind: 'breakout',
+    cards: { 11: 6 },
+    why: 'World Cup 2010: Golden Boot and Best Young Player (80).',
+  },
+  {
+    id: 189511,
+    name: 'Busquets',
+    kind: 'breakout',
+    cards: { 11: 4 },
+    why: 'World Cup 2010: started every match but one for the world champions, after Barcelona’s 2009 treble (81).',
+  },
+  {
+    id: 176635,
+    name: 'Özil',
+    kind: 'breakout',
+    cards: { 11: 3 },
+    why: 'World Cup 2010: Germany’s playmaker, Golden Ball nominee, bought by Real Madrid (83).',
+  },
+  {
+    id: 179846,
+    name: 'Khedira',
+    kind: 'breakout',
+    cards: { 11: 3 },
+    why: 'World Cup 2010: Ballack’s replacement in every match of the third-placed side (80).',
+  },
+  {
+    id: 189505,
+    name: 'Pedro',
+    kind: 'breakout',
+    cards: { 11: 3 },
+    why: 'World Cup 2010: started the semi-final and the final; 23 goals in Barcelona’s 2009–10 (82).',
+  },
+  {
+    id: 176580,
+    name: 'Suárez',
+    kind: 'breakout',
+    cards: { 11: 3 },
+    why: 'World Cup 2010: three goals for the semi-finalists after 49 goals for Ajax (82).',
+  },
+  {
+    id: 168320,
+    name: 'Gyan',
+    kind: 'breakout',
+    cards: { 11: 6 },
+    why: 'World Cup 2010: Ghana’s three goals on the way to the quarter-final (75; EA’s own 81 a year later).',
+  },
+  {
+    id: 139869,
+    name: 'Sneijder',
+    kind: 'breakout',
+    cards: { 11: 2 },
+    why: 'World Cup 2010: Silver Ball and joint top scorer for the finalists in the year of Inter’s treble (88).',
+  },
+  {
+    id: 10535,
+    name: 'Xavi',
+    kind: 'breakout',
+    cards: { 10: 2, 11: 2 },
+    why: 'Player of Euro 2008, third for the Ballon d’Or 2009 and 2010, world champion: EA kept him at 89 until FIFA 12’s 93.',
+  },
+  {
+    id: 41,
+    name: 'Iniesta',
+    kind: 'breakout',
+    cards: { 11: 2 },
+    why: 'World Cup 2010: the final’s goal and man of the match, second for the Ballon d’Or (89; 92 a year later).',
+  },
+  {
+    id: 195864,
+    name: 'Pogba',
+    kind: 'breakout',
+    cards: { 15: 2 },
+    why: 'World Cup 2014: Best Young Player (83; 87 a year later).',
+  },
+  {
+    id: 182521,
+    name: 'Kroos',
+    kind: 'breakout',
+    cards: { 15: 2 },
+    why: 'World Cup 2014: in the all-star team for the champions, two goals in the 7–1 (85; 88 a year later).',
+  },
+  {
+    id: 192985,
+    name: 'De Bruyne',
+    kind: 'breakout',
+    cards: { 15: 3 },
+    why: 'World Cup 2014: Belgium’s best player (goal and assist against the United States) and the Bundesliga’s assist leader (81; 87 a year later).',
+  },
+  {
+    id: 193041,
+    name: 'Navas',
+    kind: 'breakout',
+    cards: { 15: 5 },
+    why: 'World Cup 2014: three man-of-the-match awards for quarter-finalists Costa Rica, bought by Real Madrid (79; 85 two years later).',
+  },
+  {
+    id: 140233,
+    name: 'Ochoa',
+    kind: 'breakout',
+    cards: { 15: 2 },
+    why: 'World Cup 2014: the saves against Brazil and the Netherlands (80).',
+  },
+  {
+    id: 179944,
+    name: 'David Luiz',
+    kind: 'breakout',
+    cards: { 15: 2 },
+    why: 'World Cup 2014: Brazil’s best player up to the semi-final (two goals, the fans’ Dream Team), the world’s most expensive defender that summer (82).',
+  },
+  {
+    id: 231747,
+    name: 'Mbappé',
+    kind: 'breakout',
+    cards: { 19: 2 },
+    why: 'World Cup 2018: Best Young Player, four goals, one in the final (87).',
+  },
+  {
+    id: 226851,
+    name: 'Pavard',
+    kind: 'breakout',
+    cards: { 19: 4 },
+    why: 'World Cup 2018: the champions’ right-back in six matches, goal of the tournament (80).',
+  },
+  {
+    id: 246669,
+    name: 'Saka',
+    kind: 'breakout',
+    cards: { 23: 3 },
+    why: 'World Cup 2022: three goals as an England starter after Euro 2020 and Arsenal’s player of the season (82).',
+  },
+  {
+    id: 256790,
+    name: 'Musiala',
+    kind: 'breakout',
+    cards: { 23: 4 },
+    why: 'World Cup 2022: Germany’s best player at 19 (81; 86 a year later).',
+  },
+  {
+    id: 252371,
+    name: 'Bellingham',
+    kind: 'breakout',
+    cards: { 23: 2 },
+    why: 'World Cup 2022: England’s midfield at 19, in most teams of the tournament (84).',
+  },
+  {
+    id: 264240,
+    name: 'Gavi',
+    kind: 'breakout',
+    cards: { 23: 6 },
+    why: 'World Cup 2022: a Spain starter and scorer at 18, Kopa Trophy and Golden Boy 2022 (79).',
+  },
+  {
+    id: 247090,
+    name: 'Fernández',
+    kind: 'breakout',
+    cards: { 23: 5 },
+    why: 'World Cup 2022: Best Young Player for the champions (78).',
+  },
+  {
+    id: 246191,
+    name: 'Alvarez',
+    kind: 'breakout',
+    cards: { 23: 5 },
+    why: 'World Cup 2022: four goals for the champions, a starter from the third match (78).',
+  },
+  {
+    id: 239837,
+    name: 'Mac Allister',
+    kind: 'breakout',
+    cards: { 23: 6 },
+    why: 'World Cup 2022: a starter of the champions from the second match, goal and assist in the knock-outs (76; 86 two years later).',
+  },
+  {
+    id: 251517,
+    name: 'Gvardiol',
+    kind: 'breakout',
+    cards: { 23: 3 },
+    why: 'World Cup 2022: the tournament’s best young defender for third-placed Croatia (81).',
+  },
+  {
+    id: 224158,
+    name: 'Amrabat',
+    kind: 'breakout',
+    cards: { 23: 5 },
+    why: 'World Cup 2022: the midfield of semi-finalists Morocco (76).',
+  },
+  {
+    id: 241671,
+    name: 'Livaković',
+    kind: 'breakout',
+    cards: { 23: 3 },
+    why: 'World Cup 2022: the shoot-outs against Japan and Brazil for third-placed Croatia (80).',
+  },
+  {
+    id: 202811,
+    name: 'Martínez',
+    kind: 'breakout',
+    cards: { 23: 3 },
+    why: 'World Cup 2022: Golden Glove for the champions (84).',
+  },
+  {
+    id: 209981,
+    name: 'Bounou',
+    kind: 'breakout',
+    cards: { 23: 2 },
+    why: 'World Cup 2022: Morocco’s keeper to the semi-final, Zamora Trophy 2022 (84).',
+  },
   {
     id: 93,
     name: 'Denilson',
@@ -182,6 +653,15 @@ export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nati
 // defenders kept Colombia's 1998 side out for one surname-only row's position.)
 export const ERA_SPIN = { players: 18, DEF: 4, MID: 5, ATT: 2 };
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
+// France 98 keeps fewer. FIFA 98/99 know most players by a surname, some national squads by
+// first names or invented ones: a pool there needs three in ten of its players to be men a
+// later title knows (EA's id: Canada's "Robert, Janny, Aaron, Mike" and the United States'
+// and Slovakia's squads are not), and the era keeps its strongest 38 — below them the pools
+// are thin squads of surnames nobody can check.
+export const ERA_NATION_LIMIT = { 1998: 38 };
+export const ERA_IDENTIFIED = { 1998: 0.3 };
+const LOCAL_PERSON = 98_000_000; // FIFA 98/99's own ids, as persons (legends-calibration.mjs)
+const nationLimit = era => ERA_NATION_LIMIT[era] ?? ERA_NATIONS;
 export const ERA_MINIMUM = 20; // an era with fewer nations is not an era: the build fails
 const ERA_LINE = {
   CB: 'DEF',
@@ -205,6 +685,8 @@ export const ERA_SELECTION = {
   squad: ERA_SQUAD,
   spin: ERA_SPIN,
   maximumNations: ERA_NATIONS,
+  nationLimit: ERA_NATION_LIMIT,
+  identified: ERA_IDENTIFIED,
 };
 /** The rules in words, for the file's `selection` block. */
 export const SELECTION = {
@@ -553,6 +1035,18 @@ export function compileLegends(
   const versionCache = new Map(),
     playerFix = new Map(PLAYER_JUDGEMENT.map(fix => [String(fix.id), fix])),
     fixed = new Set();
+  // The nation rule (NATION_JUDGEMENT), after the title's.
+  const nationRule = new Map();
+  const judgedNation = (one, edition, overall) => {
+    if (!nationRule.has(one))
+      nationRule.set(
+        one,
+        NATION_JUDGEMENT[current.get(one.key)?.source.nationality ?? nationOf(one)] ?? null,
+      );
+    const rule = nationRule.get(one);
+    if (!rule || !rule.editions.includes(edition) || overall <= rule.from) return overall;
+    return overall + (rule.top * (overall - rule.from)) / (rule.level - rule.from);
+  };
   const versions = one => {
     if (!versionCache.has(one))
       versionCache.set(
@@ -563,7 +1057,10 @@ export function compileLegends(
           return {
             ...v,
             before: Math.round(v.calibrated),
-            overall: Math.min(99, Math.round(judged(v.edition, v.calibrated)) + points),
+            overall: Math.min(
+              99,
+              Math.round(judgedNation(one, v.edition, judged(v.edition, v.calibrated))) + points,
+            ),
           };
         }),
       );
@@ -928,6 +1425,8 @@ export function compileLegends(
       count('ATT') < ERA_SPIN.ATT
     )
       continue;
+    const known = members.filter(c => c.now || Number(c.one.key) < LOCAL_PERSON).length;
+    if (known < (ERA_IDENTIFIED[era] ?? 0) * members.length) continue;
     squads.push({ era, nation, members, keeper, outfield });
   }
   // Strength = the mean overall of the pool's best XI: its best keeper and ten best
@@ -967,7 +1466,7 @@ export function compileLegends(
     const all = squads
         .filter(sq => sq.era === era.id)
         .sort((a, b) => b.strength - a.strength || (a.nation < b.nation ? -1 : 1)),
-      spun = all.slice(0, ERA_NATIONS);
+      spun = all.slice(0, nationLimit(era.id));
     if (spun.length < ERA_MINIMUM)
       throw Error(
         `${era.label}: only ${spun.length} nations can field a pool (${ERA_MINIMUM} needed)`,
@@ -987,7 +1486,7 @@ export function compileLegends(
       withoutKeeper: spun.filter(sq => !sq.keeper).map(sq => sq.nation),
       keeperLevel: keeperLevels.get(era.id),
       qualified: all.length,
-      left: all.slice(ERA_NATIONS).map(sq => sq.nation),
+      left: all.slice(nationLimit(era.id)).map(sq => sq.nation),
     });
   }
   // The Prime: everyone in a pool has his best version of all titles in the file, also when
@@ -1194,6 +1693,7 @@ export function compileLegends(
       poolYears: POOL_YEARS,
       judgement,
       players: PLAYER_JUDGEMENT,
+      nations: NATION_JUDGEMENT,
       careers,
       lift: {
         baseline: Math.round(baseline * 100) / 100,

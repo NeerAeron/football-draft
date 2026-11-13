@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { PATHS, MODERN_SOURCES } from '../scripts/data/paths.mjs';
+import { PLAYER_JUDGEMENT, NATION_JUDGEMENT } from '../scripts/compile-legends.mjs';
 import { decodeEras, encodeEras, ERAS_FORMAT } from '../app/core/players/eras-codec.js';
 import {
   ERAS,
@@ -109,7 +110,12 @@ test('every era has 20–70 nations that can field a pool — with or without a 
   );
   const counts = list.map(e => e.nations.length);
   // The early titles know fewer nations: France 98 is the thinnest, and stands on its own.
-  assert.deepEqual(counts, [51, 65, 65, 70, 70, 70, 70, 70]);
+  assert.deepEqual(counts, [38, 65, 65, 70, 70, 70, 70, 70]);
+  // (France 98 is cut to its 38 strongest pools of players the data can identify: no Canada of
+  // first names.)
+  assert.ok(
+    !eraNations(catalog, 1998).some(n => ['Canada', 'United States', 'Iceland'].includes(n.name)),
+  );
   // A side a follower would look for is there: Chile, Paraguay and Colombia in 1998, the hosts
   // of 2002.
   for (const [era, nation] of [
@@ -306,6 +312,57 @@ test('GOATs and Captains: the reviewed lists, player + era, are the marks on the
   const { mark, ...rest } = file.cards;
   assert.equal(mark.length, file.cards.count);
   assert.ok(decodeEras({ ...file, cards: rest }).cards.every(p => !p.goat && !p.captain));
+});
+
+test('the judgement: breakout lag, the icons of 1998–2002, England’s home titles', () => {
+  const kinds = k => PLAYER_JUDGEMENT.filter(f => (f.kind ?? 'peak') === k);
+  // A handful of peaks, at most 26 icons, about forty breakout cards — each with its reason.
+  assert.ok(kinds('peak').length <= 12 && kinds('icon').length <= 26);
+  const breakoutCards = kinds('breakout').reduce((n, f) => n + Object.keys(f.cards).length, 0);
+  assert.ok(breakoutCards >= 30 && breakoutCards <= 46, 'breakout cards: ' + breakoutCards);
+  for (const f of PLAYER_JUDGEMENT) assert.ok(f.why.length > 30 && f.id > 0, f.name);
+  assert.equal(new Set(PLAYER_JUDGEMENT.map(f => f.id)).size, PLAYER_JUDGEMENT.length);
+  // A key man of his World Cup is in his nation's pool of that era, next to his team-mates.
+  const rated = (era, nation, name) => {
+    const p = pool(era, nation).find(x => x.name === name);
+    assert.ok(p, `${era} ${nation}: ${name}`);
+    return shown(p);
+  };
+  for (const [era, nation, name, low, high] of [
+    [2010, 'Germany', 'T. Müller', 85, 87],
+    [2010, 'Spain', 'Sergio Busquets', 84, 86],
+    [2006, 'Germany', 'P. Lahm', 84, 86],
+    [2006, 'Germany', 'B. Schweinsteiger', 83, 85],
+    [2002, 'Germany', 'M. Klose', 84, 86],
+    [2022, 'England', 'B. Saka', 84, 86],
+    [2022, 'Germany', 'J. Musiala', 84, 86],
+    [2014, 'Costa Rica', 'K. Navas', 83, 85],
+    [1998, 'Republic of Ireland', 'R. Keane', 86, 88],
+    [1998, 'Argentina', 'G. Batistuta', 89, 91],
+    [2002, 'Brazil', 'Roberto Carlos', 89, 90],
+    [1998, 'Brazil', 'Dunga', 83, 85],
+  ]) {
+    const r = rated(era, nation, name);
+    assert.ok(r >= low && r <= high, `${era} ${name}: ${r}`);
+  }
+  // Not above the established stars of his side.
+  assert.ok(rated(2010, 'Germany', 'T. Müller') < rated(2010, 'Germany', 'P. Lahm'));
+  assert.ok(rated(2022, 'England', 'B. Saka') < rated(2022, 'England', 'H. Kane'));
+  // England in FIFA 98–2004: two points off at 90 — a strong quarter-final side, below the
+  // world champions of 2002.
+  const rule = NATION_JUDGEMENT.England;
+  assert.deepEqual([rule.editions, rule.top], [[98, 99, 0, 1, 2, 3, 4], -2]);
+  const strength = (era, nation) => eraNations(catalog, era).find(n => n.name === nation).strength;
+  assert.ok(strength(2002, 'Brazil') > strength(2002, 'England') + 1.5);
+  assert.ok(strength(2002, 'England') > strength(2002, 'Portugal'));
+  assert.ok(rated(2002, 'England', 'D. Beckham') <= 90);
+  assert.equal(eraNations(catalog, 2002)[0].name, 'Brazil');
+  // France 98: the champions, the finalists and Italy are level at the top.
+  const top98 = eraNations(catalog, 1998)
+    .slice(0, 3)
+    .map(n => n.name)
+    .sort();
+  assert.deepEqual(top98, ['Brazil', 'France', 'Italy']);
 });
 
 test('the pools read like football', () => {
