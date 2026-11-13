@@ -78,7 +78,10 @@ const raw = file ? JSON.parse(readFileSync(file, 'utf8')) : null;
 const catalog = !raw || raw.schemaVersion >= 3 ? loadRuntimeCatalog(file || undefined) : raw;
 if (ERAS || PRIMES) attachEras(catalog, readEras());
 if (CAPTAINS !== null) {
-  const list = JSON.parse(readFileSync(PATHS.captains, 'utf8')).players.slice(0, Number(CAPTAINS)),
+  // The list's first N players who lead today (era 2026): the catalog's Captains at that cut.
+  const list = JSON.parse(readFileSync(PATHS.captains, 'utf8'))
+      .players.slice(0, Number(CAPTAINS))
+      .filter(c => c.eras.includes(2026)),
     ids = new Set(list.map(c => String(c.sofifaId)));
   for (const p of catalog.players) p.captain = ids.has(p.profileId.split(':')[1]);
 }

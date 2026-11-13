@@ -364,7 +364,7 @@ test('era respin: another era; the nation stays when that era has it, else it is
     assert.notEqual(third.option.id, again.option.id);
     assert.equal(third.reroll, 2);
   }
-  assert.ok(kept > 20 && moved > 10, `kept ${kept}, moved ${moved}`);
+  assert.ok(kept > 20 && moved > 3, `kept ${kept}, moved ${moved}`);
   // Versus: each side has its own tokens.
   const pvp = eraDraft({ seed: 4, sides: 2 });
   const side = pvp.turn;

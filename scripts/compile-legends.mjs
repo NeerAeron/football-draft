@@ -64,12 +64,123 @@ export const TITLES = {
   upstream: "EA SPORTS FIFA 98–14, the games' own PC databases",
   license: 'No licence stated (community archive; player data © Electronic Arts)',
 };
+// The judgement (see `judged` in compileLegends): per title number, `top` points at the level
+// of the title's 30 best, in proportion above and below, nothing at `from` and under; `why` is
+// the reviewed reason. Titles that are not listed read right as they are.
+export const TITLE_JUDGEMENT = {
+  98: {
+    top: 4.8,
+    from: 60,
+    why: 'FIFA 98 (1997): the coarse scale and the pooling leave the whole title five to six points under every later one — its best 50 average 82 against 87–89 — in the years of Ronaldo, Zidane, Del Piero, Baggio and Batistuta. Raised most of the way (its ranking of players is too noisy to trust with all of it).',
+  },
+  99: {
+    top: 3.4,
+    from: 60,
+    why: 'FIFA 99 (1998): as FIFA 98, a little less far under.',
+  },
+  0: {
+    top: 4.1,
+    from: 60,
+    why: 'FIFA 2000 (1999): as FIFA 98.',
+  },
+  1: {
+    top: 1.0,
+    from: 70,
+    why: 'FIFA 2001 (2000): a point under its neighbours of 2003–05 at every level; the top of world football was not weaker in 2000.',
+  },
+  2: { top: 1.0, from: 70, why: 'FIFA 2002 (2001): as FIFA 2001.' },
+  3: { top: 1.0, from: 70, why: 'FIFA 2003 (2002): as FIFA 2001.' },
+  4: {
+    top: -0.8,
+    from: 84,
+    why: 'FIFA 2004 (2003): generous at the top only — ten cards at 92+ (Beckham, Kahn, Owen, Vieri and Figo next to Ronaldo and Zidane), its ten best a point above FIFA 2005 and 06 while its best 200 are level with them. Its link to FIFA 2005 is the loosest of the fully described titles. Brought level with its neighbours.',
+  },
+  7: {
+    top: 0.8,
+    from: 80,
+    why: 'FIFA 07 (2006): a little stingy — its best 50 average 87.2 against 87.9–88.9 around it, in a World Cup year (Cannavaro, Henry, Kaká, Buffon).',
+  },
+};
+// The cards of single players the title rules cannot put right: the peaks the game's
+// followers agree on, where a title's flat top hides them, and cards that are plainly wrong.
+// { id (EA's, the person's), name (checked against the data), cards: { title number → points },
+// why }. Kept to a handful of players.
+export const PLAYER_JUDGEMENT = [
+  {
+    id: 37576,
+    name: 'Ronaldo',
+    cards: { 98: 2, 99: 3, 1: -2, 3: 3 },
+    why: 'The best player in the world in 1996–98 (Ballon d’Or 1997, World Cup Golden Ball 1998) and the man of the 2002 World Cup (Ballon d’Or): the coarse titles have him level with Denilson and Del Piero, and FIFA 2003 at 89 after his injury years. FIFA 2001 (2000, a year he did not play) has him as its best player: two points off.',
+  },
+  {
+    id: 1397,
+    name: 'Zidane',
+    cards: { 98: 2, 99: 2, 0: 1, 1: 1, 2: 1, 3: 2 },
+    why: 'The best midfielder of 1998–2002 (Ballon d’Or 1998, FIFA World Player 1998 and 2000, Euro 2000, the 2002 Champions League final): the coarse titles rate him with Kluivert and Möller.',
+  },
+  {
+    id: 28130,
+    name: 'Ronaldinho',
+    cards: { 5: 3, 6: 2, 7: 2 },
+    why: 'FIFA World Player 2004 and 2005, Ballon d’Or 2005, the Champions League of 2006: the best player in the world for three years, rated 90–92 beside Giggs and Scholes.',
+  },
+  {
+    id: 158023,
+    name: 'Messi',
+    cards: { 10: 2, 11: 2 },
+    why: 'Ballon d’Or 2009 and 2010 (the sextuple, 47 and 53 goals): EA printed 90, level with Casillas; his 2011–15 cards (94–95) are his own.',
+  },
+  {
+    id: 20801,
+    name: 'Cristiano Ronaldo',
+    cards: { 9: 1 },
+    why: 'Ballon d’Or 2008 (42 goals, the Champions League): a point clear of Casillas and Kaká.',
+  },
+  {
+    id: 4231,
+    name: 'Rivaldo',
+    cards: { 99: 3, 0: 4 },
+    why: 'Ballon d’Or and FIFA World Player 1999, La Liga’s best in 1998–99: the coarse titles have him outside their top twenty.',
+  },
+  {
+    id: 1625,
+    name: 'Henry',
+    cards: { 4: 2, 5: 1, 6: 4 },
+    why: 'Runner-up for the Ballon d’Or 2003 and the FIFA World Player 2003 and 2004, the Invincibles’ forward, four Premier League Golden Boots in five years: FIFA 2004–05 have him level with Trezeguet and Makaay, FIFA 06 (2005) at 87 under Valerón.',
+  },
+  {
+    id: 138449,
+    name: 'Kaká',
+    cards: { 8: 2 },
+    why: 'Ballon d’Or and FIFA World Player 2007, the Champions League’s best player: FIFA 08 has him fourth among outfielders.',
+  },
+  {
+    id: 1109,
+    name: 'Maldini',
+    cards: { 98: 4, 99: 4, 0: 4, 1: 2, 2: 2, 3: 2 },
+    why: 'The best defender in the world from 1994 to 2003 (third for the Ballon d’Or in 1994 and 2003). FIFA 98 and 99 themselves have him as their best or second-best player (96 and 94 on their own scales); pooled with FIFA 2000’s odd 78 he came out at 85, under Southgate, Campbell and Blanc.',
+  },
+  {
+    id: 232,
+    name: 'Schmeichel',
+    cards: { 98: 4, 99: 4, 0: 3 },
+    why: 'The best goalkeeper of the 1990s (IFFHS World’s Best Goalkeeper 1992 and 1993, UEFA’s club goalkeeper of 1998, the 1999 treble): FIFA 98/99 have no keeper skills and he retired before a fully described title could vouch for him, so he came out at 84, level with Rossi and Letizi.',
+  },
+  {
+    id: 93,
+    name: 'Denilson',
+    cards: { 98: -6, 99: -4, 0: -4, 1: -3, 2: -3 },
+    why: 'The coarse scales max out his dribbling and speed: second or third best in the world in FIFA 98–2000. A fine winger and a record transfer, never that.',
+  },
+];
 // Era pools (app/data/eras.v1.json): a World Cup squad per nation and cycle.
 export const ERA_KEEPERS = 3;
 export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nation has them
-// A nation can be spun in an era when its pool can field a team with a bench and a keeper.
-// (No goalkeeper needed: `keepers` tells the draft which pools have one.)
-export const ERA_SPIN = { players: 18, DEF: 5, MID: 5, ATT: 2 };
+// A nation can be spun in an era when its pool can field a team with a bench: a back four,
+// five midfielders — a forward beyond the first four counts as one, he can play wide — and two
+// forwards. (No goalkeeper needed: `keepers` tells the draft which pools have one. Five
+// defenders kept Colombia's 1998 side out for one surname-only row's position.)
+export const ERA_SPIN = { players: 18, DEF: 4, MID: 5, ATT: 2 };
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 export const ERA_MINIMUM = 20; // an era with fewer nations is not an era: the build fails
 const ERA_LINE = {
@@ -89,7 +200,7 @@ const ERA_LINE = {
 export const ERA_SELECTION = {
   pool: `A nation's best ${ERA_SQUAD} players of the era, each at his best version inside its years (highest overall; ties: the later year); ${ERA_KEEPERS} goalkeepers and at least ${ERA_LINES.DEF} defenders, ${ERA_LINES.MID} midfielders and ${ERA_LINES.ATT} forwards where the nation has them; no minimum rating`,
   today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
-  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
+  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders (a forward beyond the first ${ERA_LINES.ATT} counts as one) and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
   best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
   squad: ERA_SQUAD,
   spin: ERA_SPIN,
@@ -171,6 +282,9 @@ function runtimePlayer(p, extra) {
  * @param older the decoded FIFA 98–14 titles ({ titles, sha256 }, scripts/data/legacy-titles.mjs)
  * @param modern FC 24–26: [{ edition, rows (scripts/data/modern-titles.mjs), source: { url,
  *   license, sha256 } }], oldest first
+ * @param marks the reviewed lists { goats (data/goats.json), captains (data/captains.json) }:
+ *   their cards in the era pools get `goat` / `captain`; an entry that does not meet the data
+ *   fails the build
  * @returns {{ legends, primes, eras, stats, calibration, notes }} runtime players, each with
  *   `edition` and `year`; a catalog player's legend carries `legendOf`, a prime `primeOf` (the
  *   current player's profileId) and no name, club or nation (those are the current player's).
@@ -182,8 +296,17 @@ export function compileLegends(
   hash = null,
   older = { titles: [] },
   modern = [],
+  marks = { goats: null, captains: null },
 ) {
-  const calibration = calibrateTitles(older.titles),
+  // What a national team is called: a nation's name as the catalog or any of the modern files
+  // spells it (the older titles list national squads next to clubs).
+  const nationWords = new Set(catalog.players.map(p => teamWords(p.source.nationality).join(' ')));
+  for (const row of legacyRows) nationWords.add(teamWords(row.nationality_name).join(' '));
+  for (const title of modern)
+    for (const row of title.rows) nationWords.add(teamWords(row.nationality_name).join(' '));
+  const calibration = calibrateTitles(older.titles, name =>
+      nationWords.has(teamWords(name).join(' ')),
+    ),
     teams = new Map(catalog.teams.map(t => [String(t.id), t])),
     current = new Map(catalog.players.map(p => [String(p.sourcePlayerId), p])),
     nations = new Set(catalog.players.map(p => p.source.nationality));
@@ -387,8 +510,20 @@ export function compileLegends(
     const share = Math.max(0, Math.min(1, (overall - LIFT_FROM) / (full - LIFT_FROM)));
     return overall + lift * share;
   };
+  // ---- the judgement ----------------------------------------------------------------------
+  // After the measured calibration, a reviewed correction per title (TITLE_JUDGEMENT): where a
+  // title as a whole reads too generous, too stingy or too flat at the top next to what the
+  // game's followers think of those players, every card of the title is moved by one rule —
+  // `top` points at the level of the title's LIFT_TOP best (after the lift), in proportion
+  // above and below it, nothing at `from` and under. No title is made equal to another.
+  const levels = new Map(); // edition → mean of its LIFT_TOP best after the lift
+  const judged = (edition, overall) => {
+    const rule = TITLE_JUDGEMENT[edition];
+    if (!rule || overall <= rule.from) return overall;
+    return overall + (rule.top * (overall - rule.from)) / (levels.get(edition) - rule.from);
+  };
   // ---- versions --------------------------------------------------------------------------
-  const versions = one => [
+  const rawVersions = one => [
     ...one.old
       .filter(p => p.given != null)
       .map(p => ({
@@ -396,16 +531,44 @@ export function compileLegends(
         year: p.year,
         edition: p.edition,
         printed: Math.round(p.given),
-        overall: Math.round(lifted(p.edition, p.given)),
+        calibrated: lifted(p.edition, p.given),
       })),
     ...one.legacy.map(entry => ({
       entry,
       year: snapshotYear(entry.row),
       edition: Number(entry.row.fifa_version),
       printed: Number(entry.row.overall),
-      overall: Math.round(lifted(Number(entry.row.fifa_version), Number(entry.row.overall))),
+      calibrated: lifted(Number(entry.row.fifa_version), Number(entry.row.overall)),
     })),
   ];
+  {
+    const byTitle = new Map();
+    for (const one of persons.values())
+      for (const v of rawVersions(one)) {
+        if (!byTitle.has(v.edition)) byTitle.set(v.edition, []);
+        byTitle.get(v.edition).push(v.calibrated);
+      }
+    for (const [edition, list] of byTitle) levels.set(edition, topMean(list));
+  }
+  const versionCache = new Map(),
+    playerFix = new Map(PLAYER_JUDGEMENT.map(fix => [String(fix.id), fix])),
+    fixed = new Set();
+  const versions = one => {
+    if (!versionCache.has(one))
+      versionCache.set(
+        one,
+        rawVersions(one).map(v => {
+          const points = playerFix.get(one.key)?.cards[v.edition] ?? 0;
+          if (points) fixed.add(`${one.key}:${v.edition}`);
+          return {
+            ...v,
+            before: Math.round(v.calibrated),
+            overall: Math.min(99, Math.round(judged(v.edition, v.calibrated)) + points),
+          };
+        }),
+      );
+    return versionCache.get(one);
+  };
   const bestVersion = one => {
     let best = null;
     for (const v of versions(one))
@@ -759,7 +922,9 @@ export function compileLegends(
     if (
       members.length < ERA_SPIN.players ||
       count('DEF') < ERA_SPIN.DEF ||
-      count('MID') < ERA_SPIN.MID ||
+      // (A forward beyond the first four can play wide in midfield: Japan's 2002 pool has four
+      // midfielders and ten forwards and wingers.)
+      count('MID') + Math.max(0, count('ATT') - ERA_LINES.ATT) < ERA_SPIN.MID ||
       count('ATT') < ERA_SPIN.ATT
     )
       continue;
@@ -837,6 +1002,52 @@ export function compileLegends(
       eraCard(c.one, best, c.now, pool.nation);
       bestOnly++;
     }
+  // GOATs and Captains: reviewed lists of player + era. The card must be there — that man, by
+  // EA's id, name and nation, in his nation's pool of that era — or the build fails. Every
+  // entry is checked, also the Captains behind the list's `size` cut (so the cut can be moved
+  // without a surprise); only the first `size` are marked.
+  const marked = { goat: [], captain: [] };
+  const mark = (list, flag, size = Infinity) => {
+    const out = new Set();
+    for (const [i, entry] of (list?.players ?? []).entries()) {
+      const names = new Set(),
+        on = i < size,
+        id = Number(entry.sofifaId);
+      if (out.has(id)) throw Error(`${flag} ${entry.name} (${id}) is listed twice`);
+      if (!entry.eras?.length || new Set(entry.eras).size !== entry.eras.length)
+        throw Error(`${flag} ${entry.name}: eras ${JSON.stringify(entry.eras)}`);
+      for (const era of entry.eras) {
+        const pool = eraPools.find(x => x.era === era && x.nation === entry.nation),
+          at = pool ? pool.people.findIndex(c => idOf(c) === id) : -1;
+        if (at < 0)
+          throw Error(`${flag} ${entry.name} (${id}): no card in ${entry.nation}'s pool of ${era}`);
+        const c = pool.people[at],
+          own = eraCards.get(pool.members[at]);
+        if (own) {
+          if (on) own[flag] = true;
+          names.add(own.name);
+        } else {
+          // Today's catalog player as he is: a Captain there by the catalog's own flag (the
+          // catalog compiler reads the same list); the catalog has no GOAT flag.
+          if (flag !== 'captain' || !!c.now.captain !== on)
+            throw Error(`${flag} ${entry.name}: his ${era} card is the catalog player`);
+          names.add(c.now.name);
+        }
+        if (on) marked[flag].push(`${era} ${entry.nation}: ${entry.name}`);
+      }
+      if (!names.has(entry.sourceName))
+        throw Error(
+          `${flag} ${entry.name}: the data calls ${id} "${[...names].join('" / "')}", not "${entry.sourceName}"`,
+        );
+      out.add(id);
+    }
+    return out;
+  };
+  const goatIds = mark(marks.goats, 'goat'),
+    captainIds = mark(marks.captains, 'captain', marks.captains?.size);
+  for (const person of goatIds)
+    if (captainIds.has(person))
+      throw Error(`EA id ${person} is a GOAT and a Captain: one list only`);
   const sourceId = p => Number(p.profileId.split(':')[1]),
     eraOrder = new Map(ERAS.map((e, i) => [e.id, i])),
     cardList = [...eraCards.values()].sort(
@@ -870,6 +1081,8 @@ export function compileLegends(
     summary: eraSummary,
     stats: {
       cards: cardList.length,
+      goats: marked.goat,
+      captains: marked.captain,
       bestOnly,
       noNation: eraStats.noNation,
       noName: eraStats.noName,
@@ -877,6 +1090,97 @@ export function compileLegends(
       sameName: eraStats.sameName,
     },
   };
+  // Per title, before and after the judgement: its best cards and the level of its top.
+  const judgement = {},
+    careers = {};
+  // The single players' corrections must meet the data: the man, and every card named.
+  for (const fix of PLAYER_JUDGEMENT) {
+    const one = persons.get(String(fix.id)),
+      name =
+        one &&
+        (current.get(one.key)?.name ?? one.legacy.at(-1)?.row.short_name ?? nameSource(one)?.name);
+    if (!name || !words(name).includes(words(fix.name)))
+      throw Error(`PLAYER_JUDGEMENT: id ${fix.id} is ${name ?? 'nobody'}, not ${fix.name}`);
+    const list = versions(one);
+    for (const edition of Object.keys(fix.cards))
+      if (!fixed.has(`${one.key}:${edition}`))
+        throw Error(`PLAYER_JUDGEMENT: ${fix.name} has no card in title ${edition}`);
+    careers[fix.name] = list
+      .map(
+        v =>
+          `’${String(v.year % 100).padStart(2, '0')} ${v.before === v.overall ? v.overall : `${v.before}→${v.overall}`}`,
+      )
+      .join(', ');
+  }
+  for (const id of (process.env.WATCH_IDS || '').split(',').filter(Boolean)) {
+    const one = persons.get(id);
+    if (one)
+      careers[`watch ${id} ${nameSource(one)?.name ?? one.legacy.at(-1)?.row.short_name}`] =
+        versions(one)
+          .map(
+            v =>
+              `’${String(v.year % 100).padStart(2, '0')} ${v.before === v.overall ? v.overall : `${v.before}→${v.overall}`}`,
+          )
+          .join(', ');
+  }
+  {
+    const byTitle = new Map();
+    for (const one of persons.values()) {
+      const now = current.get(one.key);
+      for (const v of versions(one)) {
+        if (!byTitle.has(v.edition)) byTitle.set(v.edition, []);
+        byTitle.get(v.edition).push({ one, now, v });
+      }
+    }
+    const label = edition =>
+      edition >= 90 ? `FIFA ${edition}` : titleName(String(edition).padStart(2, '0'));
+    const titleOrder = edition => (edition >= 90 ? edition - 100 : edition);
+    for (const [edition, list] of [...byTitle].sort(
+      (a, b) => titleOrder(a[0]) - titleOrder(b[0]),
+    )) {
+      const mean = (key, n) => {
+        const best = list
+          .map(x => x.v[key])
+          .sort((a, b) => b - a)
+          .slice(0, n);
+        return Math.round((best.reduce((sum, x) => sum + x, 0) / best.length) * 10) / 10;
+      };
+      const name = ({ one, now }) =>
+        now?.name ??
+        one.legacy.findLast(e => e.row.fifa_version !== '25')?.row.short_name ??
+        nameSource(one)?.name ??
+        one.old.at(-1)?.name ??
+        one.legacy.at(-1)?.row.short_name;
+      judgement[label(edition)] = {
+        rule: TITLE_JUDGEMENT[edition] ?? null,
+        level: Math.round(levels.get(edition) * 10) / 10,
+        before: {
+          top10: mean('before', 10),
+          top50: mean('before', 50),
+          top200: mean('before', 200),
+        },
+        after: {
+          top10: mean('overall', 10),
+          top50: mean('overall', 50),
+          top200: mean('overall', 200),
+        },
+        top: [...list]
+          .sort(
+            (a, b) =>
+              b.v.overall - a.v.overall ||
+              b.v.before - a.v.before ||
+              Number(a.one.key) - Number(b.one.key),
+          )
+          .slice(0, 30)
+          .map(x => ({
+            name: name(x),
+            position: x.v.entry ? rowPositions(x.v.entry.row)[0] : x.v.old.positions[0],
+            before: x.v.before,
+            after: x.v.overall,
+          })),
+      };
+    }
+  }
   const { yardstick, links, pool } = calibration;
   return {
     legends,
@@ -888,6 +1192,9 @@ export function compileLegends(
       links,
       pool,
       poolYears: POOL_YEARS,
+      judgement,
+      players: PLAYER_JUDGEMENT,
+      careers,
       lift: {
         baseline: Math.round(baseline * 100) / 100,
         top: LIFT_TOP,

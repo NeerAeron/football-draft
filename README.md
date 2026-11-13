@@ -185,14 +185,14 @@ club we have reviewed metadata for (15,788 players, 553 clubs in 41 leagues, 163
 including 831 players rated 65+ whose clubs the game does not carry (nation pools only), plus
 precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
-`data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
-with sources (`data/captains.json`). `app/data/legends.v1.json` (no longer loaded by the game: the World Cup draft and the Prime
-read the era file) holds 431 legends — best past versions of 1998–2025 the game shows at 85+: 307
+`data/catalog-reference.json`; the Captains are a reviewed list of the leaders of 1997–2026, each with his eras
+(`data/captains.json`), the GOAT cards a list of player + era (`data/goats.json`). `app/data/legends.v1.json` (no longer loaded by the game: the World Cup draft and the Prime
+read the era file) holds 431 legends — best past versions of 1997–2025 the game shows at 85+: 307
 players who are not in the catalog and 124 catalog players who were at least two points better
 then — and the prime versions of 4,815 catalog players (any gain on today's card), compiled by
 the same compiler. `app/data/eras.v1.json` holds the era pools: for each of eight World Cup
-cycles (France 98 … USA/Canada/Mexico 26) and each nation that can field a squad then (27 to 70 per era), its
-best 26 players, each at his best version of those years — 12,486 cards of 7,334 people. A
+cycles (France 98 … USA/Canada/Mexico 26) and each nation that can field a squad then (51 to 70 per era), its
+best 26 players, each at his best version of those years — 13,301 cards of 7,540 people. A
 past version shows the overall EA gave it that year, lifted at the top where EA rated its best
 lower than it does today (FIFA 09–16; never lowered): Messi ’15 95, Cristiano Ronaldo ’18 94.
 FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through the players

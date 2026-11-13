@@ -211,8 +211,8 @@ an XI of 85.0 / 83.9.
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,486
-cards, 2.4 MB, 0.71 MB gzip / 0.56 MB brotli), attached to the catalog like the legends.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,301
+cards, 2.6 MB, 0.76 MB gzip / 0.60 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
 `node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
@@ -254,14 +254,14 @@ sentence, the share text).
   the catalog does not know are simply nobody's other version.
 - `eraList(catalog)` → `[{ id, label, short, from, to, keeperLevel, nations: [{ name, code,
   flag, strength, size, keepers }] }]`, oldest era first, an era's nations strongest first.
-  **Only spinnable nations are listed** (20–70 per era, see below). `name` is the catalog's
+  **Only spinnable nations are listed** (51–70 per era, see below). `name` is the catalog's
   nation name (`code`/`flag` as in `catalog.nations`; a nation today's catalog does not have —
   none at the moment — would have `code: null`). `size` = players in the pool (≤ 26),
   **`keepers` = how many of them are goalkeepers: 0 to 3 — a spinnable pool may have none.**
   `strength` = the mean shown rating of the pool's best XI (best keeper + the ten best
   outfielders, one decimal): the number to weigh or order a reel by. A pool without a keeper
   is rated with the era's `keeperLevel` in goal — the weakest first-choice keeper any
-  qualifying pool of that era has (71 / 63 / 62 / 61 / 58 / 53 / 58 / 53), i.e. the least a
+  qualifying pool of that era has (70 / 70 / 62 / 61 / 58 / 53 / 58 / 53), i.e. the least a
   keeper drafted from that era would be: no invented player, and such a nation is never
   rated above what it could field.
 - `eraNations(catalog, eraId)` → that era's `nations` array (`[]` for an unknown era).
@@ -284,7 +284,8 @@ sentence, the share text).
   era: 2002, year: 2002, edition: 3,
   name, fullName, primaryPosition, secondaryPositions, attrs, foot, weakFoot, tendencies, tags,
   sourceOverall,                  // the overall of that version on the common scale
-  captain: false,
+  goat: true, captain: false,     // the marks (see "GOAT cards and Captains"): always booleans
+                                  // on an era card, never both true
   person: 'ea:1397',              // one person, whatever the card (see below)
   eraOf: 'ea:…:fc27:u…' | undefined, // the catalog player's profileId when he is in the catalog
   source: { club, clubId, leagueId, nationality }, // the club of that version when the catalog
@@ -317,23 +318,91 @@ past card. The card may come from an era in which he is not in his nation's 26 (
 the file for this). Swap it in place of the drafted player: same person, its own positions,
 attributes, badges, club and year (`editionLabel(card)` → "’05").
 
+### GOAT cards and Captains (the marks)
+
+Two reviewed lists are build inputs, and the compiler writes them onto the pools' cards
+(`scripts/compile-legends.mjs`; an entry whose EA id, name, nation or era does not meet the
+data fails the build — every entry, also the Captains behind the cut):
+
+- **`data/goats.json` — GOAT cards: a player AND an era.** Seven players, 17 cards: Messi
+  2010 / 2014 / 2018 / 2022, Cristiano Ronaldo 2010 / 2014 / 2018, Ronaldo 1998 / 2002, Zidane
+  1998 / 2002 / 2006, Ronaldinho 2006, Xavi 2010 / 2014, Iniesta 2010 / 2014 (each with its
+  reason; `closeCalls` names what could have gone the other way). Only the card of a listed
+  era is a GOAT: Messi's 2006 and 2026 cards, Ronaldinho's 2002 card are ordinary cards.
+- **`data/captains.json` — Captains: the leaders of 1997–2026, ranked, each with the eras in
+  which he led** (87 entries; the first `size` = **40** count: 40 players, 89 cards). His cards of those eras are Captains; his other cards are not (Maldini 1998 /
+  2002 / 2006, not 2010). **No player is in both lists** (Maldini, Buffon and Modrić are
+  Captains). The old list of today's national-team captains is gone: of today's players only
+  the list's own are Captains.
+
+**How the flags reach you:**
+
+| what you hold | `goat` | `captain` |
+| --- | --- | --- |
+| an era card (`player.era` set; from `eraPool`, `eraPlayer`, `personVersions`, `bestVersion`) | `true` / `false` | `true` / `false` |
+| a catalog player (in a 2026 pool as he is, or anywhere else) | `undefined` — **never a GOAT** | `true` / `false` (catalog field, as before): van Dijk, Kane, Kimmich, Modrić, Marquinhos, Son |
+| a legend / a prime version (`legends.js`) | `undefined` | legend `false`; a prime version carries the catalog player's |
+
+So test `player.goat === true` and `player.captain === true` on whatever a pool or a slot
+holds; nothing else is needed. A card is never both. The flag belongs to **the card, not the
+person**: in the 2026 era a Captain is flagged on the object the pool holds (the catalog
+player, or his FC 24–26 era card when that shows more — the catalog player is then a Captain
+too). The cards kept outside the pools for the Prime (`bestVersion`) are flagged only when
+they are also a pool's card of a listed era — so **a Prime swap takes the marks of the card
+swapped in**: Xavi 2006 (ordinary) primed is Xavi ’11, a GOAT card; Kimmich today (Captain)
+primed to an earlier card of an era in which he is not listed would lose the armband — if a
+primed Captain should keep it, carry it over in the session (`drafted.captain || prime.captain`).
+
+`eraMarks(catalog)` → `{ goats: [{ era, nation, player }], captains: [...] }` — every marked
+card of the pools, by era then nation (frozen, built on first use): for a gallery, a count or
+a test. Per era as built: GOAT cards 2 / 2 / 2 / 4 / 4 / 2 / 1 / 0; Captain cards 8 / 14 / 15 /
+13 / 13 / 10 / 10 / 6 (in 8 / 9 / 8 / 8 / 11 / 9 / 9 / 6 pools).
+
+**How often a draft meets one** (11 spins, era and then nation drawn evenly from the reels —
+a model of the two-spinner draft, `size` is the lever):
+
+| `size` | Captain cards | a spin's pool has a Captain | pools with a Captain per draft | at least one in a draft |
+| --- | --- | --- | --- | --- |
+| 20 | 45 | 8% | 0.83 | 58% |
+| 30 | 70 | 10% | 1.15 | 70% |
+| **40** | **89** | **13%** | **1.42** | **78%** |
+| 50 | 107 | 15% | 1.62 | 83% |
+| 60 | 126 | 17% | 1.92 | 88% |
+| 87 (all) | 161 | 23% | 2.55 | 94% |
+
+A Captain is within 4 points of his pool's best player in most of those pools (1.27 per draft
+at 40), so a player who wants one gets one in roughly every second draft and is
+offered one about every 0.7 drafts — the owner's "a captain every 0.3–1 game". A GOAT card
+is in 3% of pools: 0.32 per draft, at least one in 27% of drafts. Re-rolls and a reel
+weighted by strength raise all of these (the Captains' nations are the strong ones). The boosts
+and the look are the draft's (`links.js`, the UI); the data only says who.
+
 **Which nations can be spun in an era** (decided by the compiler, `ERA_SPIN` in
 `scripts/compile-legends.mjs`, recorded in the file's `selection`): a nation whose pool has at
-least 18 players, at least 5 defenders, 5 midfielders and 2 forwards (counted before a second
-striker is settled as a striker or a No. 10: a pool can end with 4 midfielders or 1 forward) —
-**a goalkeeper is not required**; if more than 70 qualify, the 70 strongest; an era needs at
-least 20 (the build fails otherwise). As built:
+least 18 players, at least **4 defenders**, **5 midfielders — a forward beyond the pool's
+first four counts as one** (he can play wide) — and 2 forwards (counted before a second
+striker is settled as a striker or a No. 10: a pool can end with a midfielder or a forward
+fewer) — **a goalkeeper is not required**; if more than 70 qualify, the 70 strongest; an era
+needs at least 20 (the build fails otherwise). As built:
 
 | era | nations | pools under 26 | fewer than 3 keepers | no keeper | strongest | weakest |
 | --- | --- | --- | --- | --- | --- | --- |
-| France 98 | 27 | 8 (18–25) | 6 | — | England 82.7 | Hungary 70.9 |
-| Korea/Japan 02 | 54 | 7 | 15 | Ghana, China PR | Brazil 86.9 | China PR 69.6 |
-| Germany 06 | 62 | 3 | 13 | Guinea | Brazil 89.7 | China PR 71.0 |
-| South Africa 10 | 70 | 9 | 21 | Mali, Peru, Algeria, Honduras, Congo DR | Brazil 88.5 | New Zealand 66.5 |
-| Brazil 14 | 70 of 84 | 0 | 13 | Honduras | Spain 89.3 | Guinea 71.4 |
-| Russia 18 | 70 of 98 | 1 | 5 | — | Spain 88.5 | Bulgaria 73.9 |
+| France 98 | 51 | 12 (18–25) | 8 | Ghana, Uruguay | Italy 86.9 | China PR 73.5 |
+| Korea/Japan 02 | 65 | 4 | 13 | Georgia, Ghana, Guinea | Italy 88.2 | Estonia 70.4 |
+| Germany 06 | 65 | 6 | 15 | Guinea, Burkina Faso | Brazil 89.9 | Burkina Faso 69.0 |
+| South Africa 10 | 70 of 75 | 10 | 22 | Mali, Peru, Guinea, Algeria, Honduras, Burkina Faso, Congo DR | Brazil 88.5 | Congo 70.8 |
+| Brazil 14 | 70 of 86 | 0 | 13 | Honduras | Spain 89.3 | Guinea 71.4 |
+| Russia 18 | 70 of 100 | 1 | 5 | — | Spain 88.5 | Bulgaria 73.9 |
 | Qatar 22 | 70 of 100 | 1 | 5 | Gabon | France 87.9 | South Africa 74.5 |
-| USA/Canada/Mexico 26 | 70 of 99 | 1 | 5 | Egypt | France 88.4 | North Macedonia 73.9 |
+| USA/Canada/Mexico 26 | 70 of 101 | 1 | 5 | Egypt | France 88.4 | North Macedonia 73.9 |
+
+**What changed with the missing-names pass** (against the build before it): the spin rule
+asks for 4 defenders (was 5) and counts spare forwards as midfielders — Colombia 1998 and
+Japan 2002 are in; an international both FIFA 98 and 99 list has a card even when the game had
+no club for him (Chile, Paraguay, Jamaica, Iceland, Tunisia, Colombia and Peru… of 1998 can be
+spun: 44 → 51 nations; 2002 62 → 65, 2006 62 → 65); one man under two ids of one title is one
+person (a pool no longer holds him twice). 17 of the 531 era–nation pools have no keeper;
+pools with a keeper per era: 49 / 62 / 63 / 63 / 69 / 70 / 69 / 69.
 
 **What changed for the draft (keeper rule dropped, 2026 renamed)** — against the first build:
 
@@ -359,11 +428,11 @@ Things a draft should know about the data:
   Ronaldo ’98 are 88, Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
   described 2003–04 versions) is where those players reach 90+. A reel that weighs by
   `strength` will favour later eras unless it weighs inside an era.
-- **France 98 is thin**: 27 nations, no Brazil-size depth outside Europe and Argentina/Brazil
+- **France 98 is the thinnest**: 51 nations, no Brazil-size depth outside Europe and Argentina/Brazil
   (FIFA 98/99 use their own player ids and mostly surnames: a player counts only when
-  FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch). Japan, Mexico, the United States or Nigeria of 1998 are not spinnable.
+  FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch — or when both titles list him, at a club or in a national squad). Japan of 1998 is not spinnable (16 players); Liberia never is (Weah has no pool).
 - A pool can have 0, 1 or 2 keepers, and as few as 18 players.
-- 7,334 people are in a pool; 3,455 of them in two or more eras (Messi in six). 601 best
+- 8,138 people are in a pool; 3,572 of them in two or more eras. 455 best
   versions are kept outside the pools for the Prime.
 
 The draft reads only the era file: `catalog.legends` (`legends.v1.json`) is no longer loaded
@@ -505,14 +574,12 @@ each, +2.5 for club mates inside them, +1 with their captain), real club XIs clu
 entry's `boost` says what a player would get in the XI as it stands, `captainBoost` what he
 would give it.
 
-**Captains** are a reviewed list of real national-team captains, current players only
-(`data/captains.json`: name, sofifa id, nation, source URL, reason, ranked leaders first). The
-compiler tags its first `size` (10) players — van Dijk, Kimmich, Modrić, Kane, Messi, Son,
-Marquinhos, Xhaka, Koulibaly, Robertson — and fails when an id, name or nation does not match
-the catalog. The size was cut so that about one drafted XI in three had a captain when World
-Cup drafts spun today's players; in an era draft only the 2026 cards can be Captains (an era
-card never is), so a World Cup XI has one in about 4% of drafts — see the table under "World
-Cup drafts". Opponents with a captain get the boost too.
+**Captains** are the reviewed list of the leaders of 1997–2026 (`data/captains.json`, see
+"GOAT cards and Captains" under Eras: player + eras, ranked, cut at `size`). Among today's
+catalog players the Captains are the list's players who lead in the 2026 era, and the build
+fails when an id, name or nation does not match the catalog. An era card carries its own mark
+(a card of an era he led in); the Prime takes the marks of the card swapped in. How often a
+draft meets one: the table under "World Cup drafts". Opponents with a captain get the boost too.
 
 `MODE_BASELINES` (Nations 83.58 / 84.04 / 84.18 with 0 / 1 / 2 re-rolls) is the draft of
 today's players; a World Cup draft with its tokens measures 84.99 (above).

@@ -17,6 +17,7 @@ import {
   eraPool,
   eraPlayer,
   eraOf,
+  eraMarks,
   personId,
   personVersions,
   bestVersion,
@@ -108,15 +109,28 @@ test('every era has 20–70 nations that can field a pool — with or without a 
   );
   const counts = list.map(e => e.nations.length);
   // The early titles know fewer nations: France 98 is the thinnest, and stands on its own.
-  assert.deepEqual(counts, [27, 54, 62, 70, 70, 70, 70, 70]);
-  // A goalkeeper is not required: ten pools have none, and `keepers` says so.
+  assert.deepEqual(counts, [51, 65, 65, 70, 70, 70, 70, 70]);
+  // A side a follower would look for is there: Chile, Paraguay and Colombia in 1998, the hosts
+  // of 2002.
+  for (const [era, nation] of [
+    [1998, 'Chile'],
+    [1998, 'Paraguay'],
+    [1998, 'Colombia'],
+    [2002, 'Japan'],
+    [2002, 'Korea Republic'],
+  ])
+    assert.ok(
+      eraNations(catalog, era).some(n => n.name === nation),
+      `${era} ${nation}`,
+    );
+  // A goalkeeper is not required: seventeen pools have none, and `keepers` says so.
   assert.deepEqual(
     list.map(e => e.nations.filter(n => n.keepers === 0).map(n => n.name)),
     [
-      [],
-      ['Ghana', 'China PR'],
-      ['Guinea'],
-      ['Mali', 'Peru', 'Algeria', 'Honduras', 'Congo DR'],
+      ['Ghana', 'Uruguay'],
+      ['Georgia', 'Ghana', 'Guinea'],
+      ['Guinea', 'Burkina Faso'],
+      ['Mali', 'Peru', 'Guinea', 'Algeria', 'Honduras', 'Burkina Faso', 'Congo DR'],
       ['Honduras'],
       [],
       ['Gabon'],
@@ -140,13 +154,17 @@ test('every era has 20–70 nations that can field a pool — with or without a 
       assert.ok(n.flag.endsWith(`${n.code}.svg`));
       assert.equal(n.size, players.length);
       assert.equal(n.keepers, players.filter(p => p.primaryPosition === 'GK').length);
-      // The spin rule: a team with a bench — five defenders, five midfielders, two forwards
-      // among at least 18 — and never more than a World Cup squad. No keeper needed.
+      // The spin rule: a team with a bench — four defenders, five midfielders (a forward
+      // beyond the first four counts as one), two forwards among at least 18 — and never more
+      // than a World Cup squad. No keeper needed.
       assert.ok(n.size >= 18 && n.size <= ERA_SQUAD, `${era.label} ${n.name}: ${n.size}`);
       assert.ok(n.keepers >= 0 && n.keepers <= 3, `${era.label} ${n.name}`);
       const lines = { DEF: 0, MID: 0, ATT: 0, GK: 0 };
       for (const p of players) lines[LINE_OF[p.primaryPosition]]++;
-      assert.ok(lines.DEF >= 4 && lines.MID >= 4 && lines.ATT >= 1, `${era.label} ${n.name}`);
+      assert.ok(
+        lines.DEF >= 4 && lines.MID + Math.max(0, lines.ATT - 4) >= 4 && lines.ATT >= 1,
+        `${era.label} ${n.name}`,
+      );
       // Strength: the mean shown rating of the best XI (best keeper + ten best outfielders;
       // without a keeper, the era's keeper level in goal).
       const keeper = players.find(p => p.primaryPosition === 'GK'),
@@ -158,8 +176,8 @@ test('every era has 20–70 nations that can field a pool — with or without a 
   }
   assert.deepEqual(eraNations(catalog, 1990), []);
   assert.deepEqual(pool(1998, 'Japan'), []); // not spinnable then
-  assert.equal(list[0].nations[0].name, 'England');
-  assert.equal(list[1].nations[0].name, 'Brazil');
+  assert.ok(['England', 'Italy', 'France'].includes(list[0].nations[0].name));
+  assert.ok(list[1].nations.slice(0, 3).some(n => n.name === 'Brazil'));
   assert.equal(list.at(-1).nations[0].name, 'France');
   for (const name of ['Brazil', 'Italy', 'Germany', 'Argentina', 'France', 'Netherlands'])
     for (const era of list) assert.ok(pool(era.id, name).length === ERA_SQUAD, name);
@@ -198,7 +216,8 @@ test('a pool: the nation’s best 26 of the era, each at his best version inside
         assert.equal(p.era, era.id);
         assert.ok(p.year >= era.from && p.year <= era.to, `${p.name} ’${p.year}`);
         assert.equal(p.person, `ea:${p.profileId.split(':')[1]}`);
-        assert.equal(p.captain, false);
+        assert.ok(typeof p.captain === 'boolean' && typeof p.goat === 'boolean');
+        assert.ok(!(p.captain && p.goat), `${p.name}: a GOAT or a Captain, never both`);
         // The card shows the overall of that version on the common scale.
         assert.equal(shown(p), p.sourceOverall, p.profileId);
         assert.doesNotMatch(p.name, /^no\.?\s*\d+$/i);
@@ -222,9 +241,71 @@ test('a pool: the nation’s best 26 of the era, each at his best version inside
   for (const p of data.cards.slice(0, 400))
     assert.deepEqual(normalizeBadges(p, p.tags), p.tags, p.profileId);
   // No minimum rating: a small nation's pool goes down to the 50s and 60s.
-  assert.ok(Math.min(...pool(2010, 'New Zealand').map(shown)) < 62);
+  assert.ok(Math.min(...pool(2010, 'Burkina Faso').map(shown)) < 62);
   // Era cards never join the catalog's pools.
   assert.ok(!catalog.players.some(p => p.era));
+});
+
+test('GOATs and Captains: the reviewed lists, player + era, are the marks on the pools’ cards', () => {
+  const goats = JSON.parse(readFileSync(PATHS.goats, 'utf8')),
+    captains = JSON.parse(readFileSync(PATHS.captains, 'utf8')),
+    marks = eraMarks(catalog),
+    keys = list => list.map(m => `${m.era} ${m.nation} ${personId(m.player)}`).sort(),
+    want = players =>
+      players.flatMap(p => p.eras.map(era => `${era} ${p.nation} ea:${p.sofifaId}`)).sort();
+  // 3–10 GOATs; every listed player + era is a marked card, and nobody else is.
+  assert.ok(goats.players.length >= 3 && goats.players.length <= 10);
+  assert.deepEqual(keys(marks.goats), want(goats.players));
+  assert.ok(captains.size >= 20 && captains.size <= captains.players.length);
+  assert.deepEqual(keys(marks.captains), want(captains.players.slice(0, captains.size)));
+  assert.equal(eraMarks(catalog), marks);
+  // One list per player, whatever the cut; each entry says why.
+  const goatIds = new Set(goats.players.map(p => p.sofifaId));
+  for (const [i, p] of captains.players.entries()) {
+    assert.equal(p.rank, i + 1);
+    assert.ok(!goatIds.has(p.sofifaId), `${p.name} is a GOAT`);
+  }
+  for (const p of [...goats.players, ...captains.players]) {
+    assert.ok(p.reason.length > 15 && p.eras.every(eraById), p.name);
+    assert.deepEqual(
+      p.eras,
+      [...p.eras].sort((a, b) => a - b),
+    );
+  }
+  // The marks are on the cards the pools hold (and a GOAT only in the listed eras).
+  const card = (era, nation, name) => pool(era, nation).find(p => p.name === name);
+  assert.equal(card(2014, 'Argentina', 'L. Messi').goat, true);
+  assert.equal(card(2006, 'Argentina', 'L. Messi').goat, false);
+  assert.ok(!card(2026, 'Argentina', 'L. Messi').goat);
+  assert.equal(card(1998, 'Brazil', 'Ronaldo').goat, true);
+  assert.equal(card(2006, 'Brazil', 'Ronaldinho').goat, true);
+  assert.equal(card(2002, 'Brazil', 'Ronaldinho').goat, false);
+  assert.equal(card(1998, 'Italy', 'P. Maldini').captain, true);
+  assert.equal(card(1998, 'Italy', 'P. Maldini').goat, false);
+  assert.equal(card(2010, 'Italy', 'P. Maldini')?.captain ?? false, false);
+  // Today's Captains are the list's players who lead in 2026: no other catalog player is one.
+  const today = captains.players
+    .slice(0, captains.size)
+    .filter(p => p.eras.includes(CURRENT_ERA))
+    .map(p => p.sofifaId)
+    .sort((a, b) => a - b);
+  assert.deepEqual(
+    catalog.players
+      .filter(p => p.captain)
+      .map(p => Number(personId(p).split(':')[1]))
+      .sort((a, b) => a - b),
+    today,
+  );
+  assert.ok(today.length >= 3);
+  assert.ok(catalog.players.every(p => !p.goat));
+  // Every era has Captains to meet; GOATs are rare.
+  for (const era of ERAS.slice(0, -1))
+    assert.ok(marks.captains.filter(m => m.era === era.id).length >= 5, era.label);
+  assert.ok(marks.goats.length >= 5 && marks.goats.length <= 30);
+  // A file from before the marks still decodes: nobody is marked.
+  const { mark, ...rest } = file.cards;
+  assert.equal(mark.length, file.cards.count);
+  assert.ok(decodeEras({ ...file, cards: rest }).cards.every(p => !p.goat && !p.captain));
 });
 
 test('the pools read like football', () => {
@@ -236,7 +317,7 @@ test('the pools read like football', () => {
   assert.ok(top(2002, 'Brazil', 6).includes('Rivaldo'));
   assert.ok(top(2002, 'France', 3).includes('Z. Zidane'));
   assert.ok(top(1998, 'France', 5).includes('Z. Zidane'));
-  assert.equal(top(2006, 'Brazil', 1)[0], 'Ronaldo');
+  assert.equal(top(2006, 'Brazil', 1)[0], 'Ronaldinho');
   assert.equal(top(2014, 'Argentina', 1)[0], 'L. Messi');
   assert.equal(top(2018, 'Portugal', 1)[0], 'Cristiano Ronaldo');
   assert.equal(top(2010, 'Spain', 1)[0], 'Casillas');
@@ -275,12 +356,12 @@ test('the pools read like football', () => {
 });
 
 test('the Prime: a drafted player’s best version across all titles, any gain', () => {
-  // "Brazil 2002 Ronaldinho" → the Ronaldinho of 2003 (FIFA 2004).
+  // "Brazil 2002 Ronaldinho" → the Ronaldinho of 2006 (FIFA 07).
   const young = named(2002, 'Brazil', 'Ronaldinho'),
     prime = bestVersion(catalog, young);
   assert.equal(prime, named(2006, 'Brazil', 'Ronaldinho'));
   assert.ok(shown(prime) > shown(young));
-  assert.equal(editionLabel(prime), '’03');
+  assert.equal(editionLabel(prime), '’06');
   assert.equal(bestVersion(catalog, prime), null); // already his best
   // Every pool member: the best version is the same person, shows more, and is the most any
   // of his cards shows; a card that is his best has none.

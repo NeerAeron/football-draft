@@ -119,12 +119,17 @@ export async function compileLegendsFile(compiled, runtime) {
       sha256: LEGACY_NAMES.sha256,
     }),
     modern = await readModernTitles(),
+    marks = {
+      goats: JSON.parse(await readFile(PATHS.goats, 'utf8')),
+      captains: JSON.parse(await readFile(PATHS.captains, 'utf8')),
+    },
     { legends, primes, eras, stats, calibration, notes } = compileLegends(
       rows,
       compiled,
       hash,
       older,
       modern,
+      marks,
     ),
     sample = runtime.players[0].profileId.match(/^(\D*)\d+(\D.*)$/);
   if (older.source.sha256 !== LEGACY_TITLES.workbookSha256)
@@ -226,9 +231,11 @@ async function main() {
     const eraBytes = Buffer.from(built.eras.text);
     await writeFile(PATHS.eras, built.eras.text);
     await writeFile(PATHS.erasProvenance, JSON.stringify(built.eras.provenance) + '\n');
-    const { sameName, otherNations: eraOthers, ...eraCounts } = built.eras.stats;
+    const { sameName, otherNations: eraOthers, goats, captains, ...eraCounts } = built.eras.stats;
     eraReport = {
       ...eraCounts,
+      goatCards: goats.length,
+      captainCards: captains.length,
       sameName: sameName.length,
       otherNations: Object.keys(eraOthers).length,
       eras: built.eras.summary.map(e => `${e.label}: ${e.nations} of ${e.qualified}`),
