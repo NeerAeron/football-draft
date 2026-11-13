@@ -239,6 +239,8 @@ async function main() {
       sameName: sameName.length,
       otherNations: Object.keys(eraOthers).length,
       eras: built.eras.summary.map(e => `${e.label}: ${e.nations} of ${e.qualified}`),
+      // qualified, but beyond the era's limit of nations (the strongest are kept)
+      left: built.eras.summary.map(e => `${e.label}: ${e.left.join(", ") || "—"}`),
       path: PATHS.eras,
       bytes: eraBytes.length,
       gzip: gzipSync(eraBytes, { level: 9 }).length,
