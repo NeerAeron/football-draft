@@ -9,6 +9,7 @@ import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
 import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
 import { playerInitials } from '../players/lineups.js';
+import { unitLevels } from '../players/unit-levels.js';
 import { baseProfileId, editionYear } from '../players/legends.js';
 import {
   CURRENT_ERA,
@@ -1193,6 +1194,18 @@ export class DraftSession {
 }
 
 /** Engine-ready side from any XI (draft side, opponent or exhibition team). */
+/** { overall, attack, defence } of an XI in a formation, two decimals (unitLevels). */
+export function sideUnits(players, formation) {
+  const u = unitLevels(
+    players,
+    FORMATIONS[formation].map(row => row[2]),
+  );
+  return {
+    overall: Math.round(u.overall * 100) / 100,
+    attack: Math.round(u.attack * 100) / 100,
+    defence: Math.round(u.defence * 100) / 100,
+  };
+}
 export function buildSide({
   name,
   short = null,
@@ -1227,6 +1240,9 @@ export function buildSide({
     })),
     rating: Math.round(rating * 100) / 100,
     effective: Math.round((rating + summary.chem) * 100) / 100,
+    // Overall, attack and defence of the XI in its roles (players/unit-levels.js): what the
+    // fast model takes besides the rating (the engine works them out itself at kick-off).
+    units: sideUnits(players, formation),
     links: {
       score: summary.score,
       maxScore: summary.maxScore,

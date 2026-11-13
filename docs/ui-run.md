@@ -25,8 +25,9 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    → `createCupRun(catalog, { mode, difficulty, seed, user: session.matchSide(0) })` (challenge
    drafts — `useDefaultRules` — keep `DEFAULT_CONFIG.draft` so a friend meets the same
    opponents) → `saveRun()` → `clearDraft()`; the hub opens on "The draw" (pots 4/3/2).
-2. **Play.** The next-fixture card offers exactly four ways to play the match (`PLAY_OPTIONS`),
-   before the first match and after every one:
+2. **Play.** The next-fixture card offers exactly four ways to play the match (`playOptions(group)`;
+   `PLAY_OPTIONS` is the knockout list), before the first match and after every one, and under
+   them one button to the line-up editor:
    * **Watch highlights (1 min)** and **Watch full match (3 min)** → `openPrematch({ id:
      'run:<runId>:<round>', seed: run.matchSeed(round), sides, view: 'key' | 'full',
      competition: { mode: 'ai', difficulty, knockout }, meta: { context: 'run', title,
@@ -38,9 +39,19 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
      before kick-off or during the match (`changeFormation` refuses it; the request's
      `meta.formationLocked` lists the side; `CupRun.setLineup` refuses it too); from the Round
      of 32 on it can.
-   * **Simulate this match** → `useSimTicker().start(run, { limit: 1, … })`: the engine plays
+   * **Sim this match** → `useSimTicker().start(run, { limit: 1, … })`: the engine plays
      just the next fixture (live clock + score), then the hub shows its "Full time" banner.
-   * **Simulate the whole cup** → the same ticker without a limit (step 4).
+   * **Sim group stage** (while the group is being played) → the same ticker with `limit` =
+     the group matches left and no stage pop-up: it stops after matchday 3 and the hub comes
+     back before the Round of 32, so the line-up can be set up for the knockouts. From the
+     Round of 32 on the fourth option reads **Sim the rest** → the ticker without a limit
+     (step 4).
+   * **Line-up and tactics** (after the group: "Line-up, formation and tactics";
+     `data-testid="edit-lineup"`) → the same `openPrematch` with `meta.lineupOnly: true`: the
+     pre-match screen as an editor — no kick-off, no view picker, a **Done** button
+     (`data-testid="lineup-done"`) that goes back to `meta.returnTo`. The fixture is saved as
+     pending like a watched one, so the hub keeps what was set up (below) — also when the
+     match is then simmed.
    A match in progress adds "Resume match" above them.
    **The line-up stays.** What is set up in a pre-match — player positions, mentality and,
    once allowed, the formation — is kept with the run for the matches that follow, watched or
@@ -64,10 +75,12 @@ medals are `components/cup.js` (`Cup`, `Medal`, `Prize`).
    The hub shows a "Full time" banner, the other group match ticking in, table moves. A lost
    semi-final does not end the run: the next fixture is the third-place play-off (the path's
    last node reads "3rd").
-4. **Simulate the whole cup.** `useSimTicker().start(run, { configFor, idFor, onDone })` plays
+4. **Sim the rest (the whole cup).** `useSimTicker().start(run, { configFor, idFor, onDone })` plays
    every remaining match with the engine (same seed + config as the match screen's Instant view)
    and records it; live clock + score per match, the other group result after each matchday,
-   Skip (no pauses) and Stop (after the current match). Knockout opponents stay hidden until
+   Skip (no pauses) and Stop (after the current match). A cleared stage (into the semi-finals,
+   into the final) stops it on a small pop-up with two buttons side by side, centred: "Stop"
+   and "Keep simming". Knockout opponents stay hidden until
    their tie starts.
    **Replacing a run in progress.** A new World Cup draft asks first, wherever it starts —
    the setup's Start (Home's two buttons lead there), "Play again" (`?go=1`), a challenge

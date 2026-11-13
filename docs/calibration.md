@@ -217,10 +217,10 @@ table say 1.44. Title odds, `runs --runs 400`, `CUP_TUNING` unchanged: Pro 18.5%
 Class 9.3% → 8.5%, Legendary 5.0% → 6.3%. The model can now read the units too:
 `expectedGoals` / `outcomeProbabilities` / `simulateResult` take `units = [a, b]`
 (`unitLevels(players)` of each side) and a side then scores 3.6% less per point of `unitLean`
-(`MATCH_MODEL.units`, the grid's slope). No caller passes them yet — cup opponents, the real
-field and the awards' modelled matches carry one rating each (`effective`), and giving every
-nation of the field its unit levels is a change in `cup.js` / `awards.js` / the opponent
-candidates, not in the model: results without `units` are exactly as before.
+(`MATCH_MODEL.units`, the grid's slope). Since then the sides of a run carry their units
+(`side.units` from `buildSide`, on every opponent candidate) and the cup's modelled results
+take them — `unitsOf(a, b)` in `cup.js` and `awards.js`; numbers in docs/competition-api.md
+"Fast rating model". Results without `units` are exactly as before.
 
 ## Phase 9: about three goals a match in every mode
 

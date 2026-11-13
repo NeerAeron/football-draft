@@ -476,7 +476,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
-.play-options__resume {
+.play-options__resume,
+.play-options__lineup {
   grid-column: 1 / -1;
 }
 .play-option {
@@ -1598,7 +1599,17 @@
   margin-top: var(--space-1);
 }
 
-/* A stage cleared while the whole cup is simulated: a small dialog; tap anywhere to go on. */
+/* A stage cleared while the whole cup is simulated: a small dialog; tap anywhere to go on.
+   Its two buttons share the row evenly, centred, on a phone and on a desktop. */
+.sim__milestone .modal__footer {
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.sim__milestone .modal__footer > .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 220px;
+}
 .sim__milestone .sim__milestone-icon {
   display: block;
   margin: 0 auto;

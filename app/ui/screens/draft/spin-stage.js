@@ -2,9 +2,10 @@
 // idle "what the next spin draws" panel, and the odds dialog (not in a World Cup draft, whose
 // two reels — era, then nation — show no odds). The session has already
 // decided the landing; reels only travel there (their own timing, never the draft RNG).
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { playCue } from '../../lib/audio.js';
+import { isReducedMotion } from '../../lib/motion.js';
 import {
   Reel,
   Flag,
@@ -38,6 +39,32 @@ const TIMING = {
     { duration: 950, cycles: 2 },
   ],
 };
+
+// A beat to read each result: after the era lands, before the nation reel starts, and after
+// the last reel lands, before the pool takes over. UI timing only (the spin is long made);
+// none with reduced motion, and a tap skips it like it skips a reel.
+const PAUSE = { between: 650, landed: 750 };
+
+/**
+ * Bring the reel card into view when it is cut off or off screen (under the top bar, behind
+ * the phone's action bar): a spin is always watched. Jumps with reduced motion, and when
+ * `smooth` is false.
+ */
+function showStage(el, smooth = true) {
+  if (!el?.getBoundingClientRect || !globalThis.scrollBy) return;
+  const doc = globalThis.document,
+    box = el.getBoundingClientRect(),
+    top =
+      (parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--topbar-h')) || 60) + 8,
+    bar = doc.querySelector('.draft__bar')?.getBoundingClientRect(),
+    // The phone's action bar sits on the bottom edge; on desktop it is in the flow.
+    bottom = bar && bar.top > top && bar.bottom >= innerHeight - 1 ? bar.top - 8 : innerHeight - 8;
+  let by = 0;
+  if (box.top < top || box.height > bottom - top) by = box.top - top;
+  else if (box.bottom > bottom) by = box.bottom - bottom;
+  if (Math.abs(by) < 2) return;
+  globalThis.scrollBy({ top: by, behavior: smooth && !isReducedMotion() ? 'smooth' : 'auto' });
+}
 
 const IDLE_TEXT = {
   nation: 'Every nation in the field is equally likely.',
@@ -74,13 +101,40 @@ function SpinningReels({ spin, spinKey, onLanded }) {
     return reels.length;
   };
   const [leg, setLeg] = useState(() => nextLeg(0));
+  // The pause after a landing: { timer, then } while one is running (a tap ends it at once).
+  const pause = useRef(null);
+  const after = (ms, then) => {
+    if (isReducedMotion() || ms <= 0) return then();
+    const timer = setTimeout(() => {
+      pause.current = null;
+      then();
+    }, ms);
+    pause.current = { timer, then };
+  };
+  const skipPause = () => {
+    const p = pause.current;
+    if (!p) return;
+    clearTimeout(p.timer);
+    pause.current = null;
+    p.then();
+  };
+  useEffect(
+    () => () => {
+      if (pause.current) clearTimeout(pause.current.timer);
+      pause.current = null;
+    },
+    [spinKey],
+  );
   const timing = TIMING[spin.era ? 'era' : spin.category] || TIMING.nation;
   const legs = useMemo(
     () => reels.map((r, i) => reelItems(r, { league: i === 1 ? spin.league : null })),
     [spin],
   );
   useEffect(() => setLeg(nextLeg(0)), [spinKey]);
-  return html`<div class=${cx('stage-reels', reels.length > 1 && 'stage-reels--two')}>
+  return html`<div
+    class=${cx('stage-reels', reels.length > 1 && 'stage-reels--two')}
+    onClick=${skipPause}
+  >
     ${legs.map(
       (r, i) =>
         html`<div key=${i} class=${cx('stage-reels__reel', !spun(i) && 'is-kept')}>
@@ -109,8 +163,8 @@ function SpinningReels({ spin, spinKey, onLanded }) {
                     onTick=${() => playCue('tick')}
                     onLand=${() => {
                       const next = nextLeg(i + 1);
-                      if (next < legs.length) setLeg(next);
-                      else onLanded();
+                      if (next < legs.length) after(PAUSE.between, () => setLeg(next));
+                      else after(PAUSE.landed, onLanded);
                     }}
                   />`
           }
@@ -255,7 +309,26 @@ export function SpinStage({
   const category = snap.category;
   const animating = animate != null && spin;
   const eras = !!snap.eras;
+  // The reel card is in view when a draft opens on its first spin, whenever a spin starts,
+  // and still when the result has landed (the page below it changes height on the way).
+  const card = useRef(null);
+  const watch = snap.complete ? 'done' : animating ? `spin ${animate}` : spin ? 'landed' : 'idle';
+  useEffect(() => {
+    if (watch === 'done') return undefined;
+    showStage(card.current);
+    // Once more when the layout has settled (the pool leaves, the pitch comes back) — and
+    // while the reels run, until the result has landed: a closing sheet or a pick moment
+    // holds the page for a moment, and the first try can come too early.
+    // (Those later tries jump: a smooth scroll does not always get going while a reel runs.)
+    const settle = setTimeout(() => showStage(card.current, false), 350);
+    const keep = animating ? setInterval(() => showStage(card.current, false), 350) : null;
+    return () => {
+      clearTimeout(settle);
+      if (keep) clearInterval(keep);
+    };
+  }, [watch]);
   return html`<section
+    ref=${card}
     class=${cx('stage', animating && 'is-spinning', eras && 'is-eras')}
     aria-label="Spin"
     data-eras=${eras ? 'true' : undefined}

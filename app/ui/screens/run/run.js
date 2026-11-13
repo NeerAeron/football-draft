@@ -276,20 +276,22 @@ function ResultBanner({ snapshot, before, round, entry }) {
 
 /**
  * The four ways to play the next match. `view`: the pre-match opens with it selected ('key' =
- * highlights, 'full'); `sim`: 'match' (this fixture only) or 'cup' (every remaining match).
+ * highlights, 'full'); `sim`: 'match' (this fixture only), 'group' (the group matches left:
+ * the sim stops there, so the line-up can be set up for the knockouts) or 'cup' (every
+ * remaining match). `playOptions(group)` is the list for a stage: the last option sims the
+ * group stage while it is being played, the rest of the cup after it.
  */
-export const PLAY_OPTIONS = [
+const SIM_STAGE = {
+  group: { sim: 'group', title: 'Sim group stage', hint: 'Then the knockouts' },
+  cup: { sim: 'cup', title: 'Sim the rest', hint: 'To the end' },
+};
+export const playOptions = (group = false) => [
   { id: 'key', view: 'key', icon: 'play', title: 'Watch highlights', hint: '1 min', primary: true },
   { id: 'full', view: 'full', icon: 'tv', title: 'Watch full match', hint: '3 min' },
-  { id: 'sim-match', sim: 'match', icon: 'zap', title: 'Simulate this match', hint: 'Result now' },
-  {
-    id: 'sim-cup',
-    sim: 'cup',
-    icon: 'fast-forward',
-    title: 'Simulate the whole cup',
-    hint: 'To the end',
-  },
+  { id: 'sim-match', sim: 'match', icon: 'zap', title: 'Sim this match', hint: 'Result now' },
+  { id: 'sim-cup', icon: 'fast-forward', ...SIM_STAGE[group ? 'group' : 'cup'] },
 ];
+export const PLAY_OPTIONS = playOptions(false);
 const OPTION_TESTID = {
   key: 'play-fixture',
   full: 'play-full',
@@ -297,7 +299,7 @@ const OPTION_TESTID = {
   'sim-cup': 'sim-rest',
 };
 
-function PlayOptions({ onPlay, onSim, onResume, busy, inProgress }) {
+function PlayOptions({ onPlay, onSim, onResume, onLineup, busy, inProgress, group }) {
   return html`<div class="play-options" role="group" aria-label="How to play this match">
     ${
       inProgress &&
@@ -312,7 +314,7 @@ function PlayOptions({ onPlay, onSim, onResume, busy, inProgress }) {
         >Resume match<//
       >`
     }
-    ${PLAY_OPTIONS.map(
+    ${playOptions(group).map(
       o =>
         html`<button
           key=${o.id}
@@ -332,10 +334,20 @@ function PlayOptions({ onPlay, onSim, onResume, busy, inProgress }) {
           </span>
         </button>`,
     )}
+    <${Button}
+      variant="secondary"
+      block
+      icon="users"
+      onClick=${onLineup}
+      disabled=${busy}
+      data-testid="edit-lineup"
+      class="play-options__lineup"
+      >${group ? 'Line-up and tactics' : 'Line-up, formation and tactics'}<//
+    >
   </div>`;
 }
 
-function FixtureCard({ snapshot, meta, onPlay, onSim, onResume, busy, inProgress }) {
+function FixtureCard({ snapshot, meta, onPlay, onSim, onResume, onLineup, busy, inProgress }) {
   const round = snapshot.round;
   const r = snapshot.rounds[round];
   const team = opponentTeam(r.opponent);
@@ -389,13 +401,15 @@ function FixtureCard({ snapshot, meta, onPlay, onSim, onResume, busy, inProgress
       onPlay=${onPlay}
       onSim=${onSim}
       onResume=${onResume}
+      onLineup=${onLineup}
       busy=${busy}
       inProgress=${inProgress}
+      group=${round < 3}
     />
   </section>`;
 }
 
-function SimPanel({ snapshot, sim, single, onSkip, onStop, onProceed }) {
+function SimPanel({ snapshot, sim, single, group, onSkip, onStop, onProceed }) {
   const done = sim.items.filter(i => i.status === 'done').length;
   return html`<section
     class="sim card card--hero card--pad-md"
@@ -408,7 +422,15 @@ function SimPanel({ snapshot, sim, single, onSkip, onStop, onProceed }) {
           ${sim.finished ? (single ? 'Full time' : 'All played') : 'Simulating'}
         </p>
         <h2 class="run-flash__title" id="sim-title">
-          ${single ? 'This match' : sim.finished ? 'The cup is decided' : 'The whole cup'}
+          ${
+            single
+              ? 'This match'
+              : group
+                ? 'The group stage'
+                : sim.finished
+                  ? 'The cup is decided'
+                  : 'The rest of the cup'
+          }
         </h2>
       </div>
       <span class="sim__count num" aria-hidden="true">${done}/${sim.items.length}</span>
@@ -424,9 +446,7 @@ function SimPanel({ snapshot, sim, single, onSkip, onStop, onProceed }) {
       size="sm"
       class="sim__milestone"
       data-testid="sim-milestone"
-      footer=${html`<${Button} variant="ghost" onClick=${onStop} data-testid="sim-stop"
-          >Stop simming<//
-        >
+      footer=${html`<${Button} variant="ghost" onClick=${onStop} data-testid="sim-stop">Stop<//>
         <${Button} variant="primary" onClick=${onProceed} data-testid="sim-keep">Keep simming<//>`}
     >
       <${Icon} name="circle-check" size=${36} class="sim__milestone-icon" />
@@ -571,7 +591,9 @@ export default function RunScreen() {
   const nations = useMemo(() => nationList(views), [views]);
 
   // Watch the next match: the pre-match opens with the chosen view ('key' = highlights, 'full').
-  const play = view => {
+  // `lineupOnly`: the same screen as a line-up editor — no kick-off, Done comes back here, and
+  // what was set up stays for the run (applyLineup on the way back), also for a simmed match.
+  const play = (view, { lineupOnly = false } = {}) => {
     const { run, meta } = ctx.current;
     const m = run.nextMatch();
     if (!m) return;
@@ -598,24 +620,29 @@ export default function RunScreen() {
         title: `${roundName(m)} · ${m.away.name}`,
         returnTo: '/run',
         fixture: id,
+        ...(lineupOnly ? { lineupOnly: true } : {}),
       },
     });
   };
 
   // Simulate with the engine: 'match' = the next fixture only (then its result banner),
-  // 'cup' = every remaining match.
+  // 'group' = the group matches left (the hub comes back for the knockouts), 'cup' = every
+  // remaining match.
   const simulate = async what => {
     const c = ctx.current;
-    const single = what === 'match';
+    const left = what === 'group' ? Math.max(1, 3 - c.run.round) : Infinity;
+    const single = what === 'match' || left === 1;
+    const group = what === 'group' && !single;
     const before = c.run.snapshot();
     let flash = null;
     patchRunState({ pending: null });
     c.pending = null;
-    setState(s => ({ ...s, phase: 'sim', single, flash: null, inProgress: false }));
+    setState(s => ({ ...s, phase: 'sim', single, group, flash: null, inProgress: false }));
     try {
       await ticker.start(c.run, {
-        limit: single ? 1 : Infinity,
-        milestones: !single,
+        limit: single ? 1 : left,
+        // (The group sim ends where the first pop-up would come: no pop-up.)
+        milestones: !single && !group,
         configFor: m => fixtureConfig(m, c.run.difficulty),
         idFor: m => fixtureId(c.meta, m.round),
         onDone: (m, result, snapshot) => {
@@ -734,6 +761,7 @@ export default function RunScreen() {
                 snapshot=${snapshot}
                 sim=${sim}
                 single=${state.single}
+                group=${state.group}
                 onSkip=${ticker.skip}
                 onStop=${ticker.stop}
                 onProceed=${ticker.proceed}
@@ -755,6 +783,7 @@ export default function RunScreen() {
                   onPlay=${play}
                   onSim=${simulate}
                   onResume=${() => navigate('/match')}
+                  onLineup=${() => play(undefined, { lineupOnly: true })}
                   busy=${false}
                   inProgress=${state.inProgress}
                 />

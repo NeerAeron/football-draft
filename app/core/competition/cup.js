@@ -32,7 +32,7 @@ import {
   ladderTarget,
   MODE_BASELINES,
 } from '../draft/opponents.js';
-import { simulateResult } from './model.js';
+import { simulateResult, unitsOf } from './model.js';
 import { matchPerformances } from './scorers.js';
 import { tournamentSteps } from './awards.js';
 import { baseProfileId } from '../players/legends.js';
@@ -270,6 +270,8 @@ const sideRef = s => ({
   pot: s.pot ?? null,
   // Legendary's field: the tournament form the side plays in (FIELD_FORM when it was drawn).
   form: s.form ?? 0,
+  // Overall, attack and defence of the XI (buildSide): the fast model's unit lean.
+  units: s.units ?? null,
 });
 /** The group stage: three matches, played in the formation the XI was drafted in. */
 const GROUP_MATCHES = 3;
@@ -481,8 +483,11 @@ export class CupRun {
       for (const f of fixtures)
         if (f.home === USER) f.score = [goalsFor, goalsAgainst];
         else {
-          const rating = key => this.opponents.find(o => o.key === key).effective;
-          f.score = simulateResult(rating(f.home), rating(f.away), () => this.#random()).goals;
+          const side = key => this.opponents.find(o => o.key === key),
+            [home, away] = [side(f.home), side(f.away)];
+          f.score = simulateResult(home.effective, away.effective, () => this.#random(), {
+            units: unitsOf(home, away),
+          }).goals;
         }
       if (md === 2) {
         const table = standings(teams, this.group.fixtures, this.group.lots),
@@ -512,6 +517,7 @@ export class CupRun {
     const edge = m.knockout ? KNOCKOUT_EDGE : 0,
       r = simulateResult(m.home.effective + edge, m.away.effective, random, {
         knockout: m.knockout,
+        units: unitsOf(m.home, m.away),
       });
     return this.recordResult({
       goalsFor: r.goals[0],
@@ -783,6 +789,7 @@ const GROUP_PAIRS = [
 export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
   const nations = opponentCandidates(catalog, { rules }).filter(c => c.kind === 'nation'),
     rating = new Map(nations.map(c => [c.id, c.effective])),
+    units = new Map(nations.map(c => [c.id, c])),
     field = qualify(catalog, random, rules).filter(n => rating.has(n.id)),
     pots = [0, 1, 2, 3].map(pot => field.slice(pot * 12, pot * 12 + 12));
   if (field.length !== 48) return null;
@@ -809,7 +816,9 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
     const fixtures = GROUP_PAIRS.map(([h, a]) => ({
         home: ids[h],
         away: ids[a],
-        score: simulateResult(rating.get(ids[h]), rating.get(ids[a]), random).goals,
+        score: simulateResult(rating.get(ids[h]), rating.get(ids[a]), random, {
+          units: unitsOf(units.get(ids[h]), units.get(ids[a])),
+        }).goals,
       })),
       table = standings(ids, fixtures);
     for (const f of fixtures) matches.push(['group', f.home, f.away, ...f.score]);
@@ -838,7 +847,10 @@ export function worldCupDraw(catalog, { random, rules = CONFIG.draft }) {
         next.push(USER);
         continue;
       }
-      const r = simulateResult(rating.get(a), rating.get(b), random, { knockout: true }),
+      const r = simulateResult(rating.get(a), rating.get(b), random, {
+          knockout: true,
+          units: unitsOf(units.get(a), units.get(b)),
+        }),
         first = r.goals[0] > r.goals[1] || r.shootout?.winner === 0;
       matches.push([stages[alive.length], a, b, ...r.goals, first ? 0 : 1]);
       next.push(first ? a : b);

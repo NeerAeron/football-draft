@@ -1397,8 +1397,8 @@ export const flows = [
         const expected = [
           'Watch highlights',
           'Watch full match',
-          'Simulate this match',
-          'Simulate the whole cup',
+          'Sim this match',
+          'Sim group stage',
         ];
         if (options.join('|') !== expected.join('|')) throw new Error(`options: ${options}`);
         const hints = await page.$$eval('.play-option__hint', l => l.map(h => h.textContent));
@@ -1411,6 +1411,15 @@ export const flows = [
           const { prematchStore } = await import('./ui/lib/prematch-store.js');
           return prematchStore.get()?.view;
         });
+      await step('"Line-up" opens the editor without a kick-off, and Done comes back', async () => {
+        await page.click('[data-testid="edit-lineup"]');
+        await visible(page, '[data-screen="prematch"] [data-testid="lineup-done"]:visible');
+        if (await page.locator('[data-testid="kick-off"]').count())
+          throw new Error('the line-up editor offers a kick-off');
+        await visible(page, '[data-screen="prematch"] [data-testid="formation-locked"]');
+        await page.locator('[data-testid="lineup-done"]:visible').click();
+        await visible(page, '[data-testid="next-fixture"]');
+      });
       await step('"Watch full match" opens the pre-match on the full view', async () => {
         await page.click('[data-testid="play-full"]');
         await visible(page, '[data-screen="prematch"] [data-testid="kick-off"]');
@@ -1456,7 +1465,7 @@ export const flows = [
         await page.goBack();
         await visible(page, '[data-testid="next-fixture"]');
       });
-      await step('"Simulate this match" plays one fixture and shows its result', async () => {
+      await step('"Sim this match" plays one fixture and shows its result', async () => {
         const before = await page.getAttribute('[data-testid="next-fixture"]', 'data-round');
         await page.click('[data-testid="sim-match"]');
         await visible(page, '[data-testid="result-banner"]', 60000);
@@ -1469,28 +1478,47 @@ export const flows = [
         if (played !== 2) throw new Error(`${played} matches played, expected 2`);
       });
       await shot('after-sim-match');
-      await step('"Simulate the whole cup" plays to the end', async () => {
-        // With motion on, a cleared stage stops the sim on a pop-up until the player taps on.
-        await page.emulateMedia({ reducedMotion: 'no-preference' });
-        await page.click('[data-testid="sim-rest"]');
-        const end = page.locator('[data-testid="run-end"]'),
-          keep = page.locator('[data-testid="sim-keep"]');
-        let popups = 0;
-        for (const until = Date.now() + 120000; !(await end.count());) {
-          if (Date.now() > until) throw new Error('the cup sim did not finish');
-          if (await keep.count()) {
-            await keep.click();
-            popups++;
-          } else await page.waitForTimeout(150);
-        }
-        await page.emulateMedia({ reducedMotion: 'reduce' });
-        const groupCleared = (await page.locator('.run-path-strip .is-played').count()) > 3;
-        if (groupCleared && !popups) throw new Error('no stage pop-up after the group');
-        const place = await page.getAttribute('[data-testid="run-end"]', 'data-place');
-        const title = await page.textContent('.run-end__title');
-        if (!place || /\b[SABCDF][+-]?\b grade/i.test(title)) throw new Error(`end: ${place}`);
-        if (await page.locator('.grade').count()) throw new Error('a letter grade is shown');
-      });
+      await step(
+        '"Sim group stage" stops after the group; then "Sim the rest" to the end',
+        async () => {
+          // With motion on, a cleared stage stops the sim on a pop-up until the player taps on.
+          await page.emulateMedia({ reducedMotion: 'no-preference' });
+          const end = page.locator('[data-testid="run-end"]'),
+            keep = page.locator('[data-testid="sim-keep"]'),
+            next = page.locator('[data-testid="next-fixture"]');
+          await page.click('[data-testid="sim-rest"]');
+          // The group is over: out, or back on the hub before the Round of 32.
+          for (const until = Date.now() + 60000; ;) {
+            if (Date.now() > until) throw new Error('the group sim did not finish');
+            if (await end.count()) break;
+            if ((await next.count()) && (await next.getAttribute('data-round')) === 'r32') break;
+            if (await keep.count()) throw new Error('a stage pop-up in the group sim');
+            await page.waitForTimeout(150);
+          }
+          if (!(await end.count())) {
+            const title = await page.textContent('[data-option="sim-cup"] .play-option__title');
+            if (title.trim() !== 'Sim the rest') throw new Error(`after the group: ${title}`);
+            // The line-up editor before a knockout match: the formation can change now.
+            await page.click('[data-testid="edit-lineup"]');
+            await visible(page, '[data-screen="prematch"] [data-testid="lineup-done"]:visible');
+            if (await page.isDisabled('[data-testid="formation-select"]'))
+              throw new Error('the formation is locked after the group stage');
+            await page.locator('[data-testid="lineup-done"]:visible').click();
+            await visible(page, '[data-testid="next-fixture"]');
+            await page.click('[data-testid="sim-rest"]');
+          }
+          for (const until = Date.now() + 120000; !(await end.count());) {
+            if (Date.now() > until) throw new Error('the cup sim did not finish');
+            if (await keep.count()) await keep.click();
+            else await page.waitForTimeout(150);
+          }
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          const place = await page.getAttribute('[data-testid="run-end"]', 'data-place');
+          const title = await page.textContent('.run-end__title');
+          if (!place || /\b[SABCDF][+-]?\b grade/i.test(title)) throw new Error(`end: ${place}`);
+          if (await page.locator('.grade').count()) throw new Error('a letter grade is shown');
+        },
+      );
       await step("awards and the squad's stats, simulated matches included", () => honours(page));
       await shot('end');
       if (viewport === 'desktop') await shot('end-full', { fullPage: true });
