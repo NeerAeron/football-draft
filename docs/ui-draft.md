@@ -263,6 +263,13 @@ openPrematch({
   reduced motion). **A beat after each reel** (`PAUSE`): 0.65 s after the era lands before the
   nation reel starts, 0.75 s after the last reel before the pool takes over; with reduced motion none between
   the reels and 0.34 s after the last (its lit frame); a tap skips a reel, another the pause. UI timing only.
+* **"Your XI is ready" never covers the Prime sheet.** The sheet of a complete draft comes up
+  by itself a moment after the last pick (650 ms; after a star pick's moment); the Prime
+  button is in the phone's bar at once. Opened in that moment, the Prime sheet used to be
+  covered by the other one — still open underneath, so the Prime button on the new sheet did
+  nothing until it was closed. The complete sheet now waits until the Prime sheet is closed
+  (`completeDue` in `draft.js`); the `draft-prime-tap` flow taps Prime with the pool open, in
+  that moment, on the complete sheet and from the bar, and the respins beside it.
 * **Every reel locks into place** (`Reel`, `components/reel.js` + `.css`; all draft modes and
   the gallery share it): on landing — also when skipped — the reel carries `is-locked` for
   `LOCK_MS` (340 ms): the window settles with a small overshoot, a ring and a sweep cross the
