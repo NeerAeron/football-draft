@@ -838,7 +838,8 @@ export class DraftSession {
   /**
    * What the Prime would do to the player in a side's slot, or null when no version of him
    * shows more (or the slot is open): { slot, profileId, name, from: { ovr, rating }, to:
-   * { profileId, ovr, rating, edition, year, position, tier }, allowed, reason }. `rating` is
+   * { profileId, ovr, rating, edition, year, position, tier, goat, captain }, allowed, reason }.
+   * `rating` is
    * the rating in that slot. `reason` when not allowed: 'No Prime left'. Budget mode never
    * refuses it: he keeps the tier slot of the version that was drafted.
    */
@@ -863,8 +864,10 @@ export class DraftSession {
         year: this.#year(prime),
         position: prime.primaryPosition,
         tier: tierOfRating(ovr, this.tiers),
-        // His best version is a GOAT card: the Prime makes him one.
+        // His best version is a GOAT card: the Prime makes him one. The marks are the card's:
+        // a Captain whose best version is of a year he did not lead in gives up the armband.
         goat: !!prime.goat,
+        captain: !!prime.captain,
       },
       allowed: !reason,
       reason,

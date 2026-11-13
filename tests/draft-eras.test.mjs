@@ -403,6 +403,8 @@ test('the Prime: a drafted player becomes his best version across all titles, on
     assert.equal(o.to.ovr, shown(best));
     assert.ok(o.to.ovr > o.from.ovr, 'any gain, never less');
     assert.equal(o.to.year, best.year ?? 2026);
+    // The marks are the card's own (the sheet says when a Captain would give up the armband).
+    assert.deepEqual([o.to.goat, o.to.captain], [!!best.goat, !!best.captain]);
     assert.equal(o.allowed, true);
     const result = s.prime(o.slot, 0);
     assert.deepEqual(

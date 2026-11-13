@@ -118,6 +118,15 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
                               !hideRatings && prime.to.rating < prime.to.ovr
                                 ? ` · ${prime.to.position} ${prime.to.ovr}`
                                 : ''
+                            }${
+                              // The marks are the card's: that version is no Captain / GOAT.
+                              spent
+                                ? ''
+                                : p.captain && !prime.to.captain
+                                  ? ' · not Captain'
+                                  : p.goat && !prime.to.goat
+                                    ? ' · not a GOAT'
+                                    : ''
                             }`
                           : p.prime
                             ? ` · Prime ${editionLabel(p)} ✓`

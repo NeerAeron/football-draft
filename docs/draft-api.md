@@ -169,8 +169,8 @@ draft.prime(slot, 0);            // the Prime: he becomes his best version acros
     false]`), otherwise the nation is drawn too (`kept: false`). The UI shows which reels move;
   - **the Prime** — `bestVersion(catalog, player)`: the card of the same person that shows the
     most across all titles, any gain; `primeOption(slot)` → `{ slot, profileId, name, from:
-    { ovr, rating }, to: { profileId, ovr, rating, edition, year, position, tier }, allowed,
-    reason }` (`rating` = in that slot; a best version may play another position, so
+    { ovr, rating }, to: { profileId, ovr, rating, edition, year, position, tier, goat,
+    captain }, allowed, reason }` (`rating` = in that slot; a best version may play another position, so
     `to.rating` can be lower while `to.ovr` is higher — still allowed), null when no card of
     his shows more. `prime(slot)` swaps the card in (its own attributes, positions, badges,
     club and year; an era card is not a Captain), marks him (`slots[i].player.prime`,
