@@ -106,6 +106,7 @@ openPrematch({
             formation, tactics?, players: [11 profiles in slot order], editable? }, …2],
   competition: { mode?: 'ai' | 'pvp', difficulty: 'pro', knockout: false, extraTime? },
   meta: { context: 'run', title: 'Quarter-final', returnTo: '#/run', fixture: 'run:abc:qf' },
+  // meta.lineupOnly: true → the screen is a line-up editor: no kick-off, Done → returnTo
   useDefaultRules?: false,         // Daily/challenge: tuning = DEFAULT_CONFIG
   hideRatings?: false,             // Ball Knower: no OVRs, odds or rating tags (also read from
                                    // meta.hideRatings); passed on as request meta.hideRatings
@@ -256,6 +257,14 @@ openPrematch({
   (`CaptainMark`, title "Leader: +1 to every player") on his row, card and pitch token (the
   armband: the highest-rated Leader of the XI), the green chips include his +1, and the pick
   preview says "Leader: +1 to every player" when he would be the XI's first.
+* **The reel card is always in view** (`showStage` in `spin-stage.js`): when a draft opens,
+  whenever a spin starts and until its result has landed, the card is scrolled clear of the
+  top bar and of the phone's action bar (a smooth scroll first, jumps after 350 ms and with
+  reduced motion). **A beat after each reel** (`PAUSE`): 0.65 s after the era lands before the
+  nation reel starts, 0.75 s after the last reel before the pool takes over; none with
+  reduced motion; a tap on the reels skips the reel and its pause. UI timing only.
+* Pool rows cut a long name with an ellipsis (`.prow__name-text`); the year, Leader and GOAT
+  marks after it are never cut.
 * Test hooks: `data-testid` `spin`, `reroll`, `auto-pick`, `spin-result`, `pool`,
   `confirm-pick`, `auto-slot`, `draft-done`, `draft-continue`, `opponent-name`, `pass-spin`,
   `team-boosts`, `mates-effect`, `budget-effect`, `captain-effect`, `prime-effect`, `pick-card`,

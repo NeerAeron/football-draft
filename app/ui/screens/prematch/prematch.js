@@ -375,16 +375,33 @@ export default function PrematchScreen() {
       setBusy(false);
     }
   };
-  const cta = html`<${Button}
-    variant="primary"
-    size="xl"
-    block
-    icon="whistle"
-    onClick=${start}
-    loading=${busy}
-    data-testid="kick-off"
-    >Kick off<//
-  >`;
+  // Opened as a line-up editor (a run's "Line-up" button): no kick-off — Done goes back, and
+  // the caller keeps what was set up (the store holds it under this fixture's id).
+  const lineupOnly = !!data.meta.lineupOnly;
+  const done = () => {
+    const to = data.meta.returnTo || '/';
+    globalThis.location.hash = to.startsWith('#') ? to : `#${to}`;
+  };
+  const cta = lineupOnly
+    ? html`<${Button}
+        variant="primary"
+        size="xl"
+        block
+        icon="check"
+        onClick=${done}
+        data-testid="lineup-done"
+        >Done<//
+      >`
+    : html`<${Button}
+        variant="primary"
+        size="xl"
+        block
+        icon="whistle"
+        onClick=${start}
+        loading=${busy}
+        data-testid="kick-off"
+        >Kick off<//
+      >`;
   const viewPicker = html`<section class="pm-panel" aria-labelledby="view-title">
     <h2 class="pm-panel__title" id="view-title">Watch</h2>
     <${Segmented}
@@ -401,7 +418,7 @@ export default function PrematchScreen() {
     <div class="container prematch__layout">
       <header class="pm-head">
         <p class="eyebrow">${data.meta.title || 'Match'}</p>
-        <h1 class="pm-head__title sr-only-mobile">Pre-match</h1>
+        <h1 class="pm-head__title sr-only-mobile">${lineupOnly ? 'Line-up' : 'Pre-match'}</h1>
       </header>
       <${Matchup} data=${data} strengths=${strengths}>${wide && cta}<//>
       ${
@@ -445,7 +462,7 @@ export default function PrematchScreen() {
               />`,
           )
         }
-        ${viewPicker}
+        ${!lineupOnly && viewPicker}
       </div>
       ${!wide && html`<div class="action-bar prematch__bar">${cta}</div>`}
     </div>
