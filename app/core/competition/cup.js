@@ -35,7 +35,8 @@ import {
 import { simulateResult } from './model.js';
 import { matchPerformances } from './scorers.js';
 import { tournamentSteps } from './awards.js';
-import { legendPlayer, baseProfileId } from '../players/legends.js';
+import { baseProfileId } from '../players/legends.js';
+import { eraPlayer } from '../players/eras.js';
 
 export const CUP_ROUNDS = [
   { id: 'group1', label: 'Group · Matchday 1', stage: 'group', knockout: false },
@@ -131,9 +132,10 @@ export const BEST_THIRD = { points: 4 };
 export const thirdQualifies = row => row.points >= BEST_THIRD.points;
 /** Whether a row of the final group table goes through: top two, or a qualifying third. */
 const advances = (row, index) => index < 2 || (index === 2 && thirdQualifies(row));
-// Format 3: the third-place play-off (nine opponents) and three difficulties. Anything older
+// Format 4: the user's XI can hold era cards (catalog.eras); the third-place play-off (nine
+// opponents) and three difficulties. Anything older
 // is not a saved run.
-export const CUP_FORMAT = 3;
+export const CUP_FORMAT = 4;
 const USER = 'user';
 const round2 = x => Math.round(x * 100) / 100;
 // Group fixtures by matchday: team indexes into [user, A, B, C] (A weakest).
@@ -283,9 +285,9 @@ export class CupRun {
   get round() {
     return this.complete ? null : this.matches.length;
   }
-  // A catalog player, or a drafted legend / prime version (catalog.legends).
+  // A catalog player, or a drafted era card (catalog.eras).
   #player(id) {
-    return this.#index.byId.get(id) ?? legendPlayer(this.#catalog, id);
+    return this.#index.byId.get(id) ?? eraPlayer(this.#catalog, id);
   }
   #players(ids) {
     return ids.map(id => this.#player(id));
@@ -867,10 +869,10 @@ export function createCupRun(catalog, options) {
   if (!DIFFICULTIES.includes(difficulty)) throw Error('Unknown difficulty: ' + difficulty);
   const index = catalogIndex(catalog),
     players = user.players.map(p =>
-      typeof p === 'string' ? (index.byId.get(p) ?? legendPlayer(catalog, p)) : p,
+      typeof p === 'string' ? (index.byId.get(p) ?? eraPlayer(catalog, p)) : p,
     );
   if (players.length !== 11 || players.some(p => !p)) throw Error('The run needs a complete XI');
-  // Opponents never field the user's players — a prime version counts as the current player.
+  // Opponents never field the user's players — an era card counts as the current player.
   const ids = players.map(p => p.profileId),
     taken = players.map(baseProfileId),
     links = { links: rules.links };
@@ -956,7 +958,7 @@ export function createCupRun(catalog, options) {
     seed,
     rngSeed,
     daily: options.daily ?? null,
-    rules: structuredClone({ links: rules.links, ladder: rules.ladder, rerolls: rules.rerolls }),
+    rules: structuredClone({ links: rules.links, ladder: rules.ladder }),
     user: {
       name: side.name,
       short: side.short,

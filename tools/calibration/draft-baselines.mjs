@@ -5,16 +5,21 @@
 //   node tools/calibration/draft-baselines.mjs [--catalog file.json] [--n 200]
 //        [--modes nations,leagues,clubs] [--rerolls 0,1,2] [--out /tmp/x.json]
 //        [--budget "88:2,84:3,80:3;88:1,84:3,80:4"] [--policies positional,links,smart]
-//        [--smart-weight 3] [--legend] [--primes default|N] [--captains N]
+//        [--smart-weight 3] [--eras] [--primes default|N] [--captains N] [--respin-below 78]
 //
-// --legend: the first spin is the Legend spin (World Cup drafts); --primes: Prime boosts
-// (default = CONFIG.draft.primes for Pro… by the re-roll count's difficulty is not known here,
-// so "default" means 2 with 2 re-rolls and 1 otherwise, as the difficulties have it), spent
-// after the draft on the players who gain most in their slot. Extra columns: `captain` = share
-// of XIs with a Captain, `legend` = the legend's slot rating, `primeGain` = slot-rating points
-// the boosts added (sum per XI), `primeEligible` = XI players with a prime version (before
-// boosting), `primeEligible2` = share of XIs with two or more. --captains N: tag the first N players of data/captains.json
-// instead of the catalog's own Captain flags (to choose the list size).
+// --eras: World Cup drafts (the run, the Daily): every spin lands an era and a nation, the
+// pool is that nation's squad of that era (Nations only). `--rerolls` is then the tokens: N
+// nation respins and N era respins per draft (0 = no respins, 1 = the game's), spent when the
+// best pick of a landing is under --respin-below (the nation first, then the era).
+// --primes: Prime tokens (default = CONFIG.draft.tokens.prime, 1), spent after the draft on the
+// player who gains most in his slot — with --rerolls 0 the Prime is left out too, so "0" is a
+// draft without any token. Extra columns: `captain` = share of XIs with a Captain, `primeGain`
+// = slot-rating points the Prime added, `primeEligible` = XI players with a better version
+// (before it is spent), `primeEligible2` = share of XIs with two or more, `eraRespins` = era
+// respins used, `years` = mean year of the XI's cards; `goat` / `captain` = share of XIs with
+// one, `goatSpins` / `captainSpins` = spins per draft that offered one, `goatOffered` /
+// `captainOffered` = share of drafts that were offered one. --captains N: tag the first N players
+// of data/captains.json instead of the catalog's own Captain flags (to choose the list size).
 //
 // --catalog: a v3 catalog (default: app/data/catalog.v3.json) or a v2 runtime JSON.
 // Policies: "positional" = the session's suggestPick() (best slot rating in the pool), with a
@@ -31,8 +36,8 @@
 // (--smart-weight points at most); `differs` = picks per draft where it did not take the
 // positional pick.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { loadRuntimeCatalog, readLegends } from '../../scripts/data/catalog-file.mjs';
-import { attachLegends } from '../../app/core/players/legends.js';
+import { loadRuntimeCatalog, readEras } from '../../scripts/data/catalog-file.mjs';
+import { attachEras } from '../../app/core/players/eras.js';
 import { PATHS } from '../../scripts/data/paths.mjs';
 import { createDraftSession } from '../../app/core/draft/session.js';
 import { teamLinks } from '../../app/core/draft/links.js';
@@ -52,7 +57,8 @@ const file = arg('catalog', null),
   policies = arg('policies', 'positional,links').split(','),
   out = arg('out', null),
   SMART_WEIGHT = Number(arg('smart-weight', 3)),
-  LEGEND = process.argv.includes('--legend'),
+  ERAS = process.argv.includes('--eras'),
+  RESPIN_BELOW = Number(arg('respin-below', 78)),
   PRIMES = arg('primes', null),
   CAPTAINS = arg('captains', null),
   schemes = arg('budget', null)
@@ -70,18 +76,21 @@ const schemeRules = text =>
       );
 const raw = file ? JSON.parse(readFileSync(file, 'utf8')) : null;
 const catalog = !raw || raw.schemaVersion >= 3 ? loadRuntimeCatalog(file || undefined) : raw;
-if (LEGEND || PRIMES) attachLegends(catalog, readLegends());
+if (ERAS || PRIMES) attachEras(catalog, readEras());
 if (CAPTAINS !== null) {
   const list = JSON.parse(readFileSync(PATHS.captains, 'utf8')).players.slice(0, Number(CAPTAINS)),
     ids = new Set(list.map(c => String(c.sofifaId)));
   for (const p of catalog.players) p.captain = ids.has(p.profileId.split(':')[1]);
-  for (const p of catalog.legends?.primes.values() ?? [])
-    p.captain = ids.has(p.profileId.split(':')[1]);
 }
+// With --eras the re-roll count is "the tokens": none of them, or the game's.
 const primeCount = rerolls =>
-  PRIMES === null ? 0 : PRIMES === 'default' ? (rerolls >= 2 ? 2 : 1) : Number(PRIMES);
+  PRIMES === null || (ERAS && rerolls === 0)
+    ? 0
+    : PRIMES === 'default'
+      ? DEFAULT_CONFIG.draft.tokens.prime
+      : Number(PRIMES);
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
-const REROLL_BELOW = 78;
+const REROLL_BELOW = RESPIN_BELOW;
 
 function linkMove(s) {
   const side = s.turn,
@@ -175,29 +184,42 @@ function budgetPick(s) {
 }
 function draft(mode, seed, rerolls, policy, scheme) {
   if (scheme && scheme !== 'off') CONFIG.draft.budget = schemeRules(scheme);
+  const eras = ERAS && mode === 'nations';
+  if (eras) CONFIG.draft.tokens = { nation: rerolls, era: rerolls, prime: primeCount(rerolls) };
   const s = createDraftSession(catalog, {
     mode,
     seed,
     rerolls,
     budget: !!scheme && scheme !== 'off',
-    legendSpin: LEGEND && mode === 'nations',
+    eras,
     primes: primeCount(rerolls) || null,
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
   });
   CONFIG.draft.budget = structuredClone(DEFAULT_CONFIG.draft.budget);
+  CONFIG.draft.tokens = structuredClone(DEFAULT_CONFIG.draft.tokens);
   let duds = 0,
     used = 0,
     blocked = 0,
     spendOrWait = 0,
     differs = 0,
-    legend = null,
+    eraRespins = 0,
+    goatSpins = 0,
+    captainSpins = 0,
     primeGain = 0;
   while (!s.complete) {
     s.spin();
-    if (s.rerollsLeft[0] > 0 && s.suggestPick().rating < REROLL_BELOW) {
-      s.reroll();
+    if (!s.respinBlocked('nation') && s.suggestPick().rating < REROLL_BELOW) {
+      s.respin('nation');
       used++;
     }
+    if (eras && !s.respinBlocked('era') && s.suggestPick().rating < REROLL_BELOW) {
+      s.respin('era');
+      eraRespins++;
+    }
+    // What the landing offers (after the respins): a GOAT, a Captain.
+    const offered = s.poolPlayers().filter(p => s.affordable(p));
+    if (offered.some(p => p.goat)) goatSpins++;
+    if (offered.some(p => p.captain)) captainSpins++;
     const greedy = s.suggestPick();
     const move = policy === 'links' ? linkMove(s) : policy === 'smart' ? smartMove(s) : greedy;
     if (s.bands) {
@@ -209,11 +231,10 @@ function draft(mode, seed, rerolls, policy, scheme) {
     if (move.profileId !== greedy.profileId) differs++;
     const r = s.pick(move.profileId, move.slot);
     if (!r.ok) throw Error(r.reason);
-    if (s.player(r.profileId).legend) legend = r.rating;
   }
-  // Players of the XI with a stored prime version (what the Prime boost sheet can offer).
+  // Players of the XI with a better version (what the Prime sheet can offer).
   const primeEligible = s.primesPerSide ? s.primeOptions(0).length : 0;
-  // Prime boosts, used sensibly: each on the player who gains most in his slot.
+  // The Prime, used sensibly: on the player who gains most in his slot.
   for (;;) {
     const options = s
       .primeOptions(0)
@@ -242,7 +263,11 @@ function draft(mode, seed, rerolls, policy, scheme) {
     links: links.score,
     effective: ovr + links.chem,
     captain: links.captain === null ? 0 : 1,
-    legend,
+    goat: links.goats.length ? 1 : 0,
+    goatSpins,
+    captainSpins,
+    eraRespins,
+    years: xi.reduce((t, p) => t + (p.year ?? 2026), 0) / 11,
     primeGain,
     primesUsed: s.primesPerSide - s.primesLeft[0],
     primeEligible,
@@ -297,7 +322,19 @@ for (const scheme of schemes)
             : {}),
           effective: r2(mean(rows.map(r => r.effective))),
           captain: r2(mean(rows.map(r => r.captain))),
-          ...(rows[0].legend !== null ? { legend: r2(mean(rows.map(r => r.legend))) } : {}),
+          goat: r2(mean(rows.map(r => r.goat))),
+          // Spins per draft that offered one, and the share of drafts that were offered one.
+          goatSpins: r2(mean(rows.map(r => r.goatSpins))),
+          goatOffered: r2(mean(rows.map(r => (r.goatSpins ? 1 : 0)))),
+          captainSpins: r2(mean(rows.map(r => r.captainSpins))),
+          captainOffered: r2(mean(rows.map(r => (r.captainSpins ? 1 : 0)))),
+          ...(ERAS && mode === 'nations'
+            ? {
+                eras: true,
+                eraRespins: r2(mean(rows.map(r => r.eraRespins))),
+                years: r2(mean(rows.map(r => r.years))),
+              }
+            : {}),
           ...(PRIMES !== null
             ? {
                 primesUsed: r2(mean(rows.map(r => r.primesUsed))),

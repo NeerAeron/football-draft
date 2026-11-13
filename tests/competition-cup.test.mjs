@@ -22,9 +22,8 @@ import {
   MATCH_MODEL,
   simulateShootout,
 } from '../app/core/competition/model.js';
-import { ladderTarget, MODE_BASELINES, opponentCandidates } from '../app/core/draft/opponents.js';
+import { ladderTarget, ladderBaseline, opponentCandidates } from '../app/core/draft/opponents.js';
 import { catalogIndex } from '../app/core/draft/pools.js';
-import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 
@@ -746,8 +745,7 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
   };
   let previous = 1;
   for (const [difficulty, [lo, hi]] of Object.entries(windows)) {
-    const rerolls = DEFAULT_CONFIG.draft.rerolls[difficulty],
-      rating = MODE_BASELINES.nations.effective[Math.min(2, rerolls)];
+    const rating = ladderBaseline('nations', difficulty);
     const p = projectRun({ rating, mode: 'nations', difficulty, runs: 3000 }).probabilities;
     assert.ok(p.champion >= lo && p.champion <= hi, `${difficulty} champion ${p.champion}`);
     assert.ok(p.champion <= previous, difficulty);

@@ -208,20 +208,6 @@
 .ladder__typical b {
   color: var(--gold-200);
 }
-.pips {
-  display: inline-flex;
-  gap: 3px;
-}
-.pips__pip {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1.5px solid var(--text-3);
-}
-.pips__pip.is-on {
-  border-color: var(--volt-400);
-  background: var(--volt-400);
-}
 
 /* ---------- formation ---------- */
 .formation-grid {

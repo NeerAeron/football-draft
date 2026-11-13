@@ -1,15 +1,25 @@
 // Draft session: one spin per pick from a pluggable pool source, honest weights, a GK/outfield
-// dead-end guard, re-rolls by difficulty, placement with visible fit, the Legend spin and Prime
-// boosts (World Cup drafts), serialise/restore and match-config helpers. Pure and deterministic for a seed; the UI must never consume its RNG.
+// dead-end guard, placement with visible fit, serialise/restore and match-config helpers.
+// World Cup drafts (`eras`) spin an era and a nation for every pick — the pool is that nation's
+// squad of that World Cup cycle — and have three tokens: a nation respin, an era respin and the
+// Prime (a drafted player becomes his best version). The other drafts spin today's players and
+// have re-rolls. Pure and deterministic for a seed; the UI must never consume its RNG.
 // API guide with examples: docs/draft-api.md.
 import { CONFIG, DEFAULT_CONFIG } from '../config/config.js';
 import { lcgNext, LCG_RANGE } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
 import { playerInitials } from '../players/lineups.js';
-import { legendPlayer, primeVersion, baseProfileId, editionYear } from '../players/legends.js';
+import { baseProfileId, editionYear } from '../players/legends.js';
+import {
+  CURRENT_ERA,
+  eraList,
+  eraPool,
+  eraPlayer,
+  personId,
+  bestVersion,
+} from '../players/eras.js';
 import {
   catalogIndex,
-  legendIndex,
   catalogStamp,
   draftRules,
   roleRating,
@@ -19,7 +29,8 @@ import {
   isKeeper,
   LINE_OF,
 } from './pools.js';
-import { teamLinks, linkBoosts } from './links.js';
+import { teamLinks, linkBoosts, goatBoost } from './links.js';
+import { reelWeights } from './reels.js';
 import { budgetBands, bandIndex, bandUse, tierOfRating } from './budget.js';
 
 export const DRAFT_MODES = {
@@ -37,10 +48,12 @@ export const DIFFICULTY_LABELS = {
 };
 /** Familiarity at or above this counts as a natural position (auto placement prefers it). */
 export const NATURAL_FIT = 0.95;
-// Format 2: the rules of this version (a nation's draft squad, the pick minimum, the three
-// difficulties, the named tiers, mates and the Captain). A session saved in anything older is
-// not a saved draft session: there is one cut-off and no conversion.
-export const SESSION_FORMAT = 2;
+// Format 3: the rules of this version (era drafts and their tokens, a nation's draft squad, the
+// pick minimum, the three difficulties, the named tiers, mates and the Captain). A session
+// saved in anything older is not a saved draft session: there is one cut-off and no conversion.
+export const SESSION_FORMAT = 3;
+/** The tokens of a draft: `respin(kind)` takes the first two, `prime(slot)` spends the third. */
+export const TOKENS = ['nation', 'era', 'prime'];
 const DEFAULT_TEAMS = [
   { name: 'You', color: '#d9f580', secondary: '#16213a' },
   { name: 'Player 2', color: '#baaff0', secondary: '#16213a' },
@@ -101,9 +114,9 @@ function normalizeOptions(o = {}) {
     hideRatings: !!o.hideRatings,
     uniqueNations: !!o.uniqueNations,
     budget: !!o.budget,
-    // The first spin of every side is a Legend spin (needs catalog.legends).
-    legendSpin: !!o.legendSpin,
-    // Prime boosts per side: true = by difficulty (rules.primes), a number, or none.
+    // Every spin draws an era and a nation (needs catalog.eras; Nations drafts only).
+    eras: !!o.eras,
+    // Prime tokens per side: true = rules.tokens.prime, a number, or none (needs catalog.eras).
     primes: o.primes === true ? true : Number.isInteger(o.primes) && o.primes > 0 ? o.primes : null,
     excludeNations: [...(o.excludeNations || [])].map(String),
     excludeClubs: [...(o.excludeClubs || [])].map(String),
@@ -111,8 +124,14 @@ function normalizeOptions(o = {}) {
     schedule: o.schedule
       ? {
           rounds: o.schedule.rounds.map(r => ({
+            // The round's spin and what a nation respin lands on: a nation id. Era drafts
+            // also fix the era and what an era respin lands on ({ era, nation }).
             spin: r.spin ?? null,
             alternate: r.alternate ?? null,
+            era: r.era ?? null,
+            eraAlternate: r.eraAlternate
+              ? { era: r.eraAlternate.era, nation: r.eraAlternate.nation ?? null }
+              : null,
           })),
         }
       : null,
@@ -124,7 +143,6 @@ function normalizeOptions(o = {}) {
 export class DraftSession {
   #catalog;
   #index;
-  #legends;
   #snapshot = null;
   #pool = null;
   constructor(catalog, options = {}, { rules = null, state = null } = {}) {
@@ -140,22 +158,26 @@ export class DraftSession {
     // slots (`bands`, null when off).
     this.tiers = budgetBands(this.rules.budget);
     this.bands = this.options.budget ? this.tiers : null;
-    // Only players shown at this rating or more are offered (0: everyone).
-    this.pickMinimum = this.rules.pickMinimum;
-    this.rerollsPerSide = this.options.rerolls ?? this.rules.rerolls[this.options.difficulty];
+    this.eras = this.options.eras;
+    if (this.eras && this.mode !== 'nations') throw Error('Only a Nations draft spins eras');
+    // Only players shown at this rating or more are offered (0: everyone). An era pool is a
+    // World Cup squad: nobody is left out of it for his rating.
+    this.pickMinimum = this.eras ? 0 : this.rules.pickMinimum;
+    // The tokens, the same on every difficulty: nation respins (the re-rolls of a draft without
+    // eras), era respins and Primes per side.
+    const tokens = this.rules.tokens ?? {};
+    this.rerollsPerSide = this.options.rerolls ?? tokens.nation ?? 0;
+    this.eraRespinsPerSide = this.eras ? (tokens.era ?? 0) : 0;
     this.primesPerSide =
-      this.options.primes === true
-        ? (this.rules.primes?.[this.options.difficulty] ?? 0)
-        : (this.options.primes ?? 0);
-    this.#legends = legendIndex(catalog, this.rules);
-    if ((this.options.legendSpin || this.primesPerSide > 0) && !this.#legends)
-      throw Error('This draft needs the legends data (catalog.legends)');
-    if (this.options.legendSpin && this.options.schedule)
-      throw Error('A scheduled (daily) draft has no Legend spin');
+      this.options.primes === true ? (tokens.prime ?? 0) : (this.options.primes ?? 0);
+    if ((this.eras || this.primesPerSide > 0) && !catalog.eras)
+      throw Error('This draft needs the era data (catalog.eras)');
     this.excluded = {
       nations: new Set(this.options.excludeNations),
       clubs: new Set(this.options.excludeClubs),
       players: new Set(this.options.excludePlayers),
+      // One person, whatever the card: an excluded player's other versions are excluded too.
+      persons: new Set(this.options.excludePlayers.map(id => personId({ profileId: id }))),
     };
     this.rng = seedValue(this.options.seed);
     if (state) Object.assign(this, structuredClone(state));
@@ -164,17 +186,21 @@ export class DraftSession {
       this.turn = this.first;
       this.picks = Array.from({ length: this.sides }, () => Array(11).fill(null));
       this.rerollsLeft = Array(this.sides).fill(this.rerollsPerSide);
+      this.eraRespinsLeft = Array(this.sides).fill(this.eraRespinsPerSide);
       this.primesLeft = Array(this.sides).fill(this.primesPerSide);
+      // Primed players: the id in the XI → the id of the version that was drafted.
+      this.primed = {};
       this.history = [];
       this.current = null;
       this.seen = [];
     }
-    this.used = new Set(this.picks.flat().filter(Boolean));
-    for (const id of [...this.used]) {
+    // Who is drafted, as persons: a man is in an XI once, whatever the era or the version.
+    this.used = new Set();
+    for (const id of this.picks.flat()) {
+      if (!id) continue;
       const p = this.player(id);
       if (!p) throw Error('Saved draft does not match the player database');
-      // A primed player: his current version is taken too.
-      this.used.add(baseProfileId(p));
+      this.used.add(personId(p));
     }
   }
   random() {
@@ -203,18 +229,14 @@ export class DraftSession {
     const c = DRAFT_MODES[this.mode].categories;
     return c[this.round(side) % c.length];
   }
-  /** A catalog player, a legend or a prime version by profileId (null when unknown). */
+  /** A catalog player or an era card by profileId (null when unknown). */
   player(id) {
-    return this.#index.byId.get(String(id)) || legendPlayer(this.#catalog, id);
-  }
-  /** The side's next (or current) spin is its Legend spin: the first of a Legend-spin draft. */
-  legendRound(side = this.turn) {
-    return this.options.legendSpin && this.round(side) === 0;
+    return this.#index.byId.get(String(id)) || eraPlayer(this.#catalog, id);
   }
   // ---- availability and the dead-end guard ---------------------------------------------
-  /** Drafted already — he, or another version of him (his prime or legend version). */
+  /** Drafted already — he, or another version of him (any era, his Prime). */
   #taken(p) {
-    return this.used.has(p.profileId) || this.used.has(baseProfileId(p));
+    return this.used.has(personId(p));
   }
   /**
    * This draft may offer him: selectable (rules.pickMinimum), not drafted, not excluded. Every
@@ -228,6 +250,7 @@ export class DraftSession {
       !this.#taken(p) &&
       !this.excluded.players.has(p.profileId) &&
       !this.excluded.players.has(baseProfileId(p)) &&
+      !this.excluded.persons.has(personId(p)) &&
       !this.excluded.nations.has(s.nationality) &&
       !this.excluded.clubs.has(String(s.clubId))
     );
@@ -238,7 +261,8 @@ export class DraftSession {
    * player keeps the price of the version that was drafted: a Prime boost is free.
    */
   #price(p) {
-    const drafted = p.primeOf ? (this.#index.byId.get(p.primeOf) ?? p) : p;
+    const from = this.primed[p.profileId],
+      drafted = from ? (this.player(from) ?? p) : p;
     return Math.round(naturalRating(drafted));
   }
   /** Players a side holds per band (aligned with this.bands). */
@@ -268,17 +292,17 @@ export class DraftSession {
     return { gk, out };
   }
   // The guard: some available (Budget mode: affordable) player the spin would offer can fill an
-  // open slot class. A nation offers its draft squad only (pools.js draftSquad), a league or a
-  // club everyone a draft may offer.
-  #fills(category, id, side, legend = false) {
-    const ix = this.#index,
-      group = legend
-        ? this.#legends.nations.get(id)
-        : category === 'nation'
-          ? ix.nations.get(id)
-          : category === 'league'
-            ? ix.leagueById.get(id)
-            : ix.clubs.get(id);
+  // open slot class. A nation offers its draft squad only (pools.js draftSquad) — in an era
+  // draft its squad of that era (players/eras.js eraPool) —, a league or a club everyone a
+  // draft may offer.
+  #group(category, id, era = null) {
+    const ix = this.#index;
+    if (era !== null) return eraPool(this.#catalog, era, id);
+    if (category === 'nation') return ix.nations.get(id)?.squad;
+    return (category === 'league' ? ix.leagueById.get(id) : ix.clubs.get(id))?.players;
+  }
+  #fills(category, id, side, era = null) {
+    const group = this.#group(category, id, era);
     if (!group) return false;
     const open = this.openClasses(side),
       used = this.bands && this.#bandUsed(side),
@@ -287,46 +311,23 @@ export class DraftSession {
         const band = bandIndex(this.bands, this.#price(p));
         return band < 0 || used[band] < this.bands[band].slots;
       };
-    return (category === 'nation' && !legend ? group.squad : group.players).some(
-      p => (isKeeper(p) ? open.gk : open.out) && this.available(p) && afford(p),
-    );
+    return group.some(p => (isKeeper(p) ? open.gk : open.out) && this.available(p) && afford(p));
   }
-  #poolOf(category, id, legend = false) {
-    const ix = this.#index;
-    if (category === 'nation') {
-      if (legend) return this.#legendPool(id);
-      // The nation's draft squad, less whoever is taken or excluded: it does not refill. Budget
-      // mode lists the players a full tier closes too (the guard asked for one that is not).
-      const nation = ix.nations.get(id);
-      return nation ? nation.squad.filter(p => this.available(p)) : [];
-    }
-    const group = category === 'league' ? ix.leagueById.get(id) : ix.clubs.get(id);
-    return group ? group.players.filter(p => this.available(p)) : [];
-  }
-  // A Legend spin shows the nation's highest-rated legends (`legends.shown`, 10). Never a dead
-  // end: when none of those fits an open slot class and the Budget tiers, the best that do are
-  // shown instead.
-  #legendPool(id) {
-    const nation = this.#legends.nations.get(id);
-    if (!nation) return [];
-    const side = this.turn,
-      open = this.openClasses(side),
-      shown = this.#legends.shown,
-      free = nation.players.filter(p => this.available(p)),
-      fits = p => (isKeeper(p) ? open.gk : open.out) && this.affordable(p, side),
-      top = free.slice(0, shown);
-    return top.some(fits) ? top : free.filter(fits).slice(0, shown);
+  // A pool is the group less whoever is taken or excluded: it does not refill. Budget mode
+  // lists the players a full tier closes too (the guard asked for one that is not).
+  #poolOf(category, id, era = null) {
+    return (this.#group(category, id, era) ?? []).filter(p => this.available(p));
   }
   #nationUsed(side, id) {
     return this.history.some(h => h.side === side && h.category === 'nation' && h.optionId === id);
   }
-  #valid(category, id, side, legend = false) {
+  #valid(category, id, side, era = null) {
     if (category === 'nation') {
       if (this.excluded.nations.has(id)) return false;
       if (this.options.uniqueNations && this.#nationUsed(side, id)) return false;
     }
     if (category === 'club' && this.excluded.clubs.has(id)) return false;
-    return this.#fills(category, id, side, legend);
+    return this.#fills(category, id, side, era);
   }
   // ---- spinning ---------------------------------------------------------------------------
   #reel(category, entries, weightOf) {
@@ -347,30 +348,102 @@ export class DraftSession {
     const { total, ...shown } = reel;
     return { ...shown, landing };
   }
-  #draw(category, exclude, forcedId, legend = false) {
+  // ---- era drafts: an era reel, then the reel of that era's nations ------------------------
+  // The weights of the reels (draft/reels.js): famous, deep squads come up more often; an
+  // option the guards close has weight 0. Never shown.
+  #weights() {
+    return reelWeights(this.#catalog, this.rules.reels ?? DEFAULT_CONFIG.draft.reels);
+  }
+  #eraReel(weightOf) {
+    const weights = this.#weights();
+    return this.#reel(
+      'era',
+      // `name` is the era's full label, `short` the one for a reel or a tight spot (ERAS).
+      eraList(this.#catalog).map(e => ({
+        id: e.id,
+        name: e.label,
+        short: e.short ?? e.label,
+        from: e.from,
+        to: e.to,
+      })),
+      o => (weightOf(o.id) ? (weights.get(o.id)?.weight ?? 1) : 0),
+    );
+  }
+  #eraNationReel(era, side, exclude = null) {
+    const nations = eraList(this.#catalog).find(e => e.id === era)?.nations ?? [],
+      landable = this.#landable(era, side, exclude),
+      weights = this.#weights().get(era)?.nations;
+    return this.#reel(
+      'nation',
+      nations.map(n => ({
+        id: n.name,
+        name: n.name,
+        code: n.code,
+        flag: n.flag,
+        strength: n.strength,
+      })),
+      o => (landable.has(o.id) ? (weights?.get(o.id) ?? 1) : 0),
+    );
+  }
+  /**
+   * The nations of an era a spin can land on: those with a pick for an open slot class (so,
+   * with only the keeper slot left, those with an available keeper). A pool may have no keeper
+   * at all: **while the keeper slot is open beside others, at least half of the landable
+   * nations have an available keeper** — keeper-less nations stay only as far as that holds,
+   * the strongest first (the reel's order), the rest are off the reel for this spin.
+   */
+  #landable(era, side, exclude = null) {
+    const nations = eraList(this.#catalog).find(e => e.id === era)?.nations ?? [],
+      open = this.openClasses(side),
+      both = open.gk && open.out,
+      out = new Set(),
+      bare = [];
+    for (const n of nations) {
+      if (exclude?.has(n.name) || !this.#valid('nation', n.name, side, era)) continue;
+      if (!both || this.#hasKeeper(era, n.name, side)) out.add(n.name);
+      else bare.push(n.name);
+    }
+    const keepers = out.size;
+    for (let i = 0; i < bare.length && i < keepers; i++) out.add(bare[i]);
+    return out;
+  }
+  #hasKeeper(era, nation, side) {
+    const used = this.bands && this.#bandUsed(side);
+    return eraPool(this.#catalog, era, nation).some(p => {
+      if (!isKeeper(p) || !this.available(p)) return false;
+      if (!used) return true;
+      const band = bandIndex(this.bands, this.#price(p));
+      return band < 0 || used[band] < this.bands[band].slots;
+    });
+  }
+  /** Some nation of the era can be landed on (never a dead end: such an era has weight 0). */
+  #eraOpen(era, side, exclude = null) {
+    return this.#landable(era, side, exclude).size > 0;
+  }
+  // An era by its weight, then a nation of it by its weight — less the ones a pick could
+  // not come from. `forced`: { era, nation } ids a schedule fixed (taken when they can land).
+  #drawEra(side, forced = null) {
+    const eras = this.#land(
+        this.#eraReel(id => this.#eraOpen(id, side)),
+        forced?.era ?? null,
+      ),
+      era = eras.options[eras.landing],
+      nations = this.#land(
+        this.#eraNationReel(era.id, side),
+        era.id === forced?.era ? (forced.nation ?? null) : null,
+      );
+    return {
+      category: 'nation',
+      option: nations.options[nations.landing],
+      era,
+      league: null,
+      reels: [eras, nations],
+    };
+  }
+  #draw(category, exclude, forcedId) {
     const side = this.turn,
       ix = this.#index,
       tierWeight = t => this.rules.leagueTierWeights[t] ?? 0;
-    if (legend) {
-      // The Legend spin: the nations with a great legend; more legends, slightly better odds.
-      const reel = this.#land(
-        this.#reel(
-          'nation',
-          this.#legends.reel.map(n => ({
-            id: n.id,
-            name: n.name,
-            code: n.code,
-            flag: n.flag,
-            best: n.best,
-            legends: n.count,
-            weight: n.weight,
-          })),
-          o => (!exclude.has(o.id) && this.#valid('nation', o.id, side, true) ? o.weight : 0),
-        ),
-        forcedId,
-      );
-      return { category, option: reel.options[reel.landing], league: null, reels: [reel] };
-    }
     if (category === 'nation') {
       const reel = this.#land(
         this.#reel(
@@ -435,49 +508,142 @@ export class DraftSession {
   spin() {
     if (this.complete) throw Error('The draft is complete');
     if (this.current) throw Error('Pick a player (or re-roll) before spinning again');
-    const legend = this.legendRound(),
-      category = legend ? 'nation' : this.category(),
-      forced = this.#scheduled('spin'),
-      result = this.#draw(category, new Set(), forced, legend);
+    const forced = this.#scheduled('spin'),
+      era = this.eras ? this.#scheduled('era') : null,
+      result = this.eras
+        ? this.#drawEra(this.turn, era === null ? null : { era, nation: forced })
+        : this.#draw(this.category(), new Set(), forced);
     this.current = {
       ...result,
-      legend,
       side: this.turn,
       round: this.round(),
       reroll: 0,
-      scheduled: forced !== null && result.option.id === forced,
+      scheduled:
+        forced !== null && result.option.id === forced && (era === null || result.era.id === era),
     };
-    this.seen = [result.option.id];
+    this.seen = [this.#seenKey(result)];
     this.#changed();
     return structuredClone(this.current);
   }
-  /** Why the current side cannot re-roll now, or '' when it can. */
-  rerollBlocked() {
+  #seenKey(result) {
+    return result.era ? `${result.era.id}|${result.option.id}` : result.option.id;
+  }
+  // What a respin may not land on: the nations seen in this era this round / the eras seen.
+  #seenNations(era) {
+    const head = `${era}|`;
+    return new Set(this.seen.filter(k => k.startsWith(head)).map(k => k.slice(head.length)));
+  }
+  #seenEras() {
+    return new Set(this.seen.map(k => Number(k.slice(0, k.indexOf('|')))));
+  }
+  /**
+   * Why the side to act cannot spend a respin now, or '' when it can. `kind`: 'nation' (keep
+   * the era, spin the nation again — the re-roll of a draft without eras) or 'era' (era drafts:
+   * spin the era again; the nation stays when the new era has it).
+   */
+  respinBlocked(kind = 'nation') {
     if (this.complete) return 'The draft is complete';
     if (!this.current) return 'Spin first';
-    if (this.rerollsLeft[this.turn] <= 0) return 'No re-rolls left';
+    const side = this.turn;
+    if (kind === 'era') {
+      if (!this.eras) return 'No era to respin';
+      if (this.eraRespinsLeft[side] <= 0) return 'No era respin left';
+      const seen = this.#seenEras();
+      return eraList(this.#catalog).some(e => !seen.has(e.id) && this.#eraOpen(e.id, side))
+        ? ''
+        : 'No other era';
+    }
+    if (kind !== 'nation') return 'Unknown respin';
+    if (this.rerollsLeft[side] <= 0)
+      return this.eras ? 'No nation respin left' : 'No re-rolls left';
+    if (this.eras)
+      return this.#eraOpen(this.current.era.id, side, this.#seenNations(this.current.era.id))
+        ? ''
+        : 'No other nation';
     if (this.options.schedule && this.current.reroll > 0) return 'One alternate per round';
     return '';
   }
-  /** Spend a re-roll: spin again without the options already seen this round. */
-  reroll() {
-    const blocked = this.rerollBlocked();
+  /** Why the current side cannot re-roll (respin the nation) now, or '' when it can. */
+  rerollBlocked() {
+    return this.respinBlocked('nation');
+  }
+  /**
+   * Spend a respin token (see respinBlocked). 'nation': the era stays, the nation is drawn
+   * again without the ones seen. 'era': another era is drawn; the nation stays when that era
+   * has it with a pick for an open slot, otherwise the nation is drawn too. Returns the spin,
+   * with `respin` (the kind), `spun` (which reels moved) and, for an era respin, `kept`.
+   */
+  respin(kind = 'nation') {
+    const blocked = this.respinBlocked(kind);
     if (blocked) throw Error(blocked);
-    const category = this.current.category,
-      forced = this.#scheduled('alternate'),
-      result = this.#draw(category, new Set(this.seen), forced, !!this.current.legend);
-    this.rerollsLeft[this.turn]--;
+    const side = this.turn,
+      was = this.current;
+    let result,
+      scheduled = false,
+      extra = {};
+    if (!this.eras) {
+      const forced = this.#scheduled('alternate');
+      result = this.#draw(was.category, new Set(this.seen), forced);
+      scheduled = forced !== null && result.option.id === forced;
+      this.rerollsLeft[side]--;
+    } else if (kind === 'nation') {
+      // A schedule's alternate nation belongs to the scheduled era.
+      const forced = was.era.id === this.#scheduled('era') ? this.#scheduled('alternate') : null,
+        nations = this.#land(
+          this.#eraNationReel(was.era.id, side, this.#seenNations(was.era.id)),
+          forced,
+        );
+      result = {
+        category: 'nation',
+        option: nations.options[nations.landing],
+        era: was.era,
+        league: null,
+        reels: [was.reels[0], nations],
+      };
+      scheduled = forced !== null && result.option.id === forced;
+      extra = { respin: 'nation', spun: [false, true] };
+      this.rerollsLeft[side]--;
+    } else {
+      const seen = this.#seenEras(),
+        forced = this.#scheduled('eraAlternate'),
+        eras = this.#land(
+          this.#eraReel(id => !seen.has(id) && this.#eraOpen(id, side)),
+          forced?.era ?? null,
+        ),
+        era = eras.options[eras.landing],
+        reel = this.#eraNationReel(era.id, side),
+        // The nation stays when the new era has it (and it has a pick for an open slot).
+        kept = reel.options.some(o => o.id === was.option.id && o.weight > 0),
+        nations = this.#land(
+          reel,
+          kept ? was.option.id : era.id === forced?.era ? (forced.nation ?? null) : null,
+        );
+      result = {
+        category: 'nation',
+        option: nations.options[nations.landing],
+        era,
+        league: null,
+        reels: [eras, nations],
+      };
+      scheduled = forced !== null && era.id === forced.era;
+      extra = { respin: 'era', spun: [true, !kept], kept };
+      this.eraRespinsLeft[side]--;
+    }
     this.current = {
       ...result,
-      legend: !!this.current.legend,
-      side: this.turn,
+      ...extra,
+      side,
       round: this.round(),
-      reroll: this.current.reroll + 1,
-      scheduled: forced !== null && result.option.id === forced,
+      reroll: was.reroll + 1,
+      scheduled,
     };
-    this.seen.push(result.option.id);
+    this.seen.push(this.#seenKey(result));
     this.#changed();
     return structuredClone(this.current);
+  }
+  /** Spend a re-roll: spin again without the options already seen this round. */
+  reroll() {
+    return this.respin('nation');
   }
   // ---- pool and placement ----------------------------------------------------------------
   /** Players of the current spin (drafted/excluded players removed), best fit first. */
@@ -486,7 +652,7 @@ export class DraftSession {
     this.#pool ??= this.#poolOf(
       this.current.category,
       this.current.option.id,
-      !!this.current.legend,
+      this.current.era?.id ?? null,
     );
     return this.#pool;
   }
@@ -572,9 +738,7 @@ export class DraftSession {
     if (!option) return { ok: false, reason: 'Unknown slot' };
     if (!option.allowed) return { ok: false, reason: option.reason };
     this.picks[side][slot] = p.profileId;
-    this.used.add(p.profileId);
-    // A catalog player's legend version: his current version is taken with it.
-    this.used.add(baseProfileId(p));
+    this.used.add(personId(p));
     const spin = this.current;
     this.history.push({
       side,
@@ -587,7 +751,7 @@ export class DraftSession {
       optionName: spin.option.name,
       leagueId: spin.league?.id ?? null,
       rerolls: spin.reroll,
-      ...(spin.legend ? { legend: true } : {}),
+      ...(spin.era ? { era: spin.era.id, eraName: spin.era.name } : {}),
     });
     this.current = null;
     this.seen = [];
@@ -662,19 +826,22 @@ export class DraftSession {
     this.#changed();
     return true;
   }
-  // ---- Prime boosts ------------------------------------------------------------------------
-  /** The stored prime version of a player when this draft has Prime boosts, else null. */
+  // ---- the Prime token ---------------------------------------------------------------------
+  /**
+   * The best version of a player across all titles when this draft has Prime tokens and it
+   * shows more than he does (players/eras.js bestVersion), else null. A primed player has none.
+   */
   #primeOf(p) {
-    if (!this.primesPerSide) return null;
-    const prime = primeVersion(this.#catalog, p);
-    return prime && Math.round(naturalRating(prime)) > Math.round(naturalRating(p)) ? prime : null;
+    if (!this.primesPerSide || this.primed[p.profileId]) return null;
+    return bestVersion(this.#catalog, p);
   }
   /**
-   * What a Prime boost would do to the player in a side's slot, or null when he has no stored
-   * prime version (or the slot is open): { slot, profileId, name, from: { ovr, rating }, to:
-   * { profileId, ovr, rating, edition, year, position, tier }, allowed, reason }. `rating` is
-   * the rating in that slot. `reason` when not allowed: 'No Prime boosts left'. Budget mode
-   * never refuses it: he keeps the tier slot of the version that was drafted.
+   * What the Prime would do to the player in a side's slot, or null when no version of him
+   * shows more (or the slot is open): { slot, profileId, name, from: { ovr, rating }, to:
+   * { profileId, ovr, rating, edition, year, position, tier, goat, captain }, allowed, reason }.
+   * `rating` is
+   * the rating in that slot. `reason` when not allowed: 'No Prime left'. Budget mode never
+   * refuses it: he keeps the tier slot of the version that was drafted.
    */
   primeOption(slot, side = this.turn) {
     const id = this.picks[side]?.[slot],
@@ -683,7 +850,7 @@ export class DraftSession {
     if (!prime) return null;
     const role = FORMATIONS[this.formations[side]][slot][2],
       ovr = Math.round(naturalRating(prime));
-    const reason = this.primesLeft[side] > 0 ? '' : 'No Prime boosts left';
+    const reason = this.primesLeft[side] > 0 ? '' : 'No Prime left';
     return {
       slot,
       profileId: p.profileId,
@@ -693,30 +860,34 @@ export class DraftSession {
         profileId: prime.profileId,
         ovr,
         rating: Math.round(roleRating(prime, role)),
-        edition: prime.edition,
-        year: editionYear(prime),
+        edition: prime.edition ?? null,
+        year: this.#year(prime),
         position: prime.primaryPosition,
         tier: tierOfRating(ovr, this.tiers),
+        // His best version is a GOAT card: the Prime makes him one. The marks are the card's:
+        // a Captain whose best version is of a year he did not lead in gives up the armband.
+        goat: !!prime.goat,
+        captain: !!prime.captain,
       },
       allowed: !reason,
       reason,
     };
   }
-  /** Every slot of a side whose player has a stored prime version (see primeOption). */
+  /** Every slot of a side whose player has a better version (see primeOption). */
   primeOptions(side = this.turn) {
     return this.picks[side].map((_, slot) => this.primeOption(slot, side)).filter(Boolean);
   }
   /**
-   * Spend a Prime boost: the player in the slot becomes his prime version (rating, attributes
-   * and positions of that edition; same name, nation, club and Captain tag). Not reversible.
+   * Spend the Prime: the player in the slot becomes his best version (the card of that year:
+   * its rating, attributes, positions and club). Not reversible.
    * Returns { ok: true, side, slot, profileId, primeOf, rating } or { ok: false, reason }.
    */
   prime(slot, side = this.turn) {
     const option = this.primeOption(slot, side);
-    if (!option) return { ok: false, reason: 'No prime version' };
+    if (!option) return { ok: false, reason: 'No better version' };
     if (!option.allowed) return { ok: false, reason: option.reason };
     this.picks[side][slot] = option.to.profileId;
-    this.used.add(option.to.profileId);
+    this.primed[option.to.profileId] = option.profileId;
     this.primesLeft[side]--;
     for (const h of this.history)
       if (h.side === side && h.profileId === option.profileId) {
@@ -732,6 +903,11 @@ export class DraftSession {
       primeOf: option.profileId,
       rating: option.to.rating,
     };
+  }
+  // The year of a card's ratings: an era card's own; in a draft with eras or Primes today's
+  // players carry today's.
+  #year(p) {
+    return editionYear(p) ?? (this.eras || this.primesPerSide ? CURRENT_ERA : null);
   }
   // ---- views ----------------------------------------------------------------------------
   /** Display summary of a catalog player (no fit information). */
@@ -753,17 +929,21 @@ export class DraftSession {
       league: this.#index.leagueById.get(String(s.leagueId))?.name ?? null,
       leagueId: s.leagueId == null ? null : String(s.leagueId),
       captain: !!p.captain,
-      legend: !!p.legend,
-      prime: !!p.prime,
+      // One of the greatest of all time, in his year: a boost for the whole XI (links.js).
+      goat: !!p.goat,
+      // The Prime was spent on him: this is his best version.
+      prime: !!this.primed[p.profileId],
+      era: this.eras ? (p.era ?? CURRENT_ERA) : null,
       edition: p.edition ?? null,
-      // The year of a legend's or prime version's ratings (FIFA 19 came out in 2018).
-      year: editionYear(p),
-      // His stored prime version (drafts with Prime boosts): what a boost would make him.
+      // The year of this version's ratings (FIFA 19 came out in 2018); null in a draft of
+      // today's players.
+      year: this.#year(p),
+      // His best version (drafts with the Prime): what the token would make him.
       primeVersion: prime && {
         profileId: prime.profileId,
         ovr: Math.round(naturalRating(prime)),
-        edition: prime.edition,
-        year: editionYear(prime),
+        edition: prime.edition ?? null,
+        year: this.#year(prime),
         position: prime.primaryPosition,
       },
     };
@@ -782,6 +962,7 @@ export class DraftSession {
       clubs,
       value: linkBoosts(this.rules.links),
       captain: this.lineup(side).some(p => p?.captain),
+      goats: this.lineup(side).filter(p => p?.goat).length,
     };
   }
   #entry(p, side, used, mates) {
@@ -816,6 +997,10 @@ export class DraftSession {
         : null,
       // A Captain who would be the XI's first: what he gives every player (else 0).
       captainBoost: p.captain && !mates.captain ? mates.value.captain : 0,
+      // A GOAT: what he would add for every player (half as much for each GOAT already there).
+      goatBoost: p.goat
+        ? goatBoost(mates.goats + 1, mates.value.goat) - goatBoost(mates.goats, mates.value.goat)
+        : 0,
       best: best && {
         slot: best.slot,
         role: best.role,
@@ -858,7 +1043,7 @@ export class DraftSession {
         rating: p ? Math.round(roleRating(p, role)) : null,
         familiarity: p ? round3(roleFit(p, role)) : null,
         link: links.players[slot],
-        // What a Prime boost would do here (null: no stored prime version).
+        // What the Prime would do here (null: no better version).
         prime: p ? this.primeOption(slot, side) : null,
       };
     });
@@ -883,6 +1068,7 @@ export class DraftSession {
       links: { ...linkSummary, boosts: linkPlayers.map(e => e?.chem ?? null) },
       budget: this.bands && this.#budgetView(side),
       rerollsLeft: this.rerollsLeft[side],
+      eraRespinsLeft: this.eraRespinsLeft[side],
       primesLeft: this.primesLeft[side],
       complete: filled.length === 11,
     };
@@ -899,6 +1085,22 @@ export class DraftSession {
       used: used[i],
       left: Math.max(0, b.slots - used[i]),
     }));
+  }
+  #tokens(side) {
+    const can = kind => !this.complete && !!this.current && !this.respinBlocked(kind);
+    return {
+      nation: { perSide: this.rerollsPerSide, left: this.rerollsLeft[side], can: can('nation') },
+      era: this.eras
+        ? { perSide: this.eraRespinsPerSide, left: this.eraRespinsLeft[side], can: can('era') }
+        : null,
+      prime: this.primesPerSide
+        ? {
+            perSide: this.primesPerSide,
+            left: this.primesLeft[side],
+            can: this.primesLeft[side] > 0 && this.primeOptions(side).length > 0,
+          }
+        : null,
+    };
   }
   /** Serialisable view for the UI (cached until the state changes). */
   snapshot() {
@@ -924,14 +1126,12 @@ export class DraftSession {
       hideRatings: this.options.hideRatings,
       uniqueNations: this.options.uniqueNations,
       budget: this.options.budget,
-      legendSpin: this.options.legendSpin,
-      // [first, last] year of the legends' versions (the Legend spin's one line), or null.
-      legendYears: this.options.legendSpin ? (this.#legends?.years ?? null) : null,
-      // The spin to make (or the current one) is the side's Legend spin.
-      legendRound: this.current ? !!this.current.legend : !this.complete && this.legendRound(side),
+      eras: this.eras,
       primes: this.primesPerSide
         ? { perSide: this.primesPerSide, left: [...this.primesLeft] }
         : null,
+      // The tokens of the side to act: what is left and whether it can be spent now.
+      tokens: this.#tokens(side),
       daily: !!this.options.schedule,
       phase: this.phase,
       complete: this.complete,
@@ -965,7 +1165,9 @@ export class DraftSession {
         turn: this.turn,
         picks: this.picks,
         rerollsLeft: this.rerollsLeft,
+        eraRespinsLeft: this.eraRespinsLeft,
         primesLeft: this.primesLeft,
+        primed: this.primed,
         history: this.history,
         current: this.current,
         seen: this.seen,
@@ -1032,6 +1234,8 @@ export function buildSide({
       pairs: summary.pairs,
       captain: summary.captain,
       captainBoost: summary.captainBoost,
+      goats: summary.goats,
+      goatBoost: summary.goatBoost,
     },
   };
 }

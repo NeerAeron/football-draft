@@ -13,10 +13,11 @@ import {
   IconButton,
   Sheet,
   CaptainMark,
+  GoatMark,
 } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
 import { mateLines } from './draft-model.js';
-import { fmt1, signed1 } from '../../lib/format.js';
+import { fmt1, signed1, boost as fmtBoost } from '../../lib/format.js';
 
 function Effects({ team, preview, hideRatings, prime }) {
   if (!preview) return null;
@@ -43,6 +44,13 @@ function Effects({ team, preview, hideRatings, prime }) {
           html`<span key=${i} class=${cx('pick-effects__mate', `is-${l.tone}`)}>${l.text}</span>`,
       )}
     </li>
+    ${
+      preview.goat &&
+      html`<li class="pick-effects__item pick-effects__goat" data-testid="goat-effect">
+        <${GoatMark} />
+        <span><b class="delta is-up">${fmtBoost(preview.goat.boost)}</b> to every player</span>
+      </li>`
+    }
     ${
       preview.captain &&
       html`<li class="pick-effects__item pick-effects__captain" data-testid="captain-effect">
@@ -118,14 +126,14 @@ function SlotLine({ option, fit, hideRatings, arrow }) {
     }`;
 }
 
-/** His tier by name and, for a legend, the year of that version: "Star · Legend ’18". */
+/** His tier by name and, in a World Cup draft, the year of that version: "Star · ’18". */
 function Standing({ view, hideRatings }) {
   const tier = !hideRatings && resolveTier(view.tier, view.ovr);
-  const legend = view.legend && view.era ? `Legend ${view.era}` : '';
-  if (!tier && !legend) return null;
+  const year = view.era || '';
+  if (!tier && !year) return null;
   return html`<span class="pick__standing" data-testid="pick-standing">
     ${tier && html`<span class=${`tier-text-${tier.id}`}>${tier.label}</span>`}
-    ${tier && legend && ' · '}${legend && html`<span class="pick__legend">${legend}</span>`}
+    ${tier && year && ' · '}${year && html`<span class="pick__year num">${year}</span>`}
   </span>`;
 }
 

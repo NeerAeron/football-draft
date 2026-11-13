@@ -1,13 +1,13 @@
-// Prime boost: one sheet to choose who gets it. Every drafted player is listed; those with a
-// prime version show the bump in their slot ("85 → 94 +9 · ’19") and can be selected, the
-// others are dimmed. Select, then confirm — a boost cannot be taken back. The sheet stays open
-// and shows the boost that was made (its button then says Done). Data: session.snapshot() team
+// The Prime: one sheet to choose who gets it. Every drafted player is listed; those with a
+// better version show the bump in their slot ("85 → 94 +9 · ’19") and can be selected, the
+// others are dimmed. Select, then confirm — it cannot be taken back. The sheet stays open
+// and shows what was made (its button then says Done). Data: session.snapshot() team
 // slots (`slot.prime`, core/draft/session.js primeOption).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
 import { editionLabel } from '../../../core/players/legends.js';
-import { Sheet, Button, Flag, Icon } from '../../components/index.js';
+import { Sheet, Button, Flag, Icon, GoatMark } from '../../components/index.js';
 
 /** "’19" for a prime option's version. */
 const era = prime => editionLabel(prime.to);
@@ -15,24 +15,6 @@ const era = prime => editionLabel(prime.to);
 const gainText = d => (d > 0 ? `+${d}` : d < 0 ? `−${-d}` : '±0');
 /** Taps on the sheet's button are ignored this long after a boost (an impatient second tap). */
 const SETTLE_MS = 450;
-
-/** The board's Prime boost button: "Prime boost · 2" (nothing when the draft has none). */
-export function PrimeButton({ team, primes, onOpen, class: className }) {
-  if (!primes) return null;
-  const left = team.primesLeft;
-  const ready = team.slots.some(s => s.prime?.allowed);
-  return html`<button
-    type="button"
-    class=${cx('draft-prime-btn', ready && 'is-ready', left === 0 && 'is-spent', className)}
-    onClick=${onOpen}
-    data-testid="prime-open"
-    aria-label=${`Prime boost: ${left} left`}
-  >
-    <${Icon} name="sparkles" size=${16} />
-    <span>Prime boost</span>
-    <b class="num">${left}</b>
-  </button>`;
-}
 
 /**
  * PrimeSheet props: open, onClose, team (snapshot team), hideRatings, onPrime(slot) → result
@@ -79,7 +61,7 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
     open=${open}
     onClose=${onClose}
     eyebrow=${`${left} left`}
-    title="Prime boost"
+    title="Prime"
     size="md"
     class="draft-prime"
     footer=${html`<${Button}
@@ -91,14 +73,13 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
       data-testid="prime-confirm"
       >${
         chosen
-          ? `Boost ${surname(chosen.player.name)} · Prime ${era(chosen.prime)}`
+          ? `${surname(chosen.player.name)} · Prime ${era(chosen.prime)}`
           : boosted
             ? 'Done'
             : 'Choose a player'
       }<//
     >`}
   >
-    <p class="draft-prime__lead">A drafted player becomes his best past version.</p>
     ${
       rows.length === 0
         ? html`<p class="draft-prime__empty">Draft a player first.</p>`
@@ -126,7 +107,9 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
                 >
                   <${Flag} code=${p.nationCode} name=${p.nation} size=${26} decorative />
                   <span class="draft-prime__who">
-                    <span class="draft-prime__name truncate">${p.name}</span>
+                    <span class="draft-prime__name truncate"
+                      >${p.name}${(prime?.to.goat || p.goat) && html` <${GoatMark} />`}</span
+                    >
                     <span class="draft-prime__meta"
                       >${s.role}${
                         prime
@@ -135,11 +118,20 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
                               !hideRatings && prime.to.rating < prime.to.ovr
                                 ? ` · ${prime.to.position} ${prime.to.ovr}`
                                 : ''
+                            }${
+                              // The marks are the card's: that version is no Captain / GOAT.
+                              spent
+                                ? ''
+                                : p.captain && !prime.to.captain
+                                  ? ' · not Captain'
+                                  : p.goat && !prime.to.goat
+                                    ? ' · not a GOAT'
+                                    : ''
                             }`
                           : p.prime
                             ? ` · Prime ${editionLabel(p)} ✓`
-                            : p.legend
-                              ? ` · Legend ${editionLabel(p)}`
+                            : p.year
+                              ? ` · ${editionLabel(p)}`
                               : ''
                       }</span
                     >

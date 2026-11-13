@@ -14,3 +14,15 @@ export function CaptainMark({ size = 'sm', class: className }) {
     >C</span
   >`;
 }
+
+export const GOAT_TEXT = 'GOAT';
+
+/** GoatMark — the small holographic "GOAT" tag on the card, row and pitch token of a GOAT. */
+export function GoatMark({ size = 'sm', class: className }) {
+  return html`<span
+    class=${cx('goat-mark', `goat-mark--${size}`, className)}
+    role="img"
+    aria-label="GOAT"
+    >GOAT</span
+  >`;
+}

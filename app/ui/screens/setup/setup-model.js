@@ -69,23 +69,25 @@ export const versusRerolls = difficulty =>
 /** What each difficulty is, in a line (setup screen). Legendary is the game's main challenge. */
 export const DIFFICULTY_TEXT = {
   pro: 'Good nations in your way and a heavyweight in the final. Where a title is won first.',
-  worldclass: 'The best nations from the quarter-finals on. One re-roll less to build with.',
+  worldclass: 'The best nations from the quarter-finals on.',
   legendary: 'The ultimate test: the whole World Cup field stands between you and the cup.',
 };
 
 const truthy = v => v === '1' || v === 'true' || v === 'yes' || v === true;
 const pick = (value, list) => (list.includes(value) ? value : null);
 
-/** Facts for a difficulty level: re-rolls and the opponent target (effective rating). */
+/**
+ * Facts for a difficulty level: the opponent target (effective rating) and the tokens — the
+ * same on every level (`rerolls`: nation respins, the re-rolls of a draft without eras).
+ */
 export function difficultyFacts(type, level, { useDefaultRules = false } = {}) {
   const rules = useDefaultRules ? DEFAULT_CONFIG.draft : CONFIG.draft;
-  const rerolls = rules.rerolls[level] ?? 0;
   return {
     id: level,
     label: DIFFICULTY_LABELS[level],
     text: DIFFICULTY_TEXT[level] ?? '',
-    rerolls,
-    primes: rules.primes?.[level] ?? 0, // Prime boosts (World Cup drafts)
+    rerolls: rules.tokens.nation,
+    tokens: { ...rules.tokens },
     gap: rules.ladder[level] ?? 0,
     target: Math.round(ladderTarget(draftMode(type), level, { rules })),
   };

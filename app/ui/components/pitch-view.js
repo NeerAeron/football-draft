@@ -38,7 +38,7 @@ import { html, cx } from '../lib/html.js';
 import { FORMATIONS } from '../../core/players/formations.js';
 import { resolveTier } from '../lib/tiers.js';
 import { surname, mateBoosts, captainSlot } from '../lib/player-view.js';
-import { CaptainMark } from './captain-mark.js';
+import { CaptainMark, GoatMark } from './captain-mark.js';
 import { boost as fmtBoost } from '../lib/format.js';
 import { Flag } from './flag.js';
 import { Crest } from './crest.js';
@@ -126,12 +126,17 @@ function SlotToken({ player, hideRatings, boost, captain }) {
         decorative
       />`;
   return html`<span
-    class=${cx('pitch-slot__token', `pitch-slot__token--${hideRatings ? 'hidden' : t.id}`)}
+    class=${cx(
+      'pitch-slot__token',
+      `pitch-slot__token--${hideRatings ? 'hidden' : t.id}`,
+      player.goat && 'pitch-slot__token--goat',
+    )}
   >
     <span class="pitch-slot__face">${face}</span>
     ${!hideRatings && html`<span class="pitch-slot__ovr num">${player.ovr}</span>`}
     ${boost > 0 && html`<span class="pitch-slot__boost num">${fmtBoost(boost)}</span>`}
     ${captain && html`<${CaptainMark} class="pitch-slot__captain" />`}
+    ${player.goat && html`<${GoatMark} class="pitch-slot__goat" />`}
     ${player.era && html`<span class="pitch-slot__era num">${player.era}</span>`}
     ${
       player.primeNote &&

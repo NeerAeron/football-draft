@@ -110,7 +110,7 @@ import { createCupRun, restoreCupRun, projectRun } from './core/competition/cup.
 const run = createCupRun(catalog, {
   mode: 'nations', difficulty: 'pro', seed,     // the draft's seed is fine
   user: draft.matchSide(0),                     // or { name, color, secondary, formation, players }
-  // daily only: opponents: challenge.opponents (9), rules: DEFAULT_CONFIG.draft, rerolls: 2, daily: id
+  // daily only: opponents: challenge.opponents (9), rules: DEFAULT_CONFIG.draft, rerolls: 2 (the ladder's baseline column), daily: id
 });
 
 for (let m = run.nextMatch(); m; m = run.nextMatch()) {
@@ -211,7 +211,7 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   after a group exit) and meets the opponents that were waiting, to the final and the
   play-off. The user's matches count as recorded; every other side's lines come from
   `scorers.js` with a seed per match and side. Line-ups are the ones the run stores
-  (`opponents[i].players` — whatever `buildOpponent` returned, legends included).
+  (`opponents[i].players` — whatever `buildOpponent` returned).
   **The rules.** Golden Boot: most goals; level → more assists, fewer matches, then the order
   of the tournament's matches. Golden Ball: best average match rating + `BALL_DEPTH` (0.1) per
   round the team went past the group (champions +0.6), among players with `BALL_MATCHES` (4) or
@@ -225,7 +225,7 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 * Persist with `localStorage.setItem(key, JSON.stringify(run.serialize()))` (~6 KB at the
   start, ~11 KB on Legendary with its field; each match adds its player lines, ~1.8 KB with
   both sides: a finished run is 21–25 KB) and
-  `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 3 (the
+  `restoreCupRun(catalog, data)`. Persist after every `recordResult`. `CUP_FORMAT` is 4 (the user's XI can hold era cards; the
   play-off: nine opponents; three difficulties); anything else — an older format, a removed
   difficulty or draft mode, link rules that are not the three numbers — throws 'Not a saved
   run' (one cut-off, no conversion).
@@ -283,10 +283,14 @@ import { dailyId, dailyChallenge, perfectXI, perfectPercent, dailyScore,
 
 const today = dailyId(new Date());           // UTC 'YYYY-MM-DD'
 const day = dailyChallenge(catalog, today);  // { id, number, seed, mode: 'nations',
-//   difficulty: 'pro', rerolls: 2, formation, schedule: { rounds: [{ spin, alternate }] × 11 },
+//   difficulty: 'pro', tokens: { nation: 1, era: 1, prime: 1 }, formation,
+//   schedule: { rounds: [{ era, spin, alternate, eraAlternate: { era, nation } }] × 11 },
 //   opponents: [9 keys: group ×3, R32 … final, play-off], draft: {…}, cup: {…} }
-const draft = createDraftSession(catalog, day.draft);   // spins follow the schedule
-// … draft (a re-roll lands on that round's fixed alternate; one alternate per round) …
+// `catalog` needs its era pools (catalog.eras: services/eras.js / loadEraCatalog()).
+const draft = createDraftSession(catalog, day.draft);   // a World Cup draft on the schedule
+// … draft: a round lands on its `era` + `spin`; the nation respin lands on `alternate` (same
+// era), the era respin on `eraAlternate.era` (the nation stays when that era has it, else
+// `eraAlternate.nation`); the Prime as in any World Cup draft …
 const run = createCupRun(catalog, { ...day.cup, user: draft.matchSide(0) });
 // … auto-sim every match with the engine (seed: run.nextMatch().seed) …
 const optimum = perfectXI(catalog, day, { formation: draft.formations[0] });
@@ -294,13 +298,19 @@ const perfect = perfectPercent(draft.matchSide(0).rating, optimum);   // 0–100
 const points = dailyScore(run.snapshot(), { rating: draft.matchSide(0).rating, perfect });
 ```
 
-* Everyone gets the same 11 nations, the same alternates and the same nine opponents for a
-  date (DEFAULT_CONFIG rules; the device's config cannot change them). Opponent XIs still
-  drop the players you drafted.
-* **Perfect XI**: the exact hindsight optimum — one player per round from that round's
-  nation (its draft squad of 30, `nation.squad`: a repeated nation offers the same squad
-  again, less the players taken), using the alternate in at most `rerolls` rounds, distinct
-  players and slots. A positional drafter averages ≈ 97.7% of it.
+* Everyone gets the same 11 era + nation spins, the same respin landings and the same nine
+  opponents for a date (DEFAULT_CONFIG rules; the device's config cannot change them): the
+  schedule draws an era, a nation of it, another nation of it and another era per round, all
+  equally likely. The draft's guards still hold — a scheduled landing whose pool has no pick
+  for an open slot (the keeper slot alone left and no keeper there; a Budget tier full; the
+  keeper-share rule) is drawn again from the session's seeded RNG, the same for everyone who
+  drafted the same way. Opponent XIs still drop the players you drafted.
+* **Perfect XI**: the hindsight optimum of the scheduled landings — one player per round from
+  that round's era pool, in different slots, with the day's tokens: the nation respin in at
+  most one round, the era respin in at most one other round, and the Prime on one player (his
+  best version, when it is better in that slot). A DP over slot masks per choice of respins
+  (133 of them, ~0.5 s: `ui/screens/daily/perfect-xi-worker.js`). Two pools of one nation in
+  different eras can hold the same man; the optimum may count him twice (an upper bound).
 * **Points** (`DAILY_POINTS`): W 100 (a knockout won in extra time is a win) · D 40 · shootout won +20 · place R32 10 / R16 20 / QF 40 /
   fourth 80 / third 100 / runners-up 120 / champions 200 · 10 per team-OVR point above 70 · 10 per % of perfect above 80.
 * One attempt per day: `canPlayDaily(lastPlayedId, today)`. Streaks:

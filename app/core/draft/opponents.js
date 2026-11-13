@@ -44,12 +44,19 @@ export const BOSSES = {
 const BOSS_FIT = 0.99;
 const round2 = x => Math.round(x * 100) / 100;
 
+// Which column of MODE_BASELINES.effective a level's target reads (the re-rolls a draft of that
+// level had when the baselines and CUP_TUNING were measured). Every difficulty has the same
+// tokens now; the columns stay until the ladder is re-measured.
+const BASELINE_REROLLS = { pro: 2, worldclass: 1, legendary: 1 };
+/** The typical drafted XI (effective rating) a level's opponents are measured against. */
+export const ladderBaseline = (mode, level) =>
+  MODE_BASELINES[mode].effective[BASELINE_REROLLS[level] ?? 1];
 /** Effective target rating for a mode, level and round offset (rules: a session's rules). */
 export function ladderTarget(mode, level, { offset = 0, rules = CONFIG.draft, rerolls } = {}) {
   const base = MODE_BASELINES[mode];
   if (!base) throw Error('Unknown draft mode: ' + mode);
   if (!(level in rules.ladder)) throw Error('Unknown difficulty: ' + level);
-  const r = Math.max(0, Math.min(2, rerolls ?? rules.rerolls[level]));
+  const r = Math.max(0, Math.min(2, rerolls ?? BASELINE_REROLLS[level]));
   return round2(base.effective[r] + rules.ladder[level] + offset);
 }
 
