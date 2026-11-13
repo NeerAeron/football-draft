@@ -197,7 +197,7 @@ export const DEFAULT_CONFIG = {
     movementSpeed: 1.28,
     acceleration: 1.1,
     shotFrequency: 2,
-    shotScatter: 0.94,
+    shotScatter: 0.9,
     shotPower: 1,
     saveAbility: 0.97,
     passCompletion: 1,

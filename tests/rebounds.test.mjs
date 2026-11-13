@@ -109,6 +109,18 @@ test('a defender who reaches the rebound with an attacker on it clears it', () =
   assert.ok(Math.abs(m.ball.vy) > 2);
 });
 
+test('a sliced clearance goes square or behind, never between his own posts', () => {
+  const { m, near } = scene();
+  m.rand = () => 0; // sliced, as far back as it goes
+  m.startRebound(0);
+  Object.assign(m.ball, { x: 1.2, y: 34.6, vx: 0 });
+  m.clearRebound(near);
+  assert.ok(m.ball.vx > 0, 'in front of goal it goes forward');
+  Object.assign(m.ball, { x: 6, y: 44, vx: 0 });
+  m.clearRebound(near);
+  assert.ok(m.ball.vx < 0 && m.ball.vy > 8, 'out wide it may go behind for a corner');
+});
+
 test('with no attacker near he takes the rebound instead, and the keeper never hacks at it', () => {
   const { m, near, keeper, attacker } = scene();
   m.rand = () => 0;

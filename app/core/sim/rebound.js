@@ -5,7 +5,7 @@
 // attacking side follows in. Nothing is decided here: who gets there first is still run by
 // legs and distance. Methods are installed on Match.prototype by match.js.
 import { clamp } from '../util/math.js';
-import { LOOSE_ROLL, LOOSE_DRAG, hypot } from './constants.js';
+import { GOAL, LOOSE_ROLL, LOOSE_DRAG, hypot } from './constants.js';
 
 // How long after the save the ball counts as a rebound, and how far from the goal line.
 export const REBOUND_SECONDS = 3,
@@ -129,6 +129,10 @@ export class ReboundMethods {
       b.vx = out * (this.rand() * 9 - 5);
       b.vy = side * (9 + this.rand() * 5);
       b.vz = 3 + this.rand() * 3;
+      // Never between his own posts: one that would cross the line there goes forward.
+      const depth = Math.abs(b.x - this.abs(0, p.team));
+      if (b.vx * out < 0 && Math.abs(b.y + (b.vy * depth) / Math.abs(b.vx) - 34) < GOAL / 2 + 1.5)
+        b.vx = -b.vx;
     } else {
       // Upfield through the widest gap between the attackers closing in (five directions,
       // 60° either side of straight out), the touchline side preferred.

@@ -248,6 +248,40 @@ fades the same way beyond 53°. Measured over 288 club fixtures: shots seeing le
 goal from inside 20 m scored 30% before and 3% after; shots from in front (within 30° of the
 centre line, 5–16.5 m) 47% before and after (docs/calibration.md).
 
+### Rebounds (second balls)
+
+A shot the keeper parried, a defender blocked or the woodwork kept out is a **rebound** while
+the ball is loose within 30 m of that goal line, for at most 3 s (`sim/rebound.js`:
+`startRebound(team)` sets `ball.reboundTeam` — the side defending the goal — and
+`ball.reboundAt`; `reboundSide()` returns that side or −1; taking the ball or a restart ends
+it). `gameplay.secondBalls` 0 switches all of it off. While it lasts:
+
+- **Both sides see it in the same instant**: the next step plans, and nobody waits for his own
+  `rethinkAt`. The side that shot is still the attacking side and the other one defends,
+  whoever touched the ball last (after a parry the defending side used to count as "in
+  possession" and ran out to its support positions).
+- **The defending side's nearest two outfielders go for the ball** (`intent: 'recover'`,
+  actions `Attacking the loose ball` / `Attacking the second ball`); the rest mark. The
+  attacking side sends its nearest man and keeps its runs into the box. All of them run at
+  `loosePoint(p)`: the first point on the ball's rolled-forward path (bounces, grass) they can
+  reach in time, turning included — and a man turning for a rebound brakes 1.6 × harder than he
+  accelerates (both sides).
+- **A defender who reaches it in his own box with an attacker within 4.5 m of the ball clears
+  it** first time (`shouldClearRebound` / `clearRebound`, action `Clearing the rebound`, no
+  event): lofted upfield through the widest gap between the attackers closing in; a clumsy
+  one (4–30% by defending, composure and power) is sliced square towards the touchline. He
+  lunges for it (reach + 0.7 m; + 0.25 m for a rebound nobody contests, which he controls as
+  usual).
+- **The keeper claims** a rebound in his box that he reaches before any attacker
+  (`intent: 'sweep'`, action `Claiming the loose ball`), and a parry back into the box is
+  pushed harder and — likelier the better the keeper — away from the attacker following in.
+- **The shooter is in his follow-through** for 0.5 s: a ball blocked back at him is not at his
+  feet again in the same instant.
+
+Who gets there first is still decided by legs and distance: attackers reach about a fifth of
+the rebounds first (a third of the parries labelled `'parry into danger'`), see
+docs/calibration.md, Phase 11.
+
 ### Ten men
 
 A red card never leaves a hole: `coverDismissal` (fouls.js) swaps formation slots at once, for
