@@ -252,7 +252,7 @@ sentence, the share text).
   the catalog does not know are simply nobody's other version.
 - `eraList(catalog)` → `[{ id, label, short, from, to, keeperLevel, nations: [{ name, code,
   flag, strength, size, keepers }] }]`, oldest era first, an era's nations strongest first.
-  **Only spinnable nations are listed** (49–81 per era, see below). `name` is the catalog's
+  **Only spinnable nations are listed** (50–81 per era, see below). `name` is the catalog's
   nation name (`code`/`flag` as in `catalog.nations`; a nation today's catalog does not have —
   none at the moment — would have `code: null`). `size` = players in the pool (**2 to 26** — see "Which nations can be spun"),
   **`keepers` = how many of them are goalkeepers: 0 to 3 — a spinnable pool may have none.**
@@ -388,14 +388,14 @@ in:
 3. **Everyone else**: a pool of at least **14 players** (was 18), at least 3 defenders, 4
    midfielders — a forward beyond the pool's first four counts as one — and 2 forwards
    (counted before a second striker is settled: a pool can end with one fewer), and a place
-   among the era's **70 strongest** pools (France 98: 38, and three in ten of the players
+   among the era’s **70 strongest** pools (France 98: 41, and three in ten of the players
    must be men a later title knows by EA's id — no Canada of first names).
 
 **A goalkeeper is never required.** As built:
 
 | era | nations | under 26 players | under 14 | no keeper | strongest | weakest |
 | --- | --- | --- | --- | --- | --- | --- |
-| France 98 | 49 | 17 | Ukraine 9, Saudi Arabia 10, Korea Republic 8, Liberia 2, Trinidad and Tobago 2 | Ghana, Uruguay, Ukraine, Liberia, Trinidad and Tobago | Italy 87.2 | Trinidad and Tobago |
+| France 98 | 50 | 17 | Ukraine 9, Saudi Arabia 10, Korea Republic 8, Liberia 2, Trinidad and Tobago 2 | Ghana, Uruguay, Ukraine, Liberia, Trinidad and Tobago | Italy 87.2 | Trinidad and Tobago |
 | Korea/Japan 02 | 72 | 11 | Liberia 5, Ecuador 2 | Georgia, Ghana, Guinea, Costa Rica, New Zealand, Liberia, Ecuador | Brazil 88.5 | Ecuador |
 | Germany 06 | 71 | 12 | Iran 12, Estonia 8 | Guinea, Georgia, Egypt, Iran, Burkina Faso | Brazil 89.9 | Estonia |
 | South Africa 10 | 73 | 13 | Korea DPR 3 | Mali, Peru, Guinea, Algeria, Honduras, Burkina Faso, Congo DR, Korea DPR | Spain 88.9 | Korea DPR |
@@ -479,7 +479,7 @@ Things a draft should know about the data:
   Ronaldo ’98 are 88, Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
   described 2003–04 versions) is where those players reach 90+. A reel that weighs by
   `strength` will favour later eras unless it weighs inside an era.
-- **France 98 is the thinnest**: 49 nations, no Brazil-size depth outside Europe and Argentina/Brazil
+- **France 98 is the thinnest**: 50 nations, no Brazil-size depth outside Europe and Argentina/Brazil
   (FIFA 98/99 use their own player ids and mostly surnames: a player counts only when
   FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch — or when both titles list him, at a club or in a national squad). Japan of 1998 is not spinnable (16 players); Liberia never is (Weah has no pool).
 - A pool can have 0, 1 or 2 keepers, and as few as 18 players.

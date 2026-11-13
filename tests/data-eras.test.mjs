@@ -117,9 +117,9 @@ test('every era: the nations that can field a pool, the World Cup sides and the 
     ERAS.map(e => e.id),
   );
   const counts = list.map(e => e.nations.length);
-  // The 70 strongest pools (France 98: 38), and on top of them every nation that played the
+  // The 70 strongest pools (France 98: 41), and on top of them every nation that played the
   // era's World Cup and every nation with a star.
-  assert.deepEqual(counts, [49, 72, 71, 73, 71, 73, 73, 81]);
+  assert.deepEqual(counts, [50, 72, 71, 73, 71, 73, 73, 81]);
   // (France 98 keeps pools of players the data can identify: no Canada of first names.)
   assert.ok(!eraNations(catalog, 1998).some(n => ['Canada', 'Iceland'].includes(n.name)));
   // A World Cup side is always there, with whatever players the data has (data/world-cups.json).

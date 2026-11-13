@@ -680,9 +680,9 @@ export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 // France 98 keeps fewer. FIFA 98/99 know most players by a surname, some national squads by
 // first names or invented ones: a pool there needs three in ten of its players to be men a
 // later title knows (EA's id: Canada's "Robert, Janny, Aaron, Mike" and the United States'
-// and Slovakia's squads are not), and the era keeps its strongest 38 — below them the pools
+// and Slovakia's squads are not), and the era keeps its strongest 41 — below them the pools
 // are thin squads of surnames nobody can check.
-export const ERA_NATION_LIMIT = { 1998: 38 };
+export const ERA_NATION_LIMIT = { 1998: 41 };
 export const ERA_IDENTIFIED = { 1998: 0.3 };
 const LOCAL_PERSON = 98_000_000; // FIFA 98/99's own ids, as persons (legends-calibration.mjs)
 const nationLimit = era => ERA_NATION_LIMIT[era] ?? ERA_NATIONS;
