@@ -42,6 +42,7 @@ export class RestartMethods {
     b.indirect = null;
     b.penaltyTaker = null;
     b.restartTaker = null;
+    b.reboundTeam = null;
     this.lastPass = null;
     this.pendingTackle = null;
     let taker;
