@@ -241,6 +241,7 @@ export const DEFAULT_CONFIG = {
     pressDistance: 1,
     restartSetup: 1,
     buildUpWait: 3.5,
+    freeTouch: 0.7,
     markingLapses: 0,
     deliveryDeflections: 1,
     runsInBehind: 1,
@@ -858,6 +859,7 @@ const labels = {
   markingDistance: 'Marking distance',
   pressDistance: 'Pressing distance',
   restartSetup: 'Restart preparation time',
+  freeTouch: 'First touch: how much easier a high or long ball is for an unpressed receiver (0–1)',
   buildUpWait:
     'Goal kicks, deep free kicks, keeper in hands: longest wait for the sides to set (s)',
   markingLapses: 'Marking lapses (ball-watching)',
@@ -1030,6 +1032,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
     [min, max, step] = [0, 2, 0.01];
   if (['routinePassError', 'difficultPassError'].includes(f.key)) [min, max, step] = [0, 4, 0.01];
   if (f.key === 'buildUpWait') [min, max, step] = [0, 8, 0.1];
+  if (f.key === 'freeTouch') [min, max, step] = [0, 1, 0.01];
   const session = draftField(f.path);
   if (session) [, min, max, step] = session;
   if (f.path.startsWith('mentality.')) [min, max, step] = [-100, 100, 0.001];
