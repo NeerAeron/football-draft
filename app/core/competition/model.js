@@ -1,6 +1,9 @@
 // Fast seeded result model for matches that are not simulated by the engine (AI vs AI in a
 // cup group, projections, optional quick-sims). Independent Poisson goals:
 //   lambda_A = goals * exp(+slope * (rA - rB)),  lambda_B = goals * exp(-slope * (rA - rB))
+// `goals` 1.46: set again after the kick-off level got its unit terms and the era data moved
+// the drafted XIs (480 matches of `gaps`: 1.50 a side, slope 0.0525, the user's constant down
+// to 0.04; the 980 run matches of the mode table: 1.44) — the paragraph below is the fit before.
 // with ratings on the effective scale (team OVR + mean link chem). Fitted to 624 matches of the
 // engine in the game's 180 s match (tools/calibration/cup-calibration.mjs gaps, then fit): a
 // typically drafted XI against ladder opponents at gaps of −12…+20, the AI coach at each
@@ -24,12 +27,22 @@
 // Shootouts: 5 kicks each then sudden death, each kick scored with probability 0.75 ± 0.005 per
 // rating point (340 engine shootouts: the stronger side by 6 wins 62%, the weaker 41%).
 
+// Units (optional): a side's rate also follows its attack against the defence it faces.
+// `units = [a, b]`, each { overall, attack, defence } (players/unit-levels.js unitLevels):
+// per point of unitLean — the opponent's defence above the opponent's overall, less its own
+// attack above its own — a side scores `units` (3.6%) less. Engine, a grid of 960 matches
+// between club XIs with their lines swapped (docs/calibration.md, Phase 10): 2.45% a point from
+// what better defenders and keepers do in play, 3.6% with the kick-off level's unit term.
+// Without `units` (every caller today: opponents carry one rating) nothing changes.
+import { unitLean } from '../players/unit-levels.js';
+
 const EXTRA_RATE = 0.88;
 const EXTRA_TIME_SHARE = Math.round((EXTRA_RATE / 3) * 1000) / 1000;
 
 export const MATCH_MODEL = {
-  goals: 1.33,
+  goals: 1.46,
   slope: 0.0525,
+  units: 0.036,
   maxGoals: 9,
   kick: 0.75,
   kickSlope: 0.005,
@@ -38,9 +51,14 @@ export const MATCH_MODEL = {
 };
 
 /** Expected goals [a, b] for two effective ratings. */
-export function expectedGoals(ratingA, ratingB, model = MATCH_MODEL) {
-  const d = ratingA - ratingB;
-  return [model.goals * Math.exp(model.slope * d), model.goals * Math.exp(-model.slope * d)];
+export function expectedGoals(ratingA, ratingB, model = MATCH_MODEL, units = null) {
+  const d = ratingA - ratingB,
+    leanA = units ? unitLean(units[0], units[1]) : 0,
+    leanB = units ? unitLean(units[1], units[0]) : 0;
+  return [
+    model.goals * Math.exp(model.slope * d - model.units * leanA),
+    model.goals * Math.exp(-model.slope * d - model.units * leanB),
+  ];
 }
 function poisson(lambda, random, max) {
   // Knuth's method; one draw per goal + 1. Deterministic for a seeded random().
@@ -63,8 +81,8 @@ const pmf = (lambda, max) => {
   return out;
 };
 /** Win / draw / loss probabilities of side A (exact for the model). */
-export function outcomeProbabilities(ratingA, ratingB, model = MATCH_MODEL) {
-  const [a, b] = expectedGoals(ratingA, ratingB, model),
+export function outcomeProbabilities(ratingA, ratingB, model = MATCH_MODEL, units = null) {
+  const [a, b] = expectedGoals(ratingA, ratingB, model, units),
     pa = pmf(a, 15),
     pb = pmf(b, 15);
   let win = 0,
@@ -104,9 +122,9 @@ export function simulateResult(
   ratingA,
   ratingB,
   random,
-  { knockout = false, extraTime = knockout, model = MATCH_MODEL } = {},
+  { knockout = false, extraTime = knockout, model = MATCH_MODEL, units = null } = {},
 ) {
-  const [a, b] = expectedGoals(ratingA, ratingB, model),
+  const [a, b] = expectedGoals(ratingA, ratingB, model, units),
     goals = [poisson(a, random, model.maxGoals), poisson(b, random, model.maxGoals)];
   let extra = false,
     shootout = null;

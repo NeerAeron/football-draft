@@ -7,7 +7,8 @@
 import { clamp } from '../util/math.js';
 import { GOAL, hypot } from './constants.js';
 
-// Save chance per point of match level (match.level, tuning.gameplay.levelSaves).
+// Save chance per point of the level the shooting side attacks at (match.level,
+// tuning.gameplay.levelSaves).
 const LEVEL_SAVES = 0.004;
 
 export class KeeperMethods {
@@ -104,7 +105,9 @@ export class KeeperMethods {
         (record && !b.penaltyKick ? 1 - 0.7 * high : 1) *
         this.tuning.gameplay.saveAbility *
         favour *
-        (b.penaltyKick ? 1 : 1 + LEVEL_SAVES * (this.level ?? 0) * this.tuning.gameplay.levelSaves),
+        (b.penaltyKick
+          ? 1
+          : 1 + LEVEL_SAVES * (this.level?.[1 - g.team] ?? 0) * this.tuning.gameplay.levelSaves),
       0.01,
       0.995,
     );
