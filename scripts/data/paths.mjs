@@ -110,6 +110,7 @@ export const PATHS = {
   handCards: at('data/judgement-cards.json'), // reviewed: hand-made cards for notables the source lacks
   legends: at('app/data/legends.v1.json'), // Legends + Prime versions, fetched when a draft starts
   legendsProvenance: at('data/build/legends.json'), // gitignored, with provenance
+  erasArchive: at('data/eras-archive.v1.json'), // era cards of 75+ in no pool: not deployed
   eras: at('app/data/eras.v1.json'), // era pools (nation × World Cup cycle), fetched with a draft
   erasProvenance: at('data/build/eras.json'), // gitignored, with provenance
   reference: at('data/catalog-reference.json'),

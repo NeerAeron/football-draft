@@ -457,6 +457,46 @@
       "nation": "Germany",
       "era": 2002,
       "why": "Every minute of the 2002 finalists at centre-back."
+    },
+    {
+      "name": "Maxi Rodríguez",
+      "sourceName": "rodriguez",
+      "sofifaId": 110381,
+      "nation": "Argentina",
+      "era": 2006,
+      "why": "Three goals in 2006, the volley against Mexico."
+    },
+    {
+      "name": "Peter Crouch",
+      "sourceName": "crouch",
+      "sofifaId": 51257,
+      "nation": "England",
+      "era": 2006,
+      "why": "Started three of England’s five matches."
+    },
+    {
+      "name": "Jérôme Boateng",
+      "sourceName": "boateng",
+      "sofifaId": 183907,
+      "nation": "Germany",
+      "era": 2010,
+      "why": "Started four matches of the third-placed side."
+    },
+    {
+      "name": "Egidio Arévalo Ríos",
+      "sourceName": "arevalo",
+      "sofifaId": 182103,
+      "nation": "Uruguay",
+      "era": 2010,
+      "why": "The semi-finalists’ ball-winner in every match."
+    },
+    {
+      "name": "Richard Kingson",
+      "sourceName": "kingson",
+      "sofifaId": 157606,
+      "nation": "Ghana",
+      "era": 2010,
+      "why": "The quarter-finalists’ keeper."
     }
   ]
 }
