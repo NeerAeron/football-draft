@@ -351,7 +351,7 @@ test('pickPreview matches the team rating after the pick', () => {
   const team = d.snapshot().teams[0];
   assert.equal(preview.rating, team.rating);
   assert.equal(preview.links, team.links.score);
-  assert.equal(preview.boosts, team.links.total);
+  assert.equal(preview.boosts, team.links.shown);
   assert.equal(preview.budget, null);
   assert.deepEqual(mateLines(preview)[0], { tone: 'none', text: 'No mates in your XI yet' });
   assert.equal(pickPreview(d, 0, entry.profileId, auto.slot), null, 'a filled slot has no preview');
@@ -571,6 +571,9 @@ test('the boost chips on the pitch follow the core rule; the Captain wears the a
   assert.equal(views[5].captain, true);
   assert.equal(view.captainSlot(views), 5);
   assert.equal(view.captainSlot(views.slice(0, 5)), null);
+  // A GOAT's boost counts in the ratings and is not shown on a chip.
+  const goat = [playerView({ ...raw('G', 7, 7), goat: true }), playerView(raw('H', 8, 8))];
+  assert.deepEqual(mateBoosts(goat), [0, 0]);
   // An era card carries the year of that version (FIFA 19's ratings: ’18).
   assert.equal(views[0].era, '');
   const card = playerView({ ...raw('E', 1, 1), era: 2018, edition: 19, year: 2018 });

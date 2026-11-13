@@ -1,7 +1,7 @@
 {
   "description": "Reviewed Captain list (compiler input): the great captains and leaders of 1997–2026, ranked, each with the World Cup cycles in which he led — his cards of those eras are Captains (app/data/eras.v1.json `captain: true`; the catalog player too when 2026 is one of them: catalog `captain: true`). The compiler takes the first `size` players and fails when an id, source name, nation or era of ANY entry does not match the data (so the cut can be moved without a surprise). Never a player of data/goats.json. `sofifaId` is EA’s player id (the person). `size` is the cut: the list is ranked for it — raise it to make Captains more frequent, lower it to make them rarer (docs/draft-api.md has the measured frequencies).",
   "asOf": "2026-11-13",
-  "size": 40,
+  "size": 14,
   "players": [
     {
       "rank": 1,

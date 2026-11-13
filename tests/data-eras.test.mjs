@@ -256,7 +256,7 @@ test('GOATs and Captains: the reviewed lists, player + era, are the marks on the
   // 3–10 GOATs; every listed player + era is a marked card, and nobody else is.
   assert.ok(goats.players.length >= 3 && goats.players.length <= 10);
   assert.deepEqual(keys(marks.goats), want(goats.players));
-  assert.ok(captains.size >= 20 && captains.size <= captains.players.length);
+  assert.ok(captains.size >= 8 && captains.size <= captains.players.length);
   assert.deepEqual(keys(marks.captains), want(captains.players.slice(0, captains.size)));
   assert.equal(eraMarks(catalog), marks);
   // One list per player, whatever the cut; each entry says why.
@@ -296,11 +296,11 @@ test('GOATs and Captains: the reviewed lists, player + era, are the marks on the
       .sort((a, b) => a - b),
     today,
   );
-  assert.ok(today.length >= 3);
+  assert.ok(today.length >= 2);
   assert.ok(catalog.players.every(p => !p.goat));
   // Every era has Captains to meet; GOATs are rare.
   for (const era of ERAS.slice(0, -1))
-    assert.ok(marks.captains.filter(m => m.era === era.id).length >= 5, era.label);
+    assert.ok(marks.captains.filter(m => m.era === era.id).length >= 2, era.label);
   assert.ok(marks.goats.length >= 5 && marks.goats.length <= 30);
   // A file from before the marks still decodes: nobody is marked.
   const { mark, ...rest } = file.cards;

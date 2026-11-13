@@ -454,14 +454,15 @@ export function mateLines(preview) {
 /**
  * What drafting `profileId` into `slot` would do: team OVR after the pick (exact mean slot
  * rating) and the boosts —
- *   boosts / gain  the XI's total boost after the pick and what the pick adds to it;
+ *   boosts / gain  the XI's total shown boost after the pick and what the pick adds to it;
  *   boost          his own mates boost (0, 1, 1.5 or 2.5);
  *   mates          [{ kind, names, boost, shared }] one entry per kind that boosts him
  *                  (nation, club): his mates of that kind (surnames), the boost, and whether
  *                  those mates get it thanks to him ("+1.5 each");
  *   lifts          [{ name, to }] other players whose boost rises, not said by `mates`;
- *   captain        { boost } when the pick gives the XI its first Captain (+1 to everyone);
- *   goat           { boost } when the pick is a GOAT: what he adds for every player;
+ *   captain        { boost } when the pick gives the XI its first Leader (+1 to everyone);
+ *   goat           { boost } when the pick is a GOAT (his boost for every player counts in the
+ *                  ratings and is never shown: not in `boosts` / `gain`, no line with a number);
  *   budget         Budget mode: { label, slots, left } of the tier he uses up (left = after
  *                  the pick), { free: true, label } for a free player; null without a budget;
  *   links          the mates score after the pick (sum of the mates boosts).
@@ -517,8 +518,8 @@ export function pickPreview(session, side, profileId, slot) {
   return {
     rating: Math.round((sum / n) * 10) / 10,
     links: links.score,
-    boosts: links.total,
-    gain: links.total - before.total,
+    boosts: links.shown,
+    gain: links.shown - before.shown,
     boost: me.boost,
     mates,
     lifts,

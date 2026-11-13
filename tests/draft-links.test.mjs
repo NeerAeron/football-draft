@@ -46,6 +46,7 @@ test('mates: nation mate +1.5, club mate +1, both +2.5 — one mate is enough, n
     boost: 2.5,
     kinds: ['nation', 'club'],
     chem: 2.5,
+    shown: 2.5,
     mates: { nation: 1, club: 1 },
   });
   assert.equal(links.score, 5);
@@ -145,6 +146,12 @@ test('a GOAT gives every player more than a Captain; further GOATs add half each
   assert.deepEqual(chemValues([p(1, { goat: true }), p(2), null, p(3)], rules), [1.5, 1.5, 0, 1.5]);
   assert.equal(one.score, 0, 'not a mates boost');
   assert.equal(one.total, 4.5);
+  // … and never itemised: what the UI shows (`shown`) leaves the GOATs' part out.
+  assert.equal(one.shown, 0);
+  assert.deepEqual(
+    one.players.map(e => e?.shown ?? null),
+    [0, 0, null, 0],
+  );
   // Two and three: half as much each time.
   assert.deepEqual(
     [0, 1, 2, 3].map(n => goatBoost(n, 1.5)),
@@ -155,6 +162,12 @@ test('a GOAT gives every player more than a Captain; further GOATs add half each
   // With a Captain both count: 2.5 for everyone.
   const both = [p(1, { goat: true }), p(2, { captain: true }), p(3)];
   assert.deepEqual(chemValues(both, rules), [2.5, 2.5, 2.5]);
+  assert.deepEqual(
+    teamLinks(both, rules).players.map(e => e.shown),
+    [1, 1, 1],
+    'the Leader’s +1 is shown',
+  );
+  assert.equal(teamLinks(both, rules).shown, 3);
   // Mates on top, but never more than the engine takes.
   const mate = id => ({
     sourceOverall: 80,

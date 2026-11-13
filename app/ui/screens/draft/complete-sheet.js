@@ -73,7 +73,7 @@ function XiSummary({ team, players, hideRatings, small }) {
       >
       <span
         ><small>Boosts</small
-        ><b class="num is-boost" data-testid="final-boosts">${fmtBoost(team.links.total)}</b></span
+        ><b class="num is-boost" data-testid="final-boosts">${fmtBoost(team.links.shown)}</b></span
       >
       <span
         ><small>Mates</small><b class="num">${team.links.linked}<i>/11</i></b></span

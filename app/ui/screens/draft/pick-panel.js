@@ -17,7 +17,7 @@ import {
 } from '../../components/index.js';
 import { TeamPitch } from './team-panel.js';
 import { mateLines } from './draft-model.js';
-import { fmt1, signed1, boost as fmtBoost } from '../../lib/format.js';
+import { fmt1, signed1 } from '../../lib/format.js';
 
 function Effects({ team, preview, hideRatings, prime }) {
   if (!preview) return null;
@@ -48,14 +48,14 @@ function Effects({ team, preview, hideRatings, prime }) {
       preview.goat &&
       html`<li class="pick-effects__item pick-effects__goat" data-testid="goat-effect">
         <${GoatMark} />
-        <span><b class="delta is-up">${fmtBoost(preview.goat.boost)}</b> to every player</span>
+        <span>One of the greatest, at his best</span>
       </li>`
     }
     ${
       preview.captain &&
       html`<li class="pick-effects__item pick-effects__captain" data-testid="captain-effect">
         <${CaptainMark} />
-        <span>Captain: <b class="delta is-up">+${preview.captain.boost}</b> to every player</span>
+        <span>Leader: <b class="delta is-up">+${preview.captain.boost}</b> to every player</span>
       </li>`
     }
     ${

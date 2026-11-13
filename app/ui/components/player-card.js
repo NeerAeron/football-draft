@@ -77,7 +77,7 @@ export function PlayerCard({
     p.nation?.name,
     p.club?.name,
     p.era ? `${p.prime ? 'prime version, ' : ''}${p.era} version` : null,
-    p.captain ? 'captain' : null,
+    p.captain ? 'Leader' : null,
     p.goat ? 'GOAT' : null,
   ]
     .filter(Boolean)

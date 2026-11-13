@@ -419,7 +419,7 @@ file (455 outside any pool) — `bestVersion`, the Prime. The legends file and t
 independent; both are stamped with the catalog build. **GOAT cards and Captains** are two
 reviewed lists of player + era: `data/goats.json` (seven players at the World Cup cycles of
 their peak — a GOAT card is a player AND an era) and `data/captains.json` (the leaders of
-1997–2026, ranked, each with the eras in which he led; the first `size`, 40, count; never a
+1997–2026, ranked, each with the eras in which he led; the first `size`, 14, count — the game calls them Leaders; never a
 player of the GOAT list). The compiler puts `goat` / `captain` on those cards of the era pools
 (`eraMarks`), `captain` on today's catalog player when 2026 is one of his eras, and fails on a
 wrong id, name, nation or era of any entry. How the flags are exposed and how often a draft

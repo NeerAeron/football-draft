@@ -104,7 +104,7 @@ export const DEFAULT_CONFIG = {
         // A squad with an all-timer (its best shown rareFrom or more, or a GOAT card) keeps
         // this share of what its depth lifts it by: the greatest stay an event.
         rareFrom: 93,
-        rare: 0.1,
+        rare: 0.4,
       },
     },
     // Opponent strength vs the mode's typical drafted XI (effective rating, links included).

@@ -121,7 +121,7 @@ export function PlayerRow({
       hideRatings ? null : `${p.ovr} overall`,
       p.nation?.name,
       p.club?.name,
-      p.captain && 'captain',
+      p.captain && 'Leader',
       p.goat && 'GOAT',
       p.era && `${p.era} version`,
       cost && (cost.text || cost.label),

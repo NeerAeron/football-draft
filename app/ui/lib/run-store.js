@@ -195,7 +195,11 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
     budget: !!(context.options?.budget ?? context.budget ?? options.budget),
     challenge: challenge ? sanitizeChallenge(challenge) : null,
     links: user.links
-      ? { score: user.links.score, maxScore: user.links.maxScore, total: user.links.total }
+      ? {
+          score: user.links.score,
+          maxScore: user.links.maxScore,
+          total: user.links.shown ?? user.links.total,
+        }
       : null,
     startedAt: new Date(now).toISOString(),
   };

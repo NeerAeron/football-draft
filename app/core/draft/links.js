@@ -65,8 +65,10 @@ export function captainSlot(players) {
  * the Captain's and the GOATs' boosts, at most 5 (what the engine adds), `mates` the number of XI mates per kind. `pairs`
  * index into the input: every pair of nation mates or club mates (one line per pair; `kind` =
  * 'nation' when they share the nation, `kinds` = all they share). `score` = sum of the mates
- * boosts (max `maxScore` = 27.5), `total` = sum of chem (Captain included: the UI's
- * "Boosts"), `chem` = mean chem.
+ * boosts (max `maxScore` = 27.5), `total` = sum of chem, `chem` = mean chem. **A GOAT's boost
+ * is never itemised in the UI**: a player's `shown` is his chem without the GOATs' part (mates +
+ * the Captain's), the summary's `shown` their sum — the UI's chips and "Boosts"; ratings and
+ * odds use `chem`.
  */
 export function teamLinks(players, rules = CONFIG.draft.links) {
   const value = linkBoosts(rules);
@@ -95,7 +97,13 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
         boost += value[k];
       }
     }
-    return { boost, kinds, chem: Math.min(CHEM_CAP, boost + team), mates };
+    return {
+      boost,
+      kinds,
+      chem: Math.min(CHEM_CAP, boost + team),
+      shown: Math.min(CHEM_CAP, boost + captainBoost),
+      mates,
+    };
   });
   const pairs = [];
   for (let a = 0; a < players.length; a++)
@@ -115,6 +123,7 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
     score: filled.reduce((sum, e) => sum + e.boost, 0),
     maxScore: players.length * (value.nation + value.club),
     total,
+    shown: filled.reduce((s, e) => s + e.shown, 0),
     chem: filled.length ? total / filled.length : 0,
     linked: filled.filter(e => e.boost > 0).length,
     captain,

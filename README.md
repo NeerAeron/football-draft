@@ -26,7 +26,7 @@ Everything you do is saved in your own browser.
 4. **Mates.** A player with a nation team-mate in your XI gets **+1.5**, with a club mate
    **+1**, with both **+2.5** (shown as a green chip on the pitch; the pool says who would
    get one).
-   A **Captain** (a "C" on his card) gives every player of your XI **+1** more.
+   A **Leader** (an "L" on his card) gives every player of your XI **+1** more.
    **Budget mode** is the hard way: only 2 **Superstars** (rated 88+), 2 **Stars** (84–87) and
    3 **Starters** (80–83) — everyone else under 80.
 5. **Play.** Before kick-off you can swap players, change formation and set tactics (in a World

@@ -1065,7 +1065,8 @@ export class DraftSession {
         MID: mean(slots.filter(s => s.line === 'MID')),
         ATT: mean(slots.filter(s => s.line === 'ATT')),
       },
-      links: { ...linkSummary, boosts: linkPlayers.map(e => e?.chem ?? null) },
+      // `boosts`: what the UI shows per slot (mates + the Leader's; a GOAT's is not itemised).
+      links: { ...linkSummary, boosts: linkPlayers.map(e => e?.shown ?? null) },
       budget: this.bands && this.#budgetView(side),
       rerollsLeft: this.rerollsLeft[side],
       eraRespinsLeft: this.eraRespinsLeft[side],
@@ -1230,6 +1231,7 @@ export function buildSide({
       score: summary.score,
       maxScore: summary.maxScore,
       total: summary.total,
+      shown: summary.shown,
       chem: round3(summary.chem),
       pairs: summary.pairs,
       captain: summary.captain,

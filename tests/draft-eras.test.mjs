@@ -757,16 +757,26 @@ test('reel weights: deep, famous squads come up more, nobody is shut out, all-ti
       if (r[0] >= 90) ninety += p;
     }
     const list = [...w.nations.values()];
+    // Findable: an all-timer's squad (93+ or a GOAT card) is never among the least likely
+    // third of its era's reel.
+    const sorted = [...list].sort((a, b) => b - a);
+    for (const n of era.nations) {
+      const pool = eraPool(catalog, era.id, n.name);
+      if (!pool.some(p => p.goat) && ratings(era.id, n.name)[0] < 93) continue;
+      const rank = sorted.indexOf(w.nations.get(n.name)) + 1;
+      assert.ok(rank <= (list.length * 2) / 3, `${n.name} ${era.id}: ${rank} of ${list.length}`);
+    }
     assert.ok(Math.max(...list) / Math.min(...list) < 6, String(era.id));
   }
-  // The owner's rough targets, per draft of eleven spins: an all-timer's squad about once every
-  // 5–10 drafts, a 90+ player on offer in one to three spins.
+  // Per draft of eleven spins: a squad with a 93+ player about once every four drafts (the
+  // owner: famous squads being findable matters more than rarity), a 90+ player on offer in
+  // one to three spins.
   const perSpin = allTimer / total,
     drafts = 1 / (1 - (1 - perSpin) ** 11);
-  assert.ok(drafts >= 5 && drafts <= 10, `an all-timer every ${drafts} drafts`);
+  assert.ok(drafts >= 3 && drafts <= 6, `an all-timer every ${drafts} drafts`);
   const spins = (11 * ninety) / total;
   assert.ok(spins >= 1 && spins <= 3, `90+ in ${spins} spins`);
-  // The formula: depth counts more than one star; size counts; an all-timer costs most of the lift.
+  // The formula: depth counts more than one star; size counts; an all-timer costs part of the lift.
   const squad = (top, rest, n = 26) => [...top, ...Array(n - top.length).fill(rest)];
   const deep = nationWeight(squad([88, 88, 87, 86], 80)),
     oneStar = nationWeight(squad([92, 78, 77, 76], 72)),

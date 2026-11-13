@@ -122,18 +122,29 @@ draft.prime(slot, 0);            // the Prime: he becomes his best version acros
   an event.
   - A nation: `q(r) = (r − 72) / 20` clamped to 0…1 on the shown ratings of its pool;
     `score = 5·q(2nd best) + 3·q(3rd) + 2·q(4th) + 1·q(mean of 5th–8th) + 1·q(best) +
-    2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is 0.1 for
-    an all-timer's squad — its best is shown 93+, or it has a GOAT card whatever he shows that
-    year — and 1 otherwise. Weights run from 1 to 5: the likeliest nation of an era is 3–4
-    times as likely as the least likely (Italy 4.0% … China PR 1.2% in France 98; France 2.6% …
-    Cabo Verde 0.8% in 2026). An all-timer's squad is about as likely as the least known one
-    of its era, never less (reward and rarity in balance).
+    2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is **0.4**
+    (`reels.nation.rare`) for an all-timer's squad — its best is shown 93+, or it has a GOAT
+    card whatever he shows that year — and 1 otherwise. Weights run from 1 to 5: the likeliest
+    nation of an era is 3–4 times as likely as the least likely (Italy 3.5% … China PR 1.1% in
+    France 98; France 2.6% … Cabo Verde 0.8% in 2026). **An all-timer's squad sits in the
+    middle of its era's reel** — about the average nation's odds (1.2–1.8%; rank 15–44 of
+    65–70), never among the least likely third (a test): famous squads are findable, and still
+    come up less than their depth alone would make them. The owner's choice between the
+    measured options (per draft of eleven spins; "all-timer's squad" = 93+ or a GOAT card):
+
+    | `rare` | an all-timer's squad | a 93+ squad | its rank in the era | a GOAT on offer |
+    | --- | --- | --- | --- | --- |
+    | 1 (no penalty) | every 2.2 drafts | every 2.5 | 1st–11th | 43% of drafts |
+    | **0.4** | **every 3.5** | **every 4.0** | **15th–44th** | **27%** |
+    | 0.25 | every 4.3 | every 4.9 | 37th–64th | 22% |
+    | 0.1 (before) | every 5.6 | every 6.3 | 58th–70th: the least likely (Portugal 14 / 18 / 22 last, 0.8%) | 17% |
+    | uniform reels | — | every 3.9 | — | 27% |
   - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 11.8% (France 98) to 12.8% (2026).
   - Measured per draft of eleven spins (`node tools/calibration/reel-odds.mjs`; `--uniform` for
-    the reference): a squad with an all-timer once every 6.1 drafts (uniform: every 3.8), a 90+
-    player on offer in 2.4 spins (1.7), 85+ in 6.0 (4.9), 80+ in 10.2 (9.7); a squad whose
-    fourth best is 80+ in 6.7 spins (5.5); a GOAT on offer in 18% of drafts (28%), a Captain
-    in 2.1 spins (1.6).
+    the reference): a 93+ squad once every 4.0 drafts (uniform: every 3.9), a 90+
+    player on offer in 2.5 spins (1.7), 85+ in 5.9 (4.8), 80+ in 10.1 (9.7); a squad whose
+    fourth best is 80+ in 6.7 spins (5.4); a GOAT on offer in 27% of drafts (27%), a Leader
+    (a Captain card) in 0.9 spins (0.6).
   An option that cannot be landed on has weight 0 (below); the guards only ever zero a weight.
   Respins and the Daily's schedule draw with the same weights. The spin carries honest
   `weight` / `probability` like every reel. One spin consumes two draws of the RNG (era, nation).
@@ -190,21 +201,20 @@ Measured (`draft-baselines.mjs --eras --primes default --n 200 --modes nations -
 --policies positional --budget "off;default"`: 200 drafts, pick the best player; respins when
 the best pick is under 78, the nation first; the Prime on the biggest gain in the slot):
 
-| World Cup draft | OVR (sd) | chem | effective (sd) | Captain in the XI | GOAT in the XI | tokens used |
+| World Cup draft | OVR (sd) | chem | effective (sd) | Leader in the XI | GOAT in the XI | tokens used |
 | --- | --- | --- | --- | --- | --- | --- |
-| no tokens | 84.55 (1.41) | 1.17 | 85.71 (1.78) | 55% | 13% | — |
-| the three tokens | 85.39 (1.19) | 1.27 | **86.66** (1.59) | 62% | 16% | nation 0.55 · era 0.26 · Prime 0.94 (+3.4 slot points) |
-| Budget, no tokens | 83.03 (0.97) | 0.87 | 83.90 (1.23) | 39% | 10% | — |
-| Budget, the three tokens | 83.71 (0.97) | 0.94 | **84.65** (1.22) | 44% | 11% | nation 0.84 · era 0.65 · Prime 0.96 (+3.9) |
+| no tokens | 84.58 (1.42) | 0.97 | 85.55 (1.84) | 32% | 17% | — |
+| the three tokens | 85.39 (1.23) | 1.08 | **86.47** (1.72) | 35% | 21% | nation 0.57 · era 0.27 · Prime 0.94 (+3.3 slot points) |
+| Budget, no tokens | 83.20 (1.00) | 0.69 | 83.89 (1.27) | 17% | 13% | — |
+| Budget, the three tokens | 83.83 (0.92) | 0.74 | **84.57** (1.24) | 19% | 14% | nation 0.79 · era 0.62 · Prime 0.96 (+3.7) |
 
-Measured with the reviewed GOAT and Captain lists on the era cards (17 GOAT cards of 7
-players, 89 Captain cards of 40). A Captain is on offer in 2.3 spins of a draft (in 92% of
-drafts; Budget 1.4 spins) and a boost-aware drafter (`--policies smart`) has one in 84% of
-XIs (Budget 69%); a GOAT is on offer in 16% of drafts (Budget 11%: a full Superstar tier
-closes him) and is drafted nearly every time. The quick model's title odds with this XI
-(`cup-calibration.mjs runs --runs 400`): Pro 25%, World Class 13%, Legendary 10%; Budget
-16.5% / 8.5% / 5.5%. `MODE_BASELINES` and `CUP_TUNING` were not touched: both were set for
-an XI of 85.0 / 83.9.
+Measured with the reviewed lists as built (17 GOAT cards of 7 players; 32 Captain cards of the
+list's first 14). **A Leader is on offer in 1.0 spins of a draft** (in 68% of drafts; Budget
+0.5 spins, 43%) — the owner's "a captain every 0.3–1 drafts" — and ends in 35% of XIs when
+the best-rated player is picked, in 54% for a boost-aware drafter (`--policies smart`; Budget
+19% / 34%); a GOAT is on offer in 24% of drafts (Budget 15%: a full Superstar tier closes
+him) and is drafted nearly every time (in the XI about once every five drafts).
+`ERA_BASELINE` (`opponents.js`) holds these numbers for the ladder.
 
 ## Eras (`app/core/players/eras.js`) — the data of the two-spinner draft
 
@@ -330,7 +340,9 @@ data fails the build — every entry, also the Captains behind the cut):
   reason; `closeCalls` names what could have gone the other way). Only the card of a listed
   era is a GOAT: Messi's 2006 and 2026 cards, Ronaldinho's 2002 card are ordinary cards.
 - **`data/captains.json` — Captains: the leaders of 1997–2026, ranked, each with the eras in
-  which he led** (87 entries; the first `size` = **40** count: 40 players, 89 cards). His cards of those eras are Captains; his other cards are not (Maldini 1998 /
+  which he led** (87 entries; the first `size` = **14** count: 14 players, 32 cards — the
+  game calls them **Leaders**; `size` was 40 until the owner asked for one on offer in 0.3–1
+  spins of a draft). His cards of those eras are Captains; his other cards are not (Maldini 1998 /
   2002 / 2006, not 2010). **No player is in both lists** (Maldini, Buffon and Modrić are
   Captains). The old list of today's national-team captains is gone: of today's players only
   the list's own are Captains.
@@ -340,7 +352,7 @@ data fails the build — every entry, also the Captains behind the cut):
 | what you hold | `goat` | `captain` |
 | --- | --- | --- |
 | an era card (`player.era` set; from `eraPool`, `eraPlayer`, `personVersions`, `bestVersion`) | `true` / `false` | `true` / `false` |
-| a catalog player (in a 2026 pool as he is, or anywhere else) | `undefined` — **never a GOAT** | `true` / `false` (catalog field, as before): van Dijk, Kane, Kimmich, Modrić, Marquinhos, Son |
+| a catalog player (in a 2026 pool as he is, or anywhere else) | `undefined` — **never a GOAT** | `true` / `false` (catalog field, as before): van Dijk and Modrić |
 | a legend / a prime version (`legends.js`) | `undefined` | legend `false`; a prime version carries the catalog player's |
 
 So test `player.goat === true` and `player.captain === true` on whatever a pool or a slot
@@ -355,11 +367,14 @@ primed Captain should keep it, carry it over in the session (`drafted.captain ||
 
 `eraMarks(catalog)` → `{ goats: [{ era, nation, player }], captains: [...] }` — every marked
 card of the pools, by era then nation (frozen, built on first use): for a gallery, a count or
-a test. Per era as built: GOAT cards 2 / 2 / 2 / 4 / 4 / 2 / 1 / 0; Captain cards 8 / 14 / 15 /
-13 / 13 / 10 / 10 / 6 (in 8 / 9 / 8 / 8 / 11 / 9 / 9 / 6 pools).
+a test. Per era as built: GOAT cards 2 / 2 / 2 / 4 / 4 / 2 / 1 / 0; Captain cards 3 / 4 / 6 /
+6 / 5 / 3 / 3 / 2 (in 3 / 4 / 5 / 5 / 4 / 3 / 3 / 2 pools).
 
 **How often a draft meets one** (11 spins, era and then nation drawn evenly from the reels —
-a model of the two-spinner draft, `size` is the lever):
+a model of the two-spinner draft from before the reels were weighted; `size` is the lever.
+With today's weighted reels: 10 → 0.64 spins per draft, 12 → 0.78, **14 → 0.91**, 16 → 0.96,
+20 → 1.27, 40 → 2.11; 14 is the largest size under one spin that keeps a Leader among today's
+players — Modrić is 13th, van Dijk 14th):
 
 | `size` | Captain cards | a spin's pool has a Captain | pools with a Captain per draft | at least one in a draft |
 | --- | --- | --- | --- | --- |
@@ -513,8 +528,8 @@ Plain JSON, cached until the state changes (treat as read-only):
     side, name, color, secondary, formation, filled, complete, rerollsLeft,
     rating, lines: { DEF, MID, ATT },  // team OVR meters (mean slot ratings, 1 decimal)
     slots: [{ slot, role, x, y, line, player, rating, familiarity, link }],
-    links: { score, maxScore, total, chem, linked, pairs, captain, captainBoost,
-             boosts },                // boosts: per slot, mates + Captain (null = open)
+    links: { score, maxScore, total, shown, chem, linked, pairs, captain, captainBoost,
+             boosts },                // boosts: per slot, what is shown: mates + Leader (null = open)
     budget,                           // Budget mode: [{ id, label, range, minimum, slots, used, left }]
   }],
   history: [{ side, round, slot, role, profileId, category, optionId, optionName, leagueId, rerolls,
@@ -564,7 +579,9 @@ adds to every skill), **capped at 5** (`CHEM_CAP`).
 `kinds` = what gives it, `chem` = boost + the Captain's and the GOATs' boosts (at most 5), `mates` = number of XI mates per
 kind), `pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates — one line per pair
 for the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the mates boosts,
-max `maxScore` = 27.5), `total` (sum of `chem`, Captain included: the UI's "Boosts +13"),
+max `maxScore` = 27.5), `total` (sum of `chem`), `shown` (per player and for the XI: chem
+**without the GOATs' part** — the owner: a GOAT's boost stays in the maths and is never shown;
+the UI's chips and "Boosts +13" read `shown`, ratings, odds and the engine read `chem`),
 `chem` (mean chem), `linked` (players with a mate), `captain` (slot of the armband or null:
 `captainSlot(players)`, the highest source rating among the Captains, first slot on a tie) and
 `captainBoost`. `goats` (the slots of the GOATs, `goatSlots(players)`) and `goatBoost` (what they

@@ -123,7 +123,7 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
                               spent
                                 ? ''
                                 : p.captain && !prime.to.captain
-                                  ? ' · not Captain'
+                                  ? ' · not a Leader'
                                   : p.goat && !prime.to.goat
                                     ? ' · not a GOAT'
                                     : ''

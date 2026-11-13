@@ -241,18 +241,21 @@ openPrematch({
   those buttons sit exactly under the sheet's button, and a second tap used to respin
   or start the World Cup. Players with a better version carry
   a gold dot on the pitch and "Prime 94 +8" in their pool row while the Prime is left. The
-  marks are the card's: a Captain whose best version is no Captain card reads "· not Captain"
+  marks are the card's: a Leader whose best version is no Leader card reads "· not a Leader"
   in his row (`prime.to.captain`), a best version that is a GOAT card wears the GOAT mark.
 * **GOAT** (`player.goat`): his row, card and pitch token wear a holographic edge
   (`.is-goat-edge`: gold and ice, a sheen that crosses it on `transform` every few seconds and
   stands still with reduced motion) and the small **GOAT** mark (`GoatMark`,
   `components/captain-mark.js`) — in the pool, the pick sheet, the pitch (in the armband's
-  corner, clear of the boost chip) and the team view; the
-  green chips include his +1.5, and the pick preview says "GOAT +1.5 to every player"
-  (`data-testid="goat-effect"`). No other text.
-* **Captain**: the "C" (`CaptainMark`) on his row, card and pitch token (the armband: the
-  highest-rated Captain of the XI), the green chips include his +1, and the pick preview says
-  "Captain: +1 to every player" when he would be the XI's first.
+  corner, clear of the boost chip) and the team view. **His boost for the XI is never shown**
+  (the owner: "just keep that in the backend"): the green chips, "Boosts" and the pick
+  preview's gain read `links.shown` (mates + the Leader), and the pick preview has one line
+  with the mark, "One of the greatest, at his best" (`data-testid="goat-effect"`), no number.
+  Team OVR "with boosts", win chances and projections include it without itemising it.
+* **Leader** — the user-visible word for a Captain (code and data keep `captain`): the "L"
+  (`CaptainMark`, title "Leader: +1 to every player") on his row, card and pitch token (the
+  armband: the highest-rated Leader of the XI), the green chips include his +1, and the pick
+  preview says "Leader: +1 to every player" when he would be the XI's first.
 * Test hooks: `data-testid` `spin`, `reroll`, `auto-pick`, `spin-result`, `pool`,
   `confirm-pick`, `auto-slot`, `draft-done`, `draft-continue`, `opponent-name`, `pass-spin`,
   `team-boosts`, `mates-effect`, `budget-effect`, `captain-effect`, `prime-effect`, `pick-card`,

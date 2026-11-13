@@ -210,6 +210,7 @@ export function lineupStrength(players, formation, links = CONFIG.draft.links) {
       score: summary.score,
       maxScore: summary.maxScore,
       total: summary.total,
+      shown: summary.shown,
       pairs: summary.pairs,
     },
   };

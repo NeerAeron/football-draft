@@ -294,7 +294,7 @@ function Lineup({ side, index, players, title, hideRatings }) {
     />
     <p class="lineup__links">
       <${Icon} name="link" size=${14} />
-      Boosts <b class="num">${fmtBoost(strength.links.total)}</b>
+      Boosts <b class="num">${fmtBoost(strength.links.shown)}</b>
     </p>
   </section>`;
 }

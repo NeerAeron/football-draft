@@ -85,11 +85,12 @@ export { captainSlot };
 
 /**
  * The boost of every player of an XI (views or catalog players, null = open slot): mates
- * (nation mate +1.5, club mate +1, both +2.5) plus the Captain's +1 — core/draft/links.js. 0
+ * (nation mate +1.5, club mate +1, both +2.5) plus the Leader's +1 — core/draft/links.js
+ * (`shown`: a GOAT's boost counts in the ratings and is not shown on a player). 0
  * when a view carries no `source`.
  */
 export function mateBoosts(players, rules) {
-  return teamLinks(players, rules).players.map(e => (e ? e.chem : 0));
+  return teamLinks(players, rules).players.map(e => (e ? e.shown : 0));
 }
 
 /**
