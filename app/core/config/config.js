@@ -211,7 +211,7 @@ export const DEFAULT_CONFIG = {
     movementSpeed: 1.28,
     acceleration: 1.1,
     shotFrequency: 2,
-    shotScatter: 0.94,
+    shotScatter: 0.9,
     shotPower: 1,
     saveAbility: 0.97,
     passCompletion: 1,
@@ -254,6 +254,11 @@ export const DEFAULT_CONFIG = {
     // opponent's overall, and per point its own attack stands below its own overall, a side
     // attacks this many points of level higher (kickoffLevel). 0: overall only.
     levelUnits: 0.4,
+    // Second balls (sim/rebound.js): after a save, a block or the woodwork the defending
+    // side's nearest two go for the loose ball and clear it under pressure, the keeper claims
+    // what he reaches first, and the attackers follow in. 0: the old behaviour (one chaser a
+    // side, everybody else back to his shape).
+    secondBalls: 1,
   },
   // The player's side as favourite. Against the AI (competition.mode 'ai'), when the player's
   // XI (team 0) has the higher overall, its shots are saved a little less and the shots it
@@ -855,6 +860,7 @@ const labels = {
   levelSaves: 'Match level: keeper saves',
   levelGap: 'Match level: points per point between the sides',
   levelUnits: 'Match level: points per point of defence against attack',
+  secondBalls: 'Second balls: defenders and keeper react to a rebound',
   minimumLeaguePlayers: 'Minimum league player pool',
   minimumFit: 'Club XI minimum position fit',
   halftimeRecovery: 'Half-time stamina recovery',
@@ -1004,6 +1010,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
       'levelSaves',
       'levelGap',
       'levelUnits',
+      'secondBalls',
     ].includes(f.key)
   )
     [min, max, step] = [0, 2, 0.01];

@@ -4,7 +4,10 @@ import { clamp, lerp } from '../util/math.js';
 import { skillError, dist, hypot } from './constants.js';
 
 // Extra reach (m) of the intended receiver of a ground pass, on top of a normal touch.
-const RECEIVER_STRETCH = 0.7;
+const RECEIVER_STRETCH = 0.7,
+  // … and of a defender going for a rebound in front of his own goal.
+  REBOUND_STRETCH = 0.25,
+  REBOUND_LUNGE = 0.7;
 
 export class PossessionMethods {
   own(p, handling = false) {
@@ -115,6 +118,7 @@ export class PossessionMethods {
     b.penaltyTaker = null;
     b.restartTaker = null;
     b.penaltyKick = false;
+    b.reboundTeam = null;
     p.beatChain = [];
     p.finishUntil = 0;
     p.bylineAt = null;
@@ -237,7 +241,14 @@ export class PossessionMethods {
           ? 0.21 + RECEIVER_STRETCH + clamp((p.skill('control') - 50) * 0.002, 0, 0.1)
           : settled
             ? 0.1
-            : 0)) *
+            : 0) +
+        // A defender stretches a leg at a rebound in front of his goal.
+        // (a lunge when an attacker is about to get there: shouldClearRebound).
+        (b.reboundTeam === p.team && p.role !== 'GK' && this.reboundSide() === p.team
+          ? this.shouldClearRebound(p)
+            ? REBOUND_LUNGE
+            : REBOUND_STRETCH
+          : 0)) *
       this.tuning.gameplay.interceptionReach
     );
   }

@@ -16,6 +16,9 @@ const URGENT = new Set([
   'reset',
 ]);
 
+// Braking into a turn for a rebound, against plain acceleration.
+const SCRAMBLE_BRAKE = 1.6;
+
 export class MovementMethods {
   // A keeper's penalty dive (shooting.js startPenaltyDive): a committed lunge along a fixed
   // path, far quicker than a player accelerates on his feet. He stays where he lands until
@@ -107,7 +110,16 @@ export class MovementMethods {
     const followScale = Math.min(1, max / (hypot(followX, followY) || 1)),
       vx = followX * followScale,
       vy = followY * followScale;
-    const accel = p.acceleration() * (0.72 + p.energy * 0.28) * dt,
+    // A scramble for a rebound (either side): he plants a foot and turns harder than he
+    // can accelerate — running the wrong way when the ball came back out cost a full second.
+    const scramble =
+      p.intent === 'recover' &&
+      this.ball.reboundTeam != null &&
+      vx * p.vx + vy * p.vy < 0 &&
+      this.reboundSide() >= 0
+        ? SCRAMBLE_BRAKE
+        : 1;
+    const accel = p.acceleration() * (0.72 + p.energy * 0.28) * dt * scramble,
       dv = hypot(vx - p.vx, vy - p.vy),
       weight = Math.min(1, accel / (dv || 1));
     p.vx += (vx - p.vx) * weight;

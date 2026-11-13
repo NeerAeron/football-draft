@@ -23,6 +23,131 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 11: rebounds — the defending side reacts to the second ball
+
+Owner's note: "Sometimes defenders fall asleep on saves, meaning rebounds go to the attackers
+too often. Fix this, but don't mess up the goal targets."
+
+**Measured first** (180 s; a rebound = a keeper's save that is not a catch, a defender's block
+of a shot, or the woodwork, with the ball still in play — 3.3 a match between strong nations).
+300 World-Cup-like matches between two of the 40 strongest nations (`opponentCandidates` /
+`buildOpponent`, the Exhibition's sides) and the first 96 club fixtures of
+`tools/calibration/lib/fixtures.mjs`, before → after, the same matches:
+
+| | nations before → after | club fixtures before → after |
+| --- | --- | --- |
+| first to the rebound: an attacker | 31% → 20% | 34% → 16% |
+| … a defender (of which first-time clearances) | 32% → 48% (32%) | 30% → 52% (36%) |
+| … the keeper | 7% → 8% | 8% → 8% |
+| … nobody: out of play (corner, goal kick, throw-in) | 25% → 19% | 21% → 21% |
+| … straight in (a deflected shot) / nobody for 4 s | 5% → 5% | 7% → 3% |
+| attackers' share of the rebounds somebody won | 45% → 26% | 48% → 21% |
+| parry "into danger": an attacker first | 47% → 29% | 51% → 34% |
+| a second shot within 3 s | 27% → 20% | 30% → 14% |
+| rebound goals a match (share of all goals) | 0.53 → 0.32 (17% → 10%) | 0.43 → 0.21 (15% → 7%) |
+| a defender closer at the save, and still a second shot (`rebound-left`) | 0.66 → 0.49 a match | 0.60 → 0.29 |
+| nearest outfielder at the save: attacker · defender (m) | 7.7 · 5.7 | 7.5 · 5.2 |
+| first man running at the ball after: attacker · defender (s) | 0.06 · 0.06 → 0.02 · 0.02 | 0.07 · 0.07 → 0.02 · 0.02 |
+| the keeper goes for it | 27% → 57% | 25% → 56% |
+| goals a match | 3.02 → 3.12 | 2.76 → 2.80 |
+
+So before the change a defender was the closer man at 83% of the saves (5.7 m against 7.7 m)
+and the attackers still won nearly half of the rebounds anybody won; a sixth of all goals were
+second shots.
+
+**What the defenders did wrong** (traces of the bad ones, e.g. fixtures 47 at 161.0 s, 20 at
+36.9 s, 16 at 159.3 s on the old engine):
+
+1. **The defending side thought it was attacking.** A parry or a block is a touch, and without
+   an owner the side that touched the ball last was planned as "in possession": one man chased
+   the ball and everybody else ran out to his support position ("Protecting against the
+   counter", "Offering a forward link", "Joining the attack") with the ball loose in their
+   six-yard box — while the attackers were planned as defending and mostly marked. Nobody was
+   assigned to the second ball, and the one chaser changed from plan to plan.
+2. **They ran at where the ball was.** The chaser aimed at a straight intercept that knows
+   neither the turn nor the roll: a centre-back sprinting back at his goal overran a ball
+   parried out past him and needed a full second to brake (7 m/s² either way), an arm's length
+   from a ball an attacker arriving at speed then took.
+3. **A touch or nothing.** A defender who got there had to control the ball (0.85 m reach, a
+   first touch that can fail) with the attacker on him, and was robbed; he never just put his
+   foot through it.
+4. **No delay in noticing** (0.06 s both sides — it was never a reaction-time handicap), but
+   the keeper only re-planned at his own rhythm (up to 0.3 s after his dive) and by then judged
+   the attacker closer; and a shot blocked back at the shooter was at his feet again in the
+   same frame, for a second shot a quarter of a second after the first.
+
+**What changed** (`sim/rebound.js`, contract in docs/engine-events.md _Rebounds_;
+`gameplay.secondBalls` 0 = the old behaviour, for `--tuning` comparisons): for 3 s after the
+save, while the ball is loose within 30 m of that goal — both sides re-plan in the same step;
+the side that shot is the one attacking; the defending side's nearest two outfielders go for
+the ball, at the first point of its path they can really reach (turn, bounce and roll
+included), and a man turning for a rebound brakes 1.6 × harder (both sides); a defender who
+reaches it in his own box with an attacker within 4.5 m clears it first time (a lunge of 1.55
+m; lofted through the widest gap, 4–30% sliced square or behind — never between his own
+posts); the keeper claims what he reaches before any attacker and pushes a parry into the box
+harder and, likelier the better he is, away from the man following in; the shooter is in his
+follow-through for 0.5 s. No outcome is decided: the attackers still reach a fifth of the
+rebounds first, a third of the parries into danger, and score 0.2–0.3 goals a match from
+them. No RNG outside the clearance and the parry (both part of the match's seeded stream), no
+allocation in a step (`loosePoint` returns a scratch object). `npm run sim:fingerprint` (12
+matches, one core): 5.3 s before, 5.2–5.6 s after.
+
+**Goal targets.** The lost rebound goals are given back to first shots: `gameplay.shotScatter`
+0.94 → 0.9; `saveAbility` stays 0.97. Per mode (the sides and sample sizes of Phase 9's table,
+200–280 matches a row, ± 0.10; "before" = Phase 10's table, and in brackets the same engine
+re-measured on today's data where it was):
+
+| mode | goals before → after | an attacker first to the rebound | a second shot within 3 s | rebound goals a match |
+| --- | --- | --- | --- | --- |
+| World Cup run, Pro | 3.04 (3.05) → 2.89 | 28% → 21% | 23% → 19% | 0.39 → 0.32 |
+| World Cup run, World Class | 2.92 → 3.10 | 21% | 21% | 0.41 |
+| World Cup run, Legendary | 3.11 (2.94) → 2.93 | 31% → 20% | 25% → 20% | 0.39 → 0.35 |
+| Daily | 3.15 → 3.06 | 20% | 20% | 0.36 |
+| Quick Match, nations | 2.94 (2.94) → 2.85 | 29% → 18% | 24% → 18% | 0.43 → 0.29 |
+| Quick Match, leagues | 3.08 (3.08) → 2.94 | 28% → 21% | 23% → 21% | 0.41 → 0.38 |
+| Quick Match, clubs | 3.00 → 3.02 | 19% | 16% | 0.28 |
+| Exhibition, clubs | 3.04 → 2.93 | 19% | 19% | 0.27 |
+| Exhibition, nations | 3.08 → 3.13 | 18% | 18% | 0.31 |
+| club fixtures (71 v 71, not a mode) | 2.95 → 2.74 | 16% | 16% | 0.23 |
+
+Every mode is in 2.85–3.13 (mean 2.98; 3.04 in Phase 10). With `shotScatter` 0.91 the same
+table read 2.97 / 2.94 / 2.76 / 2.93 / 2.81 / 3.21 / 3.06 / 2.99 / 3.08 / 2.75 — the rows move
+by ± 0.15 between two passes, so 0.9 and 0.91 cannot be told apart and the level was left at
+0.9. In the modes a star XI converts what it still gets: rebound goals fall by about a fifth
+there (0.40 → 0.33 a match), by half between two even club sides. User wins in run matches:
+Pro 72%, World Class 69%, Legendary 60% (71 / 64 / 57% in Phase 10; ± 3). The 71-rated club
+fixtures, which no mode produces, lose 0.2 goals: their rebounds were worth more to them and a
+tighter shot gives a 65-rated finisher less back.
+
+Tight angles (192 club fixtures, before → after): shots seeing under 12° of goal inside 20 m
+scored 0 of 15 → 2 of 17 (one of the two 2.5 s after a parry), 60°+ off the centre line from
+5–16.5 m 5 of 23 → 9 of 36 (22% → 25%; 8 of the 36 within 3.5 s of a save, 5 of the 23
+before); from in front (within 30°, 5–16.5 m) 54% → 50%, from 22–30 m 15% → 13%. Still rare
+(0.06 goals a match from all tight angles together), but both rows are at the upper end of
+what Phases 7–10 measured — small numbers, to be watched.
+
+`blunders.mjs --compare` (24 fixtures; goals 3.21 → 3.25): rebound left to an attacker 0.33 →
+0.13 a match, rebound goals 0.42 → 0.17, soft goals 1.13 → 0.92, unpressed giveaways 0.54 →
+0.50, long loose balls 0.58 → 0.58, open shots in the box 0.17 → 0.29 and unmarked receivers
+0.17 → 0.33 (4 → 7 and 4 → 8 events). Over 96 fixtures (goals 2.76 → 2.80): rebound left 0.60 →
+0.29, rebound goals 0.43 → 0.21, rebounds 2.68 → 2.67, open shots in the box 0.42 → 0.40, soft
+goals 0.68 → 0.66, hopeless shots 0.68 → 0.74, giveaways 0.42 → 0.43, long loose balls 0.48 →
+0.71, own goals 1 → 3. The detector is new: `rebound-left` (a save, a blocked shot or the woodwork, then an
+attacker's shot within 3 s although a defender was the closer man at the save), with
+`rebound-goal` and `rebound` for scale (`tools/calibration/lib/rebounds.mjs`,
+`tests/rebounds.test.mjs`; `--list rebound-left` gives `watch.mjs` arguments, `at` = the save).
+
+**Fast rating model**: not refitted. The run matches of the table average 2.97 goals
+(736 matches; 3.02 in Phase 10, 3.00 for today's Pro and Legendary rows before the change) against `MATCH_MODEL.goals` 1.46 a side; `CUP_TUNING`
+untouched.
+
+**Not done / unsure.** Blocked shots are the largest remaining group (1.2 a match, 0.1 goals):
+the deflection drops among the attackers in the box, and the blocker himself needs 0.3 s
+before he can play it. Lofted clearances land 20–30 m out and are fought for there: balls
+loose for 4 s+ rise from 0.48 to 0.71 a match in the 96 fixtures. The brake factor and the
+lunge are for rebounds only — everywhere else a player still turns as slowly as he
+accelerates.
+
 ## Phase 10: the level per side — overall, and defence against attack
 
 Owner's note on Phase 9's level: "look at defense vs offense levels AS WELL as overall … use
