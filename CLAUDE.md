@@ -92,7 +92,8 @@ tools/calibration/       manual calibration runners (write to /tmp; not run by n
                          draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results),
                          cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md),
                          blunders.mjs (detector of frustrating plays) + watch.mjs (frame viewer),
-                         lib/fixtures.mjs (their deterministic club fixtures)
+                         lib/fixtures.mjs (their deterministic club fixtures), lib/rebounds.mjs
+                         (what became of every save that left the ball in play)
 tools/research/          StatsBomb research scripts (Python) behind data/*-reference.json;
                          legacy-titles.py (the FIFA 98–14 workbook → data/legacy-titles.json)
 tools/og/                og-image.html + render.mjs: re-renders og-image.png and the app icons
@@ -130,7 +131,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `passing.js`, `shooting.js`, `ball.js`, `defence.js`, `restarts.js`, `fouls.js`. Also
   `player.js` (skill/awareness/speed view), `player-model.js` (hidden tendencies), `rules.js`
   (offside), `discipline.js` (cards; `fouls.js coverDismissal` reshapes a side to ten men),
-  `keeper.js` (dive/save model; a save's ball does what its `saveType` says), `goal-zones.js`,
+  `keeper.js` (dive/save model; a save's ball does what its `saveType` says), `rebound.js` (second balls: for 3 s after a save, a block or the woodwork the defending side's nearest two go for the ball and clear it, the keeper claims what he reaches — `gameplay.secondBalls`), `goal-zones.js`,
   `insights.js` (xG fitted to the engine's own conversion, situations — display only), `periods.js` (clock, stoppage), `whistle.js` (the whistle waits for a live attack or an awarded corner: `whistleHeld`, caps in `tuning.periods.hold*`), `shootout.js` (extra time, penalties), `replay.js`
   (record, highlights, `simulateComplete`/`simulateHalf`, `performanceRating`), `coach.js`
   (`coachAI` for side 1 in AI mode, `tacticAccess`), `constants.js`.
