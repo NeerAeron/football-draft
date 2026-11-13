@@ -389,7 +389,7 @@ function Board({ state, draft, auto }) {
     moment && session.player(moment.profileId)
       ? { ...toView(session.player(moment.profileId)), ovr: moment.ovr, tier: moment.tier }
       : null;
-  const eyebrow = `${modeLabel(context.type)} draft${
+  const eyebrow = `${snap.eras ? 'World Cup' : modeLabel(context.type)} draft${
     context.kind === 'versus' ? '' : ` · ${difficultyLabel(context.difficulty)}`
   }${hide ? ' · Ratings hidden' : ''}`;
 

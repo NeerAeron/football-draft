@@ -193,7 +193,7 @@ export function CompleteSheet({
     onClose=${onClose}
     variant="sheet"
     size="lg"
-    eyebrow=${kind === 'quick' ? `Quick Match · ${difficultyLabel(context.difficulty)}` : snap.modeLabel + ' draft'}
+    eyebrow=${kind === 'quick' ? `Quick Match · ${difficultyLabel(context.difficulty)}` : (snap.eras ? 'World Cup' : snap.modeLabel) + ' draft'}
     title=${title}
     class="complete-sheet"
     footer=${html`
