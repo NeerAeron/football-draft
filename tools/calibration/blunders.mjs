@@ -37,6 +37,8 @@ export const DETECTORS = {
     "keeper's kick or throw from his hands lost within 4 s: to an opponent, out of play, or the receiver robbed (by reason and per 100 in the table below)",
   'offside-fk-lost': 'free kick after an offside lost within 4 s (the same reasons)',
   'deep-fk-lost': 'free kick in the own 40 m (foul or indirect) lost within 4 s (the same reasons)',
+  'free-miscontrol':
+    "a team-mate's pass bounces off its receiver with no opponent within 4 m (first touches by pass type in the table below)",
   'dribble-out': 'carrier takes the ball out of play with no opponent within 3 m',
   'own-box-dawdle': 'outfield carrier keeps the ball 1.5 s+ in his own box with a presser on him',
   'idle-carrier': 'unpressed outfield carrier keeps the ball 6 s+ and goes nowhere (< 5 m)',
@@ -64,6 +66,10 @@ export const DETECTORS = {
     'rebound left to an attacker: a save, a blocked shot or the woodwork, then an attacker shoots within 3 s although a defender was closer to the ball at the save',
   'rebound-goal': 'goal from a shot within 3 s of a save, a block or the woodwork (for scale)',
   rebound: 'save, blocked shot or woodwork that leaves the ball in play (for scale)',
+  'played-onside':
+    'seconds an attacker without the ball stands 4 m+ behind the rest of the defence, onside only because the one defender tracking him (within 4 m) went with him',
+  'deep-while-attacking':
+    'seconds a side has the ball 60 m+ up the pitch with two or more outfield players still within 25 m of its own goal line',
   'keeper-wander': 'seconds a keeper is 26 m+ from his goal in open play',
   'ping-pong': 'two players swapping 4+ short passes in a row',
   'back-to-keeper': 'unpressed pass back to the keeper from the opposition half',
@@ -92,6 +98,9 @@ function analyse(m, spec) {
     freeBox: 0,
     wander: 0,
     followed: {},
+    touch: {},
+    playedOn: 0,
+    deepRest: 0,
   };
   const name = id => (id == null ? null : m.players[id].name);
   const opponents = p => m.activePlayers.filter(q => q.team !== p.team);
@@ -109,6 +118,44 @@ function analyse(m, spec) {
     seenEvents = 0,
     step = 0;
   const rebounds = reboundTracker(m);
+  const miscontrols = new Array(22).fill(0);
+  // First touches on a team-mate's pass, by the kind of pass: taken or miscontrolled, and
+  // the same with no opponent within 4 m of the receiver.
+  const passKind = () =>
+    pass.hands || pass.restart === 'Goal kick'
+      ? pass.loft
+        ? "keeper's long kick (hands, goal kick)"
+        : "keeper's throw or short pass"
+      : pass.delivery === 'cross' || pass.delivery === 'cutback'
+        ? 'cross / cutback'
+        : pass.loft
+          ? pass.length >= 28
+            ? 'lofted, 28 m+'
+            : 'lofted, shorter'
+          : pass.length >= 28
+            ? 'along the ground, 28 m+'
+            : 'short pass';
+  const touched = (receiver, missed) => {
+    const t = (totals.touch[passKind()] ??= { n: 0, missed: 0, free: 0, freeMissed: 0 }),
+      near = nearestOpp(receiver);
+    t.n++;
+    if (missed) t.missed++;
+    if (near > 4) {
+      t.free++;
+      if (missed) {
+        t.freeMissed++;
+        add('free-miscontrol', {
+          player: receiver.name,
+          kind: passKind(),
+          from: pass.t0,
+          length: Math.round(pass.length),
+          nearest: +near.toFixed(1),
+          height: +m.ball.z.toFixed(1),
+          control: Math.round(receiver.skill('control')),
+        });
+      }
+    }
+  };
   const still = new Array(22).fill(0),
     stillFlagged = new Array(22).fill(false),
     lastPos = m.players.map(p => ({ x: p.x, y: p.y }));
@@ -156,6 +203,8 @@ function analyse(m, spec) {
       else if (plain && pass.pressure > 4) add('giveaway', { ...info, by: interceptor.name });
     } else if (outcome === 'out' && plain && !pass.restart) add('pass-out', info);
     // Received in the danger zone with nobody near him, against a set defence.
+    if (outcome === 'complete' && by != null && by !== pass.kicker && !pass.missed)
+      touched(m.players[by], false);
     if (outcome === 'complete' && by != null && by !== pass.kicker) {
       const r = m.players[by],
         rx = relX(r.x, r.team);
@@ -328,6 +377,9 @@ function analyse(m, spec) {
           length: b.destination ? hyp(b.destination.x - k.x, b.destination.y - k.y) : 0,
           pressure: nearestOpp(k),
           restart: prev.mode === 'restart' ? prev.restart : null,
+          hands: prev.kind === 'held' && k.role === 'GK',
+          loft: b.vz > 0,
+          missed: false,
         };
         const target = b.target != null ? m.players[b.target] : null;
         if (
@@ -339,6 +391,12 @@ function analyse(m, spec) {
         )
           add('back-to-keeper', { player: k.name, from: pass.t0 });
       } else if (pass) {
+        // A first touch that got away from a team-mate of the passer.
+        for (const p of m.activePlayers)
+          if (p.stats.miscontrols > miscontrols[p.id] && p.team === m.players[pass.kicker].team) {
+            touched(p, true);
+            pass.missed = true;
+          }
         if (b.owner !== null) {
           const o = m.players[b.owner];
           endPass(o.team === m.players[pass.kicker].team ? 'complete' : 'intercepted', o.id);
@@ -437,6 +495,45 @@ function analyse(m, spec) {
         if (p.role === 'GK' && !p.emergencyKeeper && relX(p.x, p.team) > 26) totals.wander += tick;
       }
       if (around >= 8) totals.swarm += tick;
+      // The line: who has the ball, and how each back line stands to it.
+      const holder =
+        b.owner !== null ? m.players[b.owner].team : b.kind === 'pass' ? b.lastTouch : -1;
+      if (holder >= 0) {
+        const def = 1 - holder,
+          ballX = relX(b.x, def);
+        // Defending side: its deepest and second-deepest outfield players.
+        let d0 = null,
+          d1 = null;
+        for (const p of m.activePlayers) {
+          if (p.team !== def || p.role === 'GK') continue;
+          if (!d0 || relX(p.x, def) < relX(d0.x, def)) {
+            d1 = d0;
+            d0 = p;
+          } else if (!d1 || relX(p.x, def) < relX(d1.x, def)) d1 = p;
+        }
+        if (d0 && d1 && ballX > 25) {
+          const deep = relX(d0.x, def),
+            rest = relX(d1.x, def);
+          if (rest - deep > 4 && rest < 52.5 && ballX > rest)
+            for (const q of m.activePlayers)
+              if (
+                q.team === holder &&
+                q.id !== b.owner &&
+                relX(q.x, def) < rest - 4 &&
+                hyp(q.x - d0.x, q.y - d0.y) < 4
+              ) {
+                totals.playedOn += tick;
+                break;
+              }
+        }
+        // Attacking side: defenders left in their own box area.
+        if (relX(b.x, holder) > 60) {
+          let deepMen = 0;
+          for (const p of m.activePlayers)
+            if (p.team === holder && p.role !== 'GK' && relX(p.x, holder) < 25) deepMen++;
+          if (deepMen >= 2) totals.deepRest += tick;
+        }
+      }
       if (b.owner !== null && b.kind === 'dribble') {
         const c = m.players[b.owner],
           rx = relX(c.x, c.team),
@@ -463,6 +560,8 @@ function analyse(m, spec) {
         lastPos[p.id].y = p.y;
       }
     }
+
+    for (const p of m.players) miscontrols[p.id] = p.stats.miscontrols;
 
     // ---- rebounds (lib/rebounds.mjs): `at` is the save
     for (const r of rebounds.step()) {
@@ -571,7 +670,13 @@ function summarise(report) {
   let play = 0,
     restart = 0;
   const restarts = {},
-    followed = {};
+    followed = {},
+    touch = {};
+  for (const r of report.results)
+    for (const [kind, v] of Object.entries(r.totals.touch || {})) {
+      const t = (touch[kind] ??= { n: 0, missed: 0, free: 0, freeMissed: 0 });
+      for (const k of Object.keys(t)) t[k] += v[k];
+    }
   for (const r of report.results) {
     for (const [type, n] of Object.entries(r.totals.followed || {})) {
       followed[type] ??= { n: 0, lost: 0, ownHalf: 0, reasons: {} };
@@ -591,6 +696,8 @@ function summarise(report) {
     per['crowd-carrier'] += r.totals.crowd;
     per['free-in-box'] += r.totals.freeBox;
     per['keeper-wander'] += r.totals.wander;
+    per['played-onside'] += r.totals.playedOn || 0;
+    per['deep-while-attacking'] += r.totals.deepRest || 0;
     play += r.totals.play;
     restart += r.totals.restart;
     for (const [type, v] of Object.entries(r.totals.restarts)) {
@@ -613,6 +720,7 @@ function summarise(report) {
     perMatch: Object.fromEntries(Object.entries(per).map(([k, v]) => [k, v / matches])),
     inPlay: play / (play + restart),
     followed,
+    touch,
     restarts: Object.fromEntries(
       Object.entries(restarts).map(([k, v]) => [
         k,
@@ -642,6 +750,27 @@ function printSummary(report, baseline = null) {
     console.log(
       `${b ? num(b.perMatch[type] || 0) + ' →' : ''}${num(v)}  ${type.padEnd(17)} ${text}`,
     );
+  }
+  // First touches on a team-mate's pass.
+  const TOUCHES = [
+      "keeper's long kick (hands, goal kick)",
+      "keeper's throw or short pass",
+      'lofted, 28 m+',
+      'lofted, shorter',
+      'along the ground, 28 m+',
+      'cross / cutback',
+      'short pass',
+    ],
+    touchRow = t =>
+      t
+        ? `${(t.n / s.matches).toFixed(1).padStart(6)} ${((t.missed / (t.n || 1)) * 100).toFixed(1).padStart(5)}% ${(t.missed / s.matches).toFixed(2).padStart(5)}  ${((t.freeMissed / (t.free || 1)) * 100).toFixed(1).padStart(5)}% of ${String(t.free).padStart(5)}`
+        : '     –';
+  console.log(
+    "\nfirst touches on a team-mate's pass (a match · miscontrolled · miscontrols a match · miscontrolled with no opponent within 4 m)",
+  );
+  for (const kind of TOUCHES) {
+    if (b) console.log(`  before ${touchRow(b.touch?.[kind])}  ${kind}`);
+    console.log(`  ${b ? 'after ' : '      '} ${touchRow(s.touch[kind])}  ${kind}`);
   }
   // Keeper distributions and deep free kicks: what became of them, per 100.
   const REASONS = [

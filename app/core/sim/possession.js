@@ -170,15 +170,22 @@ export class PossessionMethods {
         this.ball.lastTouch === p.team);
     const catching = this.canHandle(p) && !backpass,
       ability = p.skill(catching ? 'goalkeeping' : height > 1.15 ? 'heading' : 'control');
+    // A team-mate's high or long ball is hard to take with a man on you; with nobody near
+    // (no opponent within 4.5 m) a player has time to watch it down, and taking it is routine.
+    const hard = teammate
+      ? 1 - clamp(1 - pressure / 0.3, 0, 1) * this.tuning.gameplay.freeTouch
+      : 1;
+    // (A dropping ball comes fast; that is no trouble either when he is free.)
+    const pace = height > 0.3 ? hard : 1;
     const control = clamp(
       0.66 +
         ability * 0.0031 +
         (p.has('interceptor') ? 0.06 : 0) -
-        Math.max(0, speed - 17) * 0.02 -
+        Math.max(0, speed - 17) * 0.02 * pace -
         pressure * 0.04 -
         (1 - p.energy) * 0.12 -
         (1 - p.familiarity()) * 0.12 -
-        (height > 1 ? 0.12 : 0),
+        (height > 1 ? 0.12 * hard : 0),
       0.3,
       0.99,
     );
@@ -191,10 +198,9 @@ export class PossessionMethods {
     const stretch =
       clamp((contactGap - 0.6) / 0.65, 0, 1) * 0.22 + clamp((contactGap - 1.25) / 0.6, 0, 1) * 0.4;
     const difficulty = clamp(
-      Math.max(0, height - 0.3) / 1.3 +
-        Math.max(0, speed - 18) / 12 +
+      (Math.max(0, height - 0.3) / 1.3 + demand * 0.8) * hard +
+        (Math.max(0, speed - 18) / 12) * pace +
         pressure * 1.1 +
-        demand * 0.8 +
         stretch,
       0,
       1,

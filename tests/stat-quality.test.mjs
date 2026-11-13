@@ -312,7 +312,10 @@ test('aerial pass decisions account for the recipients heading ability', () => {
     r.attrs.heading = heading;
     return m.options(p).find(o => o.r === r && o.delivery === 'cross').chance;
   };
-  assert.ok(chance(90) > chance(35) + 0.2);
+  const strong = chance(90),
+    weak = chance(35);
+  // (He is alone here: with a man on him the gap is wider — gameplay.freeTouch.)
+  assert.ok(strong > weak + 0.15, `${strong} against ${weak}`);
 });
 
 test('possession includes a traveling pass but excludes unresolved loose balls and restarts', () => {

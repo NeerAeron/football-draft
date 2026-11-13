@@ -23,6 +23,79 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 13: first touches on high balls, and a back line that is a line
+
+Owner's notes: "A little too many miscontrols, especially drop kicks and long balls. Players
+don't seem to have knowledge about offsides (more problematic with defenders) so they follow
+attackers all the way back instead of keeping their line. […] Also on a counterattack,
+sometimes defenders just stay in their box (I think because the other team just attacked, so
+an attacker is in the box. But the attacker is offside). Don't over exaggerate, just tweak
+some behavior." Later: no covering man behind the line (he plays the attacker on); attackers
+know the rule too, nothing crazy; "sometimes attackers make good runs and beat defenders,
+sometimes defenders recover".
+
+**Measured first** (`blunders.mjs`, 192 club fixtures, 180 s; new: first touches on a
+team-mate's pass by kind of pass, `free-miscontrol`, `played-onside`, `deep-while-attacking`),
+before → after:
+
+| first touch on a team-mate's pass | a match | miscontrolled | … with no opponent within 4 m |
+| --- | --- | --- | --- |
+| keeper's long kick (hands, goal kick) | 0.9 → 0.8 | 40% → 35% | 37% → 11% |
+| lofted, 28 m+ | 2.6 → 3.4 | 40% → 33% | 42% → 21% |
+| lofted, shorter | 0.7 → 0.9 | 39% → 25% | 26% → 16% |
+| cross / cutback | 3.5 → 3.6 | 48% → 48% | 35% → 20% |
+| along the ground, 28 m+ | 4.6 → 3.9 | 16% → 10% | 11% → 8% |
+| keeper's throw or short pass | 2.9 → 2.9 | 3.6% → 2.9% | 3.7% → 2.9% |
+| short pass | 58.0 → 57.7 | 6.9% → 6.1% | 3.6% → 2.6% |
+
+Unpressed miscontrols 2.59 → 1.74 a match. **What was wrong:** a ball arriving above a metre
+took a flat 0.12 off the control chance and the whole "difficult reception" multiplier (1.1
+against 0.12 for a routine one), and a dropping ball's speed counted against the receiver as
+a driven pass's does — with or without anyone near, so a free man lost nearly every second
+long ball (Phase 12 did not change the rate: 48% / 37% on the engine before it). **Changed**
+(`firstTouchChance`, `gameplay.freeTouch` 0.7): with no opponent within 4.5 m the height,
+the delivery's demand and the speed of a ball in the air count 30%, rising to full by a
+pressure of 0.3. Pressed receptions, interceptions and a ball along the ground are as before.
+
+**The line.** There was one — `planDefender`'s line height per side — but two rules ignored
+it. (1) A marker is always put goal-side of his man, whatever the line, so a defender went
+with any runner any distance. (2) With the ball, each centre-back stood goal-side of the
+nearest opposing forward wherever that forward was (`Protecting against the counter`) and
+otherwise 26–37 m behind the ball: an attacker left in the box after his side's attack kept
+both centre-backs in it while their team broke — the owner's guess exactly (4.5 s a match
+with the ball 60 m+ up the pitch and two or more outfield players within 25 m of their own
+goal line). **Changed** (planning.js, `gameplay.lineAwareness` 1; 0 = as before):
+
+* With the ball the back line is one line, computed once a side and plan: 18 m behind the
+  ball up to 48 m from the own goal line (24 m behind beyond that), deeper as a unit for slow
+  centre-backs and a pressed carrier. It drops goal-side — all of it — of an opposing forward
+  who is level with it or in front of it; one clearly behind it is in an offside position and
+  is left there. Nobody covers: the keeper stands a little higher behind a high line (to 13
+  m). `deep-while-attacking` 4.47 → 1.19 s a match. A forward in his own half is never in an offside position and always counts as an outlet.
+* Without the ball a back-line defender whose man is beyond the line (in his own half, ahead
+  of the ball, the line 14 m+ out) stays in the line when the man is standing or coming back,
+  or when the carrier cannot play him in right now (pressed, moving away, far from the line —
+  `c.hold` against 0.55 − 0.3 × the defender's reading); he goes with a runner when the
+  carrier is free, and chases as before once the ball is played. A poor or tired reader now
+  and then goes with his man anyway and plays him on (a per-player rhythm, no RNG, as the
+  marking lapses). Holding: about 1 s a match — a tweak.
+* Attackers were already aware (forwards hold `oppLine` − 0.45…1.25 m and walk back to it):
+  0.4–0.6 attacker-seconds a match in an offside position while their side has the ball,
+  before and after.
+
+Offsides 0.14 → 0.27 a match (192 fixtures; 0.11 → 0.26 over the first 96 on an earlier
+pass), through balls 3.2 → 3.8 a match (96 fixtures), open shots on a break 0.02 → 0.00, open
+shots in the box against a set defence 0.36 → 0.33. `played-onside` 0.60 → 0.82 s a match:
+the finding counts one defender 4 m+ behind the rest with his man, which is now also what a
+failed trap looks like. **Goals**: the changes cost about 0.1 (2.71 → 2.55 on the 192 club
+fixtures and 2.60 → 2.41 on `match-calibration.mjs --matches 256 --duration 180` in one pass,
+2.66 and 2.53 in another: fewer loose balls to break on), so `gameplay.shotScatter` 0.88 →
+0.86 re-centres: 2.71 → 2.60 and 2.60 → 2.55. Everything else in `--compare` (192
+fixtures): unpressed giveaways 0.45 → 0.45, loose 4 s+ 0.72 → 0.73, soft goals 0.55 → 0.68,
+hopeless shots 0.54 → 0.61, rebounds left 0.41 → 0.38, ping-pong 0.46 → 0.35, and
+`restart-giveaway` 0.05 → 0.11 (0.05–0.16 over three passes of this change: corners headed
+away and short throw-ins in the own third — 10 → 21 events, not explained, to be watched).
+
 ## Phase 12: drop kicks, offside and deep free kicks — and nobody is placed any more
 
 Owner's notes: "Drop kicks and offside free kicks have a lot of the same problems as goal
