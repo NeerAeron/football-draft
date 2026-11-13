@@ -19,11 +19,12 @@ const round3 = x => Math.round(x * 1000) / 1000;
  *   score = second·q(2nd best) + third·q(3rd) + fourth·q(4th) + depth·q(mean of 5th–8th)
  *         + best·q(best) + size·(players / 26);
  *   weight = 1 + lift · (score / the highest possible score) ^ curve · rarity,
- *   rarity = `rare` for a squad with an all-timer (best shown `rareFrom`+), else 1.
+ *   rarity = `rare` for a squad with an all-timer (best shown `rareFrom`+, or a GOAT card:
+ *   `allTimer`), else 1.
  * Recognisable depth counts most (the 2nd to 4th best), the squad's size next, the single best
  * player least: one star does not make a nation a favourite of the reel.
  */
-export function nationWeight(ratings, rules = CONFIG.draft.reels) {
+export function nationWeight(ratings, rules = CONFIG.draft.reels, allTimer = false) {
   const n = rules.nation,
     q = r => clamp01((r - n.floor) / n.span),
     at = i => (i < ratings.length ? ratings[i] : 0);
@@ -37,9 +38,10 @@ export function nationWeight(ratings, rules = CONFIG.draft.reels) {
       n.best * q(at(0)) +
       n.size * Math.min(1, ratings.length / 26),
     top = n.second + n.third + n.fourth + n.depth + n.best + n.size;
-  // Rarity: a squad with an all-timer (shown `rareFrom` or more) keeps only the share `rare`
-  // of what its depth lifts it by — never less than a squad nobody knows.
-  const rare = at(0) >= n.rareFrom ? n.rare : 1;
+  // Rarity: a squad with an all-timer (shown `rareFrom` or more, or a GOAT whatever he shows)
+  // keeps only the share `rare` of what its depth lifts it by — never less than a squad nobody
+  // knows.
+  const rare = allTimer || at(0) >= n.rareFrom ? n.rare : 1;
   return round3(1 + n.lift * Math.pow(top > 0 ? score / top : 0, n.curve) * rare);
 }
 
@@ -71,10 +73,16 @@ export function reelWeights(catalog, rules = CONFIG.draft.reels) {
     const nations = new Map(),
       bests = [];
     for (const nation of era.nations) {
-      const ratings = eraPool(catalog, era.id, nation.name)
-        .map(p => Math.round(naturalRating(p)))
-        .sort((a, b) => b - a);
-      nations.set(nation.name, nationWeight(ratings, rules));
+      const pool = eraPool(catalog, era.id, nation.name),
+        ratings = pool.map(p => Math.round(naturalRating(p))).sort((a, b) => b - a);
+      nations.set(
+        nation.name,
+        nationWeight(
+          ratings,
+          rules,
+          pool.some(p => p.goat),
+        ),
+      );
       bests.push(ratings[0] ?? 0);
     }
     bests.sort((a, b) => a - b);

@@ -741,7 +741,14 @@ test('reel weights: deep, famous squads come up more, nobody is shut out, all-ti
         r = ratings(era.id, n.name);
       // Every spinnable nation can come up; the best squad is a few times likelier, not more.
       assert.ok(weight >= 1 && weight <= 1 + rules.nation.lift, `${n.name} ${weight}`);
-      assert.equal(weight, nationWeight(r));
+      assert.equal(
+        weight,
+        nationWeight(
+          r,
+          rules,
+          eraPool(catalog, era.id, n.name).some(p => p.goat),
+        ),
+      );
       const p = (w.weight / 1) * (weight / sum);
       total += p;
       if (r[0] >= 93) allTimer += p;
@@ -766,6 +773,10 @@ test('reel weights: deep, famous squads come up more, nobody is shut out, all-ti
     goat = nationWeight(squad([94, 88, 87, 86], 80));
   assert.ok(deep > oneStar && oneStar > nobody && nobody >= 1);
   assert.ok(small < deep && goat < deep && goat > nobody);
+  // A squad with a GOAT card is an all-timer's squad whatever he shows that year.
+  const marked = nationWeight(squad([92, 88, 87, 86], 80), rules, true);
+  assert.equal(marked, goat);
+  assert.ok(marked < nationWeight(squad([92, 88, 87, 86], 80)));
   assert.ok(eraWeight(70, 85) > eraWeight(27, 80) && eraWeight(0, 0) === 1);
   // The session draws by them — respins too — and the guards only ever zero a weight.
   const s = eraDraft({ seed: 31 });

@@ -122,16 +122,19 @@ draft.prime(slot, 0);            // the Prime: he becomes his best version acros
   an event.
   - A nation: `q(r) = (r − 72) / 20` clamped to 0…1 on the shown ratings of its pool;
     `score = 5·q(2nd best) + 3·q(3rd) + 2·q(4th) + 1·q(mean of 5th–8th) + 1·q(best) +
-    2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is 0.25 for
-    a squad whose best is shown 93+ (an all-timer) and 1 otherwise. Weights run from 1 to 5:
-    the likeliest nation of an era is 3–4 times as likely as the least likely (Italy 5.5% …
-    Hungary 2.0% in France 98; France 2.6% … Cabo Verde 0.8% in 2026).
+    2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is 0.1 for
+    an all-timer's squad — its best is shown 93+, or it has a GOAT card whatever he shows that
+    year — and 1 otherwise. Weights run from 1 to 5: the likeliest nation of an era is 3–4
+    times as likely as the least likely (Italy 5.5% … Hungary 2.0% in France 98; France 2.6% …
+    Cabo Verde 0.8% in 2026). An all-timer's squad is about as likely as the least known one
+    of its era, never less (reward and rarity in balance).
   - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 11.1%
     (France 98) to 12.9% (2026).
   - Measured per draft of eleven spins (`node tools/calibration/reel-odds.mjs`; `--uniform` for
-    the reference): a squad with an all-timer once every 6 drafts (uniform: every 4.9), a 90+
-    player on offer in 2.3 spins (1.6), 85+ in 5.6 (4.4), 80+ in 9.9 (9.4); a squad whose
-    fourth best is 80+ in 6.3 spins (5.0).
+    the reference): a squad with an all-timer once every 7.9 drafts (uniform: every 4.9), a 90+
+    player on offer in 2.3 spins (1.6), 85+ in 5.5 (4.4), 80+ in 9.9 (9.4); a squad whose
+    fourth best is 80+ in 6.3 spins (5.0). With the data's GOAT and Captain flags the tool
+    also prints how often one is on offer.
   An option that cannot be landed on has weight 0 (below); the guards only ever zero a weight.
   Respins and the Daily's schedule draw with the same weights. The spin carries honest
   `weight` / `probability` like every reel. One spin consumes two draws of the RNG (era, nation).
