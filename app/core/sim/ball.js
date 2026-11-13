@@ -122,6 +122,7 @@ export class BallMethods {
           b.penaltyKick = false;
           p.cooldown = 0.3;
           p.stats.blocks++;
+          this.startRebound(p.team);
           this.addEvent(`${p.name.split(' ').pop()} blocks the shot.`, p.team, 'block', {
             playerId: p.id,
             strength: 0.4,
@@ -134,6 +135,11 @@ export class BallMethods {
         }
         p.cooldown = 0.2;
         continue;
+      }
+      // A rebound in his own box with an attacker on it: he puts his foot through it.
+      if (b.kind === 'loose' && b.reboundTeam === p.team && this.shouldClearRebound(p)) {
+        this.clearRebound(p);
+        return;
       }
       const height = b.z,
         speed = hypot(b.vx, b.vy),
@@ -281,6 +287,7 @@ export class BallMethods {
         b.vy += this.noise() * 2;
         b.kind = 'loose';
         b.previous = null;
+        this.startRebound(1 - b.shotTeam);
         const record = b.shotRecord;
         this.addEvent('Off the woodwork!', b.shotTeam, 'post', {
           strength: 0.8,

@@ -19,8 +19,18 @@ export class PlanningMethods {
   planInner() {
     const b = this.ball,
       owner = b.owner !== null ? this.players[b.owner] : null,
-      attack = this.mode === 'restart' ? this.restart.team : owner ? owner.team : b.lastTouch;
-    for (let t = 0; t < 2; t++) this.planTeam(t, owner, attack === t);
+      // A rebound in front of goal (rebound.js): whoever touched it last, the side that
+      // shot is still the one attacking and the other one is defending its goal.
+      rebound = this.reboundSide(),
+      attack =
+        this.mode === 'restart'
+          ? this.restart.team
+          : owner
+            ? owner.team
+            : rebound >= 0
+              ? 1 - rebound
+              : b.lastTouch;
+    for (let t = 0; t < 2; t++) this.planTeam(t, owner, attack === t, rebound);
     this.phase = owner
       ? b.kind === 'held'
         ? 'Keeper possession'
@@ -35,7 +45,7 @@ export class PlanningMethods {
           ? 'Moving the ball'
           : 'Ball in dispute';
   }
-  planTeam(t, owner, has) {
+  planTeam(t, owner, has, rebound = -1) {
     const b = this.ball,
       dir = this.direction(t),
       tac = this.settings(t),
@@ -90,6 +100,11 @@ export class PlanningMethods {
         ),
       }))
       .sort((a, b) => a.time - b.time);
+    // Defending a rebound, a second man goes too (when he is not far behind the first).
+    const second =
+      rebound === t && freeBall && loose.length > 1 && loose[1].time < loose[0].time + 1.2
+        ? loose[1].p.id
+        : null;
     const oppLine = enemies.map(q => this.rel(q.x, t)).sort((a, b) => b - a)[1] || 96;
     // A high cross dropping into our box: the two quickest defenders attack it.
     let crossers = null;
@@ -126,6 +141,8 @@ export class PlanningMethods {
       oppLine,
       crossers,
       drop,
+      rebound,
+      second,
     };
     for (const p of team) {
       const [base, by, role] = this.formation(p);
@@ -137,7 +154,8 @@ export class PlanningMethods {
         p.id !== defence?.press &&
         p.id !== defence?.cover &&
         !(b.kind === 'pass' && b.target === p.id) &&
-        !(freeBall && loose[0]?.p.id === p.id) &&
+        !(freeBall && (loose[0]?.p.id === p.id || second === p.id)) &&
+        !(rebound === t && role === 'GK') &&
         !crossers?.includes(p.id)
       )
         continue;
@@ -182,9 +200,15 @@ export class PlanningMethods {
       this.planCarrier(p, c);
       return;
     }
-    if (freeBall && loose[0]?.p.id === p.id) {
-      const aim = p.intercept(b, 0.9);
-      p.aim(aim.x, aim.y, 'recover', 'Attacking the loose ball');
+    if (freeBall && (loose[0]?.p.id === p.id || c.second === p.id)) {
+      // A rebound: both sides run at where they can meet it, not at where it is now.
+      const aim = c.rebound >= 0 ? this.loosePoint(p) : p.intercept(b, 0.9);
+      p.aim(
+        aim.x,
+        aim.y,
+        'recover',
+        c.second === p.id ? 'Attacking the second ball' : 'Attacking the loose ball',
+      );
       return;
     }
     if (defence && p.id === defence.press && this.planPress(p, c, base)) return;
@@ -281,6 +305,28 @@ export class PlanningMethods {
         y = clamp(b.y + b.vy * crossing, 28.5, 39.5);
         p.aim(this.abs(x, t), y, 'save', 'Tracking the shot');
         return;
+      }
+    }
+    // A rebound he reaches before any attacker: he gets up and claims it. Once he has gone
+    // he keeps going unless an attacker is clearly there first.
+    if (!owner && c.rebound === t && b.kind === 'loose' && br < 16 && Math.abs(b.y - 34) < 19.5) {
+      const meet = this.loosePoint(p, 1.8),
+        mx = meet.x,
+        my = meet.y,
+        mine = Math.max(
+          meet.time,
+          b.deflectedBy === p.id ? 0.3 - (this.elapsed - b.deflectedAt) : 0,
+        );
+      if (this.rel(mx, t) < 16 && Math.abs(my - 34) < 19.5) {
+        let rival = Infinity;
+        for (const q of enemies) {
+          const time = q.arrival(meet) + q.stun;
+          if (time < rival) rival = time;
+        }
+        if (mine < rival - (p.action === 'Claiming the loose ball' ? -0.1 : 0.12)) {
+          p.aim(mx, my, 'sweep', 'Claiming the loose ball');
+          return;
+        }
       }
     }
     // Come for a high cross dropping into the six-yard area and claim it.

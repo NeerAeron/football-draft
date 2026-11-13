@@ -166,6 +166,25 @@ export class KeeperMethods {
       });
     return true;
   }
+  // The attacker nearest the ball in front of the keeper's goal (within 14 m), or null.
+  nearestFollower(g) {
+    const b = this.ball,
+      players = this.activePlayers;
+    let best = null,
+      near = 196;
+    for (let i = 0; i < players.length; i++) {
+      const q = players[i];
+      if (q.team === g.team || q.role === 'GK') continue;
+      const dx = q.x - b.x,
+        dy = q.y - b.y,
+        d2 = dx * dx + dy * dy;
+      if (d2 < near) {
+        near = d2;
+        best = q;
+      }
+    }
+    return best;
+  }
   // Push the ball away: over the bar, around the post / out wide, or back into
   // the box. Wide and over often go behind for a corner.
   deflectSave(g, high, stretch, power, gk) {
@@ -199,9 +218,17 @@ export class KeeperMethods {
           ? behind
           : out * (0.5 + this.rand() * 2);
     } else {
+      // Back into the box. A good keeper pushes it harder and away from the attacker who
+      // is following in (secondBalls); a poor one pats it down in front of him.
       type = 'parry';
-      b.vx = out * (3 + this.rand() * 3);
+      const aware = this.tuning.gameplay.secondBalls ? clamp((gk - 55) / 35, 0, 1) : 0,
+        follower = aware ? this.nearestFollower(g) : null;
+      b.vx = out * (3 + this.rand() * 3 + aware * 2);
       b.vy = (this.rand() - 0.5) * 5;
+      if (follower && this.rand() < 0.5 + aware * 0.4) {
+        const away = follower.y > b.y ? -1 : 1;
+        b.vy = away * (Math.abs(b.vy) + 1.5 + aware * 2.5);
+      }
       b.vz = 1.2 + this.rand();
     }
     b.kind = 'loose';
@@ -211,6 +238,7 @@ export class KeeperMethods {
     b.deflectedAt = this.elapsed;
     b.age = 0;
     g.cooldown = 0.6;
+    this.startRebound(g.team);
     return type === 'parry' && this.reboundDanger(g) ? 'parry into danger' : type;
   }
 }
