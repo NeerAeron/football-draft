@@ -199,9 +199,13 @@ const LOCAL_ID = 1_000_000; // FIFA 98/99 use their own ids: 98,001,109 = id 110
  *     person when they agree on the date of birth, a word of the name or a club; a row that
  *     fits none of the others (an unlicensed stand-in such as "No 9", a reused id) is dropped.
  *   – FIFA 98/99 share their own ids. Such a player becomes the EA-id person when exactly one
- *     player of FIFA 2000–03 has his name and a team of his; otherwise he stays on his own
- *     (local id), and is dropped when a kept EA-id player of the same name exists whom the
- *     data cannot tell him from.
+ *     player of FIFA 2000–03 has his name and a team of his — of several at his club, the one
+ *     who is in his national team too, or who is at that club right after him while the others
+ *     come two or more years later; otherwise he stays on his own (local id), `ambiguous` when
+ *     several later players could be him, `international` when both titles list him.
+ *   – One man listed twice in a title, in his national team under one id and at his club
+ *     under another (FIFA 2002), is one person: the club's row stays and takes the national
+ *     team.
  *   – Players who are only in classic, all-star or stand-in squads are not persons at all.
  */
 export function linkPersons(titles, isNation = () => false) {
@@ -275,7 +279,15 @@ export function linkPersons(titles, isNation = () => false) {
         const a = list[i],
           b = list[j];
         if (!persons.has(a.id) || !persons.has(b.id)) continue;
-        const apart = a.rows.every(p => b.rows.every(q => q.edition !== p.edition)),
+        // Never in the same title — or listed twice in it: once in his national team only,
+        // once at his club only (FIFA 2002 gives some national-squad entries an id of their
+        // own: Luis Enrique of Spain and Luis Enrique of Barcelona are one man).
+        const doubles = a.rows.flatMap(p =>
+            b.rows.filter(q => q.edition === p.edition).map(q => [p, q]),
+          ),
+          apart = doubles.every(
+            ([p, q]) => p.atClub !== q.atClub && (p.atClub ? p : q).teams.length === 1,
+          ),
           born = (x, y) => x.rows.find(p => p.born)?.born === y.rows.find(p => p.born)?.born,
           dated = a.rows.some(p => p.born) && b.rows.some(p => p.born),
           together = name.includes(' ') ? (p, q) => shareTeam(p, q) : shareClub,
@@ -285,7 +297,20 @@ export function linkPersons(titles, isNation = () => false) {
         if (!apart || !near || (dated && !born(a, b))) continue;
         if (a.rows.some(p => b.rows.some(q => agesClash(p, q)))) continue;
         const [keep, gone] = a.rows.at(-1).year >= b.rows.at(-1).year ? [a, b] : [b, a];
-        keep.rows = [...keep.rows, ...gone.rows].sort((p, q) => p.year - q.year);
+        // Of a title's two entries the club's stays, and is in that national team too: one
+        // row per title.
+        for (const [p, q] of doubles) {
+          const [stays, extra] = p.atClub ? [p, q] : [q, p];
+          extra.person = null;
+          extra.otherEntry = true;
+          stays.teams = [...stays.teams, ...extra.teams];
+          stays.teamIds = [...stays.teamIds, ...extra.teamIds];
+          stays.clubs = [...stays.clubs, ...extra.clubs];
+          stays.clubIds = [...stays.clubIds, ...extra.clubIds];
+        }
+        keep.rows = [...keep.rows, ...gone.rows]
+          .filter(p => !p.otherEntry)
+          .sort((p, q) => p.year - q.year);
         for (const p of keep.rows) p.person = keep;
         persons.delete(gone.id);
         merged.push(`${keep.rows.at(-1).name}: ids ${gone.id} and ${keep.id}`);
@@ -322,14 +347,48 @@ export function linkPersons(titles, isNation = () => false) {
               candidates.add(q);
             } else if (early.some(r => shareNation(p, r) && zone(r) === zone(p))) candidates.add(q);
           }
-      const chosen = candidates.size > 1 && clubMates.size === 1 ? clubMates : candidates,
-        local = {
-          id: part[0].edition * LOCAL_ID + id,
-          rows: part,
-          named: named.size,
-          // Several later players could be him: the data cannot say which.
-          ambiguous: chosen.size > 1,
-        };
+      let chosen = candidates.size > 1 && clubMates.size === 1 ? clubMates : candidates;
+      // Several club mates of his name (the brothers Cannavaro at Parma, two Zanettis at
+      // Inter): the only one who is also in his national team.
+      if (chosen.size > 1 && clubMates.size > 1) {
+        const national = p => p.teams.filter(team => !clubs(p).includes(team)),
+          capped = [...clubMates].filter(q =>
+            part.some(p =>
+              q.rows.some(
+                r =>
+                  r.edition <= 3 &&
+                  national(p).some(a =>
+                    national(r).some(b => sameTeam(teamWords(a), teamWords(b))),
+                  ),
+              ),
+            ),
+          );
+        if (capped.length === 1) chosen = new Set(capped);
+        else {
+          // Or the one who is at that club right after him while the others turn up there
+          // two or more years later (Taffarel of Galatasaray in FIFA 99 and 2001).
+          const gap = q =>
+              Math.min(
+                ...part.flatMap(p =>
+                  q.rows
+                    .filter(r => r.edition <= 3 && shareClub(p, r))
+                    .map(r => Math.abs(r.year - p.year)),
+                ),
+              ),
+            near = [...clubMates].map(q => [gap(q), q]).sort((x, y) => x[0] - y[0]);
+          if (near[0][0] <= 2 && near[1][0] >= near[0][0] + 2) chosen = new Set([near[0][1]]);
+        }
+      }
+      // (A name alone never links: tried for players who are in a national squad only and
+      // whose name one later player has — of 125 such links most were wrong: Moldova's Baraja
+      // is not Valencia's.)
+      const local = {
+        id: part[0].edition * LOCAL_ID + id,
+        rows: part,
+        named: named.size,
+        // Several later players could be him: the data cannot say which.
+        ambiguous: chosen.size > 1,
+      };
       if (chosen.size === 1) {
         const [q] = chosen;
         if (!claims.has(q)) claims.set(q, []);
@@ -351,6 +410,9 @@ export function linkPersons(titles, isNation = () => false) {
     one.namesakes = local.named; // EA-id players of FIFA 2000–03 with his name
     one.ambiguous = !!local.ambiguous;
     if (local.rival) one.namesakes = Math.max(1, one.namesakes);
+    // An international both titles list (Dunga, Stoichkov, Chile's and Paraguay's 1998 squads):
+    // a man whose club the game did not have, not a squad filled out with whoever was at hand.
+    one.international = !one.ambiguous && new Set(local.rows.map(p => p.edition)).size > 1;
   }
   return { persons, dropped, merged };
 }
@@ -660,10 +722,11 @@ export function poolCoarse(titles, trust, keeperTrust = 0) {
         // A row no other generation backs: when it may be a later player the data cannot
         // tell (a FIFA 98/99 name with several possible later selves) it gets nothing — he
         // would be in the game twice — and nothing either when the title has him in a national
-        // squad only. Otherwise it is rated by its own title alone, which
+        // squad only, unless both FIFA 98 and 99 list him (`international`: Dunga, Stoichkov,
+        // Chile's and Paraguay's 1998 sides). Otherwise it is rated by its own title alone, which
         // the weights below pull most of the way to the title's average: a card, a modest one
         // (Klinsmann, Bebeto and Dunga retired before FIFA 2000 could vouch for them).
-        if (nearest.size < 2 && (p.person.ambiguous || !p.atClub)) {
+        if (nearest.size < 2 && (p.person.ambiguous || !(p.atClub || p.person.international))) {
           stats.unbacked++;
           continue;
         }

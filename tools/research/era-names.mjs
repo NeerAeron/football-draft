@@ -22,10 +22,10 @@ const STARS = {
     Netherlands: 'Bergkamp, Kluivert, Davids, de Boer, Overmars, Seedorf, van der Sar, Cocu',
     Croatia: 'Suker, Boban, Prosinecki',
     Argentina: 'Batistuta, Ortega, Simeone, Veron, Crespo, Zanetti, Redondo',
-    Italy: 'Maldini, Baggio, Del Piero, Vieri, Cannavaro, Nesta, Inzaghi',
+    Italy: 'Maldini, Baggio, Del Piero, Vieri, Cannavaro, Nesta, Inzaghi, Zola',
     Germany: 'Klinsmann, Matthaus, Bierhoff, Kahn, Sammer, Moller',
     England: 'Shearer, Owen, Beckham, Seaman, Adams, Ince, Scholes',
-    Spain: 'Raul, Hierro, Luis Enrique',
+    Spain: 'Raul, Hierro, Luis Enrique, Guardiola',
     Denmark: 'Laudrup, Schmeichel',
     Portugal: 'Figo, Rui Costa',
     Romania: 'Hagi',
@@ -224,10 +224,20 @@ const STARS = {
 };
 
 const key = text =>
-    ` ${foldDiacritics(String(text))
+    ` ${foldDiacritics(
+      String(text).replace(/[øØ]/g, 'o').replace(/[æÆ]/g, 'ae').replace(/[đĐ]/g, 'd'),
+    )
       .toLowerCase()
       .replace(/[^a-z]+/g, ' ')
       .trim()} `,
+  // Every word of the name, in any order ("Park Ji Sung" is "J. Sung Park / Ji Sung Park").
+  is = (p, name) => {
+    const have = key(`${p.name} ${p.fullName}`);
+    return key(name)
+      .trim()
+      .split(' ')
+      .every(word => have.includes(` ${word} `));
+  },
   shown = p => overallRating(p, true, p.primaryPosition),
   catalog = attachEras(
     await loadRuntimeCatalog(),
@@ -235,8 +245,7 @@ const key = text =>
   ),
   cardsOf = name => {
     const out = [];
-    for (const p of catalog.eras.byId.values())
-      if (key(p.name).includes(key(name)) || key(p.fullName).includes(key(name))) out.push(p);
+    for (const p of catalog.eras.byId.values()) if (is(p, name)) out.push(p);
     return out;
   };
 
@@ -248,8 +257,7 @@ for (const era of eraList(catalog)) {
       spinnable = era.nations.some(n => n.name === nation);
     for (const name of names.split(', ')) {
       asked++;
-      if (pool.some(p => key(p.name).includes(key(name)) || key(p.fullName).includes(key(name))))
-        continue;
+      if (pool.some(p => is(p, name))) continue;
       const others = cardsOf(name).filter(p => p.source.nationality === nation);
       missing.push(
         `${name} (${nation}): ${

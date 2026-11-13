@@ -169,11 +169,37 @@ test('one person across the titles: EA ids, two ids of one man, stand-ins, FIFA 
   // He retired before FIFA 2000 could vouch for him: rated by FIFA 98/99 alone, most of the
   // way to the title's average — a card, a modest one.
   assert.ok(klinsmann.rows.some(p => p.given > 76 && p.given < 84 && p.backing.length === 0));
-  assert.equal(named(99, 'Klinsmann').given, null); // FIFA 99 has him in the national squad only
-  // A FIFA 98/99 name several later players could be gets nothing (he would be in twice).
-  const cannavaro = named(98, 'Cannavaro').person;
-  assert.deepEqual([cannavaro.ea, cannavaro.ambiguous], [false, true]);
-  assert.ok(cannavaro.rows.every(p => p.given === null));
+  // FIFA 99 has him in the national squad only: an international both titles list has a card
+  // there too (so Dunga and Stoichkov, in no club of the game, have one).
+  assert.ok(named(99, 'Klinsmann').given > 76);
+  assert.equal(klinsmann.international, true);
+  const dunga = named(98, 'Dunga').person;
+  assert.ok(dunga.international && dunga.rows.every(p => !p.atClub && p.given > 70));
+  // Several later players of his name at his club: the one who is in his national team too
+  // (Fabio, not Paolo Cannavaro; Javier, not Cristiano Zanetti) …
+  assert.equal(named(98, 'Cannavaro').person.id, 1183);
+  assert.equal(
+    title(99).players.find(p => p.name === 'Zanetti' && p.teams.includes('Argentina')).person.id,
+    1041,
+  );
+  // … or the one who is at that club right after him (Taffarel of Galatasaray).
+  assert.equal(named(99, 'Taffarel').person.ea, true);
+  // A FIFA 98/99 name several later players could be gets nothing (he would be in twice): the
+  // other Zanetti of Inter.
+  const zanetti = title(99).players.find(
+    p => p.name === 'Zanetti' && !p.teams.includes('Argentina'),
+  ).person;
+  assert.deepEqual([zanetti.ea, zanetti.ambiguous], [false, true]);
+  assert.ok(zanetti.rows.every(p => p.given == null));
+  // One man listed twice in a title — in his national team under one id, at his club under
+  // another (FIFA 2002) — is one person with one row per title.
+  const enrique = named(98, 'Luis Enrique').person;
+  assert.ok(enrique.ea && merged.some(m => /Enrique: ids 43019 and/.test(m)));
+  assert.deepEqual(
+    enrique.rows.map(p => p.edition),
+    [98, 99, 0, 1, 2, 3, 4],
+  );
+  assert.ok(enrique.rows.find(p => p.edition === 2).teams.includes('Spain'));
   // A keeper is never an outfielder's later self.
   assert.ok(named(98, 'Romario').person.rows.every(p => p.positions[0] !== 'GK'));
 });

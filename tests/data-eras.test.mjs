@@ -109,15 +109,28 @@ test('every era has 20–70 nations that can field a pool — with or without a 
   );
   const counts = list.map(e => e.nations.length);
   // The early titles know fewer nations: France 98 is the thinnest, and stands on its own.
-  assert.deepEqual(counts, [44, 62, 62, 70, 70, 70, 70, 70]);
-  // A goalkeeper is not required: eleven pools have none, and `keepers` says so.
+  assert.deepEqual(counts, [51, 65, 65, 70, 70, 70, 70, 70]);
+  // A side a follower would look for is there: Chile, Paraguay and Colombia in 1998, the hosts
+  // of 2002.
+  for (const [era, nation] of [
+    [1998, 'Chile'],
+    [1998, 'Paraguay'],
+    [1998, 'Colombia'],
+    [2002, 'Japan'],
+    [2002, 'Korea Republic'],
+  ])
+    assert.ok(
+      eraNations(catalog, era).some(n => n.name === nation),
+      `${era} ${nation}`,
+    );
+  // A goalkeeper is not required: seventeen pools have none, and `keepers` says so.
   assert.deepEqual(
     list.map(e => e.nations.filter(n => n.keepers === 0).map(n => n.name)),
     [
-      ['Uruguay'],
-      ['Georgia', 'Ghana'],
-      ['Guinea'],
-      ['Mali', 'Peru', 'Algeria', 'Honduras', 'Congo DR'],
+      ['Ghana', 'Uruguay'],
+      ['Georgia', 'Ghana', 'Guinea'],
+      ['Guinea', 'Burkina Faso'],
+      ['Mali', 'Peru', 'Guinea', 'Algeria', 'Honduras', 'Burkina Faso', 'Congo DR'],
       ['Honduras'],
       [],
       ['Gabon'],
@@ -141,13 +154,17 @@ test('every era has 20–70 nations that can field a pool — with or without a 
       assert.ok(n.flag.endsWith(`${n.code}.svg`));
       assert.equal(n.size, players.length);
       assert.equal(n.keepers, players.filter(p => p.primaryPosition === 'GK').length);
-      // The spin rule: a team with a bench — five defenders, five midfielders, two forwards
-      // among at least 18 — and never more than a World Cup squad. No keeper needed.
+      // The spin rule: a team with a bench — four defenders, five midfielders (a forward
+      // beyond the first four counts as one), two forwards among at least 18 — and never more
+      // than a World Cup squad. No keeper needed.
       assert.ok(n.size >= 18 && n.size <= ERA_SQUAD, `${era.label} ${n.name}: ${n.size}`);
       assert.ok(n.keepers >= 0 && n.keepers <= 3, `${era.label} ${n.name}`);
       const lines = { DEF: 0, MID: 0, ATT: 0, GK: 0 };
       for (const p of players) lines[LINE_OF[p.primaryPosition]]++;
-      assert.ok(lines.DEF >= 4 && lines.MID >= 4 && lines.ATT >= 1, `${era.label} ${n.name}`);
+      assert.ok(
+        lines.DEF >= 4 && lines.MID + Math.max(0, lines.ATT - 4) >= 4 && lines.ATT >= 1,
+        `${era.label} ${n.name}`,
+      );
       // Strength: the mean shown rating of the best XI (best keeper + ten best outfielders;
       // without a keeper, the era's keeper level in goal).
       const keeper = players.find(p => p.primaryPosition === 'GK'),
@@ -224,7 +241,7 @@ test('a pool: the nation’s best 26 of the era, each at his best version inside
   for (const p of data.cards.slice(0, 400))
     assert.deepEqual(normalizeBadges(p, p.tags), p.tags, p.profileId);
   // No minimum rating: a small nation's pool goes down to the 50s and 60s.
-  assert.ok(Math.min(...pool(2010, 'New Zealand').map(shown)) < 62);
+  assert.ok(Math.min(...pool(2010, 'Burkina Faso').map(shown)) < 62);
   // Era cards never join the catalog's pools.
   assert.ok(!catalog.players.some(p => p.era));
 });

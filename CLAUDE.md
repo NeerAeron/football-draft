@@ -316,7 +316,7 @@ surname, known-as name) the first workbook (`legends-98-14.xlsx`, the top 1,000 
 SHA-256 `b49592c7…5de2a`) had for FIFA 2003–14, so the best known are "Z. Zidane" and not
 "Zinedine Zidane"; everyone else's whole name is shown as initial + rest.
 FIFA 2000–14 use EA's player ids (EA reused some: rows of one id whose years of birth are
-more than a year apart are two men), FIFA 98/99 their own (joined by name and club, or by name, national team and part of the pitch); team ids
+more than a year apart are two men), FIFA 98/99 their own (joined by name and club, or by name, national team and part of the pitch; of several namesakes at his club the one in his national team; an international both titles list has a card even without a club in the game); team ids
 come with the shirt numbers from FIFA 2003 on; FIFA 09–14 store an overall, the older titles do
 not; FIFA 98–2003 have coarse scales (8–16 levels) and 8–17 skills, often surnames only.
 `scripts/data/legacy-titles.mjs` decodes it (positions, feet, which skill stands for a missing
@@ -396,19 +396,19 @@ id, name or title of that list does not meet the data. Do not add per-player edi
 cases: fix the title.
 
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
-player table; 12,486 cards, 2.4 MB / 0.71 MB gzip; fetched by `services/eras.js` with a draft)
+player table; 13,301 cards, 2.6 MB / 0.76 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
 `scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
 2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
 version inside the era (the same overalls and cards as above; 3 keepers and at least 7
 defenders, 7 midfielders, 4 forwards where the nation has them; no minimum rating). A catalog
 player is in the 2026 pool as he is unless an FC 24–26 version shows more. A nation can be spun
-in an era when its pool has 18 players, 5 defenders, 5 midfielders and 2 forwards — no
+in an era when its pool has 18 players, 4 defenders, 5 midfielders (a forward beyond the first four counts as one) and 2 forwards — no
 goalkeeper required (`keepers` says how many a pool has; the draft's guards make sure one can
 be drafted; a keeperless pool's strength takes the era's weakest first-choice keeper,
-`keeperLevel`); the 70 strongest when more qualify (27 / 54 / 62 / 70 / 70 / 70 / 70 / 70 nations;
+`keeperLevel`); the 70 strongest when more qualify (51 / 65 / 65 / 70 / 70 / 70 / 70 / 70 nations;
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
-file (601 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
+file (455 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
 independent; both are stamped with the catalog build. **GOAT cards and Captains** are two
 reviewed lists of player + era: `data/goats.json` (seven players at the World Cup cycles of
 their peak — a GOAT card is a player AND an era) and `data/captains.json` (the leaders of

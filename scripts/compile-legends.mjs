@@ -155,6 +155,18 @@ export const PLAYER_JUDGEMENT = [
     why: 'Ballon d’Or and FIFA World Player 2007, the Champions League’s best player: FIFA 08 has him fourth among outfielders.',
   },
   {
+    id: 1109,
+    name: 'Maldini',
+    cards: { 98: 4, 99: 4, 0: 4, 1: 2, 2: 2, 3: 2 },
+    why: 'The best defender in the world from 1994 to 2003 (third for the Ballon d’Or in 1994 and 2003). FIFA 98 and 99 themselves have him as their best or second-best player (96 and 94 on their own scales); pooled with FIFA 2000’s odd 78 he came out at 85, under Southgate, Campbell and Blanc.',
+  },
+  {
+    id: 232,
+    name: 'Schmeichel',
+    cards: { 98: 4, 99: 4, 0: 3 },
+    why: 'The best goalkeeper of the 1990s (IFFHS World’s Best Goalkeeper 1992 and 1993, UEFA’s club goalkeeper of 1998, the 1999 treble): FIFA 98/99 have no keeper skills and he retired before a fully described title could vouch for him, so he came out at 84, level with Rossi and Letizi.',
+  },
+  {
     id: 93,
     name: 'Denilson',
     cards: { 98: -6, 99: -4, 0: -4, 1: -3, 2: -3 },
@@ -164,9 +176,11 @@ export const PLAYER_JUDGEMENT = [
 // Era pools (app/data/eras.v1.json): a World Cup squad per nation and cycle.
 export const ERA_KEEPERS = 3;
 export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nation has them
-// A nation can be spun in an era when its pool can field a team with a bench and a keeper.
-// (No goalkeeper needed: `keepers` tells the draft which pools have one.)
-export const ERA_SPIN = { players: 18, DEF: 5, MID: 5, ATT: 2 };
+// A nation can be spun in an era when its pool can field a team with a bench: a back four,
+// five midfielders — a forward beyond the first four counts as one, he can play wide — and two
+// forwards. (No goalkeeper needed: `keepers` tells the draft which pools have one. Five
+// defenders kept Colombia's 1998 side out for one surname-only row's position.)
+export const ERA_SPIN = { players: 18, DEF: 4, MID: 5, ATT: 2 };
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 export const ERA_MINIMUM = 20; // an era with fewer nations is not an era: the build fails
 const ERA_LINE = {
@@ -186,7 +200,7 @@ const ERA_LINE = {
 export const ERA_SELECTION = {
   pool: `A nation's best ${ERA_SQUAD} players of the era, each at his best version inside its years (highest overall; ties: the later year); ${ERA_KEEPERS} goalkeepers and at least ${ERA_LINES.DEF} defenders, ${ERA_LINES.MID} midfielders and ${ERA_LINES.ATT} forwards where the nation has them; no minimum rating`,
   today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
-  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
+  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders (a forward beyond the first ${ERA_LINES.ATT} counts as one) and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
   best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
   squad: ERA_SQUAD,
   spin: ERA_SPIN,
@@ -908,7 +922,9 @@ export function compileLegends(
     if (
       members.length < ERA_SPIN.players ||
       count('DEF') < ERA_SPIN.DEF ||
-      count('MID') < ERA_SPIN.MID ||
+      // (A forward beyond the first four can play wide in midfield: Japan's 2002 pool has four
+      // midfielders and ten forwards and wingers.)
+      count('MID') + Math.max(0, count('ATT') - ERA_LINES.ATT) < ERA_SPIN.MID ||
       count('ATT') < ERA_SPIN.ATT
     )
       continue;
