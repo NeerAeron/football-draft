@@ -178,14 +178,20 @@ async function startFromSetup(page, base, url) {
  * One pick: spin if needed, select the first playable row, optionally try another slot and
  * go back with Auto, then confirm (sheet on phones, dock on desktop).
  */
-async function draftPick(page, { tryAuto = false } = {}) {
+async function draftPick(page, { tryAuto = false, prime = false } = {}) {
   // After the first pick the next reel starts by itself (auto-spin); the button is only
   // there for a moment, so a missed click is fine.
   const spin = page.locator('[data-testid="spin"]');
   if (await spin.isVisible().catch(() => false))
     await spin.click({ timeout: 6000 }).catch(() => {});
-  const row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
+  let row = page.locator('[data-testid="pool"] button.prow:not([disabled])').first();
   await row.waitFor({ state: 'visible', timeout: 10000 });
+  // `prime`: a player with a better version when the pool has one (so the XI has a use for
+  // the Prime whatever the reels land on).
+  const better = page
+    .locator('[data-testid="pool"] button.prow:not([disabled]):has(.prow__prime)')
+    .first();
+  if (prime && (await better.count())) row = better;
   await row.click();
   const confirm = page.locator('[data-testid="confirm-pick"]:visible');
   await confirm.waitFor({ state: 'visible', timeout: 5000 });
@@ -906,7 +912,7 @@ export const flows = [
       await shot('after-first-pick');
       for (let pick = 2; pick <= 11; pick++) {
         await step(`pick ${pick}`, async () => {
-          await draftPick(page, { tryAuto: pick === 6 });
+          await draftPick(page, { tryAuto: pick === 6, prime: true });
           await picksMade(page, pick);
         });
         if (pick === 5) await shot('mid-draft', viewport === 'mobile' ? { fullPage: true } : {});
