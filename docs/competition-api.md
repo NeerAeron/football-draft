@@ -232,8 +232,11 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 
 ### Fast rating model (`model.js`)
 
-Independent Poisson goals on effective ratings: `λA = 1.33·e^{0.0525(rA−rB)}`,
-`λB = 1.33·e^{−0.0525(rA−rB)}` — gap 0: 37% W / 26% D / 37% L; gap 6: 61 / 22 / 17 — refitted
+Independent Poisson goals on effective ratings: `λA = 1.46·e^{0.0525(rA−rB)}`,
+`λB = 1.46·e^{−0.0525(rA−rB)}` (1.33 before the level per side, docs/calibration.md Phase 10;
+optional `units = [a, b]` — each side's `unitLevels` — make a side score 3.6% less per point
+of `unitLean`: the opponent's defence above its overall, less its own attack above its own;
+no caller passes them yet) — gap 0: 37% W / 26% D / 37% L; gap 6: 61 / 22 / 17 — refitted
 (624 engine matches, `cup-calibration.mjs gaps` + `fit`) after the engine was brought to about
 three goals a match in every mode (docs/calibration.md, Phase 9): 2.9 goals a match on those
 gaps, engine against model −4…−1.5 24/28/48 vs 27/25/48, +4…+8 67/22/11 vs 61/21/18, +8…+13

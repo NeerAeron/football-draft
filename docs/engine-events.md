@@ -153,6 +153,19 @@ may gain `'winner'` / `'late winner'` in `story` at full time.
 | `shootout` | one kick, at its outcome: `playerId`, `keeperId`, `round` (1…), `suddenDeath`, `outcome`: `'goal' | 'saved' | 'missed' | 'post'`, `shootoutScore` (`[h, a]` after the kick), `decisive`, `kickedAt` (elapsed of the strike) |
 | `shootout-end` | `winner` (team), `shootoutScore` |
 
+### The level of the match
+
+`m.level` is `null` until the first step, then `[team 0, team 1]`: the level each side attacks
+at (`kickoffLevel`, read once from the line-ups like `m.edge`). The match part is the same for
+both — the mean overall of the 22 in points above 78, plus `gameplay.levelGap` per point
+between the two sides; `gameplay.levelUnits` adds, per side, the opponent's defence level
+above the opponent's overall less its own attack level above its own (`unitLevels` /
+`unitLean`, `players/unit-levels.js`); clamped to ±14. Per point a side's shots scatter
+`gameplay.levelScatter` × 4% more and are saved `levelSaves` × 0.4% more (penalties and
+shootouts excepted). It keeps the goals of a match from following the general level of the
+players while a side's scoring still follows its attack against the defence it meets
+(docs/calibration.md, Phases 9 and 10). No RNG, nothing per step.
+
 ### Goal kicks
 
 A goal kick is a cut, like a corner: `setupGoalKick` (restarts.js) places both sides when it is
