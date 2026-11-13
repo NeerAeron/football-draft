@@ -14,7 +14,7 @@ export { PlayerCard, KitShirt } from './player-card.js';
 export { PlayerRow } from './player-row.js';
 export { PitchView, layoutSlots } from './pitch-view.js';
 export { Meter, StatBar, StatTile, statTone } from './meter.js';
-export { Reel } from './reel.js';
+export { Reel, LOCK_MS } from './reel.js';
 export { Modal, Sheet } from './modal.js';
 export { Tabs } from './tabs.js';
 export { Toaster, toast, achievement, dismissToast } from './toast.js';

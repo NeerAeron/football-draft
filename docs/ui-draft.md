@@ -261,8 +261,19 @@ openPrematch({
   whenever a spin starts and until its result has landed, the card is scrolled clear of the
   top bar and of the phone's action bar (a smooth scroll first, jumps after 350 ms and with
   reduced motion). **A beat after each reel** (`PAUSE`): 0.65 s after the era lands before the
-  nation reel starts, 0.75 s after the last reel before the pool takes over; none with
-  reduced motion; a tap on the reels skips the reel and its pause. UI timing only.
+  nation reel starts, 0.75 s after the last reel before the pool takes over; with reduced motion none between
+  the reels and 0.34 s after the last (its lit frame); a tap skips a reel, another the pause. UI timing only.
+* **Every reel locks into place** (`Reel`, `components/reel.js` + `.css`; all draft modes and
+  the gallery share it): on landing — also when skipped — the reel carries `is-locked` for
+  `LOCK_MS` (340 ms): the window settles with a small overshoot, a ring and a sweep cross the
+  frame, the chosen item pops (transform and opacity only). Sound (`lockIn` in
+  `spin-stage.js`): the reel ticks as it slows (`'tick'` per item), then `'lock'` for a reel
+  with another to come (the era; a club spin's league) and `'lock-final'` — fuller, higher,
+  two notes — for the last one, with `navigator.vibrate(10 / 14)` when sound is on; `'reveal'`
+  follows when the pool takes over. Reduced motion: nothing moves and no lock cue — both
+  frames are lit (`is-still`) for `LOCK_MS` before the pool. The tap that skips a reel plays
+  its lock once and leaves the pause after it; a tap during the pause ends it. The lock is
+  the same for every landing: it never hints at what landed.
 * Pool rows cut a long name with an ellipsis (`.prow__name-text`); the year, Leader and GOAT
   marks after it are never cut.
 * Test hooks: `data-testid` `spin`, `reroll`, `auto-pick`, `spin-result`, `pool`,
