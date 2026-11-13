@@ -477,9 +477,22 @@ const matchFlows = [
           await shot('extra-time');
         } else
           await step('key: the extra-time reel shows minutes after the ninetieth', async () => {
-            await visible(page, '[data-testid="clip-minute"]', 30000);
-            const minute = parseInt(await page.textContent('[data-testid="clip-minute"]'), 10);
-            if (!(minute > 90 && minute <= 125)) throw new Error(`clip minute ${minute}`);
+            // The second-half reel's last clip (up to 90') can still be on screen for a moment:
+            // wait for a clip of the extra-time reel.
+            const minute = await page
+              .waitForFunction(
+                () => {
+                  const m = parseInt(
+                    document.querySelector('[data-testid="clip-minute"]')?.textContent,
+                    10,
+                  );
+                  return m > 90 ? m : false;
+                },
+                null,
+                { timeout: 30000 },
+              )
+              .then(h => h.jsonValue());
+            if (!(minute <= 125)) throw new Error(`clip minute ${minute}`);
           });
         await step(`${view}: every kick and the winner`, async () => {
           // With reduced motion the panel shows every kick at once and gives way to the result
