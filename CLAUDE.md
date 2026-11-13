@@ -91,7 +91,7 @@ tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by 
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
 tools/calibration/       manual calibration runners (write to /tmp; not run by npm test), incl.
                          match-calibration.mjs (engine stats, docs/calibration.md),
-                         draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results),
+                         draft-baselines.mjs (MODE_BASELINES; --eras: World Cup drafts), reel-odds.mjs (what the reel weights make of a draft), ai-calibration.mjs (ladder results),
                          cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md),
                          blunders.mjs (detector of frustrating plays) + watch.mjs (frame viewer),
                          lib/fixtures.mjs (their deterministic club fixtures)
@@ -162,7 +162,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   (`primes`, `prime(slot)`: `bestVersion`); guards: every landing has a pick, and while the
   keeper slot is open at least half the nation reel has a keeper; `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
   `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; `SESSION_FORMAT` 3), `pools.js` (catalog index: nations field/pots, leagues, clubs, `draftSquad` (a nation's draftable players: its best 30 of the players shown 65+, 3 GK and line minimums — a nation spin never offers anyone else, `nation.squad`),
-  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel — all of this is the draft of today's players: Quick Match, Versus), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
+  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel — all of this is the draft of today's players: Quick Match, Versus), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain, +1.5 with a GOAT — an era card flagged `goat` —, at most 5), `reels.js` (`reelWeights`: the hidden weights of a World Cup draft's era and nation reels, `CONFIG.draft.reels`), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
   `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +

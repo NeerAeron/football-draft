@@ -474,18 +474,24 @@ One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 1.5, club: 1, 
 a player with a **nation team-mate** in the XI gets **+1.5**, with a **club mate +1**, and the
 two **stack** (both: **+2.5**). One mate is enough, there are no thresholds and no league
 mates. An XI with a **Captain** gives **every player +1** on top (one captain counts; two do
-not stack). The sum is the player's `chem` (attribute points the engine adds to every skill,
-capped at 5): 0–3.5.
+not stack). A **GOAT** (an era card flagged `goat`: one of the few greatest of all time, in
+his year) gives **every player +1.5** (`links.goat`) — more than a Captain, and felt in
+matches: +1.5 effective is about +5 points of title odds on World Class in the fast model (8%
+→ 13% at the typical XI; Pro 18% → 25%, Legendary 6% → 9%). A second GOAT adds half of that
+(+0.75), a third a quarter (`goatBoost(count, value)`); a Captain and a GOAT in one XI both
+count (a card is never both). The sum is the player's `chem` (attribute points the engine
+adds to every skill), **capped at 5** (`CHEM_CAP`).
 
 `teamLinks(players)` (players in slot order, `null` = open slot) returns
 `players[i] = { boost, kinds, chem, mates: { nation, club } }` (`boost` = the mates boost,
-`kinds` = what gives it, `chem` = boost + the Captain's boost, `mates` = number of XI mates per
+`kinds` = what gives it, `chem` = boost + the Captain's and the GOATs' boosts (at most 5), `mates` = number of XI mates per
 kind), `pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates — one line per pair
 for the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the mates boosts,
 max `maxScore` = 27.5), `total` (sum of `chem`, Captain included: the UI's "Boosts +13"),
 `chem` (mean chem), `linked` (players with a mate), `captain` (slot of the armband or null:
 `captainSlot(players)`, the highest source rating among the Captains, first slot on a tie) and
-`captainBoost`. `linkBoosts(rules)` gives the three numbers; `validLinks(rules)` says whether a rules
+`captainBoost`. `goats` (the slots of the GOATs, `goatSlots(players)`) and `goatBoost` (what they
+give every player). `linkBoosts(rules)` gives the three numbers; `validLinks(rules)` says whether a rules
 object has them (a saved run must: `restoreCupRun`). Real national XIs are all nation mates (+1.5
 each, +2.5 for club mates inside them, +1 with their captain), real club XIs club mates. A pool
 entry's `boost` says what a player would get in the XI as it stands, `captainBoost` what he
