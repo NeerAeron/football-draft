@@ -304,7 +304,7 @@ Use custom properties only — no raw hex, px font sizes or durations in screen 
   check `isReducedMotion()` / `useReducedMotion()` and jump to the end state.
 - **Honest reels:** decide the outcome in `core/` first, then animate to it with `Reel`. UI never
   calls draft or simulation RNG; `Math.random()` is fine for confetti only.
-- Sound: `playCue('tick' | 'reveal' | 'pick' | 'pick-star' | 'pick-superstar' | 'goal' | …)`;
+- Sound: `playCue('tick' | 'lock' | 'lock-final' | 'reveal' | 'pick' | 'pick-star' | 'pick-superstar' | 'goal' | …)`;
   `selectionSound(tier)` from `services/sound.js` picks the pick fanfare. Mute/volume live in
   the top bar and Settings.
 

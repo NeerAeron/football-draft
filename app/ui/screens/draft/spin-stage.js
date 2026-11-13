@@ -4,10 +4,11 @@
 // decided the landing; reels only travel there (their own timing, never the draft RNG).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
-import { playCue } from '../../lib/audio.js';
+import { playCue, soundStore } from '../../lib/audio.js';
 import { isReducedMotion } from '../../lib/motion.js';
 import {
   Reel,
+  LOCK_MS,
   Flag,
   LeagueLogo,
   Crest,
@@ -44,6 +45,22 @@ const TIMING = {
 // the last reel lands, before the pool takes over. UI timing only (the spin is long made);
 // none with reduced motion, and a tap skips it like it skips a reel.
 const PAUSE = { between: 650, landed: 750 };
+
+/**
+ * A reel has locked into place: the clunk (fuller for the last reel of a spin) and, where the
+ * device can, a short buzz. With reduced motion every reel lands at once and the reveal cue
+ * follows in the same instant: no lock sound then, the frame's highlight says it. The same
+ * for every landing — never a hint of what landed.
+ */
+function lockIn(last) {
+  if (isReducedMotion()) return;
+  playCue(last ? 'lock-final' : 'lock');
+  try {
+    if (soundStore.get().on) globalThis.navigator?.vibrate?.(last ? 14 : 10);
+  } catch {
+    // no haptics here
+  }
+}
 
 /**
  * Bring the reel card into view when it is cut off or off screen (under the top bar, behind
@@ -103,8 +120,13 @@ function SpinningReels({ spin, spinKey, onLanded }) {
   const [leg, setLeg] = useState(() => nextLeg(0));
   // The pause after a landing: { timer, then } while one is running (a tap ends it at once).
   const pause = useRef(null);
-  const after = (ms, then) => {
-    if (isReducedMotion() || ms <= 0) return then();
+  const landedAt = useRef(0);
+  const after = (ms, then, still = 0) => {
+    landedAt.current = performance.now();
+    // Reduced motion: no pause between the reels; after the last one only as long as its
+    // frame is lit (`still`).
+    if (isReducedMotion()) ms = still;
+    if (ms <= 0) return then();
     const timer = setTimeout(() => {
       pause.current = null;
       then();
@@ -113,7 +135,9 @@ function SpinningReels({ spin, spinKey, onLanded }) {
   };
   const skipPause = () => {
     const p = pause.current;
-    if (!p) return;
+    // The tap that skipped the reel has just started this pause: it stays (so the lock is
+    // heard and seen before the next thing); a tap during the pause ends it.
+    if (!p || performance.now() - landedAt.current < 60) return;
     clearTimeout(p.timer);
     pause.current = null;
     p.then();
@@ -163,8 +187,9 @@ function SpinningReels({ spin, spinKey, onLanded }) {
                     onTick=${() => playCue('tick')}
                     onLand=${() => {
                       const next = nextLeg(i + 1);
+                      lockIn(next >= legs.length);
                       if (next < legs.length) after(PAUSE.between, () => setLeg(next));
-                      else after(PAUSE.landed, onLanded);
+                      else after(PAUSE.landed, onLanded, LOCK_MS);
                     }}
                   />`
           }

@@ -789,6 +789,137 @@ export const flows = [
     },
   },
   {
+    // The Prime button, tapped at every moment it is on screen (touch on the phone): the
+    // sheet is open half a second later, closes and opens again — also in the moment after
+    // the last pick, before "Your XI is ready" comes up by itself (it used to cover the open
+    // Prime sheet: the button on it then did nothing until the sheet was closed).
+    name: 'draft-prime-tap',
+    async run({ page, step, base, viewport }) {
+      await seed(page, ONBOARDED);
+      const touch = viewport === 'mobile';
+      const press = locator => (touch ? locator.tap() : locator.click());
+      const open = () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('dialog[open]')].map(d =>
+            d.classList.contains('draft-prime')
+              ? 'prime'
+              : d.classList.contains('complete-sheet')
+                ? 'complete'
+                : 'other',
+          ),
+        );
+      // The dialog that takes a tap in the middle of the screen: the one on top.
+      const top = () =>
+        page.evaluate(() => {
+          const d = document.elementFromPoint(innerWidth / 2, innerHeight / 2)?.closest('dialog');
+          return !d ? null : d.classList.contains('draft-prime') ? 'prime' : 'complete';
+        });
+      const primeButton = () =>
+        page
+          .locator('dialog[open] [data-testid="token-prime"]')
+          .count()
+          .then(n =>
+            n
+              ? page.locator('dialog[open] [data-testid="token-prime"]').last()
+              : page.locator('[data-testid="token-prime"]:visible').first(),
+          );
+      const closePrime = async () => {
+        await press(page.locator('dialog.draft-prime[open] .modal__close'));
+        await page.waitForFunction(() => !document.querySelector('dialog.draft-prime[open]'));
+        // (Taps are ignored for 400 ms after a sheet is closed.)
+        await page.waitForTimeout(450);
+      };
+      const opensAndReopens = async label => {
+        await press(await primeButton());
+        await page.waitForTimeout(500);
+        if ((await top()) !== 'prime')
+          throw new Error(`${label}: no Prime sheet (${await open()})`);
+        await closePrime();
+        await press(await primeButton());
+        await page.waitForTimeout(500);
+        if ((await top()) !== 'prime') throw new Error(`${label}: Prime did not open again`);
+        await closePrime();
+      };
+      await step('a seeded World Cup draft, one pick with a better version', async () => {
+        await page.goto(base);
+        await visible(page, '[data-screen="home"]');
+        await startDraftIn(page, {
+          kind: 'run',
+          type: 'nations',
+          difficulty: 'pro',
+          formation: '433',
+          seed: 12,
+        });
+        await visible(page, '[data-screen="draft"][data-phase]');
+        await draftPick(page, { prime: true });
+        await picksMade(page, 1);
+      });
+      await step('Prime with the next pool open: opens, closes, opens again', async () => {
+        const spin = page.locator('[data-testid="spin"]');
+        if (await spin.isVisible().catch(() => false))
+          await spin.click({ timeout: 6000 }).catch(() => {});
+        await visible(page, '[data-testid="pool"] button.prow');
+        if (await (await primeButton()).isDisabled())
+          throw new Error('nobody in the XI has a better version: pick another seed');
+        await opensAndReopens('pool open');
+      });
+      await step('the respins beside it answer the first tap too', async () => {
+        const before = (await page.textContent('.reveal__title')).trim();
+        await press(page.locator('[data-testid="token-nation"]:visible').first());
+        await page.waitForFunction(
+          was => document.querySelector('.reveal__title')?.textContent.trim() !== was,
+          before,
+          { timeout: 8000 },
+        );
+        const left = await page
+          .locator('[data-testid="token-nation"]:visible')
+          .first()
+          .getAttribute('data-left');
+        if (left !== '0') throw new Error(`nation respins left: ${left}`);
+        await press(page.locator('[data-testid="token-era"]:visible').first());
+        await page.waitForFunction(
+          () => document.querySelector('[data-testid="token-era"]')?.dataset.left === '0',
+          null,
+          { timeout: 8000 },
+        );
+        await visible(page, '[data-testid="pool"] button.prow');
+      });
+      await step('nine more picks, then the last one by hand, with motion on', async () => {
+        await page.evaluate(async () => {
+          const { autoPick } = await import('./ui/lib/draft-store.js');
+          for (let i = 0; i < 9; i++) autoPick();
+        });
+        await picksMade(page, 10);
+        // With motion the sheet of a complete draft waits a moment before it comes up.
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await draftPick(page);
+      });
+      await step('Prime in the moment after the last pick stays on top', async () => {
+        await press(page.locator('[data-testid="token-prime"]:visible').first());
+        await page.waitForTimeout(500);
+        if ((await top()) !== 'prime') throw new Error(`no Prime sheet (${await open()})`);
+        // Longer than the wait of "Your XI is ready" (a star pick's moment included).
+        await page.waitForTimeout(3800);
+        if ((await top()) !== 'prime' || (await open()).includes('complete'))
+          throw new Error(`the Prime sheet was covered (${await open()})`);
+        await closePrime();
+      });
+      await step('then "Your XI is ready" comes up, and its Prime button works', async () => {
+        await visible(page, 'dialog.complete-sheet[open]');
+        await page.waitForTimeout(450);
+        await opensAndReopens('complete sheet');
+        if ((await top()) !== 'complete') throw new Error(`after Prime: ${await open()}`);
+      });
+      await step('with that sheet closed, the bar’s Prime button works', async () => {
+        await press(page.locator('dialog.complete-sheet[open] .modal__close'));
+        await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+        await page.waitForTimeout(450);
+        await opensAndReopens('action bar');
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+      });
+    },
+  },
+  {
     name: 'draft-nations',
     async run({ page, shot, step, base, viewport }) {
       await seed(page, ONBOARDED);
