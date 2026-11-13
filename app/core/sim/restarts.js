@@ -230,11 +230,25 @@ export class RestartMethods {
   buildUpPressed(team) {
     return this.teams[1 - team].tactics.press >= 4 || this.lean(1 - team) > 0;
   }
+  // The offside line for `team`'s attackers right now: the second-last opponent, or halfway.
+  offsideLine(team) {
+    let deepest = -Infinity,
+      second = -Infinity;
+    for (const q of this.activePlayers) {
+      if (q.team === team) continue;
+      const x = this.rel(q.x, team);
+      if (x > deepest) {
+        second = deepest;
+        deepest = x;
+      } else if (x > second) second = x;
+    }
+    return Math.max(52.5, second);
+  }
   // p's spot in that shape (absolute, in BUILD_SPOT — read it before the next call). `team`
   // has the ball, `o` is how far up the pitch it is from a goal kick's 5.5 m: both sides'
   // lines move up with it, the defending side never nearer than 11 m to the ball and the
   // attackers short of the last line (offside counts at a free kick).
-  buildUpSpot(p, team, long, pressing, o = 0) {
+  buildUpSpot(p, team, long, pressing, o = 0, line = Infinity) {
     const [base, by] = this.formation(p),
       y = this.direction(p.team) > 0 ? by : H - by,
       off = y - 34,
@@ -259,6 +273,8 @@ export class RestartMethods {
         x = Math.min((long ? 64 + (base - 58) * 0.1 : 62) + o * 0.5, last - 2);
         ty = long ? 34 + off * 0.7 : y;
       }
+      // Onside: no further than the last line is right now (it is still dropping).
+      x = Math.min(x, line - 1.5);
     } else {
       // Measured from the goal line of the side with the ball; the defenders stay goal-side
       // of the forwards they mark.
@@ -276,16 +292,25 @@ export class RestartMethods {
     return BUILD_SPOT;
   }
   setupBuildUp(team, taker) {
-    const r = this.restart,
-      pressing = this.buildUpPressed(team),
-      o = Math.max(0, this.rel(r.x, team) - 5.5);
+    const r = this.restart;
     r.routine = this.buildUpRoutine(team);
+    this.aimBuildUp(r, taker);
+    for (const p of this.activePlayers)
+      if (p.id !== taker.id && p.role !== 'GK')
+        p.action = p.team === team ? 'Offering for the build-up' : 'Dropping off';
+  }
+  // Everybody's target for the restart `r` (again every step of a free kick: the attackers
+  // hold their runs at the last line while it drops; a goal kick has no offside).
+  aimBuildUp(r, taker) {
+    const team = r.team,
+      pressing = this.buildUpPressed(team),
+      o = Math.max(0, this.rel(r.x, team) - 5.5),
+      line = r.type === 'Goal kick' ? Infinity : this.offsideLine(team);
     for (const p of this.activePlayers) {
       if (p.id === taker.id || p.role === 'GK') continue;
-      const spot = this.buildUpSpot(p, team, r.routine === 'long', pressing, o);
+      const spot = this.buildUpSpot(p, team, r.routine === 'long', pressing, o, line);
       p.tx = spot.x;
       p.ty = spot.y;
-      p.action = p.team === team ? 'Offering for the build-up' : 'Dropping off';
     }
   }
   // Are the sides set? The back line and midfield of the side with the ball within 5 m of
@@ -400,6 +425,7 @@ export class RestartMethods {
       taker.tx = r.x + this.direction(r.team) * 1.2; // through the ball, not slowing for it
       taker.ty = r.y;
     }
+    if (r.build && r.type !== 'Goal kick') this.aimBuildUp(r, taker);
     for (const p of this.activePlayers) this.move(p, dt, true);
     if (r.timer > 0) return;
     // Built up from: the taker waits until he is at the ball and the sides are set, or the

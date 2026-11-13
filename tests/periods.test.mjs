@@ -88,17 +88,28 @@ test('corners and throw-ins allow physical repositioning before the ball returns
   }
 });
 
-test('a goal kick is a cut: everybody is in his place when it is awarded', () => {
+test('a goal kick places nobody: everybody gets a target and runs there', () => {
   const m = new Match(12),
     p = m.players[2];
   p.x = 65;
   p.y = 20;
+  m.mode = 'play';
   m.startRestart('Goal kick', 0, 5.5, 34);
-  assert.ok(m.restart.timer >= 1);
-  for (const q of m.activePlayers)
-    if (q.role !== 'GK') assert.deepEqual({ x: q.x, y: q.y }, { x: q.tx, y: q.ty });
-  assert.ok(m.rel(p.x, 0) < 40, 'the defender is back in his line');
+  assert.ok(m.restart.build);
+  assert.deepEqual({ x: p.x, y: p.y }, { x: 65, y: 20 }, 'he is where he was');
+  assert.ok(m.rel(p.tx, 0) < 40, 'and is sent back to his line');
   assert.ok(m.rel(m.players[11].tx, 1) < 15, 'opposing keeper stays near own goal');
+  const start = m.elapsed;
+  while (m.mode === 'restart') {
+    const before = m.activePlayers.map(q => [q.x, q.y]);
+    m.step(1 / 60);
+    m.activePlayers.forEach((q, i) =>
+      assert.ok(Math.hypot(q.x - before[i][0], q.y - before[i][1]) < 0.2, `${q.id} jumped`),
+    );
+  }
+  assert.ok(m.rel(p.x, 0) < 50, 'he ran back');
+  const waited = m.elapsed - start;
+  assert.ok(waited >= 0.99 && waited <= m.tuning.gameplay.buildUpWait + 2.1, `waited ${waited}`);
 });
 
 test('the whistle lets a final shot and goal celebration settle', () => {

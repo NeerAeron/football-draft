@@ -225,6 +225,8 @@ export class PlanningMethods {
           team,
           this.buildUpRoutine(team) === 'long',
           this.buildUpPressed(team),
+          0,
+          this.offsideLine(team),
         );
       p.aim(
         spot.x,

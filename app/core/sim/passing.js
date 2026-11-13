@@ -391,25 +391,15 @@ export class PassingMethods {
       reach = 56 + p.skill('power') * 0.15,
       from = this.rel(p.x, p.team),
       beyond = Math.max(52, from + 30);
-    // The offside line: the second-last opponent, the ball or halfway.
-    let line = Math.max(52.5, from),
-      deepest = -Infinity,
-      second = -Infinity;
-    for (const q of this.activePlayers) {
-      if (q.team === p.team) continue;
-      const x = this.rel(q.x, p.team);
-      if (x > deepest) {
-        second = deepest;
-        deepest = x;
-      } else if (x > second) second = x;
-    }
-    line = goalKick ? Infinity : Math.max(line, second) - 0.5;
+    const line = goalKick ? Infinity : Math.max(from, this.offsideLine(p.team)) - 0.5;
     let target = null,
       value = -Infinity;
     for (const r of this.activePlayers) {
       if (r.team !== p.team || r.role === 'GK' || r === p) continue;
-      const depth = this.rel(r.x, p.team);
-      if (depth > line) continue;
+      // Judged where he will be when the ball comes down: he is still running up to his
+      // spot (onside is judged where he is now).
+      if (this.rel(r.x, p.team) > line) continue;
+      const depth = this.rel(r.x, p.team) + clamp((r.tx - r.x) * dir, 0, 10);
       let v =
         r.skill('heading') * 0.6 +
         r.skill('strength') * 0.25 +
@@ -431,8 +421,10 @@ export class PassingMethods {
       }
     }
     if (!target) return null;
-    // Dropped just short of him, so he comes onto it facing the play, and never by the line.
-    const aim = { x: target.x - dir * 1.5, y: clamp(target.y, 13, 55) },
+    // Dropped just short of him (of where his run takes him), so he comes onto it facing the
+    // play, and never by the line.
+    const lead = clamp((target.tx - target.x) * dir, 0, 10),
+      aim = { x: target.x + dir * (lead - 1.5), y: clamp(target.y, 13, 55) },
       length = dist(p, aim);
     if (length > reach) {
       aim.x = p.x + ((aim.x - p.x) * reach) / length;

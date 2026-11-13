@@ -320,13 +320,11 @@ test('neutral teams have identical attributes, tags, and all tactics at level3',
     for (const key of ['tempo', 'width', 'press']) assert.equal(t.tactics[key], 3);
 });
 
-test('goal kicks use the keeper safety decision instead of a forced short pass', () => {
+test('the keeper does not play out to a man with a marker closing on him', () => {
   const m = new Match(3);
-  m.startRestart('Goal kick', 0, 5.5, 34, 0.01);
-  m.stepRestart(0.02);
+  m.mode = 'play';
+  m.own(m.players[0], true);
   assert.equal(m.ball.kind, 'held');
-  assert.equal(m.ball.owner, 0);
-  assert.equal(m.stats[0].passes, 0);
   const g = m.players[0],
     r = m.players[2];
   g.x = 5;

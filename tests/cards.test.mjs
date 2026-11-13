@@ -56,7 +56,7 @@ test('dismissed goalkeeper gets active stand-in that survives halftime and forma
   m.startRestart('Goal kick', 0, 5.5, 34);
   assert.equal(m.restart.taker, g.id);
   m.stepRestart(10);
-  assert.equal(m.ball.owner, g.id);
+  assert.ok(m.ball.owner === g.id || m.ball.kicker === g.id, 'the stand-in takes the goal kick');
   m.finishPeriod();
   assert.equal(m.mode, 'halftime');
   m.setTactic(0, 'formation', '442');
