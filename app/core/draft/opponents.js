@@ -39,12 +39,12 @@ export const MODE_BASELINES = {
  * ladderTarget); `plain` is the same draft without tokens, `budget` the Budget-mode draft.
  */
 export const ERA_BASELINE = {
-  ovr: 85.39,
-  sd: 1.23,
-  chem: 1.08,
-  effective: 86.47,
-  plain: 85.55,
-  budget: 84.57,
+  ovr: 85.57,
+  sd: 1.21,
+  chem: 1.07,
+  effective: 86.64,
+  plain: 85.76,
+  budget: 84.75,
 };
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
 const KINDS_BY_MODE = {

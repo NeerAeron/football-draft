@@ -125,25 +125,24 @@ draft.prime(slot, 0);            // the Prime: he becomes his best version acros
     2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is **0.4**
     (`reels.nation.rare`) for an all-timer's squad — its best is shown 93+, or it has a GOAT
     card whatever he shows that year — and 1 otherwise. Weights run from 1 to 5: the likeliest
-    nation of an era is 3–4 times as likely as the least likely (Italy 3.5% … China PR 1.1% in
-    France 98; France 2.6% … Cabo Verde 0.8% in 2026). **An all-timer's squad sits in the
-    middle of its era's reel** — about the average nation's odds (1.2–1.8%; rank 15–44 of
-    65–70), never among the least likely third (a test): famous squads are findable, and still
+    nation of an era is 3–4 times as likely as the least likely (Italy 4.3% … Paraguay 1.9% in
+    France 98, 38 nations; France 2.6% … Cabo Verde 0.8% in 2026). **An all-timer's squad sits in the
+    middle of its era's reel** — about the average nation's odds (1.2–1.8% in an era of 65–70 nations: rank 16–44; France 98: 23rd and 24th of 38), never among the least likely third (a test): famous squads are findable, and still
     come up less than their depth alone would make them. The owner's choice between the
     measured options (per draft of eleven spins; "all-timer's squad" = 93+ or a GOAT card):
 
     | `rare` | an all-timer's squad | a 93+ squad | its rank in the era | a GOAT on offer |
     | --- | --- | --- | --- | --- |
-    | 1 (no penalty) | every 2.2 drafts | every 2.5 | 1st–11th | 43% of drafts |
-    | **0.4** | **every 3.5** | **every 4.0** | **15th–44th** | **27%** |
-    | 0.25 | every 4.3 | every 4.9 | 37th–64th | 22% |
-    | 0.1 (before) | every 5.6 | every 6.3 | 58th–70th: the least likely (Portugal 14 / 18 / 22 last, 0.8%) | 17% |
-    | uniform reels | — | every 3.9 | — | 27% |
-  - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 11.8% (France 98) to 12.8% (2026).
+    | 1 (no penalty) | every 2.2 drafts | every 2.4 | 1st–11th | 44% of drafts |
+    | **0.4** | **every 3.4** | **every 3.9** | **16th–44th** | **28%** |
+    | 0.25 | every 4.1 | every 4.7 | 37th–64th | 23% |
+    | 0.1 (before) | every 5.4 | every 6.1 | 58th–70th: the least likely (Portugal 14 / 18 / 22 last, 0.8%) | 18% |
+    | uniform reels | — | every 3.7 | — | 29% |
+  - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 11.7% (France 98) to 12.8% (2026).
   - Measured per draft of eleven spins (`node tools/calibration/reel-odds.mjs`; `--uniform` for
-    the reference): a 93+ squad once every 4.0 drafts (uniform: every 3.9), a 90+
-    player on offer in 2.5 spins (1.7), 85+ in 5.9 (4.8), 80+ in 10.1 (9.7); a squad whose
-    fourth best is 80+ in 6.7 spins (5.4); a GOAT on offer in 27% of drafts (27%), a Leader
+    the reference): a 93+ squad once every 3.9 drafts (uniform: every 3.7), a 90+
+    player on offer in 2.6 spins (1.9), 85+ in 6.1 (5.0), 80+ in 10.2 (9.8); a squad whose
+    fourth best is 80+ in 6.9 spins (5.6); a GOAT on offer in 28% of drafts (29%), a Leader
     (a Captain card) in 0.9 spins (0.6).
   An option that cannot be landed on has weight 0 (below); the guards only ever zero a weight.
   Respins and the Daily's schedule draw with the same weights. The spin carries honest
@@ -203,17 +202,18 @@ the best pick is under 78, the nation first; the Prime on the biggest gain in th
 
 | World Cup draft | OVR (sd) | chem | effective (sd) | Leader in the XI | GOAT in the XI | tokens used |
 | --- | --- | --- | --- | --- | --- | --- |
-| no tokens | 84.58 (1.42) | 0.97 | 85.55 (1.84) | 32% | 17% | — |
-| the three tokens | 85.39 (1.23) | 1.08 | **86.47** (1.72) | 35% | 21% | nation 0.57 · era 0.27 · Prime 0.94 (+3.3 slot points) |
-| Budget, no tokens | 83.20 (1.00) | 0.69 | 83.89 (1.27) | 17% | 13% | — |
-| Budget, the three tokens | 83.83 (0.92) | 0.74 | **84.57** (1.24) | 19% | 14% | nation 0.79 · era 0.62 · Prime 0.96 (+3.7) |
+| no tokens | 84.78 (1.34) | 0.98 | 85.76 (1.82) | 25% | 22% | — |
+| the three tokens | 85.57 (1.21) | 1.07 | **86.64** (1.73) | 29% | 25% | nation 0.59 · era 0.28 · Prime 0.94 (+3.5 slot points) |
+| Budget, no tokens | 83.25 (1.01) | 0.72 | 83.97 (1.30) | 17% | 16% | — |
+| Budget, the three tokens | 83.95 (0.97) | 0.80 | **84.75** (1.30) | 19% | 17% | nation 0.85 · era 0.69 · Prime 0.96 (+3.8) |
 
 Measured with the reviewed lists as built (17 GOAT cards of 7 players; 32 Captain cards of the
-list's first 14). **A Leader is on offer in 1.0 spins of a draft** (in 68% of drafts; Budget
-0.5 spins, 43%) — the owner's "a captain every 0.3–1 drafts" — and ends in 35% of XIs when
-the best-rated player is picked, in 54% for a boost-aware drafter (`--policies smart`; Budget
-19% / 34%); a GOAT is on offer in 24% of drafts (Budget 15%: a full Superstar tier closes
-him) and is drafted nearly every time (in the XI about once every five drafts).
+list's first 14; data of the batch "ratings judged by card", France 98 with 38 nations).
+**A Leader is on offer in 1.0 spins of a draft** (in 65% of drafts; Budget
+0.5 spins, 41%) — the owner's "a captain every 0.3–1 drafts" — and ends in 29% of XIs when
+the best-rated player is picked, in 51% for a boost-aware drafter (`--policies smart`; Budget
+19% / 31%); a GOAT is on offer in 30% of drafts (Budget 19%: a full Superstar tier closes
+him) and is drafted nearly every time (in the XI once every four drafts).
 `ERA_BASELINE` (`opponents.js`) holds these numbers for the ladder.
 
 ## Eras (`app/core/players/eras.js`) — the data of the two-spinner draft
@@ -372,8 +372,8 @@ a test. Per era as built: GOAT cards 2 / 2 / 2 / 4 / 4 / 2 / 1 / 0; Captain card
 
 **How often a draft meets one** (11 spins, era and then nation drawn evenly from the reels —
 a model of the two-spinner draft from before the reels were weighted; `size` is the lever.
-With today's weighted reels: 10 → 0.64 spins per draft, 12 → 0.78, **14 → 0.91**, 16 → 0.96,
-20 → 1.27, 40 → 2.11; 14 is the largest size under one spin that keeps a Leader among today's
+With today's weighted reels: 10 → 0.66 spins per draft, 12 → 0.80, **14 → 0.93**, 16 → 0.98,
+20 → 1.29, 40 → 2.17; 14 is the largest size under one spin that keeps a Leader among today's
 players — Modrić is 13th, van Dijk 14th):
 
 | `size` | Captain cards | a spin's pool has a Captain | pools with a Captain per draft | at least one in a draft |
@@ -647,6 +647,15 @@ solo drafts per mode × re-roll count, positional policy; the table is from befo
 | Nations | 82.89 ± 1.07 | 1.52 | 83.92 / 84.41 / 84.59 |
 | Leagues | 81.47 ± 1.72 | 1.33 | 82.10 / 82.80 / 83.39 |
 | Clubs | 77.71 ± 1.71 | 0.87 | 78.03 / 78.58 / 78.98 |
+
+**A World Cup draft has its own baseline**: `ERA_BASELINE` (`{ ovr: 85.57, sd: 1.21, chem:
+1.07, effective: 86.64, plain: 85.76, budget: 84.75 }` — the three tokens used sensibly, the
+same on every level; `plain` without tokens, `budget` the Budget-mode draft; the table under
+"World Cup drafts"). `ladderTarget(mode, level, { eras: true })`, `ladderBaseline(mode, level,
+{ eras: true })` and `chooseOpponent({ …, eras: true })` measure against it (Nations only; the
+option changes nothing in the other modes). The World Cup Run (`createCupRun` and `projectRun`
+in Nations) and the Daily pass it; Quick Match and Versus draft today's players and keep
+`MODE_BASELINES`.
 
 Gap (`CONFIG.draft.ladder`): Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: the best XI of every

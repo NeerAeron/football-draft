@@ -6,7 +6,7 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 
 | Module | Exports |
 | --- | --- |
-| `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `worldCupDraw`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `THIRD_ROUND`, `CUP_TUNING`, `FIELD_LEVEL`, `FIELD_TYPICAL`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `PLACES`, `PLACE_LABELS`, `MEDALS` |
+| `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `worldCupDraw`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `THIRD_ROUND`, `CUP_TUNING`, `FIELD_LEVEL`, `FIELD_TYPICAL`, `FIELD_FORM`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `PLACES`, `PLACE_LABELS`, `MEDALS` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
 | `scorers.js` | `matchPerformances` (player lines for a modelled result) |
 | `awards.js` | `tournamentSteps` (behind `CupRun.awards()` / `awardsSteps()`), `BALL_MATCHES`, `BALL_DEPTH`, `GLOVE_STAGE` |
@@ -32,8 +32,12 @@ teams only (no World XI / All-Stars in a run or the Daily):
 
   | Difficulty | MD1 | MD2 | MD3 | R32 | R16 | QF | SF | Final | 3rd | final opponents (typical) |
   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-  | Pro | −12.5 | −11 | −9.5 | −9.5 | −9 | −6 | −3 | +2 | −3 | Italy, England, Belgium, Germany (≈ 86.6) |
-  | World Class | −13.5 | −12 | −10.5 | −10.5 | −10 | −6.5 | −3.5 | −0.5 | −3.5 | England, Spain, Germany, France (≈ 87.6) |
+  | Pro | −14 | −12.5 | −11 | −11 | −9 | −6 | −3 | +0.5 | −3 | Italy, Brazil, England, Germany, Portugal, Argentina (≈ 87.2) |
+  | World Class | −14.5 | −13 | −11.5 | −11.5 | −10 | −6.5 | −3.5 | −1 | −3.5 | France, Spain, Portugal (≈ 88.7) |
+
+  In a Nations run the level target is the **World Cup draft's** baseline (`ERA_BASELINE`,
+  86.64 effective, `docs/draft-api.md`): Pro 86.64, World Class 90.64 — the offsets above were
+  set for it (the era draft is about 2.5 points stronger than a draft of today's players).
 
   The group is "drawn from lower pots" (pot labels 4/3/2 by strength, weakest first) and the
   knockouts escalate to a final against a top side for the level; the play-off opponent is of
@@ -54,14 +58,21 @@ teams only (no World XI / All-Stars in a run or the Daily):
   the loser of the other semi-final. One simplification: the user's own group is played by the
   user, so its outcome is unknown when the bracket is drawn — his group mates do not enter the
   bracket (no opponent ever repeats), and the 31 other places go to the 22 top-two finishers of
-  the other groups and the nine best of their eleven thirds. Typical effective ratings met
-  (`FIELD_TYPICAL`, `projectRun`'s targets): group 77.2 / 79.1 / 81.3, R32 80.3, R16 83.5, QF
-  84.6, SF 85.6, final 86.5, play-off 84.9 (measured before the qualification draw and the
-  Captain boost; `cup-calibration.mjs runs --runs 2000 --only legendary` now gives 76.0 / 79.2 /
-  81.2, R32 80.2, R16 83.3, QF 84.2, SF 85.3, final 85.9, play-off 84.5 — the qualification
-  draw only lowers matchday 1, by 1.2; with the strongest 48 the same code gives 77.2 / 79.2 /
-  81.1, 80.3, 83.1, 84.2, 85.1, 85.9, 84.3). Outside a Nations draft there is no field: Legendary
-  uses its `CUP_TUNING` row.
+  the other groups and the nine best of their eleven thirds.
+  **Knockout form** (`FIELD_FORM` = 3.5): from the Round of 32 on, the field's nations play
+  above their cards — every player of the opponent gets 3.5 on top of his boosts in the engine
+  (`chem`, capped at 5 as ever: every player of a national XI ends at the cap, so the side
+  plays at rating + 5) and the side's `effective` says so (`opponents[i].form`, 0 in the group
+  and on the ladder levels; `opponentSide(round)` returns the lifted players; the pre-match
+  counts it through `lineupStrength(..., form)`). It is the lever for Legendary's title odds:
+  a drafted World Cup XI (86.6) is as strong as the best nations as they are, and without it
+  one run in twelve won the cup (8.0–8.3%); with it 4.4%, and the group — played against the
+  nations as they are — still ends 12% of runs. (Form in the group too would reach the same
+  title odds with 21% of runs out in the group.) Results between field nations do not move.
+  Typical effective ratings met (`FIELD_TYPICAL`, `projectRun`'s targets; `cup-calibration.mjs
+  runs --only legendary`): group 77.4 / 79.8 / 81.6, R32 84.2, R16 86.7, QF 87.7, SF 88.8,
+  final 89.4, play-off 87.9. Outside a Nations draft there is no field: Legendary uses its
+  `CUP_TUNING` row.
 
 **Best thirds** (`BEST_THIRD`, `thirdQualifies(row)`): third place goes through with 4 points or
 more and never with fewer (over many simulated sets of twelve groups every third on 4+ points
@@ -71,8 +82,8 @@ group table and in the last-matchday stakes. Since the rule came in (with the Ro
 fewer runs end in the group (World Class 13.7% → 4.7%, Legendary 23% → 10%), and the extra
 knockout round takes their place.
 
-Offsets are to the level's ladder target (`MODE_BASELINES` effective rating for the level's
-re-rolls + `draft.ladder`: Pro 84.6, World Class 88.4 in Nations): weak groups and early rounds,
+Offsets are to the level's ladder target (in Nations `ERA_BASELINE` + `draft.ladder`: Pro
+86.64, World Class 90.64; in the other modes `MODE_BASELINES` for the level's re-rolls): weak groups and early rounds,
 then knockouts that climb to a real final. `KNOCKOUT_EDGE` (1.5 rating points) is added to the
 user in the fast model's knockout ties (`projectRun`, `simulateNext`): in the engine a drafted XI
 goes through 77.6% of its cup knockout ties where independent Poisson goals say 73.0% (584 ties);
@@ -81,13 +92,39 @@ group matches agree with the model (81.7% vs 79.7% wins).
 No opponent repeats; every opponent XI excludes the user's players. The Daily Challenge uses the
 Pro offsets (nine fixed opponents).
 
-**Odds** for a typical drafted XI (Nations, positional picks with the level's re-rolls, XI ≈
-84.2–84.4), `tools/calibration/cup-calibration.mjs runs`: runs per level with the fitted model
-for the user's matches (real opponents, AI-vs-AI group results; knockout ties with
-`KNOCKOUT_EDGE`). Targets: Pro ≈ 20% titles, World Class ≈ 10%; Legendary is whatever the real
-field gives. `--only <level> --tuning '[…nine offsets]'` tries other offsets for a ladder level;
-`--only legendary` measures the field (offsets do not move it) and prints the ratings met per
-round.
+**Odds** for a typical World Cup draft (an era and a nation per spin, the best player picked,
+the three tokens used sensibly: XI ≈ 86.5; Budget mode 84.5), `tools/calibration/cup-calibration.mjs
+runs`: runs per level with the fitted model for the user's matches (real opponents, AI-vs-AI
+group results; knockout ties with `KNOCKOUT_EDGE`). **The owner's targets: Pro ≈ 20%, World
+Class ≈ 10%, Legendary 3–5%; Budget mode ≈ 10%, ≈ 5%, 0.5–1.5%.** `--only <level> --tuning
+'[…nine offsets]'` tries other offsets for a ladder level; `--only legendary` measures the
+field (offsets do not move it; `FIELD_FORM` does) and prints the ratings met per round.
+`CUP_BUDGET=1` drafts in Budget mode.
+
+Fast model, 1,200 runs per level (data: the batch "ratings judged by card", France 98 with 38
+nations; engine with second balls):
+
+| Difficulty | champions | out in the group | finished: group / R32 / R16 / QF / 4th / 3rd / 2nd / champions | Budget mode: champions | out in the group |
+| --- | --- | --- | --- | --- | --- |
+| Pro | 20.1% | 2.8% | 3 / 11 / 14 / 18 / 5 / 11 / 19 / 20 | 12.9% | 5.6% |
+| World Class | 10.1% | 7.1% | 7 / 17 / 16 / 20 / 9 / 10 / 11 / 10 | 6.1% | 11.3% |
+| Legendary (real field, knockout form) | 4.4% | 11.5% | 12 / 32 / 24 / 15 / 5 / 4 / 5 / 4 | 2.2% | 16.7% |
+
+Budget mode reads a little above its targets on every level: one set of offsets serves both
+drafts, and a Budget XI is 1.9 points weaker — worth about a third of the title odds, not
+half. Legendary cannot go lower by form (3.5 is the cap for every player).
+
+**Engine check** (`runs --runs 400 --engine 100`: 100 runs per level with the real engine —
+±4 points of noise): Pro 28%, World Class 8%, Legendary 6%; Budget 19% / 9% / 2%. A second
+check of the same settings on the engine and data before the merges read 30% / 16% / 1% and
+20% / 8% / 5%. Together (200 runs): **Pro ≈ 29%, World Class ≈ 12%, Legendary ≈ 3.5%; Budget
+≈ 19.5% / 8.5% / 3.5%**. The engine gives the drafted XI more than the fast model does — it
+goes through 72% of its knockout ties where the model says 63%, and wins 76% of its group
+matches against 68% — so Pro is easier in play than the model's 20%. `KNOCKOUT_EDGE` (1.5) and
+the group matches' missing edge are due a re-fit on a larger engine sample; until then one
+more point on Pro’s early knockout offsets costs about two points of title odds.
+
+Before this retune (the same tool, offsets and baselines set for an XI of 84.2):
 
 | Difficulty | runs | champions | out in the group | finished: group / R32 / R16 / QF / 4th / 3rd / 2nd / champions |
 | --- | --- | --- | --- | --- |
