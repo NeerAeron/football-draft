@@ -196,6 +196,9 @@ export async function compileLegendsFile(compiled, runtime) {
       summary: eras.summary,
       provenance: { ...eraData, stats: eras.stats },
       text: JSON.stringify(encodeEras(eraData)) + '\n',
+      // The cards of ERA_KEPT or more that are in no pool: same columns, no pools, never deployed.
+      archiveText:
+        JSON.stringify(encodeEras({ ...eraData, cards: eras.archive, pools: [] })) + '\n',
     },
   };
 }
@@ -233,6 +236,7 @@ async function main() {
     await writeFile(PATHS.legendsProvenance, JSON.stringify(built.provenance) + '\n');
     const eraBytes = Buffer.from(built.eras.text);
     await writeFile(PATHS.eras, built.eras.text);
+    await writeFile(PATHS.erasArchive, built.eras.archiveText);
     await writeFile(PATHS.erasProvenance, JSON.stringify(built.eras.provenance) + '\n');
     const {
       sameName,
@@ -259,6 +263,12 @@ async function main() {
       left: built.eras.summary.map(e => `${e.label}: ${e.left.join(", ") || "—"}`),
       // in beyond the limit, or with a pool under the minimum: World Cup sides, star nations
       always: built.eras.summary.map(e => `${e.label}: ${e.always.join(", ") || "—"}`),
+      archive: {
+        cards: built.eras.stats.keptOnly,
+        path: PATHS.erasArchive,
+        bytes: Buffer.byteLength(built.eras.archiveText),
+        gzip: gzipSync(Buffer.from(built.eras.archiveText), { level: 9 }).length,
+      },
       path: PATHS.eras,
       bytes: eraBytes.length,
       gzip: gzipSync(eraBytes, { level: 9 }).length,

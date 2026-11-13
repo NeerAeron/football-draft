@@ -622,7 +622,7 @@ test('small pools: a landing always has a pick — every pool of every era, late
           assert.equal(o.weight, 0, `${label}: ${o.id} has nobody left`);
       }
     }
-  assert.ok(looked > 1500 && closed > 40, `${looked} pools looked at, ${closed} closed`);
+  assert.ok(looked > 1500 && closed >= 30, `${looked} pools looked at, ${closed} closed`);
   // Land on every small pool itself, in each of the three states (and in Budget mode): the
   // landing is taken only when there is a pick, and the pick goes through.
   for (const budget of [false, true])

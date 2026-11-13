@@ -404,7 +404,7 @@ id, name or title of that list does not meet the data. Do not add per-player edi
 cases: fix the title.
 
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
-player table; 13,762 cards, 2.7 MB / 0.79 MB gzip; fetched by `services/eras.js` with a draft)
+player table; 13,754 cards, 2.7 MB / 0.79 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
 `scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
 2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
@@ -414,7 +414,7 @@ player is in the 2026 pool as he is unless an FC 24–26 version shows more. A n
 in an era when it played that era's World Cup finals (`data/world-cups.json`) or has a card showing 85+ (`ERA_STAR`) — with whatever players it has, even two — or when its pool has 14 players, 3 defenders, 4 midfielders (a forward beyond the first four counts as one) and 2 forwards and is among the era's 70 strongest — no
 goalkeeper required (`keepers` says how many a pool has; the draft's guards make sure one can
 be drafted; a keeperless pool's strength takes the era's weakest first-choice keeper,
-`keeperLevel`); 50 / 72 / 70 / 73 / 71 / 73 / 73 / 81 nations — France 98’s limit is 41 pools of players a later title can identify, `ERA_IDENTIFIED` / `ERA_NATION_LIMIT`; a place a small pool cannot fill counts 60 in its strength; World Cup starters of `data/world-cup-starters.json` and players with a breakout correction take the place of the pool's lowest-rated player (who keeps his card in the file, in no pool: `stats.displaced` in `data/build/eras.json` says who replaced him); `data/judgement-cards.json` holds 18 hand-made cards for notables the source lacks or cannot tell apart (a real row of his, the overall by judgement);
+`keeperLevel`); 50 / 72 / 70 / 73 / 71 / 73 / 73 / 81 nations — France 98’s limit is 41 pools of players a later title can identify, `ERA_IDENTIFIED` / `ERA_NATION_LIMIT`; a place a small pool cannot fill counts 60 in its strength; World Cup starters of `data/world-cup-starters.json` and players with a breakout correction take the place of the pool's lowest-rated player (who keeps his card in the file, in no pool: `stats.displaced` in `data/build/eras.json` says who replaced him); `data/judgement-cards.json` holds 33 hand-made cards (among them five World Cup starters the source has no row for in their era and Saudi Arabia’s 2006 squad of ten); every card showing 75+ (`ERA_KEPT`) that is in no pool goes to `data/eras-archive.v1.json` (9,519 cards, same codec, 0.51 MB gzip; committed, never deployed or fetched); these hand-made cards are for notables the source lacks or cannot tell apart (a real row of his, the overall by judgement);
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
 file (505 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
 independent; both are stamped with the catalog build. **GOAT cards and Captains** are two
