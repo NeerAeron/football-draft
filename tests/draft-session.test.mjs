@@ -361,22 +361,29 @@ test('dead-end guard: a spin never lands on a pool that cannot fill an open slot
   assert.equal(s.spin().option.id, nation.id);
 });
 
-test('re-rolls: count by difficulty, per side, never repeat a seen option', () => {
-  for (const [difficulty, n] of Object.entries({
-    pro: 2,
-    worldclass: 1,
-    legendary: 1,
-  })) {
+test('re-rolls: one on every difficulty, per side, never repeat a seen option', () => {
+  for (const difficulty of ['pro', 'worldclass', 'legendary']) {
     const s = createDraftSession(catalog, { seed: 8, difficulty });
-    assert.equal(s.snapshot().rerolls[0], n);
+    assert.equal(s.snapshot().rerolls[0], 1);
+    // A draft of today's players has the re-roll only: no era respin, no Prime.
+    assert.deepEqual(s.snapshot().tokens, {
+      nation: { perSide: 1, left: 1, can: false },
+      era: null,
+      prime: null,
+    });
+    assert.equal(s.snapshot().eras, false);
   }
   // The removed levels are unknown, like any other id: one cut-off, no mapping.
   for (const difficulty of ['amateur', 'semipro', 'nope'])
     assert.throws(() => createDraftSession(catalog, { seed: 8, difficulty }), /Unknown difficulty/);
-  const s = createDraftSession(catalog, { seed: 8, difficulty: 'pro' });
+  const s = createDraftSession(catalog, { seed: 8, difficulty: 'pro', rerolls: 2 });
   assert.throws(() => s.reroll(), /Spin first/);
+  assert.equal(s.respinBlocked('era'), 'Spin first');
   const seen = [s.spin().option.id];
   assert.equal(s.snapshot().canReroll, true);
+  assert.equal(s.snapshot().tokens.nation.can, true);
+  assert.equal(s.respinBlocked('era'), 'No era to respin');
+  assert.throws(() => s.respin('era'), /No era to respin/);
   seen.push(s.reroll().option.id);
   const third = s.reroll();
   seen.push(third.option.id);
@@ -405,7 +412,6 @@ test('drafts offer only players shown 65+; teams keep their real players', () =>
   const min = DEFAULT_CONFIG.draft.pickMinimum;
   assert.equal(min, 65);
   assert.equal(draftRules().pickMinimum, min);
-  assert.equal(selectable({ legend: true }, min), true); // legends and primes are not asked
   const low = catalog.players.filter(p => shown(p) < min);
   assert.ok(low.length > 1000 && low.length < catalog.players.length / 2);
   assert.ok(low.every(p => !selectable(p, min)) && low.every(p => selectable(p, 0)));
@@ -700,8 +706,8 @@ test('serialize/restore round-trips mid-spin and continues identically', () => {
   // One cut-off: a session of an older format is not a saved draft session — there is no
   // conversion (the rules it carried: numbered Budget bands, link thresholds, removed levels).
   const current = createDraftSession(catalog, { seed: 1 }).serialize();
-  assert.equal(current.format, 2);
-  for (const format of [1, 0, undefined, '2', 3])
+  assert.equal(current.format, 3);
+  for (const format of [1, 2, 0, undefined, '3', 4])
     assert.throws(
       () => restoreDraftSession(catalog, { ...current, format }),
       /Not a saved draft/,

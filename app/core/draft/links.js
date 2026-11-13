@@ -4,7 +4,10 @@
 //   Captain: an XI with a Captain (catalog `captain`: a reviewed list of real national-team
 //   captains, data/captains.json) gives every player `links.captain` (+1) on top — one captain
 //   counts, two do not stack.
-// The sum is the engine boost `chem` (attribute points, added to every skill in Player.skill).
+//   GOAT: a card flagged `goat` (the few greatest of all time, each in his year) gives every
+//   player `links.goat` (+1.5) — more than a Captain; a second GOAT adds half of that, a third
+//   a quarter. A Captain and a GOAT in one XI both count (a card is never both).
+// The sum, at most 5, is the engine boost `chem` (attribute points, added to every skill in Player.skill).
 // Real national XIs are all nation mates (+1.5 each, +2.5 for club mates inside them), real
 // club XIs club mates (+1, +2.5 for compatriots).
 import { CONFIG } from '../config/config.js';
@@ -18,7 +21,19 @@ const keyOf = {
 const rating = p => p.sourceOverall ?? p.overall ?? 0;
 /** The boosts of a rules object (CONFIG.draft.links or a snapshot): { nation, club, captain }. */
 export function linkBoosts(rules = CONFIG.draft.links) {
-  return { nation: rules.nation, club: rules.club, captain: rules.captain };
+  return { nation: rules.nation, club: rules.club, captain: rules.captain, goat: rules.goat ?? 0 };
+}
+/** The engine's cap on a player's boost (sim/player.js normalizeChem). */
+export const CHEM_CAP = 5;
+/** What `count` GOATs give every player: the first `value`, each further one half as much. */
+export const goatBoost = (count, value) => (count > 0 ? value * 2 * (1 - 0.5 ** count) : 0);
+/** The slots of an XI's GOATs (players in slot order, null = open). */
+export function goatSlots(players) {
+  const slots = [];
+  players.forEach((p, i) => {
+    if (p?.goat) slots.push(i);
+  });
+  return slots;
 }
 /** Are these the mates rules of this version: three numbers? (What a saved run must carry.) */
 export const validLinks = rules =>
@@ -43,14 +58,17 @@ export function captainSlot(players) {
  *   players: Array<{boost, kinds, chem, mates: {nation, club}}|null>,
  *   pairs: Array<{a, b, kind, kinds}>,
  *   score: number, maxScore: number, total: number, chem: number, linked: number,
- *   captain: number | null (input index of the captain), captainBoost: number
+ *   captain: number | null (input index of the captain), captainBoost: number,
+ *   goats: number[] (input indexes of the GOATs), goatBoost: number (what they give everyone)
  * }} per-player entries aligned with the input: `boost` is the mates boost (0, 1, 1.5 or
  * 2.5), `kinds` the kinds that give it (['nation'], ['club'], both or none), `chem` = boost +
- * the Captain's boost (what the engine adds), `mates` the number of XI mates per kind. `pairs`
+ * the Captain's and the GOATs' boosts, at most 5 (what the engine adds), `mates` the number of XI mates per kind. `pairs`
  * index into the input: every pair of nation mates or club mates (one line per pair; `kind` =
  * 'nation' when they share the nation, `kinds` = all they share). `score` = sum of the mates
- * boosts (max `maxScore` = 27.5), `total` = sum of chem (Captain included: the UI's
- * "Boosts"), `chem` = mean chem.
+ * boosts (max `maxScore` = 27.5), `total` = sum of chem, `chem` = mean chem. **A GOAT's boost
+ * is never itemised in the UI**: a player's `shown` is his chem without the GOATs' part (mates +
+ * the Captain's), the summary's `shown` their sum — the UI's chips and "Boosts"; ratings and
+ * odds use `chem`.
  */
 export function teamLinks(players, rules = CONFIG.draft.links) {
   const value = linkBoosts(rules);
@@ -62,7 +80,10 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
         if (key !== null) counts[k].set(key, (counts[k].get(key) || 0) + 1);
       }
   const captain = captainSlot(players),
-    captainBoost = captain === null ? 0 : value.captain || 0;
+    captainBoost = captain === null ? 0 : value.captain || 0,
+    goats = goatSlots(players),
+    goatsBoost = goatBoost(goats.length, value.goat || 0),
+    team = captainBoost + goatsBoost;
   const entries = players.map(p => {
     if (!p) return null;
     const mates = {},
@@ -76,7 +97,13 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
         boost += value[k];
       }
     }
-    return { boost, kinds, chem: boost + captainBoost, mates };
+    return {
+      boost,
+      kinds,
+      chem: Math.min(CHEM_CAP, boost + team),
+      shown: Math.min(CHEM_CAP, boost + captainBoost),
+      mates,
+    };
   });
   const pairs = [];
   for (let a = 0; a < players.length; a++)
@@ -96,10 +123,13 @@ export function teamLinks(players, rules = CONFIG.draft.links) {
     score: filled.reduce((sum, e) => sum + e.boost, 0),
     maxScore: players.length * (value.nation + value.club),
     total,
+    shown: filled.reduce((s, e) => s + e.shown, 0),
     chem: filled.length ? total / filled.length : 0,
     linked: filled.filter(e => e.boost > 0).length,
     captain,
     captainBoost,
+    goats,
+    goatBoost: goatsBoost,
   };
 }
 

@@ -4,7 +4,6 @@
 import { CONFIG } from '../config/config.js';
 import { overallRating, positionFamiliarity } from '../players/ratings.js';
 import { FORMATIONS } from '../players/formations.js';
-import { editionYear } from '../players/legends.js';
 import { assignRows, costMatrix } from '../util/assignment.js';
 import { NATION_CODES } from './nation-codes.js';
 
@@ -67,11 +66,10 @@ export function naturalRating(p) {
 }
 /**
  * A draft may offer this player: the game shows him at `minimum` or more at his own position
- * (`draft.pickMinimum`; 0 or none = everyone). Legends and prime versions are not asked.
+ * (`draft.pickMinimum`; 0 or none = everyone; an era draft asks nobody: its session sets 0).
  * Only drafts ask: a team's XI (an opponent, a club, a nation) keeps its real players.
  */
-export const selectable = (p, minimum) =>
-  !minimum || !!p.legend || !!p.prime || Math.round(naturalRating(p)) >= minimum;
+export const selectable = (p, minimum) => !minimum || Math.round(naturalRating(p)) >= minimum;
 /** Highest natural rating first; ties by profileId (total order, deterministic). */
 export const byNatural = (a, b) =>
   naturalRating(b) - naturalRating(a) || (a.profileId < b.profileId ? -1 : 1);
@@ -180,11 +178,10 @@ export function draftRules(source = CONFIG.draft) {
     nations: source.nations,
     leagueTierWeights: source.leagueTierWeights,
     clubs: source.clubs,
-    rerolls: source.rerolls,
+    tokens: source.tokens,
+    reels: source.reels,
     ladder: source.ladder,
     links: source.links,
-    legends: source.legends,
-    primes: source.primes,
     budget: source.budget,
     minimumLeaguePlayers: source.minimumLeaguePlayers,
     pickMinimum: source.pickMinimum,
@@ -405,74 +402,6 @@ export function draftSquad(players, rules = draftRules()) {
     if (!isKeeper(p)) chosen.add(p);
   }
   return [...chosen].sort(byNatural);
-}
-
-// ---- legends ------------------------------------------------------------------------------
-const legendIndexes = new WeakMap();
-/** Best shown rating first, then the name (what a Legend spin lists). */
-const byShown = (a, b) =>
-  Math.round(naturalRating(b)) - Math.round(naturalRating(a)) ||
-  a.name.localeCompare(b.name) ||
-  (a.profileId < b.profileId ? -1 : 1);
-/**
- * Index of a catalog's Legends (catalog.legends, players/legends.js) for the Legend spin, or
- * null when none are attached. A legend counts when the game shows him at
- * `rules.legends.minimum` or more (the rating on his card, not EA's) — nobody under it is ever
- * offered, whatever the file holds. `nations`: Map name → { id, name, code, flag, players
- * (highest shown rating first, then name), goalkeepers, count, best (the top shown rating),
- * weight }; `reel`: the nations with a legend shown at `reelStar` or better, most legends
- * first; `years`: [first, last] year of those legends' versions (null without any).
- * weight = 1 + weightPerLegend × min(count, weightCap).
- */
-export function legendIndex(catalog, rules = draftRules()) {
-  const data = catalog?.legends;
-  if (!data) return null;
-  const r = { ...CONFIG.draft.legends, ...rules.legends },
-    stamp = refreshRatings() + JSON.stringify(r);
-  const cached = legendIndexes.get(data);
-  if (cached?.stamp === stamp) return cached.index;
-  const meta = new Map((catalog.nations || []).map(n => [n.name, n])),
-    nations = new Map();
-  let first = Infinity,
-    last = -Infinity;
-  for (const p of data.players) {
-    const rating = Math.round(naturalRating(p));
-    if (rating < r.minimum) continue;
-    const year = editionYear(p);
-    if (year) {
-      first = Math.min(first, year);
-      last = Math.max(last, year);
-    }
-    const name = p.source.nationality;
-    if (!nations.has(name)) {
-      const info = meta.get(name);
-      nations.set(name, {
-        id: name,
-        name,
-        code: info?.code || NATION_CODES[name] || null,
-        flag: info?.flag ?? null,
-        players: [],
-        goalkeepers: 0,
-        best: 0,
-      });
-    }
-    const nation = nations.get(name);
-    nation.players.push(p);
-    nation.best = Math.max(nation.best, rating);
-    if (isKeeper(p)) nation.goalkeepers++;
-  }
-  for (const nation of nations.values()) {
-    nation.players.sort(byShown);
-    nation.count = nation.players.length;
-    nation.weight =
-      Math.round((1 + r.weightPerLegend * Math.min(nation.count, r.weightCap)) * 1000) / 1000;
-  }
-  const reel = [...nations.values()]
-    .filter(n => n.best >= r.reelStar)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  const index = { nations, reel, shown: r.shown, years: first <= last ? [first, last] : null };
-  legendIndexes.set(data, { stamp, index });
-  return index;
 }
 
 const stamps = new WeakMap();

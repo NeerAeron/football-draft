@@ -5,6 +5,7 @@ import {
   MODE_BASELINES,
   LEVELS,
   ladderTarget,
+  ladderBaseline,
   opponentCandidates,
   modeCandidates,
   chooseOpponent,
@@ -26,11 +27,17 @@ test('the ladder targets the mode baseline plus the level gap', () => {
   );
   const gaps = DEFAULT_CONFIG.draft.ladder;
   assert.deepEqual(gaps, { pro: 0, worldclass: 4, legendary: 7 });
-  // Re-rolls: Pro 2, World Class 1, Legendary 1 (the baseline column each level starts from).
-  assert.deepEqual(DEFAULT_CONFIG.draft.rerolls, { pro: 2, worldclass: 1, legendary: 1 });
+  // Every level has the same tokens; a level's target still reads the baseline column it was
+  // measured against (Pro: two re-rolls, the others one) until the ladder is re-measured.
+  assert.deepEqual(DEFAULT_CONFIG.draft.tokens, { nation: 1, era: 1, prime: 1 });
+  assert.equal(DEFAULT_CONFIG.draft.rerolls, undefined);
+  assert.equal(DEFAULT_CONFIG.draft.primes, undefined);
+  assert.equal(DEFAULT_CONFIG.draft.legends, undefined);
   for (const mode of Object.keys(MODE_BASELINES)) {
     const base = MODE_BASELINES[mode].effective;
     assert.equal(ladderTarget(mode, 'pro'), Math.round(base[2] * 100) / 100);
+    assert.equal(ladderBaseline(mode, 'pro'), base[2]);
+    assert.equal(ladderBaseline(mode, 'legendary'), base[1]);
     assert.equal(ladderTarget(mode, 'worldclass'), Math.round((base[1] + 4) * 100) / 100);
     assert.equal(ladderTarget(mode, 'legendary'), Math.round((base[1] + 7) * 100) / 100);
     assert.equal(

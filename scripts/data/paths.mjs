@@ -103,7 +103,11 @@ export const PATHS = {
   modernCsv: edition => at(`data/raw/${MODERN_SOURCES.find(m => m.edition === edition).file}`),
   legacyTitles: at(`data/${LEGACY_TITLES.file}`), // FIFA 98–14, in the repository
   legacyNames: at(`data/${LEGACY_NAMES.file}`), // their best known players' name parts
-  captains: at('data/captains.json'), // reviewed Captain list (compiler input)
+  captains: at('data/captains.json'), // reviewed Captain list: leaders and their eras
+  goats: at('data/goats.json'), // reviewed GOAT list: player + era
+  worldCups: at('data/world-cups.json'), // the nations of each World Cup finals, by era
+  starters: at('data/world-cup-starters.json'), // reviewed: starters who must be in a pool
+  handCards: at('data/judgement-cards.json'), // reviewed: hand-made cards for notables the source lacks
   legends: at('app/data/legends.v1.json'), // Legends + Prime versions, fetched when a draft starts
   legendsProvenance: at('data/build/legends.json'), // gitignored, with provenance
   eras: at('app/data/eras.v1.json'), // era pools (nation × World Cup cycle), fetched with a draft

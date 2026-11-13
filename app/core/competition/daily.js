@@ -1,22 +1,24 @@
-// Daily Challenge: one seeded World Cup Run per UTC date, the same for everyone — fixed
-// nation spins with one fixed alternate per round (the re-roll), fixed opponents, default
-// rules. Scoring, the hindsight "perfect XI", and streak helpers. Pure: the UI passes the
+// Daily Challenge: one seeded World Cup Run per UTC date, the same for everyone — a fixed era
+// and nation per round, with what a nation respin and an era respin land on fixed too, fixed
+// opponents, default rules. Scoring, the hindsight "perfect XI", and streak helpers. Pure: the UI passes the
 // date and stores attempts/streaks itself. API guide: docs/competition-api.md.
 import { DEFAULT_CONFIG } from '../config/config.js';
 import { lcg } from '../util/rng.js';
 import { FORMATIONS } from '../players/formations.js';
-import { catalogIndex, draftRules, roleRating, isKeeper } from '../draft/pools.js';
+import { roleRating, isKeeper } from '../draft/pools.js';
+import { eraList, eraPool, bestVersion } from '../players/eras.js';
+import { reelWeights } from '../draft/reels.js';
 import { seedValue } from '../draft/session.js';
 import { chooseOpponent } from '../draft/opponents.js';
 import { cupOffsets } from './cup.js';
-import { assignRows, costMatrix } from '../util/assignment.js';
 
 /** Daily #1. */
 export const DAILY_EPOCH = '2026-11-01';
 export const DAILY_RULES = {
   mode: 'nations',
   difficulty: 'pro',
-  rerolls: 2,
+  // The column of the ladder's baselines the day's opponents are drawn against (opponents.js).
+  ladderRerolls: 2,
   formations: ['433', '4231', '442', '352', '343', '4141', '41212'],
 };
 const DAY = 86400000;
@@ -46,11 +48,14 @@ export const dailyIdFromNumber = n =>
 const challenges = new WeakMap();
 /**
  * The challenge of a day: {
- *   id, number, seed, mode, difficulty, rerolls, formation,
- *   schedule: { rounds: [{ spin, alternate }] × 11 }  (nation ids),
+ *   id, number, seed, mode, difficulty, tokens: { nation, era, prime }, formation,
+ *   schedule: { rounds: [{ era, spin, alternate, eraAlternate: { era, nation } }] × 11 }
+ *     (era ids and nation names: the round's spin, the nation a nation respin lands on, and
+ *     where an era respin lands — its nation only when the round's nation is not in that era),
  *   opponents: 9 opponent keys (3 group, then R32, R16, QF, SF, final, third-place play-off),
  *   draft: options for createDraftSession, cup: options for createCupRun (add `user`) }
- * Deterministic for the date and catalog; uses DEFAULT_CONFIG draft rules, not the device's.
+ * Deterministic for the date and catalog (which needs its era pools: catalog.eras); uses
+ * DEFAULT_CONFIG draft rules, not the device's.
  */
 export function dailyChallenge(catalog, date) {
   const id = dailyId(date);
@@ -58,15 +63,47 @@ export function dailyChallenge(catalog, date) {
   if (!byDay) challenges.set(catalog, (byDay = new Map()));
   if (byDay.has(id)) return structuredClone(byDay.get(id));
   const rules = DEFAULT_CONFIG.draft,
-    field = catalogIndex(catalog, draftRules(rules)).field,
+    eras = eraList(catalog),
     seed = 'daily:' + id,
     random = lcg(seedValue(seed));
+  if (!eras.length) throw Error('The Daily needs the era data (catalog.eras)');
   const formation = DAILY_RULES.formations[Math.floor(random() * DAILY_RULES.formations.length)];
+  // The draft's own reel weights (draft/reels.js): one of `weights` by its weight, never
+  // index `skip`. One draw each.
+  const reels = reelWeights(catalog, rules.reels),
+    one = (weights, skip = -1) => {
+      let total = 0;
+      weights.forEach((w, i) => (total += i === skip ? 0 : w));
+      let r = random() * total,
+        last = -1;
+      for (let i = 0; i < weights.length; i++) {
+        if (i === skip) continue;
+        last = i;
+        if ((r -= weights[i]) < 0) return i;
+      }
+      return last;
+    },
+    eraWeights = eras.map(e => reels.get(e.id).weight),
+    nationWeights = eras.map(e => e.nations.map(n => reels.get(e.id).nations.get(n.name)));
   const rounds = Array.from({ length: 11 }, () => {
-    const a = Math.floor(random() * field.length);
-    let b = Math.floor(random() * (field.length - 1));
-    if (b >= a) b++;
-    return { spin: field[a].id, alternate: field[b].id };
+    const e = one(eraWeights),
+      era = eras[e],
+      n = one(nationWeights[e]),
+      nation = era.nations[n].name,
+      alternate = era.nations[one(nationWeights[e], n)].name,
+      e2 = one(eraWeights, e),
+      next = eras[e2],
+      // Drawn every time, so a round always takes the same number of draws.
+      drawn = next.nations[one(nationWeights[e2])].name;
+    return {
+      era: era.id,
+      spin: nation,
+      alternate,
+      eraAlternate: {
+        era: next.id,
+        nation: next.nations.some(x => x.name === nation) ? nation : drawn,
+      },
+    };
   });
   const offsets = cupOffsets(DAILY_RULES.difficulty),
     opponents = [];
@@ -78,9 +115,11 @@ export function dailyChallenge(catalog, date) {
         offset,
         avoid: opponents,
         rules,
-        rerolls: DAILY_RULES.rerolls,
+        rerolls: DAILY_RULES.ladderRerolls,
         random,
         bosses: false,
+        // The Daily is a World Cup draft: its ladder is the era draft's.
+        eras: true,
       }).key,
     );
   const challenge = {
@@ -89,7 +128,7 @@ export function dailyChallenge(catalog, date) {
     seed,
     mode: DAILY_RULES.mode,
     difficulty: DAILY_RULES.difficulty,
-    rerolls: DAILY_RULES.rerolls,
+    tokens: { ...rules.tokens },
     formation,
     schedule: { rounds },
     opponents,
@@ -99,7 +138,8 @@ export function dailyChallenge(catalog, date) {
     seed,
     formation,
     difficulty: challenge.difficulty,
-    rerolls: challenge.rerolls,
+    eras: true,
+    primes: true,
     schedule: challenge.schedule,
     useDefaultRules: true,
   };
@@ -107,7 +147,7 @@ export function dailyChallenge(catalog, date) {
     mode: challenge.mode,
     difficulty: challenge.difficulty,
     seed,
-    rerolls: challenge.rerolls,
+    rerolls: DAILY_RULES.ladderRerolls,
     opponents,
     daily: id,
     rules: DEFAULT_CONFIG.draft,
@@ -117,101 +157,92 @@ export function dailyChallenge(catalog, date) {
 }
 
 // ---- hindsight optimum ------------------------------------------------------------------
-// The best summed rating of `roles` filled by different players of `players` (the GK role by
-// keepers only), or -Infinity when they cannot all be filled (util/assignment.js).
-function bestTotal(roles, players) {
+// What a round's pool can give each slot: `base[i]` the best rating of one of its players in
+// role i, `prime[i]` the same when the Prime is spent on him (his best version, when that is
+// better there). Cached per pool and formation roles.
+const values = new WeakMap();
+function poolValues(catalog, pool, roles) {
+  let byRoles = values.get(pool);
+  if (!byRoles) values.set(pool, (byRoles = new Map()));
+  const key = roles.join(',');
+  let v = byRoles.get(key);
+  if (v) return v;
+  const base = new Float64Array(roles.length).fill(-Infinity),
+    prime = new Float64Array(roles.length).fill(-Infinity),
+    best = pool.map(p => bestVersion(catalog, p));
+  roles.forEach((role, i) => {
+    pool.forEach((p, j) => {
+      if ((role === 'GK') !== isKeeper(p)) return;
+      const r = roleRating(p, role),
+        q = best[j] ? Math.max(r, roleRating(best[j], role)) : r;
+      if (r > base[i]) base[i] = r;
+      if (q > prime[i]) prime[i] = q;
+    });
+  });
+  byRoles.set(key, (v = { base, prime }));
+  return v;
+}
+// Best summed slot rating of one player per pool in different slots, with at most `primes`
+// (0 or 1) Prime spent: a DP over slot masks, pool by pool. Pools of one nation in two eras
+// can hold the same man; the optimum may count him twice (an upper bound, rarely reached).
+function bestFromPools(catalog, pools, roles, primes) {
   const n = roles.length,
-    m = players.length;
-  if (!n) return 0;
-  if (m < n) return -Infinity;
-  const BIG = 1e6,
-    cost = costMatrix(n * m);
-  for (let i = 0; i < n; i++) {
-    const role = roles[i];
-    for (let j = 0; j < m; j++) {
-      const p = players[j];
-      cost[i * m + j] = (role === 'GK') === isKeeper(p) ? -roleRating(p, role) : BIG;
-    }
-  }
-  const owner = assignRows(cost, n, m);
-  let total = 0;
-  for (let j = 1; j <= m; j++)
-    if (owner[j]) {
-      const c = cost[(owner[j] - 1) * m + j - 1];
-      if (c >= BIG / 2) return -Infinity;
-      total -= c;
-    }
-  return total;
-}
-function combinations(slots, size) {
-  const out = [];
-  const walk = (start, mask, left) => {
-    if (!left) return out.push(mask);
-    for (let i = start; i < slots; i++) walk(i + 1, mask | (1 << i), left - 1);
-  };
-  walk(0, 0, size);
-  return out;
-}
-// Best XI from a multiset of nations (one player per occurrence, distinct players and slots):
-// exact DP over slot masks, nation by nation; within a nation an assignment per slot subset.
-function bestFromNations(index, nations, roles) {
-  const counts = new Map();
-  for (const n of nations) counts.set(n, (counts.get(n) || 0) + 1);
-  let states = new Map([[0, 0]]);
-  for (const [name, c] of counts) {
-    // What the draft offered: the nation's draft squad (a repeated nation offers the same
-    // players again, less the ones taken).
-    const squad = index.nations.get(name).squad;
-    // Only the best c per role can be needed (exchange argument).
-    const keep = new Set();
-    for (const role of new Set(roles))
-      squad
-        .filter(p => (role === 'GK') === isKeeper(p))
-        .sort((a, b) => roleRating(b, role) - roleRating(a, role))
-        .slice(0, c)
-        .forEach(p => keep.add(p));
-    const candidates = [...keep],
-      value = new Map();
-    for (const mask of combinations(roles.length, c)) {
-      const slots = roles.flatMap((r, i) => (mask & (1 << i) ? [r] : []));
-      value.set(mask, bestTotal(slots, candidates));
-    }
-    const next = new Map();
-    for (const [mask, total] of states)
-      for (const [subset, v] of value) {
-        if (mask & subset || v === -Infinity) continue;
-        const key = mask | subset,
-          sum = total + v;
-        if (!(next.get(key) >= sum)) next.set(key, sum);
+    full = 1 << n,
+    flags = primes > 0 ? 2 : 1;
+  let states = new Float64Array(full * flags).fill(-Infinity);
+  states[0] = 0;
+  for (const pool of pools) {
+    const { base, prime } = poolValues(catalog, pool, roles),
+      next = new Float64Array(full * flags).fill(-Infinity);
+    for (let mask = 0; mask < full; mask++)
+      for (let f = 0; f < flags; f++) {
+        const total = states[mask * flags + f];
+        if (total === -Infinity) continue;
+        for (let i = 0; i < n; i++) {
+          if (mask & (1 << i)) continue;
+          const to = (mask | (1 << i)) * flags;
+          if (total + base[i] > next[to + f]) next[to + f] = total + base[i];
+          if (f === 0 && flags === 2 && total + prime[i] > next[to + 1])
+            next[to + 1] = total + prime[i];
+        }
       }
     states = next;
   }
-  return states.get((1 << roles.length) - 1) ?? -Infinity;
+  let best = -Infinity;
+  for (let f = 0; f < flags; f++) best = Math.max(best, states[(full - 1) * flags + f]);
+  return best;
 }
 /**
  * The hindsight optimum ("perfect XI") of a day's spins: the best team rating one player per
- * round could reach, using a round's alternate in at most `rerolls` rounds, from the draft
- * squads of those nations. { rating, alternates: rounds that used theirs }.
+ * round could reach, with the day's tokens — the nation respin in at most one round, the era
+ * respin in at most one other round, the Prime on one player — from the era pools those spins
+ * land on. { rating, alternates: rounds that used the nation respin, eras: rounds that used
+ * the era respin, formation }.
  */
 export function perfectXI(catalog, challenge, { formation = challenge.formation } = {}) {
-  const rules = DEFAULT_CONFIG.draft,
-    index = catalogIndex(catalog, draftRules(rules)),
-    roles = FORMATIONS[formation].map(r => r[2]),
-    rounds = challenge.schedule.rounds;
-  let best = { total: -Infinity, alternates: [] };
-  const consider = alternates => {
-    const nations = rounds.map((r, i) => (alternates.includes(i) ? r.alternate : r.spin)),
-      total = bestFromNations(index, nations, roles);
-    if (total > best.total + 1e-9) best = { total, alternates };
+  const roles = FORMATIONS[formation].map(r => r[2]),
+    rounds = challenge.schedule.rounds,
+    tokens = challenge.tokens ?? {},
+    pool = (era, nation) => eraPool(catalog, era, nation),
+    main = rounds.map(r => pool(r.era, r.spin)),
+    nationAlt = rounds.map(r => pool(r.era, r.alternate)),
+    eraAlt = rounds.map(r => pool(r.eraAlternate.era, r.eraAlternate.nation));
+  let best = { total: -Infinity, alternates: [], eras: [] };
+  const consider = (alternates, eras) => {
+    const pools = main.map((p, i) =>
+        alternates.includes(i) ? nationAlt[i] : eras.includes(i) ? eraAlt[i] : p,
+      ),
+      total = bestFromPools(catalog, pools, roles, tokens.prime ?? 0);
+    if (total > best.total + 1e-9) best = { total, alternates, eras };
   };
-  consider([]);
-  for (let i = 0; i < rounds.length && challenge.rerolls >= 1; i++) {
-    consider([i]);
-    if (challenge.rerolls >= 2) for (let j = i + 1; j < rounds.length; j++) consider([i, j]);
-  }
+  const nations = tokens.nation >= 1 ? rounds.map((_, i) => [i]) : [],
+    erasUsed = tokens.era >= 1 ? rounds.map((_, i) => [i]) : [];
+  for (const a of [[], ...nations])
+    for (const e of [[], ...erasUsed]) if (!a.length || a[0] !== e[0]) consider(a, e);
   return {
     rating: Math.round((best.total / 11) * 100) / 100,
     alternates: best.alternates,
+    eras: best.eras,
     formation,
   };
 }

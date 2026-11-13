@@ -5,11 +5,11 @@ deterministic for a seed.
 
 | Module | What it gives you |
 | --- | --- |
-| `session.js` | `createDraftSession`, `restoreDraftSession` (spins, the Legend spin, Prime boosts), `buildSide`, `matchSetup`, `applyMatchSetup`, `DRAFT_MODES`, `DIFFICULTIES`, `DIFFICULTY_LABELS`, `NATURAL_FIT`, `seedNumber` |
+| `session.js` | `createDraftSession`, `restoreDraftSession` (spins; World Cup drafts: an era and a nation per spin, the respins, the Prime), `TOKENS`, `buildSide`, `matchSetup`, `applyMatchSetup`, `DRAFT_MODES`, `DIFFICULTIES`, `DIFFICULTY_LABELS`, `NATURAL_FIT`, `seedNumber` |
 | `links.js` | `teamLinks(players)`, `chemValues(players)`, `linkBoosts(rules)`, `captainSlot(players)` — mates (chemistry) and the Captain |
 | `budget.js` | the player tiers (Superstar / Star / Starter / Normal / Bench) and Budget mode's slots: `budgetBands`, `bandIndex`, `bandUse`, `freeLabel`, `draftTiers`, `tierOfRating`, `BUDGET_TIERS` |
-| `opponents.js` | the difficulty ladder: `pickOpponent`, `chooseOpponent`, `buildOpponent`, `opponentCandidates`, `ladderPreview`, `ladderTarget`, `MODE_BASELINES`, `LEVELS` |
-| `pools.js` | catalog index (playable nations, field/pots, reel, leagues, clubs), `legendIndex`, `draftSquad` (`nation.squad`), `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
+| `opponents.js` | the difficulty ladder: `pickOpponent`, `chooseOpponent`, `buildOpponent`, `opponentCandidates`, `ladderPreview`, `ladderTarget`, `ladderBaseline`, `MODE_BASELINES`, `LEVELS` |
+| `pools.js` | catalog index (playable nations, field/pots, reel, leagues, clubs), `draftSquad` (`nation.squad`), `bestEleven`, cached `roleRating`/`roleFit`/`naturalRating`, `catalogStamp` |
 | `nation-codes.js` | nationality → flag code fallback when the catalog has no `nations` table |
 
 Input is a decoded catalog (`loadCatalog()` in the browser, `loadRuntimeCatalog()` in Node):
@@ -22,6 +22,7 @@ players (`clubId`/`leagueId` null) appear in nation pools only.
 
 | Mode (`mode`) | One spin lands on | Pool | Odds (shown on the reel) |
 | --- | --- | --- | --- |
+| `nations` + `eras: true` — **World Cup drafts** (the run, the Daily) | an era, then a nation of that era (two reels, one press) | that nation's squad of that era: ≤ 26, each at his best version of the cycle, no rating minimum (`eraPool`), less the people taken | all eras equal, then the era's nations equal; never shown |
 | `nations` (default) | a nation of the reel: every playable nation (56) and 7 star nations, 63 in all | its draft squad: the nation's best 30 of the players shown 65+ (3 GK, ≥ 9 DEF, ≥ 9 MID, ≥ 5 ATT, then by OVR; fewer when the nation has fewer), less the players taken — it never refills | uniform 1/63 |
 | `leagues` | a league (41 usable) | the whole league | flat by tier A 4 · B 2 · C 1 · D 0.5 · F 0.25 |
 | `clubs` | a league, then a club (two reels, one press) | the club squad (≥ 11 players a draft may offer: 472 of the 553 clubs) | league A 12 · B 4 · C 1 · D 0.5 · F 0.25, club S 4 · A 3 · B 2 · C 1 · D 0.5 · F 0.25 |
@@ -30,21 +31,27 @@ Three modes (`DRAFT_MODES`; `draftModeOf(id)` reads anything else as `nations`).
 Club & Country, is gone: a session, a saved draft, a saved run or a link in it is refused
 ('Unknown draft mode', 'Not a saved run', an invalid link) and the UI reads it as nothing saved.
 
-Every pick is one spin. Re-rolls per drafter by `difficulty` (`DIFFICULTIES`: `pro`, `worldclass`,
-`legendary`): Pro 2 · World Class 1 · Legendary 1 (or `rerolls: n`); any other id is an
-unknown difficulty. A re-roll spins again without the options seen
-this round. No reveal pacing. **Dead-end guard**: an option whose pool cannot fill
+Every pick is one spin. **Tokens** per drafter are the same on every `difficulty`
+(`DIFFICULTIES`: `pro`, `worldclass`, `legendary`; any other id is an unknown difficulty):
+`CONFIG.draft.tokens` = `{ nation: 1, era: 1, prime: 1 }`. A draft of today's players (Quick
+Match, Versus) has the `nation` token as its **re-roll** (or `rerolls: n` — Versus chooses 0–2):
+`reroll()` spins again without the options seen this round. A World Cup draft has all three
+(below). The per-difficulty `draft.rerolls` and `draft.primes` are gone; the ladder still reads
+the baseline column each level was measured against (`ladderBaseline(mode, level)`: Pro the
+two-re-roll column, the others the one-re-roll column) until it is re-measured.
+No reveal pacing. **Dead-end guard**: an option whose pool cannot fill
 any open slot class (the GK slot vs outfield slots) gets weight 0 — so a keeper is always
 available when only the GK slot is left. All numbers live in `CONFIG.draft` (`pickMinimum`, `nations`,
-`leagueTierWeights`, `clubs`, `rerolls`, `ladder`, `links`, `budget`); a session snapshots them at creation.
+`leagueTierWeights`, `clubs`, `tokens`, `ladder`, `links`, `budget`); a session snapshots them at creation.
 
-**Only players shown 65+ are offered** (`draft.pickMinimum`, `selectable(p, minimum)` in
+**Only players shown 65+ are offered** in a draft of today's players (`draft.pickMinimum`, `selectable(p, minimum)` in
 `pools.js`): a player is in a draft's pools only when the rating on his card — his natural
 rating, rounded — is 65 or more. One rule, in `DraftSession.available()`: nation squads,
 league and club pools, `suggestPick` / Auto-pick and every guard go through
 it, so a spin lands only where a 65+ player can fill an open slot class (only the keeper slot
-left: a 65+ keeper) and no row under 65 is ever listed; the Daily's perfect XI is built from the
-same pools. Legends, prime versions and Budget tiers are not asked. **Teams are not drafts**:
+left: a 65+ keeper) and no row under 65 is ever listed. **A World Cup draft asks nobody**: its
+session's minimum is 0, an era pool is a squad of 26 whatever its players are rated. Budget
+tiers are not asked. **Teams are not drafts**:
 opponents' XIs (nations, clubs, bosses), club squads and ratings, a nation's strength,
 `playable` / `field`, the ladder and Exhibition sides keep their real players whatever they are
 rated. Today 10,968 of the 15,788 players are selectable (961 of 1,719 keepers); the smallest
@@ -52,28 +59,18 @@ nation squads are Armenia 9 and Egypt 11 (one playable nation, Guinea, has no ke
 so it never lands for the keeper slot), the smallest club pools 11. A session's
 rules carry the minimum (0 offers everyone). The UI says nothing about it.
 
-**A nation has at most 30 draftable players** (`draftSquad(players, rules)` in `pools.js`,
+**A nation has at most 30 draftable players** in a draft of today's players (`draftSquad(players, rules)` in `pools.js`,
 stored as `nation.squad` in the index; numbers in `CONFIG.draft.nations`: `squadSize` 30,
 `squadGoalkeepers` 3, `squadDefenders` 9, `squadMidfielders` 9, `squadAttackers` 5). Of the
 players shown 65+: the best three keepers, the best nine defenders, nine midfielders and five
 attackers, then the best four outfield players left (natural OVR; ties by id). The squad is
 fixed for a catalog and rules — it does not depend on the draft — and a nation spin's pool is
 the squad less the players taken or excluded: it shrinks and never refills from deeper in the
-nation. Every nation guard counts only these players (a nation lands only when one of its 30
-can fill an open slot class and, in Budget mode, be afforded), the star-nation rule counts them
-(`reelPlayers`), and the Daily's perfect XI is built from the same squads. Leagues and clubs
+nation. Every nation guard counts only these players, the star-nation rule counts them
+(`reelPlayers`). Leagues and clubs
 offer everyone shown 65+. Teams are not drafts: `nation.players`, a nation's strength, its XI as
-an opponent and `playable` use everyone. Today 55 of the 63 reel nations have the full 30;
-fewer: Armenia 9, Egypt 11, Costa Rica 12, Russia 14, New Zealand 18, Burkina Faso 20, Gambia
-26 (the star nations) and Georgia 28 (the one playable nation); 1,788 players are draftable in
-a nation draft (of the reel nations' 10,119 shown 65+; the largest nation has 786). Four reel
-nations have no draftable keeper (Guinea, Egypt, Gambia, Armenia), Algeria and Mali one.
-Measured (`draft-baselines.mjs --n 200 --modes nations --rerolls 1,2`, positional policy;
-before → after): the typical XI did not move — OVR 83.15 / 83.29, effective 84.04 / 84.18 with
-1 / 2 re-rolls, to the last digit (the best pick of a spin was in the 23 call-ups and is in the
-30); World Cup drafts with the Legend spin and Prime boosts 84.79 / 85.02, unchanged; Budget
-mode 82.90 → 82.82 / 83.13 → 83.04 (its pool no longer adds affordable players from deeper in
-the nation).
+an opponent and `playable` use everyone. In a World Cup draft the era pool of 26 takes the
+squad's place.
 
 Players already drafted (by either side) and excluded players/nations/clubs never appear in a
 pool. Seeds are mixed before use, so consecutive seeds (dates, counters) give unrelated spins.
@@ -94,123 +91,163 @@ schedule uses it, and it is the fallback of Legendary's draw, which qualifies it
 every run (`docs/competition-api.md`). A nation with one keeper whose keeper you drafted cannot
 field an XI any more: the ladder draws another opponent, the World Cup draw the nearest nation.
 
-**The Legend spin** (session option `legendSpin`; the game: World Cup Run drafts, normal and
-Budget — not Quick Match, Versus or the Daily). The side's first spin lands on a nation with a
-legend and offers that nation's legends; the other ten spins are ordinary. Legends are the
-players of `catalog.legends` (`players/legends.js`, loaded from `app/data/legends.v1.json`):
-**best past versions (29 titles, FIFA 98 – FC 26: the ratings of 1997–2025) the game shows at
-`legends.minimum` (85) or more** — the rating on the card. Two kinds, 431 in all:
+## World Cup drafts: an era and a nation per spin (session option `eras: true`)
 
-- 307 **players of the past**, who are not in the catalog (Ronaldo ’03 94, Xavi ’11, Zidane
-  ’03 and Ronaldinho ’03 93, Buffon ’07 and Neymar ’19 92, Henry ’04 and Kaká ’08 91);
-- 124 **current players at their best** (`legendOf` = the catalog player's `profileId`): a
-  catalog player's best version when it shows 85+ and **at least 2 more than his card today**
-  (Messi ’15 95 for 89 today; Neuer ’17 92 for 81; Salah ’25 91). A gain of one point is a
-  prime version only; a player whose card today is his best is just a normal pick.
-
-**What a past version is rated** (the compiler, `scripts/legends-calibration.mjs`): its overall
-on EA's modern scale, which its card then shows — the skills are those of its year, all moved
-by the same few points until the game's rating model (fitted on FC data) shows that overall.
-The overall is the one EA printed where it printed one (FIFA 09–23: the best of all time stand
-above today's cards, nothing is pulled down to them). FIFA 98–08 printed none: each is
-chain-linked to the next title through the players both have (FIFA 08 against 09, 07 against
-08, … back to 98) so that those players carry, on average and in spread, what the next title
-gives them, less a year of ageing — real differences between years survive, no year's best is
-forced to a number. **FC 27 is the baseline of the scale, never a ceiling**: EA printed lower
-numbers for its best players in FIFA 09–16 than it does today, so a title whose 30 best average
-less than FC 27's (89.03) is lifted by the difference — FIFA 09 +1.2, 10 +1.77, 11 +2.33, 12
-+0.87, 13 +1.07, 14 +1.37, 15 +1.43, 16 +1.23; FIFA 98–08 carry FIFA 09's +1.2, the scale they
-are linked to; FIFA 17–23 are at or above and stay as printed. The lift is for the top: in full
-from the level of the title's best, fading to nothing at 84 (it makes four more legends, not a
-flood). A card's `sourceOverall` is this lifted overall. FIFA 98–2003 have 8 to 16 levels and 8 to 17 skills and cannot tell a star
-from a good player on their own (their ratings agree with the next data generation's about a
-third as well as two official titles agree): such a card is rated by what all the data
-generations within three years say about the player, weighed by that measured trust, and a
-player whom only one coarse generation knows gets none. So 227 legends are from FIFA 98–14 (152
-from the chain), but only 8 from before 2003 (Denilson ’97 86 the oldest), and keepers start
-with FIFA 2005 (the first title with three keeper skills). Classic and all-star squads
-(Classic XI, World XI, FIFA 2000's classic teams) are no source; an unlicensed stand-in ("No 9"
-is Ronaldo in FIFA 2000–02) or an invented name is never shown.
-
-A player's best version is his highest overall (ties: the latest title). **One person, one
-place in an XI** (EA's player id ties FIFA 2000–23 and the catalog together; a man with two ids
-— Raúl, Bergkamp — is merged by name, team and birthday; FIFA 98/99 rows join by name and
-team): `baseProfileId(p)` is the catalog id of a legend or prime version, and the session
-treats the versions as one player — drafting his
-legend version takes his current version out of every pool, the reel guard, placement and the
-opponents' XIs (the run excludes `baseProfileId` of your players), and a current version that
-is taken or excluded takes the legend version off the Legend spin (a nation whose only legend
-he is leaves the reel). A legend version offers no Prime boost: it is his best already.
-Rules in `CONFIG.draft.legends`:
-
-- the reel (`legendIndex(catalog).reel`) holds the 57 nations with a legend shown at `reelStar`
-  (85) or more; the index filters by the shown rating itself, so nobody under `minimum` is ever
-  offered, whatever the file holds;
-- a nation's weight is `1 + weightPerLegend (0.15) × min(its legends, weightCap (20))`: 1.15 for
-  one legend, 4 for twenty or more (Spain 52, Brazil 50, France 43, Germany 38, Italy 29,
-  Argentina 27, England 25 and the Netherlands 21 legends: 4.0% each; Portugal 16, 3.4%;
-  Belgium 12, 2.8%; the twenty nations with one legend 1.2% each). The spin
-  carries the honest `weight` / `probability` like every reel; the UI shows no odds for this
-  one;
-- the pool is the nation's `shown` (10) highest-rated legends (the rating on the card, then the
-  name) — one legend for twenty of the nations; if none of them could be placed (slot class,
-  Budget tier), the best that can are shown instead. Never a dead end: a nation without a
-  legend who is free, fits an open slot class and (Budget mode) a tier with a slot left has
-  weight 0, so in local Versus a one-legend nation leaves the second side's reel once its legend
-  is taken. Re-rolls, exclusions, `uniqueNations` (the legend's nation counts) and Budget mode
-  (a legend costs the tier of his rating) work as for any spin;
-- `spin.legend`, `snapshot().legendRound`, `history[].legend` mark it; a pool entry / slot player
-  has `legend: true`, `edition` (the title's number: 98, 99 and 0–23 for FIFA 98 … FIFA 23)
-  and `year` — **the year of that version's ratings**, stored with the player by the compiler:
-  the source row's date (`fifa_update_date`, FIFA 15–23) or the year before the title's number
-  (FIFA 98–14: the launch databases; FIFA 98 → 1997, FIFA 2000 → 1999). Release ratings are
-  dated the autumn before the number (FIFA 19: 2018 — every version in the data is one), the
-  last ratings of a cycle the year of the number. `editionYear(p)` / `editionLabel(p)` read it;
-  the UI shows "’18" or "’97", never the edition (two digits tell 1997–2026 apart);
-- `snapshot().legendYears` is `[first, last]` year of the legends' versions (`[1997, 2022]`;
-  `legendIndex().years`): the Legend spin's one line, "Best versions, 1998–2025".
-
-A legend is a club mate through the club of that edition when the catalog has it (401 of the
-411: EA's team id; the early titles name their clubs, matched by name) and a nation mate like
-anyone; he is never a Captain — a current Captain's legend version neither. 163 legends show
-88+, 248 show 85–87; 52 are keepers. Today's best card shows 92: six legends stand above it
-(Messi ’15 95, Cristiano Ronaldo ’18 and Ronaldo ’03 94, Xavi ’11, Buffon ’07 and van
-Nistelrooy ’04 93), ten beside it (Zidane, Ronaldinho, Henry, Iniesta, Neymar, Neuer…).
-
-**Prime boosts** (session option `primes: true` = `CONFIG.draft.primes` by difficulty — Pro 2,
-World Class 1, Legendary 1 — or a number; the game: World Cup Run drafts). A boost turns a
-drafted player into his **prime version** (`catalog.legends.primes`: 2,814 catalog players whose
-best version shows more than their card today — **any gain**, a single point counts (527 of
-them); EA must have rated him higher then than now, so a card is never just read more kindly —
-the same best version a current player's legend is): the attributes, positions,
-badges and rating of that edition, the same name, nation, club and Captain tag (so mates and
-the armband do not change), `profileId` `ea:<id>:fc<edition>:prime`, `primeOf` = his catalog id.
+The game: the World Cup Run's draft (normal and Budget) and the Daily — not Quick Match, Versus
+or Exhibition, which draft today's players as above. Needs `catalog.eras` (the session throws
+'This draft needs the era data' without it; so does `primes` alone) and `mode: 'nations'`.
 
 ```js
-draft.primeOptions(0);       // [{ slot, profileId, name, from: { ovr, rating }, to: { profileId,
-                             //    ovr, rating, edition, year, position, tier }, allowed, reason }]
-draft.prime(slot, 0);        // { ok: true, side, slot, profileId, primeOf, rating } | { ok: false, reason }
+const draft = createDraftSession(catalog, { seed, eras: true, primes: true, difficulty });
+const spin = draft.spin();
+// { category: 'nation',
+//   era: { id: 2002, name: 'Korea/Japan 02', short: 'Korea/Japan 02', from, to, weight, probability },
+//   option: { id: 'Brazil', name, code, flag, strength, weight, probability },
+//   reels: [{ category: 'era', options: [8 eras], landing },
+//           { category: 'nation', options: [the era's nations], landing }],
+//   side, round, reroll, scheduled }
+draft.respinBlocked('nation');   // '' | 'Spin first' | 'No nation respin left' | 'No other nation'
+draft.respin('nation');          // the era stays, another nation: + respin: 'nation', spun: [false, true]
+draft.respinBlocked('era');      // '' | 'Spin first' | 'No era respin left' | 'No other era'
+draft.respin('era');             // another era: + respin: 'era', kept, spun: [true, !kept]
+draft.primeOptions(0);           // who has a better version, and what it would make him
+draft.prime(slot, 0);            // the Prime: he becomes his best version across all titles
 ```
 
-`rating` is the rating in that slot — a prime version may play another position, so `to.rating`
-can be no higher than `from.rating` while `to.ovr` is (Mkhitaryan at CM: 83 → 78, his ’17
-version is an RM 85); the option is still allowed (the pre-match can move him) and the UI says
-it. A typical drafted XI has 1.6–1.9 players with a prime version (1.5–1.7 under the +2 / 88+
-rule, 2,362 stored); half of the XIs have two or more. Usable at any time after he is drafted, until the draft is
-handed on (the run is created from `matchSide`); not reversible in core (the UI confirms).
-Budget mode never refuses it and it uses no slot: a primed player keeps the tier slot of the
-version that was drafted. His current version stays taken (`available` false) and opponents
-never field it (`baseProfileId`). `snapshot()`: `primes: { perSide, left }`, `teams[i].primesLeft`,
-`slots[i].prime` (the option, or null), and `primeVersion: { profileId, ovr, edition, year,
-position }` on pool entries and slot players who have one (a legend version has none).
+- **The spin.** The era reel holds the eight eras of `ERAS` (`name` = the full label for
+  headers, `short` = the one for a reel or a chip — never hard-code a label); the nation reel
+  holds `eraNations(catalog, era)`. Both are **weighted** (`draft/reels.js`, numbers in
+  `CONFIG.draft.reels`, never shown in the UI) by "the rule of fun": famous, deep squads come
+  up more often than a one-star or no-star squad, nobody is shut out, and the greatest stay
+  an event.
+  - A nation: `q(r) = (r − 72) / 20` clamped to 0…1 on the shown ratings of its pool;
+    `score = 5·q(2nd best) + 3·q(3rd) + 2·q(4th) + 1·q(mean of 5th–8th) + 1·q(best) +
+    2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is **0.4**
+    (`reels.nation.rare`) for an all-timer's squad — its best is shown 93+, or it has a GOAT
+    card whatever he shows that year — and 1 otherwise. Weights run from 1 to 5: the likeliest
+    nation of an era is 3–4 times as likely as the least likely (Italy 3.7% of France 98's nation
+    spins, France 2.4% of 2026's; the least likely full pool of an era about 0.7% — Panama
+    2018, Qatar 2022; small pools aside, below). **An all-timer's squad sits in the
+    middle of its era's reel** — about the average nation's odds (1.2–1.8% in an era of 70–73 nations: rank 16–44; France 98: 23rd and 25th of 50), never among the least likely third (a test): famous squads are findable, and still
+    come up less than their depth alone would make them. The owner's choice between the
+    measured options (per draft of eleven spins; "all-timer's squad" = 93+ or a GOAT card):
+
+    | `rare` | an all-timer's squad | a 93+ squad | its rank in the era | a GOAT on offer |
+    | --- | --- | --- | --- | --- |
+    | 1 (no penalty) | every 2.2 drafts | every 2.4 | 1st–11th | 44% of drafts |
+    | **0.4** | **every 3.5** | **every 4.0** | **16th–44th** | **27%** |
+    | 0.25 | every 4.1 | every 4.7 | 37th–64th | 23% |
+    | 0.1 (before) | every 5.4 | every 6.1 | 58th–70th: the least likely (Portugal 14 / 18 / 22 last, 0.8%) | 18% |
+    | uniform reels | — | every 4.0 | — | 27% |
+
+    (The 0.4 row is the final data; the other rows were measured one data batch earlier and
+    moved by a tenth at most.)
+  - **A small pool without a star is quite rare** (the owner: at most once in several
+    hundred nation spins of its era): a pool of fewer than `reels.nation.full` (14) players
+    whose best card shows under `reels.nation.star` (85) starts from `(players / 14)²`
+    (`reels.nation.small`) instead of 1. A star's small nation keeps the 1 and comes up like
+    any modest squad. Chance per nation spin of its era / per draft of eleven spins:
+
+    | pool | players | best | per nation spin of the era | in a draft |
+    | --- | --- | --- | --- | --- |
+    | Korea DPR 2010 | 3 | 74 | 0.03% (1 in 3,100) | 0.04% |
+    | Ecuador 2002 | 2 | 74 | 0.02% (1 in 4,600) | 0.03% |
+    | Jordan 2026 | 6 | 76 | 0.13% (1 in 800) | 0.17% |
+    | Uzbekistan 2026 | 8 | 81 | 0.24% (1 in 410) | 0.34% |
+    | Iran 2014 | 9 | 76 | 0.35% (1 in 290) | 0.47% |
+    | Korea Republic 1998 | 8 | 81 | 0.50% (1 in 200) | 0.66% |
+    | Saudi Arabia 1998 | 10 | 79 | 0.72% (1 in 140) | 0.95% |
+    | Iran 2006 | 12 | 81 | 0.64% (1 in 155) | 0.90% |
+    | Liberia 1998 (Weah) | 2 | 87 | 1.05% (1 in 95) | 1.4% |
+    | Trinidad and Tobago 1998 (Yorke) | 2 | 86 | 0.92% (1 in 109) | 1.2% |
+    | Ukraine 1998 (Shevchenko) | 9 | 87 | 1.50% (1 in 67) | 2.0% |
+    | Liberia 2002 (Weah) | 5 | 85 | 0.70% (1 in 142) | 1.0% |
+  - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 12.1% (France 98) to 12.7% (Germany 06).
+  - Measured per draft of eleven spins (`node tools/calibration/reel-odds.mjs`; `--uniform` for
+    the reference): a 93+ squad once every 4.0 drafts (uniform: every 4.0), a 90+
+    player on offer in 2.5 spins (1.7), 85+ in 6.0 (4.8), 80+ in 10.0 (9.5); a squad whose
+    fourth best is 80+ in 6.5 spins (5.1); a GOAT on offer in 27% of drafts (27%), a Leader
+    (a Captain card) in 0.9 spins (0.6).
+  An option that cannot be landed on has weight 0 (below); the guards only ever zero a weight.
+  Respins and the Daily's schedule draw with the same weights. The spin carries honest
+  `weight` / `probability` like every reel. One spin consumes two draws of the RNG (era, nation).
+- **The pool** is `eraPool(catalog, era, nation)` less the people taken or excluded: ≤ 26, each
+  at his best version inside the era's years, **no rating minimum**; it never refills. Pool
+  entries and slot players carry `era` (the era id), `year` (the year of that version's
+  ratings; today's catalog players 2026) and `edition`; `history[]` carries `era` and
+  `eraName`. A catalog player in the 2026 pool is the catalog object itself (his Captain tag,
+  his club); an era card (`ea:<id>:fc<edition>:era`) carries its own marks — `captain` and
+  `goat`, booleans from the reviewed lists (a player and an era; a card is never both) — and
+  is a club mate through the club of that version when the catalog has it.
+- **One person once** (`personId`): a man is in an XI once across eras and versions — taken
+  with any card of his, he is out of every pool, guard and placement ('Already drafted');
+  `excludePlayers` takes out every version of each id's person; the run's opponents exclude
+  `baseProfileId` of your players (the catalog player of an era card, `eraOf`), and the Prime
+  swaps a card for another of the same person.
+- **Never a dead end.** A nation is on the reel only when its pool has an available — in
+  Budget mode affordable — player for an open slot class; an era only when it has such a
+  nation. With only the keeper slot left that means a nation (and an era) with an available
+  keeper. **A pool may have no keeper at all** (the data does not require one): *while the
+  keeper slot is open beside others, at least half of the nations on the reel have an available
+  keeper* — every nation with one is on the reel, and keeper-less nations stay only as many as
+  there are of those, the strongest first (the reel's order, deterministic); the rest have
+  weight 0 for that spin. Both respins go through the same reels. `uniqueNations` counts a
+  nation once whatever the era. Brute force: `tests/draft-eras.test.mjs` (five policies ×
+  Budget on/off × 30 seeds, respins late in the draft, seven pools in ten stripped of keepers).
+- **Tokens** (`TOKENS` = `['nation', 'era', 'prime']`; `snapshot().tokens` = per kind
+  `{ perSide, left, can }` for the side to act, `era` / `prime` null when the draft has none):
+  - **nation respin** — the era stays, the nation is drawn again without the ones seen in this
+    era this round; only the nation reel moves (`spun: [false, true]`);
+  - **era respin** — another era (not one seen this round) is drawn; **the nation stays when
+    the new era's reel has it** (it is there and can be landed on: `kept: true`, `spun: [true,
+    false]`), otherwise the nation is drawn too (`kept: false`). The UI shows which reels move;
+  - **the Prime** — `bestVersion(catalog, player)`: the card of the same person that shows the
+    most across all titles, any gain; `primeOption(slot)` → `{ slot, profileId, name, from:
+    { ovr, rating }, to: { profileId, ovr, rating, edition, year, position, tier, goat,
+    captain }, allowed, reason }` (`rating` = in that slot; a best version may play another position, so
+    `to.rating` can be lower while `to.ovr` is higher — still allowed), null when no card of
+    his shows more. `prime(slot)` swaps the card in (its own attributes, positions, badges,
+    club, year and marks: `to.goat` / `to.captain` say what that card is — the sheet
+    says "not Captain" when a Captain's best version is of a year he did not lead in), marks him (`slots[i].player.prime`,
+    `history[].primeOf`, `state.primed`), and is not reversible. Usable at any time after he
+    is drafted until the draft is handed on. Budget mode never refuses it and it uses no slot:
+    he keeps the tier slot of the version that was drafted.
+  One of each per side, on every difficulty; a token does not come back. `rerollsLeft`,
+  `eraRespinsLeft`, `primesLeft` per side are in the state and in `teams[i]`.
+- **A schedule** (the Daily): `schedule.rounds[i] = { era, spin, alternate, eraAlternate:
+  { era, nation } }` fixes the round's era and nation, the nation a nation respin lands on
+  (in the scheduled era) and where an era respin lands (the nation stays when it can, else
+  `eraAlternate.nation`). A scheduled landing the guards do not allow is drawn from the RNG
+  instead (`spin.scheduled` false).
+
+Measured (`draft-baselines.mjs --eras --primes default --n 200 --modes nations --rerolls 0,1
+--policies positional --budget "off;default"`: 200 drafts, pick the best player; respins when
+the best pick is under 78, the nation first; the Prime on the biggest gain in the slot):
+
+| World Cup draft | OVR (sd) | chem | effective (sd) | Leader in the XI | GOAT in the XI | tokens used |
+| --- | --- | --- | --- | --- | --- | --- |
+| no tokens | 84.58 (1.50) | 0.92 | 85.50 (2.00) | 24% | 19% | — |
+| the three tokens | 85.46 (1.36) | 1.06 | **86.52** (1.94) | 32% | 22% | nation 0.63 · era 0.32 · Prime 0.94 (+3.4 slot points) |
+| Budget, no tokens | 83.01 (1.08) | 0.67 | 83.69 (1.31) | 17% | 14% | — |
+| Budget, the three tokens | 83.71 (0.96) | 0.74 | **84.45** (1.25) | 18% | 14% | nation 0.83 · era 0.64 · Prime 0.93 (+3.4) |
+
+Measured on the final data (563 pools, 2 to 26 players; 17 GOAT cards of 7 players; 32 Captain
+cards of the list's first 14). **A Leader is on offer in 1.0 spins of a draft** (in 68% of
+drafts; Budget 0.5 spins, 42%) — the owner's "a captain every 0.3–1 drafts" — and ends in 32%
+of XIs when the best-rated player is picked, in 53% for a boost-aware drafter (`--policies
+smart`; Budget 18% / 31%); a GOAT is on offer in 28% of drafts (Budget 17%: a full Superstar
+tier closes him) and is drafted nearly every time (in the XI in 22% of drafts).
+`ERA_BASELINE` (`opponents.js`) holds the ladder's numbers: 86.64, measured one data batch
+earlier (85.57 / 1.07; plain 85.76, Budget 84.75) — the final data reads 0.12 lower, inside
+the noise of 200 drafts (±0.14), so the baseline and the cup's offsets stay.
 
 ## Eras (`app/core/players/eras.js`) — the data of the two-spinner draft
 
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 12,486
-cards, 2.4 MB, 0.71 MB gzip / 0.56 MB brotli), attached to the catalog like the legends.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,762
+cards, 2.7 MB, 0.79 MB gzip / 0.62 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
 `node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
@@ -252,14 +289,14 @@ sentence, the share text).
   the catalog does not know are simply nobody's other version.
 - `eraList(catalog)` → `[{ id, label, short, from, to, keeperLevel, nations: [{ name, code,
   flag, strength, size, keepers }] }]`, oldest era first, an era's nations strongest first.
-  **Only spinnable nations are listed** (20–70 per era, see below). `name` is the catalog's
+  **Only spinnable nations are listed** (50–81 per era, see below). `name` is the catalog's
   nation name (`code`/`flag` as in `catalog.nations`; a nation today's catalog does not have —
-  none at the moment — would have `code: null`). `size` = players in the pool (≤ 26),
+  none at the moment — would have `code: null`). `size` = players in the pool (**2 to 26** — see "Which nations can be spun"),
   **`keepers` = how many of them are goalkeepers: 0 to 3 — a spinnable pool may have none.**
   `strength` = the mean shown rating of the pool's best XI (best keeper + the ten best
   outfielders, one decimal): the number to weigh or order a reel by. A pool without a keeper
   is rated with the era's `keeperLevel` in goal — the weakest first-choice keeper any
-  qualifying pool of that era has (71 / 63 / 62 / 61 / 58 / 53 / 58 / 53), i.e. the least a
+  qualifying pool of that era has (70 / 70 / 62 / 61 / 58 / 53 / 58 / 53), i.e. the least a
   keeper drafted from that era would be: no invented player, and such a nation is never
   rated above what it could field.
 - `eraNations(catalog, eraId)` → that era's `nations` array (`[]` for an unknown era).
@@ -282,7 +319,8 @@ sentence, the share text).
   era: 2002, year: 2002, edition: 3,
   name, fullName, primaryPosition, secondaryPositions, attrs, foot, weakFoot, tendencies, tags,
   sourceOverall,                  // the overall of that version on the common scale
-  captain: false,
+  goat: true, captain: false,     // the marks (see "GOAT cards and Captains"): always booleans
+                                  // on an era card, never both true
   person: 'ea:1397',              // one person, whatever the card (see below)
   eraOf: 'ea:…:fc27:u…' | undefined, // the catalog player's profileId when he is in the catalog
   source: { club, clubId, leagueId, nationality }, // the club of that version when the catalog
@@ -315,23 +353,159 @@ past card. The card may come from an era in which he is not in his nation's 26 (
 the file for this). Swap it in place of the drafted player: same person, its own positions,
 attributes, badges, club and year (`editionLabel(card)` → "’05").
 
-**Which nations can be spun in an era** (decided by the compiler, `ERA_SPIN` in
-`scripts/compile-legends.mjs`, recorded in the file's `selection`): a nation whose pool has at
-least 18 players, at least 5 defenders, 5 midfielders and 2 forwards (counted before a second
-striker is settled as a striker or a No. 10: a pool can end with 4 midfielders or 1 forward) —
-**a goalkeeper is not required**; if more than 70 qualify, the 70 strongest; an era needs at
-least 20 (the build fails otherwise). As built:
+### GOAT cards and Captains (the marks)
 
-| era | nations | pools under 26 | fewer than 3 keepers | no keeper | strongest | weakest |
+Two reviewed lists are build inputs, and the compiler writes them onto the pools' cards
+(`scripts/compile-legends.mjs`; an entry whose EA id, name, nation or era does not meet the
+data fails the build — every entry, also the Captains behind the cut):
+
+- **`data/goats.json` — GOAT cards: a player AND an era.** Seven players, 17 cards: Messi
+  2010 / 2014 / 2018 / 2022, Cristiano Ronaldo 2010 / 2014 / 2018, Ronaldo 1998 / 2002, Zidane
+  1998 / 2002 / 2006, Ronaldinho 2006, Xavi 2010 / 2014, Iniesta 2010 / 2014 (each with its
+  reason; `closeCalls` names what could have gone the other way). Only the card of a listed
+  era is a GOAT: Messi's 2006 and 2026 cards, Ronaldinho's 2002 card are ordinary cards.
+- **`data/captains.json` — Captains: the leaders of 1997–2026, ranked, each with the eras in
+  which he led** (87 entries; the first `size` = **14** count: 14 players, 32 cards — the
+  game calls them **Leaders**; `size` was 40 until the owner asked for one on offer in 0.3–1
+  spins of a draft). His cards of those eras are Captains; his other cards are not (Maldini 1998 /
+  2002 / 2006, not 2010). **No player is in both lists** (Maldini, Buffon and Modrić are
+  Captains). The old list of today's national-team captains is gone: of today's players only
+  the list's own are Captains.
+
+**How the flags reach you:**
+
+| what you hold | `goat` | `captain` |
+| --- | --- | --- |
+| an era card (`player.era` set; from `eraPool`, `eraPlayer`, `personVersions`, `bestVersion`) | `true` / `false` | `true` / `false` |
+| a catalog player (in a 2026 pool as he is, or anywhere else) | `undefined` — **never a GOAT** | `true` / `false` (catalog field, as before): van Dijk and Modrić |
+| a legend / a prime version (`legends.js`) | `undefined` | legend `false`; a prime version carries the catalog player's |
+
+So test `player.goat === true` and `player.captain === true` on whatever a pool or a slot
+holds; nothing else is needed. A card is never both. The flag belongs to **the card, not the
+person**: in the 2026 era a Captain is flagged on the object the pool holds (the catalog
+player, or his FC 24–26 era card when that shows more — the catalog player is then a Captain
+too). The cards kept outside the pools for the Prime (`bestVersion`) are flagged only when
+they are also a pool's card of a listed era — so **a Prime swap takes the marks of the card
+swapped in**: Xavi 2006 (ordinary) primed is Xavi ’11, a GOAT card; Kimmich today (Captain)
+primed to an earlier card of an era in which he is not listed would lose the armband — if a
+primed Captain should keep it, carry it over in the session (`drafted.captain || prime.captain`).
+
+`eraMarks(catalog)` → `{ goats: [{ era, nation, player }], captains: [...] }` — every marked
+card of the pools, by era then nation (frozen, built on first use): for a gallery, a count or
+a test. Per era as built: GOAT cards 2 / 2 / 2 / 4 / 4 / 2 / 1 / 0; Captain cards 3 / 4 / 6 /
+6 / 5 / 3 / 3 / 2 (in 3 / 4 / 5 / 5 / 4 / 3 / 3 / 2 pools).
+
+**How often a draft meets one** (11 spins, era and then nation drawn evenly from the reels —
+a model of the two-spinner draft from before the reels were weighted; `size` is the lever.
+With today's weighted reels: 10 → 0.66 spins per draft, 12 → 0.80, **14 → 0.93**, 16 → 0.98,
+20 → 1.29, 40 → 2.17; 14 is the largest size under one spin that keeps a Leader among today's
+players — Modrić is 13th, van Dijk 14th):
+
+| `size` | Captain cards | a spin's pool has a Captain | pools with a Captain per draft | at least one in a draft |
+| --- | --- | --- | --- | --- |
+| 20 | 45 | 8% | 0.85 | 59% |
+| 30 | 70 | 11% | 1.21 | 72% |
+| **40** | **89** | **14%** | **1.49** | **80%** |
+| 50 | 107 | 15% | 1.62 | 83% |
+| 60 | 126 | 17% | 1.92 | 88% |
+| 87 (all) | 161 | 23% | 2.55 | 94% |
+
+A Captain is within 4 points of his pool's best player in most of those pools (1.34 per draft
+at 40), so a player who wants one gets one in roughly every second draft and is
+offered one about every 0.7 drafts — the owner's "a captain every 0.3–1 game". A GOAT card
+is in 3% of pools: 0.33 per draft, at least one in 29% of drafts. Re-rolls and a reel
+weighted by strength raise all of these (the Captains' nations are the strong ones). The boosts
+and the look are the draft's (`links.js`, the UI); the data only says who.
+
+**Which nations can be spun in an era** (decided by the compiler — `ERA_SPIN`, `ERA_STAR`,
+`ERA_NATIONS` in `scripts/compile-legends.mjs`, recorded in the file's `selection`). Three ways
+in:
+
+1. **A World Cup side**: a nation that played that era's World Cup finals
+   (`data/world-cups.json`: the 32 finalists of 1998–2022, the 48 of 2026) — **with whatever
+   players the data has for it**.
+2. **A star nation**: a nation with a card that shows **85 or more** in that era (`ERA_STAR`) —
+   Weah's Liberia, Shevchenko's Ukraine of 1998, Yorke's Trinidad and Tobago, Aboutrika's
+   Egypt, Mkhitaryan's Armenia — again with whatever it has, **even two players**.
+3. **Everyone else**: a pool of at least **14 players** (was 18), at least 3 defenders, 4
+   midfielders — a forward beyond the pool's first four counts as one — and 2 forwards
+   (counted before a second striker is settled: a pool can end with one fewer), and a place
+   among the era’s **70 strongest** pools (France 98: 41, and three in ten of the players
+   must be men a later title knows by EA's id — no Canada of first names).
+
+**A goalkeeper is never required.** As built:
+
+| era | nations | under 26 players | under 14 | no keeper | strongest | weakest |
 | --- | --- | --- | --- | --- | --- | --- |
-| France 98 | 27 | 8 (18–25) | 6 | — | England 82.7 | Hungary 70.9 |
-| Korea/Japan 02 | 54 | 7 | 15 | Ghana, China PR | Brazil 86.9 | China PR 69.6 |
-| Germany 06 | 62 | 3 | 13 | Guinea | Brazil 89.7 | China PR 71.0 |
-| South Africa 10 | 70 | 9 | 21 | Mali, Peru, Algeria, Honduras, Congo DR | Brazil 88.5 | New Zealand 66.5 |
-| Brazil 14 | 70 of 84 | 0 | 13 | Honduras | Spain 89.3 | Guinea 71.4 |
-| Russia 18 | 70 of 98 | 1 | 5 | — | Spain 88.5 | Bulgaria 73.9 |
-| Qatar 22 | 70 of 100 | 1 | 5 | Gabon | France 87.9 | South Africa 74.5 |
-| USA/Canada/Mexico 26 | 70 of 99 | 1 | 5 | Egypt | France 88.4 | North Macedonia 73.9 |
+| France 98 | 50 | 17 | Ukraine 9, Saudi Arabia 10, Korea Republic 8, Liberia 2, Trinidad and Tobago 2 | Ghana, Uruguay, Ukraine, Liberia, Trinidad and Tobago | Italy 87.2 | Trinidad and Tobago |
+| Korea/Japan 02 | 72 | 11 | Liberia 5, Ecuador 2 | Georgia, Ghana, Guinea, Costa Rica, New Zealand, Liberia, Ecuador | Brazil 88.5 | Ecuador |
+| Germany 06 | 70 | 11 | Iran 12 | Guinea, Georgia, Egypt, Iran, Burkina Faso | Brazil 89.9 | Burkina Faso |
+| South Africa 10 | 73 | 13 | Korea DPR 3 | Mali, Peru, Guinea, Algeria, Honduras, Burkina Faso, Congo DR, Korea DPR | Spain 88.9 | Korea DPR |
+| Brazil 14 | 71 | 1 | Iran 9 | Honduras | Spain 89.3 | Iran |
+| Russia 18 | 73 | 2 | — | Armenia, Panama | Spain 88.5 | Panama |
+| Qatar 22 | 73 | 2 | — | Gabon | France 87.9 | Qatar |
+| USA/Canada/Mexico 26 | 81 | 5 | Uzbekistan 8, Jordan 6 | Egypt, Iraq, Uzbekistan, Jordan | France 88.4 | Jordan |
+
+**What this changes for the draft — read this:**
+
+- **A pool can be tiny.** `eraNations(...)[i].size` goes down to **2** (it was at least 18);
+  `eraPool` of such a nation is just those players, best first. 563 pools in all, 33 of them
+  without a keeper, 12 with fewer than 14 players. (Estonia 2006 was a star nation on Poom's
+  FIFA 2004 card, 89; `PLAYER_JUDGEMENT` has it at 81 now and Estonia 2006 is not spinnable.)
+  **The draft's guards look at the pool, not only at `keepers`** (`#fills` / `#landable` in
+  `session.js`; any outfielder can be placed in any open outfield slot, a keeper only in
+  goal; `tests/draft-eras.test.mjs` "small pools" drains the smallest pools and checks every
+  nation of every era with one or two slots left, and lands on every pool under 14): a spin may land on a nation only when its pool has a player
+  the XI can still take — one for an open slot (by position, as the draft judges a fit) who
+  is not already in the XI (`personId`). With two players in Liberia 98, that is Weah or
+  nothing: once a striker's slot is the only thing Weah could fill and it is taken, Liberia 98
+  must not be landed on. The same check covers a keeperless pool when only the keeper's slot
+  is open.
+- **`strength` of a small pool is honest**: the mean of the best XI where **a place the pool
+  cannot fill counts 60** (`ERA_FILL`) — Liberia 98 is 64.5, not 83. A reel weighted by
+  strength gives such a nation little; a flat reel gives every nation the same chance (then
+  a tiny pool lands as often as Brazil — weigh by `size` if that is not wanted).
+- **`keeperLevel`** (what a keeperless pool is rated with in goal) is the weakest first-choice
+  keeper of the era's *full* pools: 70 / 67 / 57 / 61 / 58 / 53 / 52 / 53.
+- **The always-in lists are data, not code for the draft**: nothing to read at run time —
+  `eraList` simply has more nations. In beyond the strongest 70, or with a pool under the
+  minimum: France 98 — United States, South Africa, Morocco, Japan, Jamaica, Iran, Tunisia,
+  Saudi Arabia, Korea Republic, Paraguay (World Cup 1998), Ukraine, Liberia, Trinidad and
+  Tobago (stars); 2002 — Côte d'Ivoire, Trinidad and Tobago, Costa Rica, New Zealand, United
+  Arab Emirates (14–16 players), Liberia, Ecuador; 2006 — Japan, Iran, Georgia, Peru, Egypt;
+  2010 — Egypt, Togo, New Zealand, Korea DPR; 2014 — Iran; 2018 — Iran, Panama,
+  Armenia; 2022 — Tunisia, Saudi Arabia, Qatar; 2026 — Iran, Costa Rica, New Zealand, Qatar,
+  Haiti, Panama, Curacao, South Africa, Iraq, Uzbekistan, Jordan. The one World Cup side with
+  no pool: Saudi Arabia 2006 (no Saudi player in FIFA 04–07).
+- **Who is in a pool** is still "the 26 best-rated of the cycle", with two reviewed
+  exceptions that put a man in: a **World Cup starter** of `data/world-cup-starters.json` (57
+  entries: Karembeu 1998, Grosso 2006, Capdevila 2010, Fred 2014, Carvajal 2018, Tchouaméni and
+  Richarlison 2022 …) and every player with a breakout-lag correction — he takes the place of
+  the pool's lowest-rated player (a keeper a keeper's; an outfielder the lowest-rated
+  outfielder's whose line keeps its minimum). Their cards are ordinary cards. **The man who
+  made way stays in the data** (60 of them: Cassano for De Rossi in Italy 2006, Kirsten for
+  Ramelow in Germany 2002, Martial and Digne in France 2022 …): his era card is kept in
+  `eras.v1.json` in no pool — like the best versions kept for the Prime, reachable by
+  `eraPlayer(catalog, id)` and as one of his `personVersions`; never offered in a draft, on
+  no screen — and `data/build/eras.json` lists who replaced whom (`stats.displaced`: era,
+  nation, name, rating, profileId, by, byRating, byProfileId).
+- **Hand-made cards** (`data/judgement-cards.json`, 18): notable players the source lacks or
+  cannot tell apart — Gary Neville 1998, Francescoli, Stojković, Hong Myung-bo 1998 and 2002,
+  Köpke, Pagliuca, Shevchenko and Rebrov 1998, Aboutrika 2006 and 2008, Al-Deayea, Al-Owairan,
+  Daei, Davala, Edmundo, Lalas, Wynalda. Position, skills and club are a real row of his (another
+  id, another title), the overall is a judgement; at run time they are ordinary era cards
+  (the provenance `data/build/eras.json` → `stats.handCards` lists them).
+
+**The judgement on single cards** (`PLAYER_JUDGEMENT`, each entry with `kind` and its reason;
+`NATION_JUDGEMENT`): the agreed peaks (`peak`), 24 icons of 1997–2002 the coarse titles
+under-rate (`icon`: Keane, Batistuta, Bergkamp, Cafu, Roberto Carlos, Thuram …), 43 players
+with **breakout lag** (`breakout`: a key man of his side at that World Cup whose card of the
+year still shows a prospect — Müller and Busquets 2010, Lahm 2006, Klose 2002, Saka and
+Musiala 2022 … lifted by one to three points, Xavi and Iniesta 2010 to 91; the starter rule
+puts each in his squad), and England's players
+in FIFA 98–2004 two points down at 90 (fading to nothing at 76). `node
+tools/research/era-names.mjs` lists who of about 300 notable players per era is still not in
+his nation's pool.
 
 **What changed for the draft (keeper rule dropped, 2026 renamed)** — against the first build:
 
@@ -357,18 +531,15 @@ Things a draft should know about the data:
   Ronaldo ’98 are 88, Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
   described 2003–04 versions) is where those players reach 90+. A reel that weighs by
   `strength` will favour later eras unless it weighs inside an era.
-- **France 98 is thin**: 27 nations, no Brazil-size depth outside Europe and Argentina/Brazil
+- **France 98 is the thinnest**: 50 nations, no Brazil-size depth outside Europe and Argentina/Brazil
   (FIFA 98/99 use their own player ids and mostly surnames: a player counts only when
-  FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch). Japan, Mexico, the United States or Nigeria of 1998 are not spinnable.
+  FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch — or when both titles list him, at a club or in a national squad). Japan of 1998 is not spinnable (16 players); Liberia never is (Weah has no pool).
 - A pool can have 0, 1 or 2 keepers, and as few as 18 players.
-- 7,334 people are in a pool; 3,455 of them in two or more eras (Messi in six). 601 best
+- 8,380 people are in a pool; 3,697 of them in two or more eras. 505 best
   versions are kept outside the pools for the Prime.
-- Era cards and `catalog.legends` are separate objects for the same men (a legend's id ends
-  in `:legend`, an era card's in `:era`): do not mix the two systems in one XI without
-  comparing `personId`.
 
-`catalog.legends` (Legend spin) and its primes keep working unchanged until the draft stops
-using them; the era file does not depend on the legends file.
+The draft reads only the era file: `catalog.legends` (`legends.v1.json`) is no longer loaded
+by the game.
 
 ## Flow
 
@@ -380,12 +551,13 @@ const draft = createDraftSession(catalog, {
   seed: 123456,              // required: number or string. Never Math.random() inside core.
   sides: 1,                  // 2 = local versus: a seeded coin toss picks who drafts first
   formation: '433',          // or formations: ['433', '4231'] per side
-  difficulty: 'pro',         // sets re-rolls; the opponent ladder uses the same ids
+  difficulty: 'pro',         // the opponent ladder's id (the tokens are the same on each)
+  rerolls: undefined,        // re-rolls (nation respins) per side; default rules.tokens.nation
   hideRatings: false,        // data flag only ("Ball Knower"): the UI hides numbers
   uniqueNations: false,      // each nation at most once per side
   budget: false,             // Budget mode: tier caps (see below)
-  legendSpin: false,         // the first spin is the Legend spin (needs catalog.legends)
-  primes: null,              // Prime boosts: true (by difficulty) | a number | none
+  eras: false,               // a World Cup draft: an era and a nation per spin (needs catalog.eras)
+  primes: null,              // the Prime: true (rules.tokens.prime) | a number | none
   excludeNations: [], excludeClubs: [], excludePlayers: [], // e.g. a pre-chosen opponent
   teams: [{ name: 'You', color: '#d9f580', secondary: '#16213a' }],
   useDefaultRules: false,    // true: DEFAULT_CONFIG rules (daily, challenge links)
@@ -422,7 +594,7 @@ Plain JSON, cached until the state changes (treat as read-only):
 ```js
 {
   mode, modeLabel, difficulty, sides, hideRatings, uniqueNations, budget, daily,
-  legendSpin, legendRound, legendYears, primes, // see "The Legend spin" and "Prime boosts" above
+  eras, primes, tokens,               // see "World Cup drafts" above
   phase: 'spin' | 'pick' | 'complete', complete, first, turn,
   pickIndex, totalPicks, round,       // picks made overall / needed; the side's round 0–10
   category,                           // what the next/current spin draws: nation | league | club
@@ -432,7 +604,7 @@ Plain JSON, cached until the state changes (treat as read-only):
     profileId, name, fullName, position, secondary, ovr, tier, nation, nationCode,
     club, clubId, league, leagueId,   // tier: 'Superstar' | 'Star' | 'Starter' | 'Normal' | 'Bench'
     band,                             // Budget mode: 'superstar' | 'star' | 'starter' | null (free)
-    captain, legend, prime, edition, year, primeVersion,
+    captain, prime, era, edition, year, primeVersion,
     boost,                            // the mates boost he would get in this XI:
                                       // { value: 1.5, kinds: ['nation'] } | null (no mate)
     captainBoost,                     // 1 when he would be the XI's first Captain, else 0
@@ -444,11 +616,12 @@ Plain JSON, cached until the state changes (treat as read-only):
     side, name, color, secondary, formation, filled, complete, rerollsLeft,
     rating, lines: { DEF, MID, ATT },  // team OVR meters (mean slot ratings, 1 decimal)
     slots: [{ slot, role, x, y, line, player, rating, familiarity, link }],
-    links: { score, maxScore, total, chem, linked, pairs, captain, captainBoost,
-             boosts },                // boosts: per slot, mates + Captain (null = open)
+    links: { score, maxScore, total, shown, chem, linked, pairs, captain, captainBoost,
+             boosts },                // boosts: per slot, what is shown: mates + Leader (null = open)
     budget,                           // Budget mode: [{ id, label, range, minimum, slots, used, left }]
   }],
-  history: [{ side, round, slot, role, profileId, category, optionId, optionName, leagueId, rerolls }],
+  history: [{ side, round, slot, role, profileId, category, optionId, optionName, leagueId, rerolls,
+              era?, eraName?, primeOf? }],
 }
 ```
 
@@ -480,63 +653,41 @@ One rule (`links.js`, numbers in `CONFIG.draft.links`: `{ nation: 1.5, club: 1, 
 a player with a **nation team-mate** in the XI gets **+1.5**, with a **club mate +1**, and the
 two **stack** (both: **+2.5**). One mate is enough, there are no thresholds and no league
 mates. An XI with a **Captain** gives **every player +1** on top (one captain counts; two do
-not stack). The sum is the player's `chem` (attribute points the engine adds to every skill,
-capped at 5): 0–3.5.
+not stack). A **GOAT** (an era card flagged `goat`: one of the few greatest of all time, in
+his year) gives **every player +1.5** (`links.goat`) — more than a Captain, and felt in
+matches: +1.5 effective is about +5 points of title odds on World Class in the fast model
+(`CUP_GOAT=0` against `CUP_GOAT=1`, 400 runs: 12.8% → 17.3% at the typical XI; Pro 23.5% →
+30%, Legendary 9.8% → 13%; Budget 7.5% → 11.3% on World Class). A second GOAT adds half of that
+(+0.75), a third a quarter (`goatBoost(count, value)`); a Captain and a GOAT in one XI both
+count (a card is never both). The sum is the player's `chem` (attribute points the engine
+adds to every skill), **capped at 5** (`CHEM_CAP`).
 
 `teamLinks(players)` (players in slot order, `null` = open slot) returns
 `players[i] = { boost, kinds, chem, mates: { nation, club } }` (`boost` = the mates boost,
-`kinds` = what gives it, `chem` = boost + the Captain's boost, `mates` = number of XI mates per
+`kinds` = what gives it, `chem` = boost + the Captain's and the GOATs' boosts (at most 5), `mates` = number of XI mates per
 kind), `pairs: [{ a, b, kind, kinds }]` (every pair of nation or club mates — one line per pair
 for the pitch, `kind: 'nation'` when they share the nation), `score` (sum of the mates boosts,
-max `maxScore` = 27.5), `total` (sum of `chem`, Captain included: the UI's "Boosts +13"),
+max `maxScore` = 27.5), `total` (sum of `chem`), `shown` (per player and for the XI: chem
+**without the GOATs' part** — the owner: a GOAT's boost stays in the maths and is never shown;
+the UI's chips and "Boosts +13" read `shown`, ratings, odds and the engine read `chem`),
 `chem` (mean chem), `linked` (players with a mate), `captain` (slot of the armband or null:
 `captainSlot(players)`, the highest source rating among the Captains, first slot on a tie) and
-`captainBoost`. `linkBoosts(rules)` gives the three numbers; `validLinks(rules)` says whether a rules
+`captainBoost`. `goats` (the slots of the GOATs, `goatSlots(players)`) and `goatBoost` (what they
+give every player). `linkBoosts(rules)` gives the three numbers; `validLinks(rules)` says whether a rules
 object has them (a saved run must: `restoreCupRun`). Real national XIs are all nation mates (+1.5
 each, +2.5 for club mates inside them, +1 with their captain), real club XIs club mates. A pool
 entry's `boost` says what a player would get in the XI as it stands, `captainBoost` what he
 would give it.
 
-**Captains** are a reviewed list of real national-team captains, current players only
-(`data/captains.json`: name, sofifa id, nation, source URL, reason, ranked leaders first). The
-compiler tags its first `size` (10) players — van Dijk, Kimmich, Modrić, Kane, Messi, Son,
-Marquinhos, Xhaka, Koulibaly, Robertson — and fails when an id, name or nation does not match
-the catalog. The size is cut so that about one drafted World Cup XI in three has a captain:
-measured with `draft-baselines.mjs --legend --primes default --captains N` (400 drafts, pick the
-best player; 1 / 2 re-rolls): 8 → 29% / 33%, **10 → 32% / 35%**, 12 → 35% / 38%, 15 → 44% / 49%,
-20 → 65% / 69%. The tag goes with a player into his prime version; legends are never captains.
-Opponents with a captain get the boost too.
+**Captains** are the reviewed list of the leaders of 1997–2026 (`data/captains.json`, see
+"GOAT cards and Captains" under Eras: player + eras, ranked, cut at `size`). Among today's
+catalog players the Captains are the list's players who lead in the 2026 era, and the build
+fails when an id, name or nation does not match the catalog. An era card carries its own mark
+(a card of an era he led in); the Prime takes the marks of the card swapped in. How often a
+draft meets one: the table under "World Cup drafts". Opponents with a captain get the boost too.
 
-Measured typical World Cup XI (300 drafts, pick the best player, the 93-nation reel; 1 / 2
-re-rolls = World Class and Legendary / Pro), effective = OVR + chem:
-
-| Draft | OVR | chem | effective | captain |
-| --- | --- | --- | --- | --- |
-| no legend, no primes | 80.25 / 80.68 | 0.63 / 0.71 | 80.88 / 81.39 | 36% / 40% |
-| + Legend spin (the legend plays at 87.0) | 80.79 / 81.20 | 0.60 / 0.67 | 81.39 / 81.87 | 31% / 34% |
-| + Prime boosts, spent on the biggest gain (0.78 / 1.17 used, +2.7 / +3.5 slot points) | 81.04 / 81.53 | 0.60 / 0.67 | **81.64 / 82.20** | 31% / 34% |
-| Budget, no legend, no primes | 79.69 / 80.02 | 0.57 / 0.61 | 80.26 / 80.63 | 31% / 33% |
-| Budget + Legend spin | 80.08 / 80.37 | 0.49 / 0.53 | 80.58 / 80.91 | 23% / 25% |
-| Budget + Legend spin + Prime boosts | 80.32 / 80.68 | 0.49 / 0.53 | **80.81 / 81.21** | 23% / 25% |
-
-`MODE_BASELINES` is older than all of this (the 48-nation reel, no Captain, no legends: Nations
-83.61 with one re-roll) and is due a re-measure: the reel of every playable nation alone costs
-about 2 OVR.
-
-The table above is from before the legends of current players, the +2 prime rule and the 65+
-pick minimum. With them (`draft-baselines.mjs --legend --primes default --budget "off;default"`,
-200 drafts, 1 / 2 re-rolls; before → after): normal effective 84.57 → 84.75 / 84.94 → 85.06,
-Budget 82.73 → 82.86 / 82.97 → 83.12; the legend plays at 87.7 → 88.7; players with a prime
-version per XI 1.36 → 1.85 (Budget 1.29 → 1.88); Prime boosts used 0.73 → 0.89 / 1.09 → 1.45. `MODE_BASELINES` and
-`CUP_TUNING` were not touched.
-
-Then came the legends of FIFA 98–14, past versions at the overall EA gave them and primes for
-any gain (`draft-baselines.mjs --legend --primes default --n 200 --modes nations --rerolls 1,2`,
-pick the best player; before → after): OVR 83.88 → 83.89 / 84.11 → 84.16, effective 84.79 →
-84.77 / 85.02 → 85.05; the legend plays at 88.8 → 89.0; players with a prime version per XI
-1.46 → 1.64; Prime boosts used 0.76 → 0.77 / 1.12 → 1.17, worth 3.3 → 3.6 / 4.3 → 4.8 slot
-points. The drafted XI is as strong as it was; `MODE_BASELINES` and `CUP_TUNING` were not
-touched.
+`MODE_BASELINES` (Nations 83.58 / 84.04 / 84.18 with 0 / 1 / 2 re-rolls) is the draft of
+today's players; a World Cup draft with its tokens measures 84.99 (above).
 
 ## Match setup
 
@@ -569,6 +720,15 @@ solo drafts per mode × re-roll count, positional policy; the table is from befo
 | Leagues | 81.47 ± 1.72 | 1.33 | 82.10 / 82.80 / 83.39 |
 | Clubs | 77.71 ± 1.71 | 0.87 | 78.03 / 78.58 / 78.98 |
 
+**A World Cup draft has its own baseline**: `ERA_BASELINE` (`{ ovr: 85.57, sd: 1.21, chem:
+1.07, effective: 86.64, plain: 85.76, budget: 84.75 }` — the three tokens used sensibly, the
+same on every level; `plain` without tokens, `budget` the Budget-mode draft; the table under
+"World Cup drafts"). `ladderTarget(mode, level, { eras: true })`, `ladderBaseline(mode, level,
+{ eras: true })` and `chooseOpponent({ …, eras: true })` measure against it (Nations only; the
+option changes nothing in the other modes). The World Cup Run (`createCupRun` and `projectRun`
+in Nations) and the Daily pass it; Quick Match and Versus draft today's players and keep
+`MODE_BASELINES`.
+
 Gap (`CONFIG.draft.ladder`): Pro 0 · World Class +4 ·
 Legendary +7, using the re-roll count of that difficulty. Candidates: the best XI of every
 playable nation (Nations), club XIs (Leagues, Clubs), plus bosses **World XI** (88.5)
@@ -600,18 +760,18 @@ const again = restoreDraftSession(catalog, JSON.parse(localStorage.getItem('draf
 ```
 
 `serialize()` holds options, the rules snapshot, RNG state, picks (ids), the current spin and
-history, the Prime boosts left, plus `catalog: catalogStamp(catalog)`. Restore throws if a saved
-player is missing from the catalog — a draft with a legend or a primed player needs
-`catalog.legends` attached first; compare the stamp with `catalogStamp(catalog)` to warn about a changed
-database. Restored sessions continue with identical spins. `SESSION_FORMAT` is 2 (the rules
-of this version: a nation's draft squad, the pick minimum, the named tiers, mates and the
+history, the tokens left and who was primed, plus `catalog: catalogStamp(catalog)`. Restore throws if a saved
+player is missing from the catalog — a World Cup draft holds era cards (`ea:<id>:fc<edition>:era`) and needs
+`catalog.eras` attached first; compare the stamp with `catalogStamp(catalog)` to warn about a changed
+database. Restored sessions continue with identical spins. `SESSION_FORMAT` is 3 (the rules
+of this version: era drafts and their tokens, a nation's draft squad, the pick minimum, the named tiers, mates and the
 Captain, three difficulties and modes): anything else — an older format, no rules — throws 'Not
 a saved draft session'. There is one cut-off and no conversion of older saves.
 
 ## Determinism contract
 
 Same catalog + options + rules + seed + sequence of `spin`/`reroll`/`pick` calls ⇒ the same
-spins. Only those three calls consume the RNG (one draw per reel; a scheduled/daily spin
+spins. Only those calls (`respin` included) consume the RNG (one draw per reel; a scheduled/daily spin
 consumes none). For shareable runs (daily, challenge links) use `useDefaultRules: true` so the
 device's config cannot change the odds.
 
@@ -628,7 +788,7 @@ badges a player carries (stamped into the catalog) and is not shown to the playe
 **Budget mode** is a harder draft: the XI may hold only so many players per tier —
 `CONFIG.draft.budget` (`Superstar`, `Star`, `Starter`, each `{ minimum, slots }`): **2
 Superstars, 2 Stars, 3 Starters**, everyone else under 80 (free). What a row shows is what it
-costs. A legend counts on the tier of his rating; a Prime boost is free (the player keeps the
+costs — in a World Cup draft the shown rating of the era card. The Prime is free (the player keeps the
 slot of the version that was drafted).
 
 - A player whose tier is full is not available: pool entries carry `band` (`'superstar'`,
@@ -642,11 +802,12 @@ used, left }]` (`label: 'Star'`, `range: '84–87'`; or `null`). Helpers: `budge
   nation's pool is its draft squad as always (the stars you cannot afford are listed, closed);
   nobody is added from deeper in the nation, so a nation whose squad has nobody you can
   afford for an open slot class is off the reel for that spin — France, Spain, Brazil, England
-  and Germany have no outfield player under 80 in their 30, Italy three.
+  and Germany have no outfield player under 80 in their 30, Italy three. In a World Cup draft
+  the same guard runs on the era pools of 26 (and the keeper counted for the keeper-share rule
+  must be affordable).
 - Serialised with the session (`options.budget`, `rules.budget`: the three named tiers).
 - The game offers it in the World Cup Run only (`context.options.budget` → run
   `meta.budget`).
 
-Measured: the table under "Mates and the Captain" (`tools/calibration/draft-baselines.mjs
---budget "off;default" --legend --primes default`): a Budget XI is about 0.8–1.0 effective
-points weaker than a normal one (it was 2.0 with one Superstar slot and the 48-nation reel).
+Measured: the table under "World Cup drafts" — a Budget XI is about one effective point weaker
+than a normal one.

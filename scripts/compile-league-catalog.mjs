@@ -7,16 +7,21 @@ import { compilePlayer, parseCSV, COMPILER_VERSION } from './compile-players.mjs
 import { ATTRS } from '../app/core/players/ratings.js';
 import { PATHS, SOURCE } from './data/paths.mjs';
 
+/** The era of today's catalog (app/core/players/eras.js CURRENT_ERA). */
+const TODAY = 2026;
 /**
- * The reviewed Captain list (data/captains.json) → Map(sofifa id → entry) of its first `size`
- * players. Every entry of the list must be a catalog player with that name and nation: a wrong
- * id fails the build.
+ * The reviewed Captain list (data/captains.json: the leaders of 1997–2026, each with the eras
+ * in which he led) → Map(sofifa id → entry) of those of its first `size` players who lead
+ * today (era 2026): the catalog's Captains. Each of them must be a catalog player with that
+ * name and nation: a wrong id fails the build. (The cards of the other eras are checked and
+ * marked by scripts/compile-legends.mjs.)
  */
 export function captainIds(captains, players) {
   const byId = new Map(players.map(p => [String(p.sourcePlayerId), p])),
     ids = new Map();
   const size = captains?.size ?? Infinity;
   for (const [i, c] of (captains?.players || []).entries()) {
+    if (!c.eras?.includes(TODAY)) continue;
     const p = byId.get(String(c.sofifaId));
     if (!p) throw Error(`Captain ${c.name} (${c.sofifaId}) is not in the catalog`);
     if (p.source.nationality !== c.nation)
@@ -104,9 +109,9 @@ export function compileLeagueCatalog(rows, reference, hash = null, captains = nu
     },
     captains: captains
       ? {
-          rule: 'Reviewed list of real national-team captains (data/captains.json)',
+          rule: 'Reviewed list of the great captains of 1997–2026 (data/captains.json): those who lead today',
           asOf: captains.asOf,
-          size: Math.min(captains.size ?? Infinity, captains.players.length),
+          size: captainIds(captains, players).size,
         }
       : null,
     selection: {

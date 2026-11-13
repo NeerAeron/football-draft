@@ -71,11 +71,47 @@ export const DEFAULT_CONFIG = {
         F: 0.25,
       },
     },
-    // Re-rolls per drafter by difficulty.
-    rerolls: {
-      pro: 2,
-      worldclass: 1,
-      legendary: 1,
+    // Tokens per drafter, the same on every difficulty. World Cup drafts (an era and a nation
+    // per spin): `nation` respins keep the era and spin the nation again, `era` respins spin
+    // the era again (the nation stays when the new era has it), `prime` turns a drafted player
+    // into his best version across all titles. The other drafts have `nation` re-rolls only.
+    tokens: {
+      nation: 1,
+      era: 1,
+      prime: 1,
+    },
+    // Reel weights of a World Cup draft (draft/reels.js; never shown): famous, deep squads come
+    // up more often, nobody is shut out. A nation: quality q(r) = (r − floor) / span (0…1) of
+    // its 2nd, 3rd and 4th best, of the mean of its 5th–8th and of its best player, plus its
+    // size (players / 26), each times its points; weight = 1 + lift · (score / top score)^curve.
+    // An era: 1 + nations · (its nations / 70) + top · q(median of its nations' best players).
+    reels: {
+      era: {
+        nations: 0.25,
+        top: 0.25,
+      },
+      nation: {
+        floor: 72,
+        span: 20,
+        second: 5,
+        third: 3,
+        fourth: 2,
+        depth: 1,
+        best: 1,
+        size: 2.5,
+        lift: 4,
+        curve: 2,
+        // A squad with an all-timer (its best shown rareFrom or more, or a GOAT card) keeps
+        // this share of what its depth lifts it by: the greatest stay an event.
+        rareFrom: 93,
+        rare: 0.4,
+        // A pool of fewer than `full` players without a star (best shown under `star`) starts
+        // from (players / full) ^ small instead of 1: tiny pools of unknown players are quite
+        // rare (the owner: at most once in several hundred nation spins of the era).
+        full: 14,
+        star: 85,
+        small: 2,
+      },
     },
     // Opponent strength vs the mode's typical drafted XI (effective rating, links included).
     ladder: {
@@ -91,26 +127,10 @@ export const DEFAULT_CONFIG = {
       nation: 1.5,
       club: 1,
       captain: 1,
-    },
-    // The Legend spin (World Cup drafts: the first spin). A legend is a best past version the
-    // game shows at `minimum` or more — the rating on his card, not EA's — of a player of the
-    // past or of a current player who was better then (the data ships exactly those); the reel
-    // holds the nations with a legend shown at `reelStar` or better; a landing shows the
-    // nation's `shown` highest-rated legends. A nation's weight on the reel grows gently with how many legends
-    // it has: 1 + weightPerLegend × min(legends, weightCap) (1.15 … 4 by default).
-    legends: {
-      minimum: 85,
-      reelStar: 85,
-      shown: 10,
-      weightPerLegend: 0.15,
-      weightCap: 20,
-    },
-    // Prime boosts per drafter by difficulty (World Cup drafts): each swaps a drafted player
-    // for his stored prime version.
-    primes: {
-      pro: 2,
-      worldclass: 1,
-      legendary: 1,
+      // A GOAT (an era card flagged `goat`: one of the few greatest, in his year) gives every
+      // player of the XI this much — about +5 points of title odds on World Class; each
+      // further GOAT adds half of what the one before added.
+      goat: 1.5,
     },
     // The draft's player tiers (draft/budget.js), by the rating shown on the player, highest
     // first: `minimum` is where the tier starts (these are the tiers the game shows: frames,
@@ -900,7 +920,7 @@ const ranges = {
   secondaryDistance: [0, 2, 0.005],
   unfamiliarFit: [0.2, 0.8, 0.01],
 };
-// Draft-session settings (draft.nations / leagueTierWeights / clubs / rerolls / ladder / links):
+// Draft-session settings (draft.nations / leagueTierWeights / clubs / tokens / ladder / links):
 // [label, min, max, step] by path prefix, longest match wins.
 const DRAFT_FIELDS = {
   'draft.nations.fieldSize': ['Nations in the field', 8, 64, 1],
@@ -927,17 +947,41 @@ const DRAFT_FIELDS = {
   'draft.clubs.minimumPlayers': ['Spinnable club: minimum players', 1, 30, 1],
   'draft.clubs.tierWeights.': [null, 0, 20, 0.05],
   'draft.clubs.leagueTierWeights.': [null, 0, 50, 0.05],
-  'draft.rerolls.': [null, 0, 5, 1],
+  'draft.tokens.nation': ['Tokens: nation respins (re-rolls)', 0, 5, 1],
+  'draft.tokens.era': ['Tokens: era respins', 0, 5, 1],
+  'draft.tokens.prime': ['Tokens: Primes', 0, 5, 1],
+  'draft.reels.era.nations': ['Era reel: bump for the number of nations', 0, 3, 0.05],
+  'draft.reels.era.top': ['Era reel: bump for the median best player', 0, 3, 0.05],
+  'draft.reels.nation.floor': ['Nation reel: rating that counts for nothing', 50, 90, 1],
+  'draft.reels.nation.span': ['Nation reel: rating points to full quality', 5, 40, 1],
+  'draft.reels.nation.second': ['Nation reel: points for the second best', 0, 10, 0.5],
+  'draft.reels.nation.third': ['Nation reel: points for the third best', 0, 10, 0.5],
+  'draft.reels.nation.fourth': ['Nation reel: points for the fourth best', 0, 10, 0.5],
+  'draft.reels.nation.depth': ['Nation reel: points for the 5th–8th best', 0, 10, 0.5],
+  'draft.reels.nation.best': ['Nation reel: points for the best player', 0, 10, 0.5],
+  'draft.reels.nation.size': ['Nation reel: points for the size of the squad', 0, 10, 0.5],
+  'draft.reels.nation.lift': [
+    'Nation reel: how much the best squad outweighs the weakest',
+    0,
+    30,
+    0.5,
+  ],
+  'draft.reels.nation.curve': ['Nation reel: curve of the weight', 0.5, 4, 0.25],
+  'draft.reels.nation.full': ['Nation reel: players of a full pool', 0, 26, 1],
+  'draft.reels.nation.small': ['Nation reel: curve of a small pool', 0.5, 4, 0.25],
+  'draft.reels.nation.star': ['Nation reel: a star is shown at least', 70, 99, 1],
+  'draft.reels.nation.rareFrom': ['Nation reel: an all-timer is shown at least', 85, 99, 1],
+  'draft.reels.nation.rare': [
+    'Nation reel: share of its weight an all-timer squad keeps',
+    0.05,
+    1,
+    0.05,
+  ],
   'draft.ladder.': [null, -15, 15, 0.5],
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
-  'draft.legends.minimum': ['Legend: best version shown at least', 80, 95, 1],
-  'draft.legends.reelStar': ['Legend spin: a nation needs a legend shown at least', 80, 95, 1],
-  'draft.legends.shown': ['Legend spin: legends shown', 1, 23, 1],
-  'draft.legends.weightPerLegend': ['Legend spin: reel weight per legend', 0, 1, 0.05],
-  'draft.legends.weightCap': ['Legend spin: legends that count for the weight', 1, 50, 1],
-  'draft.primes.': [null, 0, 5, 1],
+  'draft.links.goat': ['GOAT boost to every player (attribute points)', 0, 3, 0.25],
   'draft.budget.': [null, 0, 99, 1],
 };
 const LEVEL_LABELS = {
@@ -1068,7 +1112,7 @@ const CROSS_FIELD_RULES = [
   {
     message: 'Mates boosts cannot total more than 5 (the engine cap).',
     reset: ['draft.links'],
-    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain <= 5,
+    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain + l.goat <= 5,
   },
   {
     message: 'Draft tiers must descend and their Budget slots stay within an XI.',

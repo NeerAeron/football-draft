@@ -9,6 +9,7 @@
 // is defined on, so every device gets the same optimum.
 import { perfectXI } from '../../../core/competition/daily.js';
 import { CATALOG_URL } from '../../../services/catalog.js';
+import { ERAS_URL } from '../../../services/eras.js';
 
 const TIMEOUT_MS = 15000;
 
@@ -32,6 +33,7 @@ export function perfectXIOffThread(catalog, day, { formation } = {}) {
       worker.onerror = () => finish(null);
       worker.postMessage({
         url: new URL(CATALOG_URL, globalThis.location.href).href,
+        eras: new URL(ERAS_URL, globalThis.location.href).href,
         day: JSON.parse(JSON.stringify(day)),
         formation,
       });

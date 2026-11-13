@@ -225,7 +225,8 @@ implements "Ball Knower". Club-less players have no `club`/`league`.
 | `Flag` | `code`, `name`, `shape` circle·rect, `size`, `src`, `decorative` (falls back to initials) |
 | `Crest` / `LeagueLogo` | `name`, `colors`, `shape` disc·shield, `size` / `src`, `name`, `tier` |
 | `PlayerCard` | `player`, `size` s·m·l, `tier`, `selected`, `disabled`, `hideRatings`, `onClick`, `children` (footer) |
-| `CaptainMark` | the "C" armband mark (`size` sm \| md); rows, cards and pitch tokens show it for `player.captain`, and the year tag ("’18") for a legend or prime version (`player.era`) |
+| `CaptainMark` | the "L" mark of a Leader (a Captain in code and data) (`size` sm \| md); rows, cards and pitch tokens show it for `player.captain`, and the year tag ("’18") for an era card (`player.era`) |
+| `GoatMark` | the holographic "GOAT" tag (`size` sm \| md; same file as `CaptainMark`); rows, cards and pitch tokens show it for `player.goat` and wear `.is-goat-edge` |
 | `PlayerRow` | `player`, `fit`, `cost { label, tone }` (Budget tier tag), `boost { label, text }` ("+1.5 nation mate"), `stats` (count), `selected`, `disabled`, `hideRatings`, `rank`, `onClick` |
 | `FitTag` | `fit { state: best·ok·penalty·swap·blocked·neutral, label, from, to, at }` (`at` + `to`: "81 at CM") |
 | `PitchView` | `formation` (FORMATIONS key) or `rows`, `players[]` by slot, `highlights {i: fit}`, `links [{from,to,strength 1-3}]`, `linkMode` quiet·focus·all (quiet: faint lines, hover/focus/selected lights one player's links; >14 links → focus), `selected`, `onSelect(i)`, `hideRatings`, `boosts` (array · `false`; default: the mates boosts of the players), `names` |

@@ -49,7 +49,13 @@ test('saved.js readers tolerate missing and malformed data', () => {
   assert.equal(saved.readSavedRun(), null);
   store.set(
     saved.RUN_KEY,
-    JSON.stringify({ stage: 'X9', record: { w: 'a' }, status: 'weird', rounds: 8, format: 3 }),
+    JSON.stringify({
+      stage: 'X9',
+      record: { w: 'a' },
+      status: 'weird',
+      rounds: 8,
+      format: saved.RUN_SUMMARY_FORMAT,
+    }),
   );
   const run = saved.readSavedRun();
   assert.equal(run.stage, 'G1');
@@ -375,6 +381,7 @@ test('one cut-off: anything saved in an older format reads as nothing saved', ()
   };
   // The run state: an older cup format, a removed difficulty or mode, rules of an older shape.
   for (const [what, patch] of [
+    ['cup format 3', { format: 3 }],
     ['cup format 2', { format: 2 }],
     ['cup format 1', { format: 1 }],
     ['Amateur', { difficulty: 'amateur' }],
@@ -387,7 +394,7 @@ test('one cut-off: anything saved in an older format reads as nothing saved', ()
     );
     assert.equal(runStore.loadRun(catalog), null, what);
   }
-  for (const old of [2, 1]) {
+  for (const old of [3, 2, 1]) {
     store.set(
       runStore.RUN_STATE_KEY,
       JSON.stringify({ ...fresh, run: { ...fresh.run, format: old } }),

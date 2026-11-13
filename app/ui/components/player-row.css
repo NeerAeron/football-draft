@@ -230,7 +230,7 @@
   vertical-align: 1px;
   margin-left: 2px;
 }
-/* The year of a legend's or prime version ("’18") and the note of an available Prime boost. */
+/* The year of an era card ("’18") and the note of an available Prime. */
 .prow__era {
   margin-left: 2px;
   padding: 0 4px;
@@ -243,4 +243,17 @@
 .prow__prime {
   color: var(--gold-300);
   font-weight: var(--weight-bold);
+}
+
+.prow__goat {
+  vertical-align: 1px;
+  margin-left: 3px;
+}
+.prow--goat {
+  background: linear-gradient(
+    100deg,
+    rgb(245 200 76 / 0.12),
+    rgb(155 231 255 / 0.06) 60%,
+    transparent
+  );
 }

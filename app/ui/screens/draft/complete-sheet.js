@@ -23,7 +23,7 @@ import {
 import { quickOpponent, difficultyLabel } from '../../lib/draft-store.js';
 import { linkLines } from './draft-model.js';
 import { BudgetStrip } from './team-panel.js';
-import { PrimeButton } from './prime-sheet.js';
+import { TokenBar } from './tokens.js';
 import { fmt1, boost as fmtBoost } from '../../lib/format.js';
 
 const fmt = v => fmt1(v);
@@ -73,7 +73,7 @@ function XiSummary({ team, players, hideRatings, small }) {
       >
       <span
         ><small>Boosts</small
-        ><b class="num is-boost" data-testid="final-boosts">${fmtBoost(team.links.total)}</b></span
+        ><b class="num is-boost" data-testid="final-boosts">${fmtBoost(team.links.shown)}</b></span
       >
       <span
         ><small>Mates</small><b class="num">${team.links.linked}<i>/11</i></b></span
@@ -193,15 +193,15 @@ export function CompleteSheet({
     onClose=${onClose}
     variant="sheet"
     size="lg"
-    eyebrow=${kind === 'quick' ? `Quick Match · ${difficultyLabel(context.difficulty)}` : snap.modeLabel + ' draft'}
+    eyebrow=${kind === 'quick' ? `Quick Match · ${difficultyLabel(context.difficulty)}` : (snap.eras ? 'World Cup' : snap.modeLabel) + ' draft'}
     title=${title}
     class="complete-sheet"
     footer=${html`
       ${
-        // Last chance: boosts not used here are gone once the World Cup starts.
+        // Last chance: a Prime not used here is gone once the World Cup starts.
         step === 'xi' &&
         mine.primesLeft > 0 &&
-        html`<${PrimeButton} team=${mine} primes=${snap.primes} onOpen=${onPrime} />`
+        html`<${TokenBar} snap=${snap} onToken=${onPrime} only=${['prime']} />`
       }
       ${
         context.options.hideRatings &&

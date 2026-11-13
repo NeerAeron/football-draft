@@ -18,8 +18,9 @@
 //   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
 //   source?: { nationality, clubId, … },  // what makes mates (core/draft/links.js)
 //   captain?: true,              // Captain tag (an armband mark; +1 for his whole XI)
-//   legend?: true, prime?: true, // a Legend / a prime version (core/players/legends.js)
-//   era?: '’18',                 // the year of a legend's or prime version's edition
+//   goat?: true,                 // a GOAT card (the GOAT mark and a holographic edge)
+//   prime?: true,                // the Prime was spent on him (set by the draft board)
+//   era?: '’18',                 // an era card: the year of that version's ratings
 //   primeNote?: 'Prime 94 · ’19' // draft only: a Prime boost would make him this
 // }
 import { RATING_GROUPS, categoryRating } from '../../core/players/ratings.js';
@@ -84,11 +85,12 @@ export { captainSlot };
 
 /**
  * The boost of every player of an XI (views or catalog players, null = open slot): mates
- * (nation mate +1.5, club mate +1, both +2.5) plus the Captain's +1 — core/draft/links.js. 0
+ * (nation mate +1.5, club mate +1, both +2.5) plus the Leader's +1 — core/draft/links.js
+ * (`shown`: a GOAT's boost counts in the ratings and is not shown on a player). 0
  * when a view carries no `source`.
  */
 export function mateBoosts(players, rules) {
-  return teamLinks(players, rules).players.map(e => (e ? e.chem : 0));
+  return teamLinks(players, rules).players.map(e => (e ? e.shown : 0));
 }
 
 /**
@@ -117,10 +119,10 @@ export function playerView(p, { team, league, nation } = {}) {
     attrs: p.attrs, // every attribute (the draft's "All attributes" panel)
     source: p.source, // nation / club: who his mates are (draft/links.js)
     captain: !!p.captain, // Captain tag: +1 for his whole XI (draft/links.js)
+    goat: !!p.goat, // one of the greatest, in his year: +1.5 for his whole XI
     sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
-    legend: !!p.legend,
     prime: !!p.prime,
-    era: editionLabel(p), // '’18' for a legend or a prime version (the year stored), else ''
+    era: editionLabel(p), // '’18' for an era card (the year of its ratings), else ''
     badges: (p.tags || []).map(id => ({ id, label: BADGE_LABEL[id] || id })),
   };
 }

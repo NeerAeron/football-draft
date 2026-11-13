@@ -16,12 +16,12 @@ export const HOW_TO_STEPS = [
   {
     icon: 'reel',
     title: 'Spin',
-    text: 'One tap spins the reel. Where it lands is decided before it moves — no fake near-misses.',
+    text: 'One tap spins the reels — in a World Cup draft an era and a nation: that squad, as it was. Where they land is decided before they move.',
   },
   {
     icon: 'pitch',
     title: 'Pick & place',
-    text: 'Choose a player and the pitch lights up with the fit before you lock it in. Mates boost each other: a nation mate gets +1.5, a club mate +1, both +2.5.',
+    text: 'Choose a player and the pitch lights up with the fit before you lock it in. Mates boost each other: a nation mate gets +1.5, a club mate +1, both +2.5. A Leader (the L on his card) lifts everyone by +1. A GOAT card is one of the greatest, at his best.',
     demo: true,
   },
   {

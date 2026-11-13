@@ -43,8 +43,8 @@ export const PLAYERS = [
     },
     source: { club: 'Liverpool', clubId: '9', leagueId: '13', nationality: 'Brazil' },
     captain: false,
+    goat: false,
     sourceOverall: 87,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -96,8 +96,8 @@ export const PLAYERS = [
     },
     source: { club: 'Paris Saint-Germain', clubId: '73', leagueId: '16', nationality: 'Portugal' },
     captain: false,
+    goat: false,
     sourceOverall: 89,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -150,8 +150,8 @@ export const PLAYERS = [
     },
     source: { club: 'Arsenal', clubId: '1', leagueId: '13', nationality: 'France' },
     captain: false,
+    goat: false,
     sourceOverall: 88,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -204,8 +204,8 @@ export const PLAYERS = [
     },
     source: { club: 'Liverpool', clubId: '9', leagueId: '13', nationality: 'Netherlands' },
     captain: true,
+    goat: false,
     sourceOverall: 88,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -258,8 +258,8 @@ export const PLAYERS = [
     },
     source: { club: 'Paris Saint-Germain', clubId: '73', leagueId: '16', nationality: 'Morocco' },
     captain: false,
+    goat: false,
     sourceOverall: 88,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -313,8 +313,8 @@ export const PLAYERS = [
     },
     source: { club: 'FC Barcelona', clubId: '241', leagueId: '53', nationality: 'Spain' },
     captain: false,
+    goat: false,
     sourceOverall: 90,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -368,8 +368,8 @@ export const PLAYERS = [
     },
     source: { club: 'FC Barcelona', clubId: '241', leagueId: '53', nationality: 'Spain' },
     captain: false,
+    goat: false,
     sourceOverall: 90,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -423,8 +423,8 @@ export const PLAYERS = [
     },
     source: { club: 'Real Madrid', clubId: '243', leagueId: '53', nationality: 'England' },
     captain: false,
+    goat: false,
     sourceOverall: 90,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -477,8 +477,8 @@ export const PLAYERS = [
     },
     source: { club: 'Real Madrid', clubId: '243', leagueId: '53', nationality: 'Brazil' },
     captain: false,
+    goat: false,
     sourceOverall: 89,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -531,8 +531,8 @@ export const PLAYERS = [
     },
     source: { club: 'Manchester City', clubId: '10', leagueId: '13', nationality: 'Norway' },
     captain: false,
+    goat: false,
     sourceOverall: 91,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -585,8 +585,8 @@ export const PLAYERS = [
     },
     source: { club: 'Trabzonspor', clubId: '436', leagueId: '68', nationality: 'Egypt' },
     captain: false,
+    goat: false,
     sourceOverall: 87,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -638,8 +638,8 @@ export const PLAYERS = [
     },
     source: { club: 'Inter', clubId: '44', leagueId: '31', nationality: 'Italy' },
     captain: false,
+    goat: false,
     sourceOverall: 87,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -691,8 +691,8 @@ export const PLAYERS = [
     },
     source: { club: 'Al Ahli SFC', clubId: '112387', leagueId: '350', nationality: 'England' },
     captain: false,
+    goat: false,
     sourceOverall: 83,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -744,8 +744,8 @@ export const PLAYERS = [
     },
     source: { club: 'RC Celta', clubId: '450', leagueId: '53', nationality: 'Spain' },
     captain: false,
+    goat: false,
     sourceOverall: 79,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -795,8 +795,8 @@ export const PLAYERS = [
     },
     source: { club: 'Pogoń Szczecin', clubId: '110746', leagueId: '66', nationality: 'Poland' },
     captain: false,
+    goat: false,
     sourceOverall: 73,
-    legend: false,
     prime: false,
     era: '',
     badges: [
@@ -843,8 +843,8 @@ export const PLAYERS = [
     },
     source: { club: null, clubId: null, leagueId: null, nationality: 'Paraguay' },
     captain: false,
+    goat: false,
     sourceOverall: 80,
-    legend: false,
     prime: false,
     era: '',
     badges: [

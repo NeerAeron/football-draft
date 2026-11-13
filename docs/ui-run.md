@@ -115,7 +115,7 @@ as the match screen's Instant view.
 ## Daily Challenge flow
 
 Intro (date, rules, group, streak, countdown) → `startDraft({ kind: 'daily', type: 'nations',
-schedule: day.schedule, seed: day.seed, formation, rerolls, daily: id,
+schedule: day.schedule, seed: day.seed, formation, daily: id,
 useDefaultRules: true, returnTo: '/daily' })` → back on `#/daily`: `createCupRun(catalog,
 { ...day.cup, user })`, `perfectXI` (in a module Worker: `screens/daily/perfect-xi.js`, ~250 ms
 of best-XI search off the main thread; main-thread fallback) / `perfectPercent`,
@@ -154,14 +154,14 @@ dropped too and the day can start again.
 Readers are tolerant (`lib/saved.js` and `lib/records.js` for Home, `readRunState()` / `readDaily()`): unknown or
 broken data reads as "nothing saved".
 
-**One cut-off for older saves and links.** The game reads today's formats only: cup format 3,
-cabinet format 3, draft format 2 (the session's rules of this version), the three
+**One cut-off for older saves and links.** The game reads today's formats only: cup format 4,
+cabinet format 3, draft format 3 (the session's rules of this version), the three
 difficulties, the three draft modes, the two link kinds. Nothing older is converted — it
 reads as "nothing saved" or "link not valid" through the same tolerant readers, never a crash:
 
 * a **run** in an older cup format, on a removed difficulty or mode, or with rules of an older
   shape: `readRunState()` / `loadRun()` return null, the hub shows "No run in progress", and
-  Home shows no run for a summary without `format: 3` (finished ones too);
+  Home shows no run for a summary without `format: 4` (finished ones too);
 * a **draft** in the slot with an older `format`: `readSavedDraft()` and `loadDraft()` return
   null (status `empty`); today's slot with a session that does not restore (an older session
   format, unknown mode or difficulty, a missing player) is the draft screen's error state;

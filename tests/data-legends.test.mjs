@@ -149,9 +149,9 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
   assert.equal(new Set(legends.map(p => p.profileId.split(':')[1])).size, legends.length);
   // Best first, as shown; names everyone knows, at their best version.
   for (let i = 1; i < legends.length; i++) assert.ok(shown(legends[i - 1]) >= shown(legends[i]));
-  // From 1998 (FIFA 99) to 2025 (FC 26).
+  // From 1997 (FIFA 98) to 2025 (FC 26).
   const years = legends.map(p => p.year);
-  assert.deepEqual([Math.min(...years), Math.max(...years)], [1998, 2025]);
+  assert.deepEqual([Math.min(...years), Math.max(...years)], [1997, 2025]);
   // The great ones are the top cards of the game, above today's best: EA's own numbers for
   // Messi and Cristiano Ronaldo, the chain's for the years before FIFA 09.
   const card = (name, nation) =>
@@ -163,16 +163,21 @@ test('legends are best past versions shown 85+: valid, catalog nations, the year
   assert.deepEqual(facts(legends[0]), [95, 2015, 16, 'RW', 'FC Barcelona']); // printed 94
   assert.deepEqual(facts(card('Cristiano Ronaldo', 'Portugal')), [94, 2018, 19, 'ST', 'Juventus']);
   assert.deepEqual(facts(card('Neymar Jr', 'Brazil')).slice(0, 3), [92, 2019, 20]); // as printed
-  assert.deepEqual(facts(card('Ronaldo', 'Brazil')), [94, 2003, 4, 'ST', 'Real Madrid']);
+  assert.deepEqual(facts(card('Ronaldo', 'Brazil')), [95, 1998, 99, 'ST', 'Inter']);
   assert.deepEqual(facts(card('Xavi', 'Spain')), [93, 2011, 12, 'CM', 'FC Barcelona']);
-  assert.deepEqual(facts(card('Ronaldinho', 'Brazil')), [93, 2003, 4, 'AM', 'FC Barcelona']);
-  assert.deepEqual(facts(card('Z. Zidane', 'France')), [93, 2003, 4, 'AM', 'Real Madrid']);
-  assert.deepEqual(facts(card('T. Henry', 'France')), [91, 2004, 5, 'ST', 'Arsenal']);
+  // The reviewed judgement (TITLE_JUDGEMENT, PLAYER_JUDGEMENT in compile-legends.mjs): the
+  // peaks the game's followers agree on read as peaks — Ronaldo of the 1998 World Cup,
+  // Ronaldinho of 2004–06, Zidane of 1998–2002 — and FIFA 2004's generous top is level with
+  // its neighbours.
+  assert.deepEqual(facts(card('Ronaldinho', 'Brazil')), [94, 2006, 7, 'AM', 'FC Barcelona']);
+  assert.deepEqual(facts(card('Z. Zidane', 'France')), [94, 2002, 3, 'CM', 'Real Madrid']);
+  assert.deepEqual(facts(card('T. Henry', 'France')), [92, 2004, 5, 'ST', 'Arsenal']);
   assert.deepEqual(facts(card('G. Buffon', 'Italy')).slice(0, 4), [92, 2007, 8, 'GK']);
-  assert.equal(shown(card('Kaká', 'Brazil')), 91); // FIFA 09 printed 90
+  assert.deepEqual(facts(card('Kaká', 'Brazil')).slice(0, 3), [92, 2007, 8]); // Ballon d'Or
+  assert.ok(shown(card('D. Beckham', 'England')) <= 92);
   // The lift is for the top: it fades to nothing at 84, so it makes hardly anyone a legend.
   assert.match(file.selection.lift, /never lowered/);
-  assert.ok(legends.length > 400 && legends.length < 460, 'legends: ' + legends.length);
+  assert.ok(legends.length > 440 && legends.length < 520, 'legends: ' + legends.length);
   assert.ok(shown(card('P. Maldini', 'Italy')) >= 87);
   // Today's best card shows 92: Messi, Cristiano Ronaldo, Ronaldo, Xavi and Buffon stand above
   // it, Zidane, Ronaldinho and Henry beside it.
@@ -239,7 +244,10 @@ test('prime versions: a catalog player at his best past version, any gain, ident
   const messi = catalog.players.find(p => p.name === 'L. Messi'),
     prime = primeVersion(catalog, messi);
   assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [89, 95, 16]);
-  assert.equal(prime.captain, true); // the armband goes with him
+  assert.equal(prime.captain, false); // a GOAT-list player is no Captain
+  const modric = catalog.players.find(p => p.name === 'L. Modrić');
+  assert.equal(modric.captain, true);
+  assert.equal(primeVersion(catalog, modric).captain, true); // the armband goes with him
   assert.equal(editionLabel(prime), '’15'); // FIFA 16's release ratings: 2015
   assert.equal(editionYear(prime), 2015);
   // The year is the stored one; an edition alone reads as its release year.

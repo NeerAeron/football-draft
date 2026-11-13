@@ -17,7 +17,7 @@
 import { FORMATIONS } from '../../core/players/formations.js';
 import { STYLES, TACTICS } from '../../core/players/traits.js';
 import { roleRating, roleFit, naturalRating, isKeeper } from '../../core/draft/pools.js';
-import { teamLinks } from '../../core/draft/links.js';
+import { teamLinks, CHEM_CAP } from '../../core/draft/links.js';
 import { NATURAL_FIT } from '../../core/draft/session.js';
 import { CONFIG, DEFAULT_CONFIG } from '../../core/config/config.js';
 import {
@@ -96,6 +96,9 @@ function normalizeSide(side, i) {
     editable: side.editable ?? kind !== 'ai',
     // The formation picked before the draft, kept for this match (World Cup: the group stage).
     formationLocked: !!side.formationLocked,
+    // A run opponent in knockout form (core/competition/cup.js FIELD_FORM): rating points its
+    // players carry on top of their boosts — counted in the side's effective rating.
+    form: Number.isFinite(side.form) ? side.form : 0,
   };
 }
 
@@ -195,21 +198,30 @@ export function slotFits(players, formation) {
   });
 }
 
-/** Team OVR (mean slot rating), mates summary and effective rating (OVR + chem). */
-export function lineupStrength(players, formation, links = CONFIG.draft.links) {
+/**
+ * Team OVR (mean slot rating), mates summary and effective rating (OVR + chem; `form`: what a
+ * run opponent in knockout form carries on top, up to the chem cap).
+ */
+export function lineupStrength(players, formation, links = CONFIG.draft.links, form = 0) {
   const roles = rolesOf(formation);
   const ratings = players
     .map((p, i) => (p ? roleRating(p, roles[i]) : null))
     .filter(r => r != null);
   const rating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
   const summary = teamLinks(players, links);
+  const filled = summary.players.filter(Boolean),
+    chem = form
+      ? filled.reduce((sum, e) => sum + Math.min(CHEM_CAP, e.chem + form), 0) /
+        Math.max(1, filled.length)
+      : summary.chem;
   return {
     rating: Math.round(rating * 10) / 10,
-    effective: Math.round((rating + summary.chem) * 100) / 100,
+    effective: Math.round((rating + chem) * 100) / 100,
     links: {
       score: summary.score,
       maxScore: summary.maxScore,
       total: summary.total,
+      shown: summary.shown,
       pairs: summary.pairs,
     },
   };

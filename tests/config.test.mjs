@@ -28,7 +28,7 @@ test('configuration round-trips all fields and rejects invalid tiers, odds and r
       f.path + ' must be editable at its default HTML step',
     );
   for (const change of [
-    c => (c.draft.rerolls.pro = 1.5),
+    c => (c.draft.tokens.nation = 1.5),
     c => (c.draft.leagueTierWeights = { A: 0, B: 0, C: 0, D: 0, F: 0 }),
     c => (c.playerTiers.Star.badgeMinimum = 3.5),
     c => (c.playerTiers.Normal.minimum = 80),

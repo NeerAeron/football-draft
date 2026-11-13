@@ -1,0 +1,65 @@
+{
+  "description": "The nations of each World Cup finals, by era id (compiler input, scripts/compile-legends.mjs): a nation that played that tournament can always be spun in that era, with whatever players the data has for it. Names are the catalog's (Yugoslavia 1998 and Serbia and Montenegro 2006 are Serbia; Türkiye, Czechia, Korea Republic, Côte d'Ivoire, China PR, Curacao as the catalog spells them); the build fails on a name the catalog does not have or a wrong count. 1998–2022 are the 32 finalists. 2026 is the 48: the 42 that qualified directly by November 2025, and the six play-off winners of March 2026 as `playoffs2026` — reviewed from memory, check them.",
+  "asOf": "2026-11-13",
+  "playoffs2026": ["Bosnia and Herzegovina", "Sweden", "Türkiye", "Czechia", "Iraq", "Congo DR"],
+  "finals": {
+    "1998": [
+      "France", "Brazil", "Italy", "Germany", "Spain", "Netherlands", "England", "Argentina",
+      "Croatia", "Denmark", "Romania", "Nigeria", "Mexico", "Paraguay", "Chile", "Norway",
+      "Serbia", "Belgium", "Scotland", "Austria", "Bulgaria", "Morocco", "Cameroon",
+      "South Africa", "Tunisia", "Saudi Arabia", "Iran", "United States", "Japan",
+      "Korea Republic", "Jamaica", "Colombia"
+    ],
+    "2002": [
+      "France", "Senegal", "Uruguay", "Denmark", "Spain", "Slovenia", "Paraguay", "South Africa",
+      "Brazil", "Türkiye", "China PR", "Costa Rica", "Korea Republic", "Poland", "United States",
+      "Portugal", "Germany", "Saudi Arabia", "Republic of Ireland", "Cameroon", "Argentina",
+      "Nigeria", "England", "Sweden", "Italy", "Ecuador", "Croatia", "Mexico", "Japan", "Belgium",
+      "Russia", "Tunisia"
+    ],
+    "2006": [
+      "Germany", "Costa Rica", "Poland", "Ecuador", "England", "Paraguay", "Trinidad and Tobago",
+      "Sweden", "Argentina", "Côte d'Ivoire", "Serbia", "Netherlands", "Mexico", "Iran", "Angola",
+      "Portugal", "Italy", "Ghana", "United States", "Czechia", "Brazil", "Croatia", "Australia",
+      "Japan", "France", "Switzerland", "Korea Republic", "Togo", "Spain", "Ukraine", "Tunisia",
+      "Saudi Arabia"
+    ],
+    "2010": [
+      "South Africa", "Mexico", "Uruguay", "France", "Argentina", "Nigeria", "Korea Republic",
+      "Greece", "England", "United States", "Algeria", "Slovenia", "Germany", "Australia",
+      "Serbia", "Ghana", "Netherlands", "Denmark", "Japan", "Cameroon", "Italy", "Paraguay",
+      "New Zealand", "Slovakia", "Brazil", "Korea DPR", "Côte d'Ivoire", "Portugal", "Spain",
+      "Switzerland", "Honduras", "Chile"
+    ],
+    "2014": [
+      "Brazil", "Croatia", "Mexico", "Cameroon", "Spain", "Netherlands", "Chile", "Australia",
+      "Colombia", "Greece", "Côte d'Ivoire", "Japan", "Uruguay", "Costa Rica", "England", "Italy",
+      "Switzerland", "Ecuador", "France", "Honduras", "Argentina", "Bosnia and Herzegovina",
+      "Iran", "Nigeria", "Germany", "Portugal", "Ghana", "United States", "Belgium", "Algeria",
+      "Russia", "Korea Republic"
+    ],
+    "2018": [
+      "Russia", "Saudi Arabia", "Egypt", "Uruguay", "Portugal", "Spain", "Morocco", "Iran",
+      "France", "Australia", "Peru", "Denmark", "Argentina", "Iceland", "Croatia", "Nigeria",
+      "Brazil", "Switzerland", "Costa Rica", "Serbia", "Germany", "Mexico", "Sweden",
+      "Korea Republic", "Belgium", "Panama", "Tunisia", "England", "Poland", "Senegal",
+      "Colombia", "Japan"
+    ],
+    "2022": [
+      "Qatar", "Ecuador", "Senegal", "Netherlands", "England", "Iran", "United States", "Wales",
+      "Argentina", "Saudi Arabia", "Mexico", "Poland", "France", "Australia", "Denmark",
+      "Tunisia", "Spain", "Costa Rica", "Germany", "Japan", "Belgium", "Canada", "Morocco",
+      "Croatia", "Brazil", "Serbia", "Switzerland", "Cameroon", "Portugal", "Ghana", "Uruguay",
+      "Korea Republic"
+    ],
+    "2026": [
+      "United States", "Canada", "Mexico", "Panama", "Haiti", "Curacao", "Argentina", "Brazil",
+      "Ecuador", "Uruguay", "Colombia", "Paraguay", "Japan", "Iran", "Korea Republic",
+      "Australia", "Uzbekistan", "Jordan", "Qatar", "Saudi Arabia", "Morocco", "Tunisia", "Egypt",
+      "Algeria", "Ghana", "Cabo Verde", "South Africa", "Senegal", "Côte d'Ivoire",
+      "New Zealand", "England", "France", "Croatia", "Portugal", "Norway", "Germany",
+      "Netherlands", "Belgium", "Austria", "Switzerland", "Spain", "Scotland",
+      "Bosnia and Herzegovina", "Sweden", "Türkiye", "Czechia", "Iraq", "Congo DR"
+    ]
+  }
+}
