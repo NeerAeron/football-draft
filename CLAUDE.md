@@ -133,7 +133,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   `passing.js`, `shooting.js`, `ball.js`, `defence.js`, `restarts.js`, `fouls.js`. Also
   `player.js` (skill/awareness/speed view), `player-model.js` (hidden tendencies), `rules.js`
   (offside), `discipline.js` (cards; `fouls.js coverDismissal` reshapes a side to ten men),
-  `keeper.js` (dive/save model; a save's ball does what its `saveType` says), `rebound.js` (second balls: for 3 s after a save, a block or the woodwork the defending side's nearest two go for the ball and clear it, the keeper claims what he reaches — `gameplay.secondBalls`), `goal-zones.js`,
+  `keeper.js` (dive/save model; a save's ball does what its `saveType` says), `rebound.js` (second balls: for 3 s after a save, a block or the woodwork the defending side's nearest two go for the ball and clear it, the keeper claims what he reaches — `gameplay.secondBalls`), `restarts.js` (set pieces; building up from the back: at a goal kick, a free kick within 40 m of the own goal line and with the ball in the keeper's hands both sides RUN to one shape — nobody is placed — and the taker waits until they are set or `gameplay.buildUpWait`; `buildUpSpot`, and `buildUpOption` in passing.js: short when it is really on, else long to a header), `goal-zones.js`,
   `insights.js` (xG fitted to the engine's own conversion, situations — display only), `periods.js` (clock, stoppage), `whistle.js` (the whistle waits for a live attack or an awarded corner: `whistleHeld`, caps in `tuning.periods.hold*`), `shootout.js` (extra time, penalties), `replay.js`
   (record, highlights, `simulateComplete`/`simulateHalf`, `performanceRating`), `coach.js`
   (`coachAI` for side 1 in AI mode, `tacticAccess`), `constants.js`.

@@ -33,6 +33,10 @@ export const DETECTORS = {
   'keeper-giveaway': "keeper's pass or throw cut out in his own half",
   'goal-kick-given-away':
     'goal kick straight out of play, to an opponent within 45 m of the goal, or the man it went to robbed within 40 m and 3.5 s of the kick',
+  'hands-lost':
+    "keeper's kick or throw from his hands lost within 4 s: to an opponent, out of play, or the receiver robbed (by reason and per 100 in the table below)",
+  'offside-fk-lost': 'free kick after an offside lost within 4 s (the same reasons)',
+  'deep-fk-lost': 'free kick in the own 40 m (foul or indirect) lost within 4 s (the same reasons)',
   'dribble-out': 'carrier takes the ball out of play with no opponent within 3 m',
   'own-box-dawdle': 'outfield carrier keeps the ball 1.5 s+ in his own box with a presser on him',
   'idle-carrier': 'unpressed outfield carrier keeps the ball 6 s+ and goes nowhere (< 5 m)',
@@ -79,7 +83,16 @@ function analyse(m, spec) {
         clock: clock(m),
         ...extra,
       });
-  const totals = { play: 0, restart: 0, restarts: {}, swarm: 0, crowd: 0, freeBox: 0, wander: 0 };
+  const totals = {
+    play: 0,
+    restart: 0,
+    restarts: {},
+    swarm: 0,
+    crowd: 0,
+    freeBox: 0,
+    wander: 0,
+    followed: {},
+  };
   const name = id => (id == null ? null : m.players[id].name);
   const opponents = p => m.activePlayers.filter(q => q.team !== p.team);
   const nearestOpp = p => Math.min(...opponents(p).map(q => hyp(q.x - p.x, q.y - p.y)));
@@ -92,6 +105,7 @@ function analyse(m, spec) {
     exchange = [], // recent completed short passes (ping-pong)
     restartStart = null,
     goalKick = null, // the goal kick being followed: { team, kicked, received }
+    follow = null, // the keeper distribution or deep free kick being followed
     seenEvents = 0,
     step = 0;
   const rebounds = reboundTracker(m);
@@ -227,6 +241,63 @@ function analyse(m, spec) {
         else if (g.received && relX(owner.x, g.team) < 40) given('receiver robbed');
         else goalKick = null;
       } else if (owner && owner.role !== 'GK') g.received = true;
+    }
+
+    // ---- keeper distributions from the hands, offside and deep free kicks: followed from
+    // the kick for 4 s. Lost = an opponent has the ball, or it is his side's restart.
+    if (m.mode === 'play' && b.kind === 'pass' && b.owner === null && b.kicker != null) {
+      const k = m.players[b.kicker],
+        fresh = prev.kind !== 'pass' || prev.kicker !== b.kicker || b.age < prev.age,
+        type = !fresh
+          ? null
+          : prev.mode === 'restart'
+            ? prev.restart === 'Offside'
+              ? 'offside-fk'
+              : ['Free kick', 'Indirect free kick'].includes(prev.restart) && relX(k.x, k.team) < 40
+                ? 'deep-fk'
+                : null
+            : prev.kind === 'held' && k.role === 'GK' && b.restartTaker == null
+              ? 'hands'
+              : null;
+      if (type) {
+        totals.followed[type] = (totals.followed[type] || 0) + 1;
+        follow = {
+          type,
+          team: k.team,
+          kicker: k.id,
+          t0: +m.elapsed.toFixed(2),
+          received: false,
+          length: Math.round(b.destination ? hyp(b.destination.x - k.x, b.destination.y - k.y) : 0),
+          loft: b.vz > 0,
+          delivery: b.delivery,
+          to: name(b.target),
+        };
+      }
+    }
+    if (follow && m.elapsed > follow.t0) {
+      const f = follow,
+        owner = b.owner !== null ? m.players[b.owner] : null,
+        lost = reason => {
+          add(`${f.type}-lost`, {
+            reason,
+            from: f.t0,
+            player: name(f.kicker),
+            to: f.to,
+            length: f.length,
+            loft: f.loft,
+            delivery: f.delivery,
+            x: Math.round(relX(b.x, f.team)),
+          });
+          follow = null;
+        };
+      if (m.elapsed - f.t0 > 4) follow = null;
+      else if (m.mode === 'restart') {
+        if (m.restart.type === 'Goal' || m.restart.team === f.team) follow = null;
+        else lost(f.received ? 'lost after it was received' : 'out of play');
+      } else if (m.mode !== 'play') follow = null;
+      else if (owner && owner.team !== f.team)
+        lost(f.received ? 'receiver robbed' : 'to an opponent');
+      else if (owner && owner.id !== f.kicker) f.received = true;
     }
 
     // ---- ball leaves play: who put it out?
@@ -499,7 +570,21 @@ function summarise(report) {
     per = Object.fromEntries(Object.keys(DETECTORS).map(k => [k, 0]));
   let play = 0,
     restart = 0;
-  const restarts = {};
+  const restarts = {},
+    followed = {};
+  for (const r of report.results) {
+    for (const [type, n] of Object.entries(r.totals.followed || {})) {
+      followed[type] ??= { n: 0, lost: 0, ownHalf: 0, reasons: {} };
+      followed[type].n += n;
+    }
+    for (const f of r.findings) {
+      const t = f.type.endsWith('-lost') && followed[f.type.slice(0, -5)];
+      if (!t) continue;
+      t.lost++;
+      if (f.x < 52.5) t.ownHalf++;
+      t.reasons[f.reason] = (t.reasons[f.reason] || 0) + 1;
+    }
+  }
   for (const r of report.results) {
     for (const f of r.findings) per[f.type] = (per[f.type] || 0) + 1;
     per.swarm += r.totals.swarm;
@@ -527,6 +612,7 @@ function summarise(report) {
     matches,
     perMatch: Object.fromEntries(Object.entries(per).map(([k, v]) => [k, v / matches])),
     inPlay: play / (play + restart),
+    followed,
     restarts: Object.fromEntries(
       Object.entries(restarts).map(([k, v]) => [
         k,
@@ -556,6 +642,28 @@ function printSummary(report, baseline = null) {
     console.log(
       `${b ? num(b.perMatch[type] || 0) + ' →' : ''}${num(v)}  ${type.padEnd(17)} ${text}`,
     );
+  }
+  // Keeper distributions and deep free kicks: what became of them, per 100.
+  const REASONS = [
+      'to an opponent',
+      'out of play',
+      'receiver robbed',
+      'lost after it was received',
+    ],
+    rate = (t, n) => (t?.n ? ((n || 0) / t.n) * 100 : 0).toFixed(1).padStart(5),
+    row = t =>
+      `${String(t?.n ?? 0).padStart(4)} ${rate(t, t?.lost)} ${rate(t, t?.ownHalf)}  ` +
+      REASONS.map(r => rate(t, t?.reasons[r])).join(' ');
+  console.log(
+    '\nlost within 4 s, per 100 (n · lost · lost in the own half · to an opponent · out of play · receiver robbed · lost after it was received)',
+  );
+  for (const [type, label] of [
+    ['hands', "keeper's hands"],
+    ['offside-fk', 'offside free kick'],
+    ['deep-fk', 'deep free kick'],
+  ]) {
+    if (b) console.log(`  before ${row(b.followed?.[type])}  ${label}`);
+    console.log(`  ${b ? 'after ' : '      '} ${row(s.followed[type])}  ${label}`);
   }
   console.log('\nrestarts (per match, seconds each)');
   for (const [type, v] of Object.entries(s.restarts).sort((a, c) => c[1].perMatch - a[1].perMatch))

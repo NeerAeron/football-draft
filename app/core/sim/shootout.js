@@ -31,7 +31,6 @@ export class ShootoutMethods {
       p.receivedAt = -10;
       p.possessionAt = -10;
       p.lastReceipt = null;
-      p.goalKickExempt = false;
       p.markId = null;
       p.markUntil = 0;
       p.animation = null;

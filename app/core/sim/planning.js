@@ -125,6 +125,7 @@ export class PlanningMethods {
         .map(o => o.p.id);
     const c = {
       t,
+      building: owner !== null && b.kind === 'held' && owner.role === 'GK' ? owner.team : -1,
       dir,
       tac,
       team,
@@ -214,6 +215,25 @@ export class PlanningMethods {
     if (defence && p.id === defence.press && this.planPress(p, c, base)) return;
     if (defence && p.id === defence.cover) {
       p.aim(defence.coverPoint.x, defence.coverPoint.y, 'cover', 'Covering behind the press');
+      return;
+    }
+    // The keeper has it in his hands: both sides run to the build-up shape (restarts.js).
+    if (c.building >= 0) {
+      const team = c.building,
+        spot = this.buildUpSpot(
+          p,
+          team,
+          this.buildUpRoutine(team) === 'long',
+          this.buildUpPressed(team),
+          0,
+          this.offsideLine(team),
+        );
+      p.aim(
+        spot.x,
+        spot.y,
+        has ? 'support' : 'shape',
+        has ? 'Offering for the build-up' : 'Dropping off',
+      );
       return;
     }
     if (!has) this.planDefender(p, c, base, sideY);

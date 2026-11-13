@@ -23,6 +23,66 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 12: drop kicks, offside and deep free kicks — and nobody is placed any more
+
+Owner's notes: "Drop kicks and offside free kicks have a lot of the same problems as goal
+kicks did." and "It looks a little odd where players are after a goal kick. Don't reset them,
+have them move to realistic places to be after the goal kick. Same for above."
+
+**Measured first.** `blunders.mjs` now follows three more restarts for 4 s from the kick — the
+keeper's kick or throw from his hands, the free kick after an offside and any other free kick
+within 40 m of the taker's goal line — and prints, per 100 of each, how many were lost (an
+opponent has the ball or it is his side's restart), how many of those in the own half, and
+why. 192 club fixtures (`--matches 192`; the default 24 hold only 27 keeper distributions and
+4 offsides), before → after:
+
+| lost within 4 s, per 100 | n | lost | in the own half | to an opponent | out of play | receiver robbed |
+| --- | --- | --- | --- | --- | --- | --- |
+| keeper's hands | 304 → 255 | 21.1 → 15.7 | 20.1 → 7.8 | 5.6 → 7.1 | 9.5 → 0.4 | 5.6 → 7.8 |
+| offside free kick | 42 → 26 | 21.4 → 15.4 | 14.3 → 7.7 | 14.3 → 11.5 | 0 → 0 | 7.1 → 3.8 |
+| deep free kick | 112 → 119 | 17.0 → 15.1 | 13.4 → 3.4 | 5.4 → 6.7 | 0 → 0 | 11.6 → 6.7 |
+
+What is still lost is mostly the long ball that the other side's centre-back heads away
+beyond halfway — a 50–60% ball by design, as at goal kicks. Goal kicks given away (Phase 9's
+finding): 0.12 → 0.07 a match.
+
+**What was wrong** (watch.mjs, e.g. fixture 11 at 29.4 s, fixture 53 at 171.9 s, fixture 14
+at 33.5 s on the engine before): the keeper caught the ball with twenty players around his
+box and nobody moved — his side stayed where the attack had ended, the attackers kept marking
+— so after 2.5 s without an outlet `clearKeeper` hoofed a 30–45 m ball at whoever stood
+widest, half of them straight into touch (the 9.5% "out of play"). The offside free kick was
+taken 0.75 s after the whistle by whoever stood nearest, into the same crowd (fixture 53: lost
+at once and a goal against seven seconds later).
+
+**What changed** (docs/engine-events.md, _Building up from the back_): goal kicks, free kicks
+within 40 m of the own goal line and the keeper's hands share one shape (`buildUpSpot`: Phase
+9's goal-kick shape, moved up the pitch with the ball) and one chooser (`buildUpOption`:
+Phase 9's — short when it is really on, else long to the best header, now onside and led
+towards his run). And nobody is placed any more, at goal kicks either: both sides get targets
+and run to them; the taker waits until they are set or `gameplay.buildUpWait` (3.5 s) is up.
+A goal kick now looks like this (fixture 1 at 56 s): the ball goes out, the attackers jog out
+of the box and back towards halfway, the centre-backs split to the corners of the box, the
+full-backs go wide and higher, the keeper puts the ball down and after 3.5 s rolls it to the
+free full-back, who carries it out; play goes on from where everybody is.
+
+**The price is time**: sides that have attacked with ten men need 30–50 m to their spots, so
+the cap nearly always decides. Per restart: goal kick 1.7 → 3.5 s (2.5 a match), offside 0.7
+→ 3.4 s, free kicks 0.9 → 1.6 s on average (the deep ones ~3.5 s); the ball is in play 85%
+of the match instead of 89%. With `buildUpWait` 2.5 the keeper's losses in the own half are
+back at 16 per 100 and goal kicks given away at 0.11 a match; 3.0 is in between.
+
+**Goal level.** Four points less playing time and fewer balls given away near the own box
+cost about 0.1–0.2 goals (`match-calibration.mjs --matches 256 --duration 180`, 128 matches
+of 180 s, the same specs: 2.61 → 2.52; the 192 club fixtures 2.72 → 2.50, ± 0.12), so
+`gameplay.shotScatter` 0.9 → 0.88 re-centres: 2.61 → 2.60 and 2.72 → 2.71 (0.86 gave 2.59
+and 2.84). The per-mode table of Phase 11 was not re-run.
+
+`blunders.mjs --compare`, 192 fixtures, everything else: unpressed giveaways 0.40 → 0.45,
+plain passes out 0.32 → 0.28, loose 4 s+ 0.63 → 0.72 (0.54–0.61 in three other passes of the
+same change: noise), open shots in the box 0.38 → 0.36, hopeless shots 0.75 → 0.54, soft
+goals 0.59 → 0.55, rebounds left 0.39 → 0.41, offsides 0.23 → 0.14; long free kicks won by
+the opponent now count as a `restart-giveaway` (0.09 → 0.05 all the same).
+
 ## Phase 11: rebounds — the defending side reacts to the second ball
 
 Owner's note: "Sometimes defenders fall asleep on saves, meaning rebounds go to the attackers
