@@ -110,7 +110,11 @@ nations; engine with second balls):
 | World Class | 10.1% | 7.1% | 7 / 17 / 16 / 20 / 9 / 10 / 11 / 10 | 6.1% | 11.3% |
 | Legendary (real field, knockout form) | 4.4% | 11.5% | 12 / 32 / 24 / 15 / 5 / 4 / 5 / 4 | 2.2% | 16.7% |
 
-Budget mode reads a little above its targets on every level: one set of offsets serves both
+On the final data (pools from 2 players, Poom judged down; 400 runs): Pro 19.5%, World Class
+9.3%, Legendary 3.8%; Budget 12.3% / 6.5% / 1.3%; out in the group 3 / 7 / 14.5%.
+
+Budget mode reads a little above its targets on every level (the owner: fine, one set of
+offsets): one set of offsets serves both
 drafts, and a Budget XI is 1.9 points weaker — worth about a third of the title odds, not
 half. Legendary cannot go lower by form (3.5 is the cap for every player).
 

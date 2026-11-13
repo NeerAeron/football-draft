@@ -192,7 +192,7 @@ players who are not in the catalog and 124 catalog players who were at least two
 then — and the prime versions of 4,815 catalog players (any gain on today's card), compiled by
 the same compiler. `app/data/eras.v1.json` holds the era pools: for each of eight World Cup
 cycles (France 98 … USA/Canada/Mexico 26) and each nation that can field a squad then (50 to 81 per era), its
-best 26 players, each at his best version of those years — 13,696 cards of 7,705 people. A
+best 26 players, each at his best version of those years — 13,762 cards of 7,743 people. A
 past version shows the overall EA gave it that year, lifted at the top where EA rated its best
 lower than it does today (FIFA 09–16; never lowered): Messi ’15 95, Cristiano Ronaldo ’18 94.
 FIFA 98–08 printed none and are chain-linked to FIFA 09's scale through the players

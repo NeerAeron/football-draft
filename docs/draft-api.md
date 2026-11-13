@@ -125,24 +125,48 @@ draft.prime(slot, 0);            // the Prime: he becomes his best version acros
     2.5·(players / 26)`; `weight = 1 + 4 · (score / 14.5)² · rarity`, where `rarity` is **0.4**
     (`reels.nation.rare`) for an all-timer's squad — its best is shown 93+, or it has a GOAT
     card whatever he shows that year — and 1 otherwise. Weights run from 1 to 5: the likeliest
-    nation of an era is 3–4 times as likely as the least likely (Italy 4.3% … Paraguay 1.9% in
-    France 98, 38 nations; France 2.6% … Cabo Verde 0.8% in 2026). **An all-timer's squad sits in the
-    middle of its era's reel** — about the average nation's odds (1.2–1.8% in an era of 65–70 nations: rank 16–44; France 98: 23rd and 24th of 38), never among the least likely third (a test): famous squads are findable, and still
+    nation of an era is 3–4 times as likely as the least likely (Italy 3.7% of France 98's nation
+    spins, France 2.4% of 2026's; the least likely full pool of an era about 0.7% — Panama
+    2018, Qatar 2022; small pools aside, below). **An all-timer's squad sits in the
+    middle of its era's reel** — about the average nation's odds (1.2–1.8% in an era of 70–73 nations: rank 16–44; France 98: 23rd and 25th of 50), never among the least likely third (a test): famous squads are findable, and still
     come up less than their depth alone would make them. The owner's choice between the
     measured options (per draft of eleven spins; "all-timer's squad" = 93+ or a GOAT card):
 
     | `rare` | an all-timer's squad | a 93+ squad | its rank in the era | a GOAT on offer |
     | --- | --- | --- | --- | --- |
     | 1 (no penalty) | every 2.2 drafts | every 2.4 | 1st–11th | 44% of drafts |
-    | **0.4** | **every 3.4** | **every 3.9** | **16th–44th** | **28%** |
+    | **0.4** | **every 3.5** | **every 4.0** | **16th–44th** | **27%** |
     | 0.25 | every 4.1 | every 4.7 | 37th–64th | 23% |
     | 0.1 (before) | every 5.4 | every 6.1 | 58th–70th: the least likely (Portugal 14 / 18 / 22 last, 0.8%) | 18% |
-    | uniform reels | — | every 3.7 | — | 29% |
-  - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 11.7% (France 98) to 12.8% (2026).
+    | uniform reels | — | every 4.0 | — | 27% |
+
+    (The 0.4 row is the final data; the other rows were measured one data batch earlier and
+    moved by a tenth at most.)
+  - **A small pool without a star is quite rare** (the owner: at most once in several
+    hundred nation spins of its era): a pool of fewer than `reels.nation.full` (14) players
+    whose best card shows under `reels.nation.star` (85) starts from `(players / 14)²`
+    (`reels.nation.small`) instead of 1. A star's small nation keeps the 1 and comes up like
+    any modest squad. Chance per nation spin of its era / per draft of eleven spins:
+
+    | pool | players | best | per nation spin of the era | in a draft |
+    | --- | --- | --- | --- | --- |
+    | Korea DPR 2010 | 3 | 74 | 0.03% (1 in 3,100) | 0.04% |
+    | Ecuador 2002 | 2 | 74 | 0.02% (1 in 4,600) | 0.03% |
+    | Jordan 2026 | 6 | 76 | 0.13% (1 in 800) | 0.17% |
+    | Uzbekistan 2026 | 8 | 81 | 0.24% (1 in 410) | 0.34% |
+    | Iran 2014 | 9 | 76 | 0.35% (1 in 290) | 0.47% |
+    | Korea Republic 1998 | 8 | 81 | 0.50% (1 in 200) | 0.66% |
+    | Saudi Arabia 1998 | 10 | 79 | 0.72% (1 in 140) | 0.95% |
+    | Iran 2006 | 12 | 81 | 0.64% (1 in 155) | 0.90% |
+    | Liberia 1998 (Weah) | 2 | 87 | 1.05% (1 in 95) | 1.4% |
+    | Trinidad and Tobago 1998 (Yorke) | 2 | 86 | 0.92% (1 in 109) | 1.2% |
+    | Ukraine 1998 (Shevchenko) | 9 | 87 | 1.50% (1 in 67) | 2.0% |
+    | Liberia 2002 (Weah) | 5 | 85 | 0.70% (1 in 142) | 1.0% |
+  - An era: `1 + 0.25 · (nations / 70) + 0.25 · q(median of its nations' best players)`: 12.1% (France 98) to 12.7% (Germany 06).
   - Measured per draft of eleven spins (`node tools/calibration/reel-odds.mjs`; `--uniform` for
-    the reference): a 93+ squad once every 3.9 drafts (uniform: every 3.7), a 90+
-    player on offer in 2.6 spins (1.9), 85+ in 6.1 (5.0), 80+ in 10.2 (9.8); a squad whose
-    fourth best is 80+ in 6.9 spins (5.6); a GOAT on offer in 28% of drafts (29%), a Leader
+    the reference): a 93+ squad once every 4.0 drafts (uniform: every 4.0), a 90+
+    player on offer in 2.5 spins (1.7), 85+ in 6.0 (4.8), 80+ in 10.0 (9.5); a squad whose
+    fourth best is 80+ in 6.5 spins (5.1); a GOAT on offer in 27% of drafts (27%), a Leader
     (a Captain card) in 0.9 spins (0.6).
   An option that cannot be landed on has weight 0 (below); the guards only ever zero a weight.
   Respins and the Daily's schedule draw with the same weights. The spin carries honest
@@ -202,27 +226,28 @@ the best pick is under 78, the nation first; the Prime on the biggest gain in th
 
 | World Cup draft | OVR (sd) | chem | effective (sd) | Leader in the XI | GOAT in the XI | tokens used |
 | --- | --- | --- | --- | --- | --- | --- |
-| no tokens | 84.78 (1.34) | 0.98 | 85.76 (1.82) | 25% | 22% | — |
-| the three tokens | 85.57 (1.21) | 1.07 | **86.64** (1.73) | 29% | 25% | nation 0.59 · era 0.28 · Prime 0.94 (+3.5 slot points) |
-| Budget, no tokens | 83.25 (1.01) | 0.72 | 83.97 (1.30) | 17% | 16% | — |
-| Budget, the three tokens | 83.95 (0.97) | 0.80 | **84.75** (1.30) | 19% | 17% | nation 0.85 · era 0.69 · Prime 0.96 (+3.8) |
+| no tokens | 84.58 (1.50) | 0.92 | 85.50 (2.00) | 24% | 19% | — |
+| the three tokens | 85.46 (1.36) | 1.06 | **86.52** (1.94) | 32% | 22% | nation 0.63 · era 0.32 · Prime 0.94 (+3.4 slot points) |
+| Budget, no tokens | 83.01 (1.08) | 0.67 | 83.69 (1.31) | 17% | 14% | — |
+| Budget, the three tokens | 83.71 (0.96) | 0.74 | **84.45** (1.25) | 18% | 14% | nation 0.83 · era 0.64 · Prime 0.93 (+3.4) |
 
-Measured with the reviewed lists as built (17 GOAT cards of 7 players; 32 Captain cards of the
-list's first 14; data of the batch "ratings judged by card", France 98 with 38 nations).
-**A Leader is on offer in 1.0 spins of a draft** (in 65% of drafts; Budget
-0.5 spins, 41%) — the owner's "a captain every 0.3–1 drafts" — and ends in 29% of XIs when
-the best-rated player is picked, in 51% for a boost-aware drafter (`--policies smart`; Budget
-19% / 31%); a GOAT is on offer in 30% of drafts (Budget 19%: a full Superstar tier closes
-him) and is drafted nearly every time (in the XI once every four drafts).
-`ERA_BASELINE` (`opponents.js`) holds these numbers for the ladder.
+Measured on the final data (563 pools, 2 to 26 players; 17 GOAT cards of 7 players; 32 Captain
+cards of the list's first 14). **A Leader is on offer in 1.0 spins of a draft** (in 68% of
+drafts; Budget 0.5 spins, 42%) — the owner's "a captain every 0.3–1 drafts" — and ends in 32%
+of XIs when the best-rated player is picked, in 53% for a boost-aware drafter (`--policies
+smart`; Budget 18% / 31%); a GOAT is on offer in 28% of drafts (Budget 17%: a full Superstar
+tier closes him) and is drafted nearly every time (in the XI in 22% of drafts).
+`ERA_BASELINE` (`opponents.js`) holds the ladder's numbers: 86.64, measured one data batch
+earlier (85.57 / 1.07; plain 85.76, Budget 84.75) — the final data reads 0.12 lower, inside
+the noise of 200 drafts (±0.14), so the baseline and the cup's offsets stay.
 
 ## Eras (`app/core/players/eras.js`) — the data of the two-spinner draft
 
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,696
-cards, 2.7 MB, 0.78 MB gzip / 0.63 MB brotli), attached to the catalog like the legends.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,762
+cards, 2.7 MB, 0.79 MB gzip / 0.62 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
 `node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
@@ -414,7 +439,7 @@ in:
 | --- | --- | --- | --- | --- | --- | --- |
 | France 98 | 50 | 17 | Ukraine 9, Saudi Arabia 10, Korea Republic 8, Liberia 2, Trinidad and Tobago 2 | Ghana, Uruguay, Ukraine, Liberia, Trinidad and Tobago | Italy 87.2 | Trinidad and Tobago |
 | Korea/Japan 02 | 72 | 11 | Liberia 5, Ecuador 2 | Georgia, Ghana, Guinea, Costa Rica, New Zealand, Liberia, Ecuador | Brazil 88.5 | Ecuador |
-| Germany 06 | 71 | 12 | Iran 12, Estonia 8 | Guinea, Georgia, Egypt, Iran, Burkina Faso | Brazil 89.9 | Estonia |
+| Germany 06 | 70 | 11 | Iran 12 | Guinea, Georgia, Egypt, Iran, Burkina Faso | Brazil 89.9 | Burkina Faso |
 | South Africa 10 | 73 | 13 | Korea DPR 3 | Mali, Peru, Guinea, Algeria, Honduras, Burkina Faso, Congo DR, Korea DPR | Spain 88.9 | Korea DPR |
 | Brazil 14 | 71 | 1 | Iran 9 | Honduras | Spain 89.3 | Iran |
 | Russia 18 | 73 | 2 | — | Armenia, Panama | Spain 88.5 | Panama |
@@ -425,8 +450,12 @@ in:
 
 - **A pool can be tiny.** `eraNations(...)[i].size` goes down to **2** (it was at least 18);
   `eraPool` of such a nation is just those players, best first. 563 pools in all, 33 of them
-  without a keeper, 15 with fewer than 14 players. **The draft's guards must look at the
-  pool, not only at `keepers`**: a spin may land on a nation only when its pool has a player
+  without a keeper, 12 with fewer than 14 players. (Estonia 2006 was a star nation on Poom's
+  FIFA 2004 card, 89; `PLAYER_JUDGEMENT` has it at 81 now and Estonia 2006 is not spinnable.)
+  **The draft's guards look at the pool, not only at `keepers`** (`#fills` / `#landable` in
+  `session.js`; any outfielder can be placed in any open outfield slot, a keeper only in
+  goal; `tests/draft-eras.test.mjs` "small pools" drains the smallest pools and checks every
+  nation of every era with one or two slots left, and lands on every pool under 14): a spin may land on a nation only when its pool has a player
   the XI can still take — one for an open slot (by position, as the draft judges a fit) who
   is not already in the XI (`personId`). With two players in Liberia 98, that is Weah or
   nothing: once a striker's slot is the only thing Weah could fill and it is taken, Liberia 98
@@ -443,8 +472,8 @@ in:
   minimum: France 98 — United States, South Africa, Morocco, Japan, Jamaica, Iran, Tunisia,
   Saudi Arabia, Korea Republic, Paraguay (World Cup 1998), Ukraine, Liberia, Trinidad and
   Tobago (stars); 2002 — Côte d'Ivoire, Trinidad and Tobago, Costa Rica, New Zealand, United
-  Arab Emirates (14–16 players), Liberia, Ecuador; 2006 — Japan, Iran, Georgia, Peru, Egypt,
-  Estonia; 2010 — Egypt, Togo, New Zealand, Korea DPR; 2014 — Iran; 2018 — Iran, Panama,
+  Arab Emirates (14–16 players), Liberia, Ecuador; 2006 — Japan, Iran, Georgia, Peru, Egypt;
+  2010 — Egypt, Togo, New Zealand, Korea DPR; 2014 — Iran; 2018 — Iran, Panama,
   Armenia; 2022 — Tunisia, Saudi Arabia, Qatar; 2026 — Iran, Costa Rica, New Zealand, Qatar,
   Haiti, Panama, Curacao, South Africa, Iraq, Uzbekistan, Jordan. The one World Cup side with
   no pool: Saudi Arabia 2006 (no Saudi player in FIFA 04–07).
@@ -453,7 +482,13 @@ in:
   entries: Karembeu 1998, Grosso 2006, Capdevila 2010, Fred 2014, Carvajal 2018, Tchouaméni and
   Richarlison 2022 …) and every player with a breakout-lag correction — he takes the place of
   the pool's lowest-rated player (a keeper a keeper's; an outfielder the lowest-rated
-  outfielder's whose line keeps its minimum). Their cards are ordinary cards.
+  outfielder's whose line keeps its minimum). Their cards are ordinary cards. **The man who
+  made way stays in the data** (60 of them: Cassano for De Rossi in Italy 2006, Kirsten for
+  Ramelow in Germany 2002, Martial and Digne in France 2022 …): his era card is kept in
+  `eras.v1.json` in no pool — like the best versions kept for the Prime, reachable by
+  `eraPlayer(catalog, id)` and as one of his `personVersions`; never offered in a draft, on
+  no screen — and `data/build/eras.json` lists who replaced whom (`stats.displaced`: era,
+  nation, name, rating, profileId, by, byRating, byProfileId).
 - **Hand-made cards** (`data/judgement-cards.json`, 18): notable players the source lacks or
   cannot tell apart — Gary Neville 1998, Francescoli, Stojković, Hong Myung-bo 1998 and 2002,
   Köpke, Pagliuca, Shevchenko and Rebrov 1998, Aboutrika 2006 and 2008, Al-Deayea, Al-Owairan,
