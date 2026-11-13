@@ -239,6 +239,7 @@ async function skipClips(page, until, limit = 80) {
     if (
       await page
         .locator(until)
+        .first()
         .isVisible()
         .catch(() => false)
     )
@@ -481,11 +482,12 @@ const matchFlows = [
             if (!(minute > 90 && minute <= 125)) throw new Error(`clip minute ${minute}`);
           });
         await step(`${view}: every kick and the winner`, async () => {
-          const decided = '[data-testid="shootout"] .pens.is-decided';
+          // With reduced motion the panel shows every kick at once and gives way to the result
+          // two seconds later: a runner that is late for the panel finds the same list there.
+          const decided =
+            '[data-testid="shootout"] .pens.is-decided, [data-testid="match-result"] .pens.is-decided';
           if (view === 'key') await skipClips(page, decided);
-          // Full view plays the whole match at 4×: about 45 s, then extra time, added time and the
-          // kicks — some 80 s on a fast machine, more on a loaded runner.
-          await visible(page, decided, 180000);
+          await visible(page, decided, 90000);
           const marks = await page.locator('.pens__dot.is-goal, .pens__dot.is-miss').count();
           if (marks < 6) throw new Error(`only ${marks} kicks shown`);
           await visible(page, '.pens__row.is-winner');
