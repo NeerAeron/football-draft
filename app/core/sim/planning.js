@@ -123,8 +123,66 @@ export class PlanningMethods {
         .sort((a, b) => a.time - b.time)
         .slice(0, 2)
         .map(o => o.p.id);
+    // The back line is one line (computed here, once a side and plan, not per player).
+    // With the ball it follows play as a unit — about 18 m behind the ball up to 48 m from
+    // its own goal line, 24 m behind beyond that; deeper when the centre-backs are slow or
+    // the man on the ball is under pressure — and an opponent left behind it is left there:
+    // he is offside, and one man staying with him would play him on. Without the ball it is
+    // the block's line (planDefender), and `hold` says how good a bet stepping up is right
+    // now: the carrier pressed, facing his own goal or a long way from the line.
+    let line = 0,
+      hold = 0;
+    if (has) {
+      let slow = 0,
+        backs = 0,
+        pace = Infinity;
+      for (const p of team)
+        if (p.role === 'CB') {
+          slow += clamp(
+            (75 - (0.55 * p.skill('pace') + 0.45 * p.skill('acceleration'))) / 30,
+            0,
+            1,
+          );
+          pace = Math.min(pace, p.topSpeed());
+          backs++;
+        }
+      const security = owner ? clamp(1 - this.pressure(owner) * 0.5, 0, 1) : 0.5,
+        step = this.tuning.gameplay.lineAwareness > 0 ? Math.min(br - 18, 48) : 0;
+      line =
+        Math.max(br - 24, step) +
+        (tac.attacking - 50) * 0.1 +
+        tac.shift.restDefence -
+        (2 + (backs ? slow / backs : 0) * 4 + (1 - security) * 3);
+      // Rest defence against a forward who is a real outlet — level with the line or in
+      // front of it: the whole line drops goal-side of him. One who is clearly behind it
+      // is in an offside position and is left there (the keeper is the cover).
+      if (step && owner?.role !== 'GK') {
+        const stepped = line;
+        for (const q of enemies) {
+          const qx = this.rel(q.x, t);
+          if (this.formation(q)[0] <= 60 || qx >= 72 || qx < stepped - 1.5) continue;
+          line = Math.min(line, qx - 1.2 - Math.max(0, q.topSpeed() - pace) * 0.8);
+        }
+      }
+    } else {
+      const block =
+        coordination *
+        4 *
+        clamp((br - 65) / 30, 0, 1) *
+        clamp((tac.press - 1) / 3, 0, 1) *
+        (tac.style === 'bus' ? 0 : 1);
+      line = clamp(22 + (br - 52) * 0.34 + (tac.line - 50) * 0.13 + block, 7, 48);
+      if (owner && owner.team !== t && owner.role !== 'GK')
+        hold =
+          (clamp(this.pressure(owner) * 0.9, 0, 1) +
+            clamp((br - line - 28) / 16, 0, 1) * 0.6 +
+            (owner.vx * dir > 1.5 ? 0.4 : 0)) *
+          this.tuning.gameplay.lineAwareness;
+    }
     const c = {
       t,
+      line,
+      hold,
       building: owner !== null && b.kind === 'held' && owner.role === 'GK' ? owner.team : -1,
       dir,
       tac,
@@ -283,6 +341,9 @@ export class PlanningMethods {
       return;
     }
     x = clamp(2.5 + br * 0.035, 2.5, 6);
+    // His side has the ball and the line is up: he is the cover behind it.
+    if (c.has && owner && this.tuning.gameplay.lineAwareness > 0)
+      x = clamp(x + (c.line - 30) * 0.4, x, 13);
     // Narrow the angle, but stay inside the frame: a keeper outside his near
     // post leaves the far post empty. Shade toward a cross's landing point.
     y = clamp(34 + ((b.y - 34) * x) / Math.max(br, 6), 34 - GOAL / 2 + 0.6, 34 + GOAL / 2 - 0.6);
@@ -447,15 +508,8 @@ export class PlanningMethods {
   // Out of possession: hold the defensive line or mark an assigned runner.
   planDefender(p, c, base, sideY) {
     const b = this.ball,
-      { t, tac, br, marks, coordination } = c;
+      { t, tac, br, marks, coordination, line } = c;
     let x, y;
-    const block =
-      coordination *
-      4 *
-      clamp((br - 65) / 30, 0, 1) *
-      clamp((tac.press - 1) / 3, 0, 1) *
-      (tac.style === 'bus' ? 0 : 1);
-    const line = clamp(22 + (br - 52) * 0.34 + (tac.line - 50) * 0.13 + block, 7, 48);
     x = base < 30 ? line : base < 58 ? line + 13 : line + 28;
     y = 34 + (sideY - 34) * 0.74 + (b.y - 34) * 0.13;
     const q = marks.get(p.id);
@@ -473,6 +527,11 @@ export class PlanningMethods {
         0.5,
         1,
       );
+      if (base < 30 && this.holdsLine(p, q, qr, c)) {
+        // His man is beyond the line: he stays in it and watches him across the pitch.
+        p.aim(this.abs(line, t), lerp(y, q.y, 0.6), 'shape', 'Holding the line');
+        return;
+      }
       const cushion = this.canScreenOutlet(t, q, p, coordination) ? 0.25 : qr < 20 ? 0.6 : 1;
       const lapse = this.markLapse(p, q, qr, coordination);
       if (lapse) {
@@ -505,6 +564,27 @@ export class PlanningMethods {
         recovering || tac.fluidity < 3 ? 'Recovering defensive shape' : 'Keeping defensive shape',
       );
     }
+  }
+  // Hold the line or go with him? A back-line defender whose man is beyond the line (in his
+  // own half, ahead of the ball, the line clear of the box) lets him go when that is the
+  // better bet: the man is standing or walking back in an offside position, or the carrier
+  // cannot play him in right now (`c.hold`: pressed, facing away, far off). He drops with a
+  // runner when the carrier is free to play the ball in behind — and once it is played the
+  // ordinary marking and pressing take over (he chases). It is a judgement: good readers ask
+  // for less before they step, and a poor or tired one now and then goes with his man
+  // anyway and plays him onside (a slow per-player rhythm, no RNG).
+  holdsLine(p, q, qr, c) {
+    const k = this.tuning.gameplay.lineAwareness;
+    if (!k || !c.owner || c.owner.id === q.id || c.owner.team === c.t) return false;
+    const { line, br, dir } = c;
+    if (line < 14 || qr > line - 0.5 || qr > br - 2 || qr >= 52.5) return false;
+    const reading = p.defensiveReading(),
+      lapse = clamp((0.9 - reading) * 0.18 * (1.3 - 0.3 * p.energy), 0, 0.25);
+    if (lapse > 0 && Math.sin(this.elapsed * 0.8 + p.id * 1.9) > Math.cos(Math.PI * lapse))
+      return false;
+    // Coming back out, or not going anywhere: leave him.
+    if (q.vx * dir > -1) return true;
+    return c.hold > 0.55 - reading * 0.3;
   }
   // Concentration: a marker near his own goal sometimes watches the ball and
   // loses his runner. Deterministic (a slow per-player rhythm, no RNG); far
@@ -565,18 +645,8 @@ export class PlanningMethods {
     const attackBias = (tac.attacking - 50) * 0.1;
     if (base < 30) {
       // Rest defence: how far the back line follows the attack (metres; push steps up, hold stays).
-      x = clamp(br - 24 + (base - 22) * 0.7 + attackBias + tac.shift.restDefence, 20, 70);
-      if (role === 'CB') {
-        const recovery = 0.55 * p.skill('pace') + 0.45 * p.skill('acceleration'),
-          slow = clamp((75 - recovery) / 30, 0, 1),
-          security = owner ? clamp(1 - this.pressure(owner) * 0.5, 0, 1) : 0.5,
-          cover = this.activePlayers.filter(
-            q => q.team === t && q.id !== p.id && q.role !== 'GK' && this.rel(q.x, t) < br - 10,
-          ).length;
-        x -=
-          (2 + slow * 6 + (1 - security) * 3 + (cover < 2 ? 2 : 0)) *
-          (1 - 0.35 * p.tendency('advance'));
-      }
+      // Rest defence is the line itself (planTeam): the back line moves as a unit.
+      x = clamp(c.line + (base - 22) * 0.7, 20, 70);
     } else if (base < 58) {
       const advanced =
         ['CM', 'AM', 'LM', 'RM'].includes(role) &&
@@ -766,7 +836,7 @@ export class PlanningMethods {
       action = 'Recovering position';
     }
     if (base > 60 && intent !== 'run') x = Math.min(x, Math.max(br, oppLine - 0.5));
-    if (role === 'CB' && owner?.role !== 'GK') {
+    if (role === 'CB' && owner?.role !== 'GK' && !(this.tuning.gameplay.lineAwareness > 0)) {
       const outlet = enemies
         .filter(q => this.formation(q)[0] > 60 && this.rel(q.x, t) < 72)
         .sort((a, b) => Math.abs(a.y - p.y) - Math.abs(b.y - p.y))[0];

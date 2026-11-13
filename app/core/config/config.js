@@ -242,6 +242,7 @@ export const DEFAULT_CONFIG = {
     restartSetup: 1,
     buildUpWait: 3.5,
     freeTouch: 0.7,
+    lineAwareness: 1,
     markingLapses: 0,
     deliveryDeflections: 1,
     runsInBehind: 1,
@@ -860,6 +861,8 @@ const labels = {
   pressDistance: 'Pressing distance',
   restartSetup: 'Restart preparation time',
   freeTouch: 'First touch: how much easier a high or long ball is for an unpressed receiver (0–1)',
+  lineAwareness:
+    'Offside line: how readily the back line holds and steps up as a unit (0 = always follows the man)',
   buildUpWait:
     'Goal kicks, deep free kicks, keeper in hands: longest wait for the sides to set (s)',
   markingLapses: 'Marking lapses (ball-watching)',
@@ -1025,6 +1028,7 @@ export const CONFIG_FIELDS = walk(DEFAULT_CONFIG).map(f => {
       'levelGap',
       'levelUnits',
       'secondBalls',
+      'lineAwareness',
     ].includes(f.key)
   )
     [min, max, step] = [0, 2, 0.01];
