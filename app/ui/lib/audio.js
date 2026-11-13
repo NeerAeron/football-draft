@@ -4,7 +4,7 @@
 //   const { on, volume, available } = useStore(soundStore);
 //   toggleSound(); setVolume(0.6); playCue('pick-star');
 //
-// Cues: 'tick' 'reveal' 'pick' 'pick-star' 'pick-superstar' 'kickoff' 'half' 'full' 'goal'
+// Cues: 'tick' 'lock' 'lock-final' 'reveal' 'pick' 'pick-star' 'pick-superstar' 'kickoff' 'half' 'full' 'goal'
 // 'shot' 'save' 'post' 'block' 'tackle' 'dribble' 'foul' 'penalty' 'offside'
 // (see GameAudio.play). The first pointer/key event unlocks the AudioContext.
 import { createGameAudio } from '../../services/sound.js';

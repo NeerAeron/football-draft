@@ -16,7 +16,14 @@
  *   renderItem(item) custom item content;  size 'sm' | 'md' | 'lg';  label (accessible name)
  *
  * Reduced motion: lands instantly (onLand fires on the next effect).
+ *
+ * The lock: when a spin lands (also skipped) the reel carries `is-locked` for LOCK_MS — the
+ * window settles with a small overshoot, a ring and a sweep cross the frame and the chosen
+ * item pops (transform/opacity only, reel.css). With reduced motion nothing moves: the frame
+ * is lit for that time (`is-still`). The same for every landing: it says nothing of what
+ * landed.
  */
+export const LOCK_MS = 340;
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../lib/html.js';
 import { useReducedMotion } from '../lib/motion.js';
@@ -61,6 +68,8 @@ export function Reel({
   const [blur, setBlur] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [landed, setLanded] = useState(null);
+  const [locked, setLocked] = useState(false);
+  const lockTimer = useRef(null);
   const posRef = useRef(landIndex || 0);
   const anim = useRef(null);
   const cb = useRef({});
@@ -73,8 +82,12 @@ export function Reel({
     setBlur(0);
     setSpinning(false);
     setLanded(item?.label ?? '');
+    setLocked(true);
+    clearTimeout(lockTimer.current);
+    lockTimer.current = setTimeout(() => setLocked(false), LOCK_MS);
     cb.current.onLand?.(item, index);
   };
+  useEffect(() => () => clearTimeout(lockTimer.current), []);
 
   const finish = () => {
     const a = anim.current;
@@ -96,6 +109,8 @@ export function Reel({
     let last = start;
     const a = { raf: 0, landIndex };
     anim.current = a;
+    clearTimeout(lockTimer.current);
+    setLocked(false);
     setSpinning(true);
     setLanded(null);
     const step = now => {
@@ -130,7 +145,14 @@ export function Reel({
   if (n) for (let k = base - 2; k <= base + 3; k++) visible.push(k);
 
   return html`<div
-    class=${cx('reel', `reel--${size}`, spinning && 'is-spinning', className)}
+    class=${cx(
+      'reel',
+      `reel--${size}`,
+      spinning && 'is-spinning',
+      locked && 'is-locked',
+      reduced && 'is-still',
+      className,
+    )}
     role="group"
     aria-roledescription="reel"
     aria-label=${label}

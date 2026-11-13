@@ -128,6 +128,7 @@ function Board({ state, draft, auto }) {
   const [completeOpen, setCompleteOpen] = useState(snap.complete && !auto);
   const [busy, setBusy] = useState(false);
   const [primeOpen, setPrimeOpen] = useState(false);
+  const [completeDue, setCompleteDue] = useState(false);
   const [passAck, setPassAck] = useState(-1);
   const [moment, setMoment] = useState(null);
   const [announcement, announce] = useAnnouncer();
@@ -281,9 +282,18 @@ function Board({ state, draft, auto }) {
     if (!snap.complete) return;
     idlePreload(['/prematch', '/match']);
     const delay = isReducedMotion() || auto ? 0 : moment ? MOMENT_MS[moment.tier] + 200 : 650;
-    const t = setTimeout(() => setCompleteOpen(true), delay);
+    const t = setTimeout(() => setCompleteDue(true), delay);
     return () => clearTimeout(t);
   }, [snap.complete]);
+  // "Your XI is ready" comes up by itself a moment after the last pick — but never over the
+  // Prime sheet: opened in that moment (the Prime button is in the bar at once), it would be
+  // covered, still open underneath, and the Prime button on the new sheet would do nothing
+  // until the sheet was closed. It waits until the Prime sheet is closed.
+  useEffect(() => {
+    if (!completeDue || primeOpen) return;
+    setCompleteDue(false);
+    setCompleteOpen(true);
+  }, [completeDue, primeOpen]);
   useEffect(() => {
     if (auto && !snap.complete) autoComplete();
   }, [auto]);

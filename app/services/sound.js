@@ -289,6 +289,22 @@ export class GameAudio {
           this.hiss(2100, 0.025, 0.07);
           this.tone(740, 430, 0.028, 0.04);
           break;
+        // A reel locks into place: a clunk — a low thump, the click of the catch and a short
+        // ping. 'lock' for a reel with another to come (the era, a club spin's league),
+        // 'lock-final' for the last one: fuller and a fifth higher, two notes.
+        case 'lock':
+          this.tone(170, 62, 0.11, 0.24);
+          this.hiss(3100, 0.022, 0.12);
+          this.tone(784, 776, 0.14, 0.06, { type: 'triangle', delay: 0.012 });
+          break;
+        case 'lock-final':
+          this.tone(210, 66, 0.13, 0.28);
+          this.hiss(3600, 0.026, 0.14);
+          this.hiss(900, 0.07, 0.06, { delay: 0.01 });
+          [1174.66, 1760].forEach((f, i) =>
+            this.tone(f, f * 0.995, 0.2, 0.065, { type: 'triangle', delay: 0.012 + i * 0.05 }),
+          );
+          break;
         case 'reveal':
           [440, 659.25].forEach((f, i) =>
             this.tone(f, f, 0.25, 0.1, { type: 'triangle', delay: i * 0.065 }),
