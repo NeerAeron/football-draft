@@ -6,11 +6,13 @@
 //
 // The rule (matchPerformances):
 //   * Each goal goes to one of the eleven, drawn in proportion to ROLE.goal × 2^((finish − 70) /
-//     12), finish = 0.5 finishing + 0.2 shot power + 0.15 long shots + 0.15 composure — twelve
-//     points of finishing double a player's share, and a striker gets about fifteen times a
-//     centre-back's. OWN_GOAL (3%) of the goals belong to nobody.
+//     18), finish = 0.5 finishing + 0.2 shot power + 0.15 long shots + 0.15 composure — eighteen
+//     points of finishing double a player's share (it was twelve: over the eight matches of a
+//     finalist the best finisher of a World Cup then scored 9 on average and up to 15; now 7–8
+//     and at most 11), and a striker gets about fifteen times a centre-back's. OWN_GOAL (3%) of
+//     the goals belong to nobody.
 //   * ASSISTED (85%) of the goals have an assist, drawn among the other ten in proportion to
-//     ROLE.assist × 2^((create − 70) / 12), create = 0.4 vision + 0.3 short passes + 0.3 crosses.
+//     ROLE.assist × 2^((create − 70) / 18), create = 0.4 vision + 0.3 short passes + 0.3 crosses.
 //   * The match rating follows the engine's performanceRating (sim/replay.js) with what a result
 //     can say: a base per line, +1.1 a goal, +0.7 an assist, keepers and centre-backs +0.55 for
 //     a clean sheet or −0.09 per goal conceded, a keeper +0.22 a save (2–4 saves, one more when
@@ -37,7 +39,7 @@ const OWN_GOAL = 0.03,
   ASSISTED = 0.85,
   FORM = 0.35;
 const attr = (p, key) => Number(p.attrs?.[key]) || 60;
-const lift = ability => 2 ** ((ability - 70) / 12);
+const lift = ability => 2 ** ((ability - 70) / 18);
 const finish = p =>
   0.5 * attr(p, 'shooting') +
   0.2 * attr(p, 'power') +

@@ -100,6 +100,46 @@ test("the squad's stats exist however the matches were played", () => {
   assert.equal(run.awards(), null, 'no awards while the run is being played');
 });
 
+test('awards of a whole World Cup, also when the run ended in the group or the Round of 32', () => {
+  // What the user did not play is played by the fast model: the finalists have eight matches,
+  // and the winners are players of sides that went deep, with a whole tournament's numbers.
+  const ended = (difficulty, seed, out) => {
+    const run = createCupRun(catalog, { mode: 'nations', difficulty, seed, user });
+    while (!run.complete) {
+      const m = run.nextMatch();
+      if (out === 'group' && m.round < 3) run.recordResult({ goalsFor: 0, goalsAgainst: 2 });
+      else if (out === 'r32')
+        run.recordResult(
+          m.round < 3 ? { goalsFor: 2, goalsAgainst: 0 } : { goalsFor: 0, goalsAgainst: 1 },
+        );
+      else run.simulateNext();
+    }
+    return run;
+  };
+  const boots = [];
+  for (const difficulty of ['pro', 'legendary'])
+    for (const out of ['group', 'r32'])
+      for (const seed of [1, 2, 3, 4]) {
+        const run = ended(difficulty, seed, out),
+          label = `${difficulty} ${out} seed ${seed}`,
+          { boot, ball, glove, teams } = run.awards();
+        assert.equal(run.snapshot().place, out, label);
+        assert.equal(teams, difficulty === 'legendary' ? 48 : 10, label);
+        // Nobody of an XI that went out early wins anything.
+        for (const a of [boot, ball, glove]) assert.equal(a.user, false, label);
+        // The Boot: a whole tournament's goals, from more than a group stage.
+        assert.ok(boot.goals >= 4 && boot.goals <= 12, `${label}: Boot ${boot.goals}`);
+        assert.ok(boot.matches >= 4, `${label}: Boot in ${boot.matches} matches`);
+        // The Ball and the Glove: players of quarter-finalists (six matches or more).
+        assert.ok(ball.matches >= 6, `${label}: Ball in ${ball.matches} matches`);
+        assert.ok(glove.matches >= 6 && glove.cleanSheets >= 2, `${label}: Glove`);
+        assert.deepEqual(ended(difficulty, seed, out).awards(), run.awards(), label);
+        boots.push(boot.goals);
+      }
+  const mean = boots.reduce((a, b) => a + b, 0) / boots.length;
+  assert.ok(mean >= 5.5 && mean <= 8.5, `Golden Boot ${mean} goals on average (${boots})`);
+});
+
 test('awards: the same run gives the same awards, on the ladder and in the real field', () => {
   for (const difficulty of ['pro', 'worldclass', 'legendary'])
     for (const seed of [1, 2, 3]) {

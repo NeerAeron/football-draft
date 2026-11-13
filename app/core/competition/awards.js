@@ -24,8 +24,14 @@
 //   * Golden Boot — most goals; level: more assists, then fewer matches, then the order of the
 //     tournament's matches (stable for the seed).
 //   * Golden Ball — the best average match rating plus BALL_DEPTH (0.1) for every round the
-//     player's team went past the group (0 … +0.6 for the champions), among players with at
-//     least BALL_MATCHES (4) matches; level: goals, assists, then the stable order.
+//     player's team went past the group (0 … +0.6 for the champions), among the players of the
+//     teams that reached the quarter-finals (BALL_STAGE: the best player of a World Cup is a
+//     man of a side that went deep, not of four good group matches) with at least BALL_MATCHES
+//     (4) matches; level: goals, assists, then the stable order.
+// The tournament is always a whole one — eight matches for the finalists — whatever the user
+// played of it: a run that ended in the group or the Round of 32 has the same kind of winners
+// (a Golden Boot of five to eleven goals, mostly seven or eight, in a side that played six
+// matches or more).
 //   * Golden Glove — the keeper with the most clean sheets among the teams that reached the
 //     quarter-finals; level: fewer goals against per match, more matches, the stable order.
 import { CONFIG } from '../config/config.js';
@@ -41,6 +47,8 @@ export const BALL_MATCHES = 4;
 export const BALL_DEPTH = 0.1;
 /** The stage a team must have played for its keeper to win the Golden Glove. */
 export const GLOVE_STAGE = 'qf';
+/** … and for one of its players to win the Golden Ball. */
+export const BALL_STAGE = 'qf';
 
 const USER = 'user';
 // How far a team went: the last stage it played (the champions one more).
@@ -294,7 +302,10 @@ export function* tournamentSteps(run, { catalog, player }) {
     ),
     ball: view(
       best(
-        pick(all, r => r.matches >= BALL_MATCHES),
+        pick(
+          pick(all, r => r.matches >= BALL_MATCHES),
+          r => reached(r) >= DEPTH[BALL_STAGE],
+        ),
         r => round2(average(r) + BALL_DEPTH * reached(r)),
         r => r.goals,
         r => r.assists,
