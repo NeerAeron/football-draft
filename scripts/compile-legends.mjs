@@ -688,11 +688,11 @@ export const ERA_STAR = 85;
 // What a place its pool cannot fill counts in a nation's strength (a pool of eight is not a
 // strong side because its eight are good).
 export const ERA_FILL = 60;
-// A card that shows this much in an era is in the file even when it is in no pool — or null:
-// only pool cards and best versions. Measured: 75 → 23,300 cards, 4.5 MB / 1.30 MB gzip (over
-// the 1.2 MB the owner set), 76 → about 1.17 MB, 77 → about 1.06 MB; today 0.8 MB. Off until
-// the owner picks one (ERA_KEPT=76 npm run data:build tries a value).
-export const ERA_KEPT = process.env.ERA_KEPT ? Number(process.env.ERA_KEPT) : null;
+// A card that shows this much in an era is kept even when it is in no pool — not in the file
+// the game loads (with them it would be 4.5 MB, 1.30 MB gzip) but in the archive
+// data/eras-archive.v1.json: the same columns (eras-codec.js), never deployed or fetched, for a
+// later feature.
+export const ERA_KEPT = 75;
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 // France 98 keeps fewer. FIFA 98/99 know most players by a surname, some national squads by
 // first names or invented ones: a pool there needs three in ten of its players to be men a
@@ -1645,7 +1645,8 @@ export function compileLegends(
   }
   const eraCards = new Map(), // profileId → runtime card
     cardOf = new Map(); // candidate version → profileId (a card's, or the catalog player's)
-  const eraCard = (one, v, now, nationality) => {
+  const archived = new Map(); // profileId → runtime card of the archive (in no pool)
+  const eraCard = (one, v, now, nationality, into = eraCards) => {
     if (v.now) return v.now.profileId;
     if (cardOf.has(v)) return cardOf.get(v);
     const p = card(one, v, 'era', false),
@@ -1655,7 +1656,7 @@ export function compileLegends(
         year: v.year,
         source: { clubId: team ? team.id : null, nationality },
       });
-    eraCards.set(player.profileId, player);
+    into.set(player.profileId, player);
     cardOf.set(v, player.profileId);
     return player.profileId;
   };
@@ -1726,15 +1727,15 @@ export function compileLegends(
         });
       }
     }
-  // Everyone who shows ERA_KEPT or more in an era has that card in the file, in a pool or not
-  // (never offered by a spin: `eraPlayer`, `personVersions`).
+  // Everyone who shows ERA_KEPT or more in an era and has no card in the game's file has it in
+  // the archive.
   let keptOnly = 0;
   for (const [one, inEra] of versionsOf) {
     const now = current.get(one.key) ?? null,
       nationality = now ? now.source.nationality : nationOf(one);
     for (const v of inEra.values()) {
-      if (ERA_KEPT == null || v.now || cardOf.has(v) || v.overall < ERA_KEPT) continue;
-      eraCard(one, v, now, nationality);
+      if (v.now || cardOf.has(v) || v.overall < ERA_KEPT) continue;
+      eraCard(one, v, now, nationality, archived);
       keptOnly++;
     }
   }
@@ -1786,18 +1787,20 @@ export function compileLegends(
       throw Error(`EA id ${person} is a GOAT and a Captain: one list only`);
   const sourceId = p => Number(p.profileId.split(':')[1]),
     eraOrder = new Map(ERAS.map((e, i) => [e.id, i])),
-    cardList = [...eraCards.values()].sort(
-      (a, b) =>
-        eraOrder.get(eraOfYear(a.year).id) - eraOrder.get(eraOfYear(b.year).id) ||
-        (a.source.nationality < b.source.nationality
-          ? -1
-          : a.source.nationality > b.source.nationality
-            ? 1
-            : 0) ||
-        shown(b) - shown(a) ||
-        sourceId(a) - sourceId(b) ||
-        a.edition - b.edition,
-    );
+    inOrder = list =>
+      [...list].sort(
+        (a, b) =>
+          eraOrder.get(eraOfYear(a.year).id) - eraOrder.get(eraOfYear(b.year).id) ||
+          (a.source.nationality < b.source.nationality
+            ? -1
+            : a.source.nationality > b.source.nationality
+              ? 1
+              : 0) ||
+          shown(b) - shown(a) ||
+          sourceId(a) - sourceId(b) ||
+          a.edition - b.edition,
+      ),
+    cardList = inOrder(eraCards.values());
   const eras = {
     eras: ERAS.map(({ id: eraId, label, short, from, to }) => ({
       id: eraId,
@@ -1808,6 +1811,7 @@ export function compileLegends(
       keeperLevel: keeperLevels.get(eraId),
     })),
     cards: cardList,
+    archive: inOrder(archived.values()),
     pools: eraPools.map(({ era, nation, strength, members }) => ({
       era,
       nation,

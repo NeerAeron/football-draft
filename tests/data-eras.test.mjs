@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { PATHS, MODERN_SOURCES } from '../scripts/data/paths.mjs';
@@ -10,11 +10,12 @@ import {
   LIFT_FROM,
   LIFT_FULL,
   ERA_STAR,
+  ERA_KEPT,
   ERA_FILL,
 } from '../scripts/compile-legends.mjs';
 
 // World Cup sides the source has no player for (so no pool, whatever the rule).
-const WORLD_CUP_SIDES_WITHOUT_PLAYERS = ['2006 Saudi Arabia']; // no Saudi player in FIFA 04–07
+const WORLD_CUP_SIDES_WITHOUT_PLAYERS = [];
 import { decodeEras, encodeEras, ERAS_FORMAT } from '../app/core/players/eras-codec.js';
 import {
   ERAS,
@@ -223,7 +224,7 @@ test('World Cup starters and hand-made cards: the reviewed lists are in the pool
     );
   }
   // Hand-made cards: at most about thirty, each with its reason, each showing its overall.
-  assert.ok(cards.length >= 5 && cards.length <= 32);
+  assert.ok(cards.length >= 5 && cards.length <= 40);
   for (const c of cards) {
     assert.ok(c.why.length > 30, c.name);
     const id = `ea:${c.person}:fc${c.edition}:era`,
@@ -482,6 +483,40 @@ test('no card is better at a role that is not its own than a real card of its po
   assert.deepEqual([LIFT_FROM, LIFT_FULL], [87, 90]);
   const arshavin = pool(2010, 'Russia').find(p => p.name === 'A. Arshavin');
   assert.equal(shown(arshavin), 86); // as EA printed him
+});
+
+test('the archive: every card of 75+ that is in no pool, kept out of the game', () => {
+  const archiveText = readFileSync(PATHS.erasArchive, 'utf8'),
+    archive = decodeEras(JSON.parse(archiveText));
+  // The same columns as the era file (eras-codec.js), no pools, stamped with the catalog build.
+  assert.deepEqual(archive.pools, []);
+  assert.deepEqual(JSON.parse(archiveText).catalog, file.catalog);
+  assert.equal(JSON.stringify(encodeEras(archive)) + '\n', archiveText);
+  assert.ok(archive.cards.length > 8000 && archive.cards.length < 11000, archive.cards.length);
+  const shipped = new Set(data.cards.map(p => p.profileId));
+  for (const p of archive.cards) {
+    assert.ok(shown(p) >= ERA_KEPT && shown(p) === p.sourceOverall, p.profileId);
+    assert.ok(!shipped.has(p.profileId), p.profileId);
+  }
+  // Every card of the compile that shows 75+ is in one of the two (the build's provenance
+  // counts them; here: the archive holds men the game's file has no card for in that era).
+  const key = p => `${p.profileId.split(':')[1]}|${eraOfYear(p.year).id}`,
+    inGame = new Set(data.cards.map(key));
+  assert.ok(archive.cards.filter(p => !inGame.has(key(p))).length > 8000);
+  // The game never loads it: not under app/, not named by any module, the offline list or
+  // the service worker.
+  assert.ok(!PATHS.erasArchive.includes('/app/'));
+  const named = [];
+  const walk = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(path);
+      else if (/\.(js|mjs|html|json|webmanifest)$/.test(entry.name) && !path.includes('/app/data/'))
+        if (readFileSync(path, 'utf8').includes('eras-archive')) named.push(path);
+    }
+  };
+  walk(new URL('../app', import.meta.url).pathname);
+  assert.deepEqual(named, []);
 });
 
 test('the pools read like football', () => {

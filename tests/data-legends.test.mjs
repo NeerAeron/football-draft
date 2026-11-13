@@ -285,5 +285,6 @@ test(
     assert.equal(built.text, text);
     // The era pools come out of the same compile.
     assert.equal(built.eras.text, readFileSync(PATHS.eras, 'utf8'));
+    assert.equal(built.eras.archiveText, readFileSync(PATHS.erasArchive, 'utf8'));
   },
 );

@@ -246,7 +246,7 @@ the noise of 200 drafts (±0.14), so the baseline and the cup's offsets stay.
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,762
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,754
 cards, 2.7 MB, 0.79 MB gzip / 0.62 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
@@ -476,7 +476,9 @@ in:
   2010 — Egypt, Togo, New Zealand, Korea DPR; 2014 — Iran; 2018 — Iran, Panama,
   Armenia; 2022 — Tunisia, Saudi Arabia, Qatar; 2026 — Iran, Costa Rica, New Zealand, Qatar,
   Haiti, Panama, Curacao, South Africa, Iraq, Uzbekistan, Jordan. The one World Cup side with
-  no pool: Saudi Arabia 2006 (no Saudi player in FIFA 04–07).
+  no real cards, Saudi Arabia 2006 (no Saudi player in FIFA 04–07), has a pool of ten hand-made
+  cards. Cards that show 75+ in an era and are in no pool are kept in `data/eras-archive.v1.json`
+  (9,519 cards, the same codec, 1.8 MB / 0.51 MB gzip) — not deployed, never fetched by the game.
 - **Who is in a pool** is still "the 26 best-rated of the cycle", with two reviewed
   exceptions that put a man in: a **World Cup starter** of `data/world-cup-starters.json` (57
   entries: Karembeu 1998, Grosso 2006, Capdevila 2010, Fred 2014, Carvajal 2018, Tchouaméni and
