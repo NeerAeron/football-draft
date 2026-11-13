@@ -72,16 +72,29 @@
   grid-area: flag;
   display: flex;
 }
+/* The name is cut with an ellipsis; the marks after it (year, Leader, GOAT) never are. */
 .prow__name {
   grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
   margin-left: 10px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   line-height: 1.25;
+}
+.prow__name-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prow__name > :not(.prow__name-text) {
+  flex: none;
+  margin-left: 0;
 }
 /* The second line: tags first (never cut, they wrap), then the club text (ellipsis). */
 .prow__meta {
