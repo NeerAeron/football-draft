@@ -40,15 +40,15 @@ before → after:
 
 | first touch on a team-mate's pass | a match | miscontrolled | … with no opponent within 4 m |
 | --- | --- | --- | --- |
-| keeper's long kick (hands, goal kick) | 0.9 → 0.9 | 40% → 35% | 37% → 25% |
-| lofted, 28 m+ | 2.6 → 3.4 | 40% → 31% | 42% → 16% |
-| lofted, shorter | 0.7 → 0.8 | 39% → 22% | 26% → 14% |
-| cross / cutback | 3.5 → 3.6 | 48% → 50% | 35% → 20% |
-| along the ground, 28 m+ | 4.6 → 4.0 | 16% → 10% | 11% → 7% |
+| keeper's long kick (hands, goal kick) | 0.9 → 0.8 | 40% → 35% | 37% → 11% |
+| lofted, 28 m+ | 2.6 → 3.4 | 40% → 33% | 42% → 21% |
+| lofted, shorter | 0.7 → 0.9 | 39% → 25% | 26% → 16% |
+| cross / cutback | 3.5 → 3.6 | 48% → 48% | 35% → 20% |
+| along the ground, 28 m+ | 4.6 → 3.9 | 16% → 10% | 11% → 8% |
 | keeper's throw or short pass | 2.9 → 2.9 | 3.6% → 2.9% | 3.7% → 2.9% |
-| short pass | 58.0 → 57.7 | 6.9% → 6.5% | 3.6% → 2.8% |
+| short pass | 58.0 → 57.7 | 6.9% → 6.1% | 3.6% → 2.6% |
 
-Unpressed miscontrols 2.59 → 1.78 a match. **What was wrong:** a ball arriving above a metre
+Unpressed miscontrols 2.59 → 1.74 a match. **What was wrong:** a ball arriving above a metre
 took a flat 0.12 off the control chance and the whole "difficult reception" multiplier (1.1
 against 0.12 for a routine one), and a dropping ball's speed counted against the receiver as
 a driven pass's does — with or without anyone near, so a free man lost nearly every second
@@ -71,7 +71,7 @@ goal line). **Changed** (planning.js, `gameplay.lineAwareness` 1; 0 = as before)
   centre-backs and a pressed carrier. It drops goal-side — all of it — of an opposing forward
   who is level with it or in front of it; one clearly behind it is in an offside position and
   is left there. Nobody covers: the keeper stands a little higher behind a high line (to 13
-  m). `deep-while-attacking` 4.47 → 1.17 s a match.
+  m). `deep-while-attacking` 4.47 → 1.19 s a match. A forward in his own half is never in an offside position and always counts as an outlet.
 * Without the ball a back-line defender whose man is beyond the line (in his own half, ahead
   of the ball, the line 14 m+ out) stays in the line when the man is standing or coming back,
   or when the carrier cannot play him in right now (pressed, moving away, far from the line —
@@ -83,14 +83,18 @@ goal line). **Changed** (planning.js, `gameplay.lineAwareness` 1; 0 = as before)
   0.4–0.6 attacker-seconds a match in an offside position while their side has the ball,
   before and after.
 
-Offsides 0.14 → 0.24 a match (192 fixtures; 0.11 → 0.26 over the first 96), through balls
-3.2 → 3.8 a match, open shots on a break 0.02 → 0.01, open shots in the box against a set
-defence 0.36 → 0.39. `played-onside` 0.60 → 0.77 s a match: the finding counts one defender
-4 m+ behind the rest with his man, which is now also what a failed trap looks like.
-**Goals**: 2.71 → 2.66 (192 club fixtures), 2.60 → 2.53 (`match-calibration.mjs --matches
-256 --duration 180`); `shotScatter` stays 0.88. Everything else in `--compare` within noise:
-unpressed giveaways 0.45 → 0.39, loose 4 s+ 0.72 → 0.67, soft goals 0.55 → 0.61, rebounds
-left 0.41 → 0.43, rebound goals 0.30 → 0.24, ping-pong 0.46 → 0.36.
+Offsides 0.14 → 0.27 a match (192 fixtures; 0.11 → 0.26 over the first 96 on an earlier
+pass), through balls 3.2 → 3.8 a match (96 fixtures), open shots on a break 0.02 → 0.00, open
+shots in the box against a set defence 0.36 → 0.33. `played-onside` 0.60 → 0.82 s a match:
+the finding counts one defender 4 m+ behind the rest with his man, which is now also what a
+failed trap looks like. **Goals**: the changes cost about 0.1 (2.71 → 2.55 on the 192 club
+fixtures and 2.60 → 2.41 on `match-calibration.mjs --matches 256 --duration 180` in one pass,
+2.66 and 2.53 in another: fewer loose balls to break on), so `gameplay.shotScatter` 0.88 →
+0.86 re-centres: 2.71 → 2.60 and 2.60 → 2.55. Everything else in `--compare` (192
+fixtures): unpressed giveaways 0.45 → 0.45, loose 4 s+ 0.72 → 0.73, soft goals 0.55 → 0.68,
+hopeless shots 0.54 → 0.61, rebounds left 0.41 → 0.38, ping-pong 0.46 → 0.35, and
+`restart-giveaway` 0.05 → 0.11 (0.05–0.16 over three passes of this change: corners headed
+away and short throw-ins in the own third — 10 → 21 events, not explained, to be watched).
 
 ## Phase 12: drop kicks, offside and deep free kicks — and nobody is placed any more
 
