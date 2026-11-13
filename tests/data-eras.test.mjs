@@ -4,7 +4,15 @@ import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { loadRuntimeCatalog } from '../scripts/data/catalog-file.mjs';
 import { PATHS, MODERN_SOURCES } from '../scripts/data/paths.mjs';
-import { PLAYER_JUDGEMENT, NATION_JUDGEMENT } from '../scripts/compile-legends.mjs';
+import {
+  PLAYER_JUDGEMENT,
+  NATION_JUDGEMENT,
+  ERA_STAR,
+  ERA_FILL,
+} from '../scripts/compile-legends.mjs';
+
+// World Cup sides the source has no player for (so no pool, whatever the rule).
+const WORLD_CUP_SIDES_WITHOUT_PLAYERS = ['2006 Saudi Arabia']; // no Saudi player in FIFA 04–07
 import { decodeEras, encodeEras, ERAS_FORMAT } from '../app/core/players/eras-codec.js';
 import {
   ERAS,
@@ -90,9 +98,9 @@ test('the eras file is built for this catalog, round-trips and stays small', () 
   assert.equal(JSON.stringify(encodeEras(data)) + '\n', text);
   // One lazily fetched file for all eras (a draft needs them all): about 2.4 MB, 0.7 MB on
   // the wire.
-  assert.ok(text.length < 2_750_000, 'raw: ' + text.length);
+  assert.ok(text.length < 2_900_000, 'raw: ' + text.length);
   const gzip = gzipSync(Buffer.from(text), { level: 9 }).length;
-  assert.ok(gzip < 780_000, 'gzip: ' + gzip);
+  assert.ok(gzip < 830_000, 'gzip: ' + gzip);
   // Without eras attached every accessor answers "nothing".
   const bare = { players: [] };
   assert.deepEqual(eraList(bare), []);
@@ -102,56 +110,56 @@ test('the eras file is built for this catalog, round-trips and stays small', () 
   assert.equal(attachEras(catalog, data), catalog); // idempotent
 });
 
-test('every era has 20–70 nations that can field a pool — with or without a keeper — strongest first', () => {
+test('every era: the nations that can field a pool, the World Cup sides and the star nations — strongest first', () => {
   const list = eraList(catalog);
   assert.deepEqual(
     list.map(e => e.id),
     ERAS.map(e => e.id),
   );
   const counts = list.map(e => e.nations.length);
-  // The early titles know fewer nations: France 98 is the thinnest, and stands on its own.
-  assert.deepEqual(counts, [38, 65, 65, 70, 70, 70, 70, 70]);
-  // (France 98 is cut to its 38 strongest pools of players the data can identify: no Canada of
-  // first names.)
-  assert.ok(
-    !eraNations(catalog, 1998).some(n => ['Canada', 'United States', 'Iceland'].includes(n.name)),
-  );
-  // A side a follower would look for is there: Chile, Paraguay and Colombia in 1998, the hosts
-  // of 2002.
-  for (const [era, nation] of [
-    [1998, 'Chile'],
-    [1998, 'Paraguay'],
-    [1998, 'Colombia'],
-    [2002, 'Japan'],
-    [2002, 'Korea Republic'],
-  ])
-    assert.ok(
-      eraNations(catalog, era).some(n => n.name === nation),
-      `${era} ${nation}`,
-    );
-  // A goalkeeper is not required: seventeen pools have none, and `keepers` says so.
-  assert.deepEqual(
-    list.map(e => e.nations.filter(n => n.keepers === 0).map(n => n.name)),
-    [
-      ['Ghana', 'Uruguay'],
-      ['Georgia', 'Ghana', 'Guinea'],
-      ['Guinea', 'Burkina Faso'],
-      ['Mali', 'Peru', 'Guinea', 'Algeria', 'Honduras', 'Burkina Faso', 'Congo DR'],
-      ['Honduras'],
-      [],
-      ['Gabon'],
-      ['Egypt'],
-    ],
-  );
+  // The 70 strongest pools (France 98: 41), and on top of them every nation that played the
+  // era's World Cup and every nation with a star.
+  assert.deepEqual(counts, [50, 72, 71, 73, 71, 73, 73, 81]);
+  // (France 98 keeps pools of players the data can identify: no Canada of first names.)
+  assert.ok(!eraNations(catalog, 1998).some(n => ['Canada', 'Iceland'].includes(n.name)));
+  // A World Cup side is always there, with whatever players the data has (data/world-cups.json).
+  const worldCups = JSON.parse(readFileSync(PATHS.worldCups, 'utf8')).finals;
+  const absent = [];
+  for (const era of list) {
+    const names = new Set(era.nations.map(n => n.name));
+    assert.equal(worldCups[era.id].length, era.id === 2026 ? 48 : 32);
+    for (const nation of worldCups[era.id])
+      if (!names.has(nation)) absent.push(`${era.id} ${nation}`);
+  }
+  // Only sides the source has nobody for are missing.
+  assert.deepEqual(absent, WORLD_CUP_SIDES_WITHOUT_PLAYERS);
+  // A nation with a star is there however few players it has: Weah's Liberia, Shevchenko's
+  // Ukraine of 1998, Yorke's Trinidad, Aboutrika's Egypt.
+  for (const [era, nation, star] of [
+    [1998, 'Liberia', 'Weah'],
+    [1998, 'Ukraine', 'Shevchenko'],
+    [1998, 'Trinidad and Tobago', 'Yorke'],
+    [2010, 'Egypt', 'Aboutrika'],
+    [2018, 'Armenia', 'Mkhitaryan'],
+  ]) {
+    const best = pool(era, nation)[0];
+    assert.ok(best && shown(best) >= ERA_STAR && best.fullName.includes(star), `${era} ${nation}`);
+  }
+  assert.ok(pool(1998, 'Liberia').length < 10);
+  // A goalkeeper is not required, and `keepers` says so.
+  assert.ok(list.every(e => e.nations.filter(n => n.keepers === 0).length <= 8));
+  assert.ok(list.flatMap(e => e.nations).filter(n => n.keepers === 0).length >= 20);
   const codes = new Map(catalog.nations.map(n => [n.name, n.code]));
+  let small = 0;
   for (const era of list) {
     assert.equal(eraNations(catalog, era.id), era.nations);
     // What a pool without a keeper is rated with in goal: the weakest first-choice keeper of
-    // the era's pools.
+    // the era's full pools (a World Cup side of four players may have a lesser one).
     const firsts = era.nations
-      .filter(n => n.keepers)
+      .filter(n => n.keepers && n.size >= 14)
       .map(n => shown(pool(era.id, n.name).find(p => p.primaryPosition === 'GK')));
-    assert.ok(era.keeperLevel <= Math.min(...firsts) && era.keeperLevel >= 50, era.label);
+    assert.ok(era.keeperLevel <= Math.max(...firsts));
+    assert.ok(era.keeperLevel >= 50 && era.keeperLevel <= 75, era.label);
     for (let i = 1; i < era.nations.length; i++)
       assert.ok(era.nations[i - 1].strength >= era.nations[i].strength);
     for (const n of era.nations) {
@@ -160,33 +168,68 @@ test('every era has 20–70 nations that can field a pool — with or without a 
       assert.ok(n.flag.endsWith(`${n.code}.svg`));
       assert.equal(n.size, players.length);
       assert.equal(n.keepers, players.filter(p => p.primaryPosition === 'GK').length);
-      // The spin rule: a team with a bench — four defenders, five midfielders (a forward
-      // beyond the first four counts as one), two forwards among at least 18 — and never more
-      // than a World Cup squad. No keeper needed.
-      assert.ok(n.size >= 18 && n.size <= ERA_SQUAD, `${era.label} ${n.name}: ${n.size}`);
+      // The spin rule: 14 players with three defenders, four midfielders (a forward beyond
+      // the first four counts as one) and two forwards — or a World Cup side of that era, or a
+      // nation with a star, with whatever it has. Never more than a World Cup squad.
+      assert.ok(n.size >= 1 && n.size <= ERA_SQUAD, `${era.label} ${n.name}: ${n.size}`);
       assert.ok(n.keepers >= 0 && n.keepers <= 3, `${era.label} ${n.name}`);
       const lines = { DEF: 0, MID: 0, ATT: 0, GK: 0 };
       for (const p of players) lines[LINE_OF[p.primaryPosition]]++;
-      assert.ok(
-        lines.DEF >= 4 && lines.MID + Math.max(0, lines.ATT - 4) >= 4 && lines.ATT >= 1,
-        `${era.label} ${n.name}`,
-      );
+      const full =
+          n.size >= 14 &&
+          lines.DEF >= 3 &&
+          lines.MID + Math.max(0, lines.ATT - 4) >= 3 &&
+          lines.ATT >= 1,
+        always = worldCups[era.id].includes(n.name) || players.some(p => shown(p) >= ERA_STAR);
+      assert.ok(full || always, `${era.label} ${n.name}`);
+      if (!full) small++;
       // Strength: the mean shown rating of the best XI (best keeper + ten best outfielders;
       // without a keeper, the era's keeper level in goal).
       const keeper = players.find(p => p.primaryPosition === 'GK'),
         ten = players.filter(p => p.primaryPosition !== 'GK').slice(0, 10),
-        sum = (keeper ? shown(keeper) : era.keeperLevel) + ten.reduce((s, p) => s + shown(p), 0);
+        sum =
+          (keeper ? shown(keeper) : era.keeperLevel) +
+          ten.reduce((s, p) => s + shown(p), 0) +
+          ERA_FILL * (10 - ten.length); // a place the pool cannot fill
       assert.equal(n.strength, Math.round((sum / 11) * 10) / 10, `${era.label} ${n.name}`);
       assert.ok(Object.isFrozen(players) && pool(era.id, n.name) === players);
     }
   }
   assert.deepEqual(eraNations(catalog, 1990), []);
-  assert.deepEqual(pool(1998, 'Japan'), []); // not spinnable then
+  assert.ok(small >= 15 && small <= 40, 'small pools: ' + small);
+  assert.ok(pool(1998, 'Japan').length >= 14); // a World Cup side of 1998
+  assert.deepEqual(pool(1998, 'Canada'), []); // not spinnable then
   assert.ok(['England', 'Italy', 'France'].includes(list[0].nations[0].name));
   assert.ok(list[1].nations.slice(0, 3).some(n => n.name === 'Brazil'));
   assert.equal(list.at(-1).nations[0].name, 'France');
   for (const name of ['Brazil', 'Italy', 'Germany', 'Argentina', 'France', 'Netherlands'])
     for (const era of list) assert.ok(pool(era.id, name).length === ERA_SQUAD, name);
+});
+
+test('World Cup starters and hand-made cards: the reviewed lists are in the pools', () => {
+  const starters = JSON.parse(readFileSync(PATHS.starters, 'utf8')).players,
+    cards = JSON.parse(readFileSync(PATHS.handCards, 'utf8')).cards;
+  assert.ok(starters.length >= 30 && starters.length <= 80);
+  for (const s of starters) {
+    assert.ok(s.why.length > 15, s.name);
+    assert.ok(
+      pool(s.era, s.nation).some(p => personId(p) === `ea:${s.sofifaId}`),
+      `${s.era} ${s.nation}: ${s.name}`,
+    );
+  }
+  // Hand-made cards: at most about thirty, each with its reason, each showing its overall.
+  assert.ok(cards.length >= 5 && cards.length <= 32);
+  for (const c of cards) {
+    assert.ok(c.why.length > 30, c.name);
+    const id = `ea:${c.person}:fc${c.edition}:era`,
+      card = eraPlayer(catalog, id);
+    if (card) assert.equal(shown(card), c.overall, c.name);
+  }
+  const made = cards.filter(c => eraPlayer(catalog, `ea:${c.person}:fc${c.edition}:era`));
+  assert.ok(made.length >= cards.length - 4, `${made.length} of ${cards.length} in a pool`);
+  const neville = pool(1998, 'England').find(p => p.fullName === 'Gary Neville');
+  assert.ok(neville && shown(neville) === 83 && neville.primaryPosition === 'RB');
+  assert.ok(pool(2002, 'Korea Republic').some(p => /Hong/.test(p.fullName) && shown(p) === 84));
 });
 
 test('a pool: the nation’s best 26 of the era, each at his best version inside it', () => {
@@ -319,7 +362,9 @@ test('the judgement: breakout lag, the icons of 1998–2002, England’s home ti
   // A handful of peaks, at most 26 icons, about forty breakout cards — each with its reason.
   assert.ok(kinds('peak').length <= 12 && kinds('icon').length <= 26);
   const breakoutCards = kinds('breakout').reduce((n, f) => n + Object.keys(f.cards).length, 0);
-  assert.ok(breakoutCards >= 30 && breakoutCards <= 46, 'breakout cards: ' + breakoutCards);
+  assert.ok(breakoutCards >= 30 && breakoutCards <= 48, 'breakout cards: ' + breakoutCards);
+  // Modest: one to three points (Xavi and Iniesta 2010 apart).
+  for (const f of kinds('breakout')) assert.ok(Object.values(f.cards).every(v => v >= 1 && v <= 3));
   for (const f of PLAYER_JUDGEMENT) assert.ok(f.why.length > 30 && f.id > 0, f.name);
   assert.equal(new Set(PLAYER_JUDGEMENT.map(f => f.id)).size, PLAYER_JUDGEMENT.length);
   // A key man of his World Cup is in his nation's pool of that era, next to his team-mates.
@@ -329,14 +374,18 @@ test('the judgement: breakout lag, the icons of 1998–2002, England’s home ti
     return shown(p);
   };
   for (const [era, nation, name, low, high] of [
-    [2010, 'Germany', 'T. Müller', 85, 87],
-    [2010, 'Spain', 'Sergio Busquets', 84, 86],
-    [2006, 'Germany', 'P. Lahm', 84, 86],
-    [2006, 'Germany', 'B. Schweinsteiger', 83, 85],
-    [2002, 'Germany', 'M. Klose', 84, 86],
-    [2022, 'England', 'B. Saka', 84, 86],
-    [2022, 'Germany', 'J. Musiala', 84, 86],
-    [2014, 'Costa Rica', 'K. Navas', 83, 85],
+    [2010, 'Germany', 'T. Müller', 82, 84],
+    [2010, 'Spain', 'Sergio Busquets', 82, 84],
+    [2010, 'Spain', 'Xavi', 91, 91],
+    [2006, 'Germany', 'P. Lahm', 82, 84],
+    [2006, 'Germany', 'B. Schweinsteiger', 81, 83],
+    [2002, 'Germany', 'M. Klose', 82, 84],
+    [2022, 'England', 'B. Saka', 83, 85],
+    [2022, 'Germany', 'J. Musiala', 82, 84],
+    [2022, 'Spain', 'Gavi', 80, 82],
+    [2022, 'Argentina', 'A. Mac Allister', 77, 79],
+    [2014, 'Costa Rica', 'K. Navas', 80, 82],
+    [2018, 'France', 'O. Giroud', 84, 86],
     [1998, 'Republic of Ireland', 'R. Keane', 86, 88],
     [1998, 'Argentina', 'G. Batistuta', 89, 91],
     [2002, 'Brazil', 'Roberto Carlos', 89, 90],

@@ -30,6 +30,7 @@
 //     (FIFA 11–16; else his reactions), the preferred foot and the weak foot (the early
 //     titles; else right and 3) — and is recorded in the provenance. Nothing is invented.
 // Deterministic.
+import { writeFileSync } from 'node:fs';
 import { compilePlayer, positions as rowPositions } from './compile-players.mjs';
 import { overallRating } from '../app/core/players/ratings.js';
 import { normalizeBadges } from '../app/core/players/badges.js';
@@ -346,141 +347,150 @@ export const PLAYER_JUDGEMENT = [
     cards: { 0: 3, 1: 6, 2: 6 },
     why: 'Barcelona’s captain and a Spain starter to the 2002 World Cup: FIFA 2000–02 list him under two ids, and the rows of 2000–02 fall from 86 to 77.',
   },
+  {
+    id: 36,
+    name: 'Yorke',
+    kind: 'icon',
+    cards: { 99: 2, 0: 2 },
+    why: 'The Premier League’s top scorer and the Champions League’s joint top scorer in Manchester United’s 1999 Treble: the coarse titles have him at 81.',
+  },
   // Breakout lag (`kind: 'breakout'`): a key man of his national team at that World Cup —
   // starter, award winner — whose card of the tournament year still shows a prospect or a
   // squad player. Lifted to what reads fair for that tournament: inside the squad, right
-  // next to his team-mates, not above established stars without cause.
+  // next to his team-mates, not above established stars without cause — modestly (one to three
+  // points; Xavi and Iniesta 2010 are the exception): the starter rule sees to it that he is
+  // in the pool.
   {
     id: 246,
     name: 'Scholes',
     kind: 'breakout',
-    cards: { 99: 4 },
+    cards: { 99: 3 },
     why: 'World Cup 1998: a starter who scored for England at 23; his card is still a squad player’s (80), two years before 88.',
   },
   {
     id: 11141,
     name: 'Klose',
     kind: 'breakout',
-    cards: { 3: 4, 7: 2 },
+    cards: { 3: 2, 7: 1 },
     why: 'World Cup 2002: five goals, Silver Boot (81). World Cup 2006: Golden Boot (86).',
   },
   {
     id: 3647,
     name: 'Ballack',
     kind: 'breakout',
-    cards: { 3: 2 },
+    cards: { 3: 1 },
     why: 'World Cup 2002: carried Germany to the final, Germany’s Footballer of the Year and UEFA’s midfielder of the year 2002 (86).',
   },
   {
     id: 52582,
     name: 'Reçber',
     kind: 'breakout',
-    cards: { 3: 5 },
+    cards: { 3: 2 },
     why: 'World Cup 2002: Rüştü, the all-star team’s goalkeeper of third-placed Türkiye; FIFA 2003 has him at 80, FIFA 2004 at 88.',
   },
   {
     id: 726,
     name: 'Hasan',
     kind: 'breakout',
-    cards: { 3: 4 },
+    cards: { 3: 2 },
     why: 'World Cup 2002: in the all-star team for third-placed Türkiye (79; 84 a year later).',
   },
   {
     id: 39943,
     name: 'Park',
     kind: 'breakout',
-    cards: { 3: 3 },
+    cards: { 3: 1 },
     why: 'World Cup 2002: the goal that beat Portugal, a starter of the semi-finalists (79).',
   },
   {
     id: 121939,
     name: 'Lahm',
     kind: 'breakout',
-    cards: { 7: 5 },
+    cards: { 7: 3 },
     why: 'World Cup 2006: the opening goal, every minute played, all-star team (80; 88 two years later).',
   },
   {
     id: 121944,
     name: 'Schweinsteiger',
     kind: 'breakout',
-    cards: { 7: 4 },
+    cards: { 7: 2 },
     why: 'World Cup 2006: a starter of the hosts’ run, two goals in the third-place match (80).',
   },
   {
     id: 150516,
     name: 'Podolski',
     kind: 'breakout',
-    cards: { 7: 2 },
+    cards: { 7: 1 },
     why: 'World Cup 2006: Best Young Player, three goals (82).',
   },
   {
     id: 156616,
     name: 'Ribéry',
     kind: 'breakout',
-    cards: { 7: 2 },
+    cards: { 7: 1 },
     why: 'World Cup 2006: the discovery of the finalists, a starter from the second match (83; 86–89 after).',
   },
   {
     id: 7763,
     name: 'Pirlo',
     kind: 'breakout',
-    cards: { 7: 3 },
+    cards: { 7: 2 },
     why: 'World Cup 2006: Bronze Ball, man of the match in the final and twice more (86).',
   },
   {
     id: 189596,
     name: 'Müller',
     kind: 'breakout',
-    cards: { 11: 6 },
+    cards: { 11: 3 },
     why: 'World Cup 2010: Golden Boot and Best Young Player (80).',
   },
   {
     id: 189511,
     name: 'Busquets',
     kind: 'breakout',
-    cards: { 11: 4 },
+    cards: { 11: 2 },
     why: 'World Cup 2010: started every match but one for the world champions, after Barcelona’s 2009 treble (81).',
   },
   {
     id: 176635,
     name: 'Özil',
     kind: 'breakout',
-    cards: { 11: 3 },
+    cards: { 11: 2 },
     why: 'World Cup 2010: Germany’s playmaker, Golden Ball nominee, bought by Real Madrid (83).',
   },
   {
     id: 179846,
     name: 'Khedira',
     kind: 'breakout',
-    cards: { 11: 3 },
+    cards: { 11: 1 },
     why: 'World Cup 2010: Ballack’s replacement in every match of the third-placed side (80).',
   },
   {
     id: 189505,
     name: 'Pedro',
     kind: 'breakout',
-    cards: { 11: 3 },
+    cards: { 11: 1 },
     why: 'World Cup 2010: started the semi-final and the final; 23 goals in Barcelona’s 2009–10 (82).',
   },
   {
     id: 176580,
     name: 'Suárez',
     kind: 'breakout',
-    cards: { 11: 3 },
+    cards: { 11: 2 },
     why: 'World Cup 2010: three goals for the semi-finalists after 49 goals for Ajax (82).',
   },
   {
     id: 168320,
     name: 'Gyan',
     kind: 'breakout',
-    cards: { 11: 6 },
+    cards: { 11: 3 },
     why: 'World Cup 2010: Ghana’s three goals on the way to the quarter-final (75; EA’s own 81 a year later).',
   },
   {
     id: 139869,
     name: 'Sneijder',
     kind: 'breakout',
-    cards: { 11: 2 },
+    cards: { 11: 1 },
     why: 'World Cup 2010: Silver Ball and joint top scorer for the finalists in the year of Inter’s treble (88).',
   },
   {
@@ -501,140 +511,147 @@ export const PLAYER_JUDGEMENT = [
     id: 195864,
     name: 'Pogba',
     kind: 'breakout',
-    cards: { 15: 2 },
+    cards: { 15: 1 },
     why: 'World Cup 2014: Best Young Player (83; 87 a year later).',
   },
   {
     id: 182521,
     name: 'Kroos',
     kind: 'breakout',
-    cards: { 15: 2 },
+    cards: { 15: 1 },
     why: 'World Cup 2014: in the all-star team for the champions, two goals in the 7–1 (85; 88 a year later).',
   },
   {
     id: 192985,
     name: 'De Bruyne',
     kind: 'breakout',
-    cards: { 15: 3 },
+    cards: { 15: 2 },
     why: 'World Cup 2014: Belgium’s best player (goal and assist against the United States) and the Bundesliga’s assist leader (81; 87 a year later).',
   },
   {
     id: 193041,
     name: 'Navas',
     kind: 'breakout',
-    cards: { 15: 5 },
+    cards: { 15: 2 },
     why: 'World Cup 2014: three man-of-the-match awards for quarter-finalists Costa Rica, bought by Real Madrid (79; 85 two years later).',
   },
   {
     id: 140233,
     name: 'Ochoa',
     kind: 'breakout',
-    cards: { 15: 2 },
+    cards: { 15: 1 },
     why: 'World Cup 2014: the saves against Brazil and the Netherlands (80).',
   },
   {
     id: 179944,
     name: 'David Luiz',
     kind: 'breakout',
-    cards: { 15: 2 },
+    cards: { 15: 1 },
     why: 'World Cup 2014: Brazil’s best player up to the semi-final (two goals, the fans’ Dream Team), the world’s most expensive defender that summer (82).',
+  },
+  {
+    id: 178509,
+    name: 'Giroud',
+    kind: 'breakout',
+    cards: { 19: 3, 23: 1 },
+    why: 'World Cup 2018: the champions’ centre-forward in every match — the man the attack was built around — whom EA kept at 82; World Cup 2022: four goals at 36, France’s record scorer. Not breakout lag (he was never a prospect): a card that rates goals and pace misses what he did for France.',
   },
   {
     id: 231747,
     name: 'Mbappé',
     kind: 'breakout',
-    cards: { 19: 2 },
+    cards: { 19: 1 },
     why: 'World Cup 2018: Best Young Player, four goals, one in the final (87).',
   },
   {
     id: 226851,
     name: 'Pavard',
     kind: 'breakout',
-    cards: { 19: 4 },
+    cards: { 19: 1 },
     why: 'World Cup 2018: the champions’ right-back in six matches, goal of the tournament (80).',
   },
   {
     id: 246669,
     name: 'Saka',
     kind: 'breakout',
-    cards: { 23: 3 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: three goals as an England starter after Euro 2020 and Arsenal’s player of the season (82).',
   },
   {
     id: 256790,
     name: 'Musiala',
     kind: 'breakout',
-    cards: { 23: 4 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: Germany’s best player at 19 (81; 86 a year later).',
   },
   {
     id: 252371,
     name: 'Bellingham',
     kind: 'breakout',
-    cards: { 23: 2 },
+    cards: { 23: 1 },
     why: 'World Cup 2022: England’s midfield at 19, in most teams of the tournament (84).',
   },
   {
     id: 264240,
     name: 'Gavi',
     kind: 'breakout',
-    cards: { 23: 6 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: a Spain starter and scorer at 18, Kopa Trophy and Golden Boy 2022 (79).',
   },
   {
     id: 247090,
     name: 'Fernández',
     kind: 'breakout',
-    cards: { 23: 5 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: Best Young Player for the champions (78).',
   },
   {
     id: 246191,
     name: 'Alvarez',
     kind: 'breakout',
-    cards: { 23: 5 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: four goals for the champions, a starter from the third match (78).',
   },
   {
     id: 239837,
     name: 'Mac Allister',
     kind: 'breakout',
-    cards: { 23: 6 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: a starter of the champions from the second match, goal and assist in the knock-outs (76; 86 two years later).',
   },
   {
     id: 251517,
     name: 'Gvardiol',
     kind: 'breakout',
-    cards: { 23: 3 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: the tournament’s best young defender for third-placed Croatia (81).',
   },
   {
     id: 224158,
     name: 'Amrabat',
     kind: 'breakout',
-    cards: { 23: 5 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: the midfield of semi-finalists Morocco (76).',
   },
   {
     id: 241671,
     name: 'Livaković',
     kind: 'breakout',
-    cards: { 23: 3 },
+    cards: { 23: 1 },
     why: 'World Cup 2022: the shoot-outs against Japan and Brazil for third-placed Croatia (80).',
   },
   {
     id: 202811,
     name: 'Martínez',
     kind: 'breakout',
-    cards: { 23: 3 },
+    cards: { 23: 2 },
     why: 'World Cup 2022: Golden Glove for the champions (84).',
   },
   {
     id: 209981,
     name: 'Bounou',
     kind: 'breakout',
-    cards: { 23: 2 },
+    cards: { 23: 1 },
     why: 'World Cup 2022: Morocco’s keeper to the semi-final, Zamora Trophy 2022 (84).',
   },
   {
@@ -647,18 +664,25 @@ export const PLAYER_JUDGEMENT = [
 // Era pools (app/data/eras.v1.json): a World Cup squad per nation and cycle.
 export const ERA_KEEPERS = 3;
 export const ERA_LINES = { DEF: 7, MID: 7, ATT: 4 }; // at least, where the nation has them
-// A nation can be spun in an era when its pool can field a team with a bench: a back four,
-// five midfielders — a forward beyond the first four counts as one, he can play wide — and two
-// forwards. (No goalkeeper needed: `keepers` tells the draft which pools have one. Five
-// defenders kept Colombia's 1998 side out for one surname-only row's position.)
-export const ERA_SPIN = { players: 18, DEF: 4, MID: 5, ATT: 2 };
+// A nation can be spun in an era when its pool can field a team with a few spares: 14 players,
+// three defenders, four midfielders — a forward beyond the first four counts as one, he can
+// play wide — and two forwards. (No goalkeeper needed: `keepers` tells the draft which pools
+// have one.)
+export const ERA_SPIN = { players: 14, DEF: 3, MID: 4, ATT: 2 };
+// Always in, whatever it has (even four players — `size` tells the draft): a nation that played
+// that era's World Cup finals (data/world-cups.json), and a nation with a star — a card that
+// shows ERA_STAR or more (Weah's Liberia, Shevchenko's Ukraine of 1998, Yorke's Trinidad).
+export const ERA_STAR = 85;
+// What a place its pool cannot fill counts in a nation's strength (a pool of eight is not a
+// strong side because its eight are good).
+export const ERA_FILL = 60;
 export const ERA_NATIONS = 70; // at most, the strongest (best XI of the pool)
 // France 98 keeps fewer. FIFA 98/99 know most players by a surname, some national squads by
 // first names or invented ones: a pool there needs three in ten of its players to be men a
 // later title knows (EA's id: Canada's "Robert, Janny, Aaron, Mike" and the United States'
-// and Slovakia's squads are not), and the era keeps its strongest 38 — below them the pools
+// and Slovakia's squads are not), and the era keeps its strongest 41 — below them the pools
 // are thin squads of surnames nobody can check.
-export const ERA_NATION_LIMIT = { 1998: 38 };
+export const ERA_NATION_LIMIT = { 1998: 41 };
 export const ERA_IDENTIFIED = { 1998: 0.3 };
 const LOCAL_PERSON = 98_000_000; // FIFA 98/99's own ids, as persons (legends-calibration.mjs)
 const nationLimit = era => ERA_NATION_LIMIT[era] ?? ERA_NATIONS;
@@ -680,7 +704,11 @@ const ERA_LINE = {
 export const ERA_SELECTION = {
   pool: `A nation's best ${ERA_SQUAD} players of the era, each at his best version inside its years (highest overall; ties: the later year); ${ERA_KEEPERS} goalkeepers and at least ${ERA_LINES.DEF} defenders, ${ERA_LINES.MID} midfielders and ${ERA_LINES.ATT} forwards where the nation has them; no minimum rating`,
   today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
-  spinnable: `A nation whose pool has at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders (a forward beyond the first ${ERA_LINES.ATT} counts as one) and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper; the ${ERA_NATIONS} strongest (mean overall of the pool's best XI; without a keeper, the era's weakest first-choice keeper stands in) when more qualify`,
+  spinnable: `A nation that played the era's World Cup finals, or has a player shown ${ERA_STAR}+ in the era — with whatever players it has; and of the others — a pool of at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders (a forward beyond the first ${ERA_LINES.ATT} counts as one) and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper — those among the era's ${ERA_NATIONS} strongest (mean overall of the best XI; without a keeper the era's weakest first-choice keeper stands in, an empty place counts ${ERA_FILL})`,
+  starters:
+    "A World Cup starter of the reviewed list (data/world-cup-starters.json) or a player with a breakout-lag correction is in his nation's pool of that era: he takes the place of the lowest-rated player (a keeper a keeper’s; an outfielder the lowest-rated outfielder’s whose line keeps its minimum)",
+  star: ERA_STAR,
+  fill: ERA_FILL,
   best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
   squad: ERA_SQUAD,
   spin: ERA_SPIN,
@@ -842,6 +870,38 @@ export function compileLegends(
       }
     }
     person(key).old.push(...one.rows);
+  }
+  // ---- judgement cards (data/judgement-cards.json) ---------------------------------------
+  // Notable players the source lacks or cannot tell apart: the card of one title, made by
+  // hand — the overall is a judgement, the skills, position and club are those of the row
+  // named in `like` (his own row of another title or under another id; default: his own row of
+  // that title), moved to that overall like every other card.
+  const handYear = edition => (edition >= 90 ? 1900 : 2000) + edition - 1;
+  const handMade = [];
+  for (const entry of marks.handCards?.cards ?? []) {
+    const one = person(String(entry.person)),
+      from = entry.like ? persons.get(String(entry.like.person)) : one,
+      edition = Number(entry.edition),
+      source = from?.old.find(p => p.edition === Number(entry.like?.edition ?? edition));
+    if (!source?.skills)
+      throw Error(`Judgement card ${entry.name} (${entry.title}): no row to make it from`);
+    if (!`${words(source.name)} ${words(source.fullName)}`.includes(words(entry.sourceName)))
+      throw Error(
+        `Judgement card ${entry.name}: the row is "${source.name}", not "${entry.sourceName}"`,
+      );
+    if (!(entry.overall >= 60 && entry.overall <= 92) || !(entry.why?.length > 20))
+      throw Error(`Judgement card ${entry.name}: overall ${entry.overall}, or no reason`);
+    let row = one.old.find(p => p.edition === edition);
+    if (row && row !== source)
+      throw Error(`Judgement card ${entry.name}: he has a row of title ${edition}`);
+    if (!row) {
+      row = { ...source, edition, year: handYear(edition), given: null };
+      one.old.push(row);
+      one.old.sort((a, b) => a.year - b.year);
+    }
+    row.given = entry.overall;
+    row.hand = entry.overall;
+    handMade.push({ ...entry, year: row.year });
   }
   // ---- nations --------------------------------------------------------------------------
   // Today's catalog name of a past nationality id (Türkiye, Czechia…): the nation most
@@ -1013,7 +1073,8 @@ export function compileLegends(
         year: p.year,
         edition: p.edition,
         printed: Math.round(p.given),
-        calibrated: lifted(p.edition, p.given),
+        calibrated: p.hand ?? lifted(p.edition, p.given),
+        ...(p.hand ? { hand: p.hand } : {}),
       })),
     ...one.legacy.map(entry => ({
       entry,
@@ -1027,6 +1088,7 @@ export function compileLegends(
     const byTitle = new Map();
     for (const one of persons.values())
       for (const v of rawVersions(one)) {
+        if (v.hand) continue; // a judgement card says nothing about its title's level
         if (!byTitle.has(v.edition)) byTitle.set(v.edition, []);
         byTitle.get(v.edition).push(v.calibrated);
       }
@@ -1057,10 +1119,12 @@ export function compileLegends(
           return {
             ...v,
             before: Math.round(v.calibrated),
-            overall: Math.min(
-              99,
-              Math.round(judgedNation(one, v.edition, judged(v.edition, v.calibrated))) + points,
-            ),
+            overall:
+              v.hand ??
+              Math.min(
+                99,
+                Math.round(judgedNation(one, v.edition, judged(v.edition, v.calibrated))) + points,
+              ),
           };
         }),
       );
@@ -1378,7 +1442,39 @@ export function compileLegends(
       });
   const idOf = c => Number(c.now ? c.now.sourcePlayerId : c.one.key),
     byRating = (a, b) => b.rating - a.rating || b.v.year - a.v.year || idOf(a) - idOf(b);
-  const squads = []; // { era, nation, members, strength }
+  // Who must be in his nation's pool of an era: the World Cup starters of the reviewed list
+  // (data/world-cup-starters.json) and the players with a breakout-lag correction, in the era
+  // of the corrected card. Each must be a candidate there (EA's id, a word of the name).
+  const eraOfEdition = edition => eraOfYear(handYear(Number(edition)))?.id,
+    mustBeIn = new Map(), // `${era}|${nation}` → Map(id → entry)
+    must = (era, nation, id, entry) => {
+      const key = `${era}|${nation}`;
+      if (!mustBeIn.has(key)) mustBeIn.set(key, new Map());
+      mustBeIn.get(key).set(Number(id), entry);
+    };
+  for (const entry of marks.starters?.players ?? [])
+    must(entry.era, entry.nation, entry.sofifaId, entry);
+  for (const fix of PLAYER_JUDGEMENT)
+    if (fix.kind === 'breakout') {
+      const one = persons.get(String(fix.id)),
+        nation = current.get(one.key)?.source.nationality ?? nationOf(one);
+      for (const edition of Object.keys(fix.cards))
+        must(eraOfEdition(edition), nation, fix.id, { name: fix.name, breakout: true });
+    }
+  const finals = new Map(
+    Object.entries(marks.worldCups?.finals ?? {}).map(([era, list]) => {
+      const expected = Number(era) >= 2026 ? 48 : 32;
+      if (list.length !== expected || new Set(list).size !== expected)
+        throw Error(`World Cup ${era}: ${list.length} nations, ${expected} expected`);
+      for (const name of list)
+        if (!nations.has(name)) throw Error(`World Cup ${era}: "${name}" is not a catalog nation`);
+      return [Number(era), new Set(list)];
+    }),
+  );
+  const identified = c => !!c.now || Number(c.one.key) < LOCAL_PERSON || c.v.hand != null;
+  const dump = {};
+  const squads = [], // { era, nation, members, strength, always }
+    placed = []; // who the starter rule put in, and for whom
   for (const [key, list] of candidates) {
     const [era, nation] = [Number(key.slice(0, 4)), key.slice(5)];
     list.sort(byRating);
@@ -1395,54 +1491,100 @@ export function compileLegends(
         unique.push(c);
       }
     }
-    const chosen = new Set(),
-      take = (line, count) => {
-        for (const c of unique) {
-          if (count <= 0) break;
-          if (c.line === line && !chosen.has(c)) {
-            chosen.add(c);
-            count--;
-          }
-        }
-      };
-    take('GK', ERA_KEEPERS);
-    for (const [line, count] of Object.entries(ERA_LINES)) take(line, count);
-    for (const c of unique) {
-      if (chosen.size >= ERA_SQUAD) break;
-      if (c.line !== 'GK') chosen.add(c);
+    const wanted = mustBeIn.get(key) ?? new Map();
+    for (const [id, entry] of wanted) {
+      const c = unique.find(x => idOf(x) === id);
+      if (!c) throw Error(`${entry.name} (${id}) has no card for ${nation} in ${era}`);
+      if (!entry.breakout && !c.name.includes(words(entry.sourceName)))
+        throw Error(`Starter ${entry.name}: the data calls ${id} "${c.name}"`);
     }
-    const members = [...chosen].sort(byRating),
-      count = line => members.filter(c => c.line === line).length,
-      keeper = members.find(c => c.line === 'GK'),
-      outfield = members.filter(c => c.line !== 'GK').slice(0, 10);
-    // A goalkeeper is not required: the draft's own guards see to it that one can be drafted.
-    if (
-      members.length < ERA_SPIN.players ||
-      count('DEF') < ERA_SPIN.DEF ||
-      // (A forward beyond the first four can play wide in midfield: Japan's 2002 pool has four
-      // midfielders and ten forwards and wingers.)
-      count('MID') + Math.max(0, count('ATT') - ERA_LINES.ATT) < ERA_SPIN.MID ||
-      count('ATT') < ERA_SPIN.ATT
-    )
-      continue;
-    const known = members.filter(c => c.now || Number(c.one.key) < LOCAL_PERSON).length;
-    if (known < (ERA_IDENTIFIED[era] ?? 0) * members.length) continue;
-    squads.push({ era, nation, members, keeper, outfield });
+    const squad = from => {
+      const chosen = new Set(),
+        take = (line, count) => {
+          for (const c of from) {
+            if (count <= 0) break;
+            if (c.line === line && !chosen.has(c)) {
+              chosen.add(c);
+              count--;
+            }
+          }
+        };
+      take('GK', ERA_KEEPERS);
+      for (const [line, count] of Object.entries(ERA_LINES)) take(line, count);
+      for (const c of from) {
+        if (chosen.size >= ERA_SQUAD) break;
+        if (c.line !== 'GK') chosen.add(c);
+      }
+      // A starter who is not among them takes the place of the lowest-rated player — a keeper
+      // a keeper's, an outfielder the lowest-rated outfielder's whose line can spare him (the
+      // line minimums hold) — who is not a starter himself.
+      for (const c of from) {
+        if (!wanted.has(idOf(c)) || chosen.has(c)) continue;
+        const size = line => [...chosen].filter(x => x.line === line).length,
+          spare = x =>
+            x.line === c.line ||
+            (c.line !== 'GK' && x.line !== 'GK' && size(x.line) > ERA_LINES[x.line]),
+          out = [...chosen].sort(byRating).findLast(x => !wanted.has(idOf(x)) && spare(x));
+        if (out && chosen.size >= ERA_SQUAD) chosen.delete(out);
+        chosen.add(c);
+        placed.push(
+          `${era} ${nation}: ${c.name} ${c.rating} for ${out ? `${out.name} ${out.rating}` : 'nobody'}`,
+        );
+      }
+      return [...chosen].sort(byRating);
+    };
+    let members = squad(unique);
+    // (For the reviewed lists: every candidate of every pool, when asked.)
+    if (process.env.ERA_CANDIDATES)
+      dump[key] = unique.map(c => [idOf(c), c.name, c.rating, c.line, members.includes(c) ? 1 : 0]);
+    const count = line => members.filter(c => c.line === line).length,
+      fields =
+        members.length >= ERA_SPIN.players &&
+        count('DEF') >= ERA_SPIN.DEF &&
+        // (A forward beyond the first four can play wide in midfield: Japan's 2002 pool has
+        // four midfielders and ten forwards and wingers.)
+        count('MID') + Math.max(0, count('ATT') - ERA_LINES.ATT) >= ERA_SPIN.MID &&
+        count('ATT') >= ERA_SPIN.ATT,
+      share = ERA_IDENTIFIED[era] ?? 0,
+      known = members.filter(identified).length >= share * members.length;
+    // Always in: a World Cup side of that era, a nation with a star. Where the data cannot
+    // say who most of a squad are (France 98), such a pool keeps the players it can identify.
+    const finalist = finals.get(era)?.has(nation) ?? false;
+    let always = finalist || members.some(c => c.rating >= ERA_STAR);
+    if (always && !known) {
+      members = squad(unique.filter(identified));
+      always = members.length > 0 && (finalist || members.some(c => c.rating >= ERA_STAR));
+    }
+    if (!always && !(fields && known)) continue;
+    squads.push({
+      era,
+      nation,
+      members,
+      always,
+      full: fields,
+      keeper: members.find(c => c.line === 'GK'),
+      outfield: members.filter(c => c.line !== 'GK').slice(0, 10),
+    });
   }
+  if (process.env.ERA_CANDIDATES) writeFileSync(process.env.ERA_CANDIDATES, JSON.stringify(dump));
   // Strength = the mean overall of the pool's best XI: its best keeper and ten best
   // outfielders. A pool without a keeper is rated with the weakest first-choice keeper any
-  // qualifying nation of that era has (`keeperLevel`): the least a drafted keeper would be.
+  // full pool of that era has (`keeperLevel`): the least a drafted keeper would be. A place
+  // the pool cannot fill counts ERA_FILL.
   const keeperLevels = new Map();
   for (const era of ERAS) {
-    const firsts = squads.filter(sq => sq.era === era.id && sq.keeper).map(sq => sq.keeper.rating);
+    const firsts = squads
+      .filter(sq => sq.era === era.id && sq.keeper && sq.full)
+      .map(sq => sq.keeper.rating);
     if (!firsts.length) throw Error(`${era.label}: no pool has a goalkeeper`);
     keeperLevels.set(era.id, Math.min(...firsts));
   }
   for (const sq of squads) {
     const sum =
       (sq.keeper ? sq.keeper.rating : keeperLevels.get(sq.era)) +
-      sq.outfield.reduce((total, c) => total + c.rating, 0);
-    sq.strength = Math.round((sum / (sq.outfield.length + 1)) * 10) / 10;
+      sq.outfield.reduce((total, c) => total + c.rating, 0) +
+      ERA_FILL * (10 - sq.outfield.length);
+    sq.strength = Math.round((sum / 11) * 10) / 10;
   }
   const eraCards = new Map(), // profileId → runtime card
     cardOf = new Map(); // candidate version → profileId (a card's, or the catalog player's)
@@ -1466,7 +1608,8 @@ export function compileLegends(
     const all = squads
         .filter(sq => sq.era === era.id)
         .sort((a, b) => b.strength - a.strength || (a.nation < b.nation ? -1 : 1)),
-      spun = all.slice(0, nationLimit(era.id));
+      // The strongest, and whoever is always in.
+      spun = all.filter((sq, i) => i < nationLimit(era.id) || sq.always);
     if (spun.length < ERA_MINIMUM)
       throw Error(
         `${era.label}: only ${spun.length} nations can field a pool (${ERA_MINIMUM} needed)`,
@@ -1486,7 +1629,10 @@ export function compileLegends(
       withoutKeeper: spun.filter(sq => !sq.keeper).map(sq => sq.nation),
       keeperLevel: keeperLevels.get(era.id),
       qualified: all.length,
-      left: all.slice(nationLimit(era.id)).map(sq => sq.nation),
+      left: all.filter(sq => !spun.includes(sq)).map(sq => sq.nation),
+      always: spun
+        .filter((sq, i) => all.indexOf(sq) >= nationLimit(era.id) || !sq.full)
+        .map(sq => `${sq.nation} (${sq.members.length})`),
     });
   }
   // The Prime: everyone in a pool has his best version of all titles in the file, also when
@@ -1582,6 +1728,8 @@ export function compileLegends(
       cards: cardList.length,
       goats: marked.goat,
       captains: marked.captain,
+      starters: placed,
+      handCards: handMade,
       bestOnly,
       noNation: eraStats.noNation,
       noName: eraStats.noName,
