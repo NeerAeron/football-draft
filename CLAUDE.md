@@ -72,7 +72,7 @@ app/                     served statically (deploy = publish this folder); runti
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
                          source-map.json (the source's club/league/nation names → the reference),
-                         captains.json + goats.json (reviewed lists: Captains and GOAT cards, player + era), legacy-titles.json
+                         captains.json + goats.json (reviewed lists: Captains and GOAT cards, player + era), world-cups.json (finalists per era), world-cup-starters.json, judgement-cards.json (hand-made cards), legacy-titles.json
                          (FIFA 98–14, the top 1,000 of each title: legends input), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
@@ -389,7 +389,7 @@ whole reads too generous, too stingy or too flat next to what the game's followe
 players, **every card of the title** moves by one rule — `top` points at the level of the
 title's 30 best, in proportion above and below, nothing at `from` and under (FIFA 98–2000
 +3.4…+4.8, FIFA 2001–03 +1, FIFA 2004 −0.8, FIFA 07 +0.8; the other 21 titles as they are). No
-era is made equal to another. `NATION_JUDGEMENT`: England's players in FIFA 98–2004 (titles made in and for England) two points down at 90, fading to nothing at 76. `PLAYER_JUDGEMENT` has three kinds, each entry with its reason — `icon` (24 players of 1997–2002 the coarse titles plainly under-rate: Maldini, Keane, Batistuta, Roberto Carlos …), `breakout` (42 players with breakout lag: a key man of his side at that World Cup whose card still shows a prospect — Müller 2010, Lahm 2006, Saka 2022 — lifted to sit inside the squad next to his team-mates, never above established stars without cause) and the peaks: a handful of players have corrections of their own, for the peaks
+era is made equal to another. `NATION_JUDGEMENT`: England's players in FIFA 98–2004 (titles made in and for England) two points down at 90, fading to nothing at 76. `PLAYER_JUDGEMENT` has three kinds, each entry with its reason — `icon` (24 players of 1997–2002 the coarse titles plainly under-rate: Maldini, Keane, Batistuta, Roberto Carlos …), `breakout` (43 players with breakout lag: a key man of his side at that World Cup whose card still shows a prospect — Müller 2010, Lahm 2006, Saka 2022 — lifted by one to three points, Xavi and Iniesta 2010 to 91) and the peaks: a handful of players have corrections of their own, for the peaks
 everyone agrees on that a title's flat top hides (Ronaldo 1997–98 and 2002, Zidane 1997–2002,
 Ronaldinho 2004–06, Messi 2009–10, Cristiano Ronaldo 2008, Rivaldo 1998–99, Henry 2003–05, Kaká
 2007) and for one plainly wrong card (Denilson in the coarse titles); the build fails when an
@@ -397,19 +397,19 @@ id, name or title of that list does not meet the data. Do not add per-player edi
 cases: fix the title.
 
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
-player table; 13,039 cards, 2.5 MB / 0.74 MB gzip; fetched by `services/eras.js` with a draft)
+player table; 13,696 cards, 2.7 MB / 0.78 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
 `scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
 2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
 version inside the era (the same overalls and cards as above; 3 keepers and at least 7
 defenders, 7 midfielders, 4 forwards where the nation has them; no minimum rating). A catalog
 player is in the 2026 pool as he is unless an FC 24–26 version shows more. A nation can be spun
-in an era when its pool has 18 players, 4 defenders, 5 midfielders (a forward beyond the first four counts as one) and 2 forwards — no
+in an era when it played that era's World Cup finals (`data/world-cups.json`) or has a card showing 85+ (`ERA_STAR`) — with whatever players it has, even two — or when its pool has 14 players, 3 defenders, 4 midfielders (a forward beyond the first four counts as one) and 2 forwards and is among the era's 70 strongest — no
 goalkeeper required (`keepers` says how many a pool has; the draft's guards make sure one can
 be drafted; a keeperless pool's strength takes the era's weakest first-choice keeper,
-`keeperLevel`); the 70 strongest when more qualify (38 / 65 / 65 / 70 / 70 / 70 / 70 / 70 nations — France 98 is cut to its 38 strongest pools of players a later title can identify, `ERA_IDENTIFIED` / `ERA_NATION_LIMIT`;
+`keeperLevel`); 49 / 72 / 71 / 73 / 71 / 73 / 73 / 81 nations — France 98's limit is 38 pools of players a later title can identify, `ERA_IDENTIFIED` / `ERA_NATION_LIMIT`; a place a small pool cannot fill counts 60 in its strength; World Cup starters of `data/world-cup-starters.json` and players with a breakout correction take the place of the pool's lowest-rated player; `data/judgement-cards.json` holds 18 hand-made cards for notables the source lacks or cannot tell apart (a real row of his, the overall by judgement);
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
-file (504 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
+file (505 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
 independent; both are stamped with the catalog build. **GOAT cards and Captains** are two
 reviewed lists of player + era: `data/goats.json` (seven players at the World Cup cycles of
 their peak — a GOAT card is a player AND an era) and `data/captains.json` (the leaders of

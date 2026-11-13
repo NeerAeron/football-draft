@@ -209,8 +209,8 @@ position }` on pool entries and slot players who have one (a legend version has 
 A pick's pool is **"nation X in era Y"**: that nation's best 26 players of the era, each at his
 best version inside the era's years. The data is `app/data/eras.v1.json` (one file, columnar,
 `core/players/eras-codec.js`; fetched by `services/eras.js` `loadEras()` when a draft opens —
-never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,039
-cards, 2.5 MB, 0.74 MB gzip / 0.59 MB brotli), attached to the catalog like the legends.
+never on Home; in slices, `decodeErasSteps` + `attachErasSteps` driven by `stepped()`: 13,696
+cards, 2.7 MB, 0.78 MB gzip / 0.63 MB brotli), attached to the catalog like the legends.
 Everything below is synchronous and pure once attached. In Node: `attachEras(await
 loadRuntimeCatalog(), decodeEras(JSON.parse(readFileSync(PATHS.eras))))`;
 `node tools/research/era-report.mjs [era nation]` prints the summary or one pool.
@@ -252,9 +252,9 @@ sentence, the share text).
   the catalog does not know are simply nobody's other version.
 - `eraList(catalog)` → `[{ id, label, short, from, to, keeperLevel, nations: [{ name, code,
   flag, strength, size, keepers }] }]`, oldest era first, an era's nations strongest first.
-  **Only spinnable nations are listed** (38–70 per era, see below). `name` is the catalog's
+  **Only spinnable nations are listed** (49–81 per era, see below). `name` is the catalog's
   nation name (`code`/`flag` as in `catalog.nations`; a nation today's catalog does not have —
-  none at the moment — would have `code: null`). `size` = players in the pool (≤ 26),
+  none at the moment — would have `code: null`). `size` = players in the pool (**2 to 26** — see "Which nations can be spun"),
   **`keepers` = how many of them are goalkeepers: 0 to 3 — a spinnable pool may have none.**
   `strength` = the mean shown rating of the pool's best XI (best keeper + the ten best
   outfielders, one decimal): the number to weigh or order a reel by. A pool without a keeper
@@ -375,45 +375,82 @@ is in 3% of pools: 0.33 per draft, at least one in 29% of drafts. Re-rolls and a
 weighted by strength raise all of these (the Captains' nations are the strong ones). The boosts
 and the look are the draft's (`links.js`, the UI); the data only says who.
 
-**Which nations can be spun in an era** (decided by the compiler, `ERA_SPIN` in
-`scripts/compile-legends.mjs`, recorded in the file's `selection`): a nation whose pool has at
-least 18 players, at least **4 defenders**, **5 midfielders — a forward beyond the pool's
-first four counts as one** (he can play wide) — and 2 forwards (counted before a second
-striker is settled as a striker or a No. 10: a pool can end with a midfielder or a forward
-fewer) — **a goalkeeper is not required**; if more than 70 qualify, the 70 strongest; an era
-needs at least 20 (the build fails otherwise). As built:
+**Which nations can be spun in an era** (decided by the compiler — `ERA_SPIN`, `ERA_STAR`,
+`ERA_NATIONS` in `scripts/compile-legends.mjs`, recorded in the file's `selection`). Three ways
+in:
 
-| era | nations | pools under 26 | fewer than 3 keepers | no keeper | strongest | weakest |
+1. **A World Cup side**: a nation that played that era's World Cup finals
+   (`data/world-cups.json`: the 32 finalists of 1998–2022, the 48 of 2026) — **with whatever
+   players the data has for it**.
+2. **A star nation**: a nation with a card that shows **85 or more** in that era (`ERA_STAR`) —
+   Weah's Liberia, Shevchenko's Ukraine of 1998, Yorke's Trinidad and Tobago, Aboutrika's
+   Egypt, Mkhitaryan's Armenia — again with whatever it has, **even two players**.
+3. **Everyone else**: a pool of at least **14 players** (was 18), at least 3 defenders, 4
+   midfielders — a forward beyond the pool's first four counts as one — and 2 forwards
+   (counted before a second striker is settled: a pool can end with one fewer), and a place
+   among the era's **70 strongest** pools (France 98: 38, and three in ten of the players
+   must be men a later title knows by EA's id — no Canada of first names).
+
+**A goalkeeper is never required.** As built:
+
+| era | nations | under 26 players | under 14 | no keeper | strongest | weakest |
 | --- | --- | --- | --- | --- | --- | --- |
-| France 98 | 38 of 45 | 7 (18–25) | 4 | Ghana, Uruguay | Italy 87.2 | Australia 76.5 |
-| Korea/Japan 02 | 65 | 4 | 13 | Georgia, Ghana, Guinea | Brazil 88.5 | Estonia 70.4 |
-| Germany 06 | 65 | 6 | 15 | Guinea, Burkina Faso | Brazil 89.9 | Burkina Faso 69.0 |
-| South Africa 10 | 70 of 75 | 10 | 22 | Mali, Peru, Guinea, Algeria, Honduras, Burkina Faso, Congo DR | Brazil 88.5 | Congo 70.8 |
-| Brazil 14 | 70 of 86 | 0 | 13 | Honduras | Spain 89.3 | Guinea 71.4 |
-| Russia 18 | 70 of 100 | 1 | 5 | — | Spain 88.5 | Bulgaria 73.9 |
-| Qatar 22 | 70 of 100 | 1 | 5 | Gabon | France 87.9 | South Africa 74.5 |
-| USA/Canada/Mexico 26 | 70 of 101 | 1 | 5 | Egypt | France 88.4 | North Macedonia 73.9 |
+| France 98 | 49 | 17 | Ukraine 9, Saudi Arabia 10, Korea Republic 8, Liberia 2, Trinidad and Tobago 2 | Ghana, Uruguay, Ukraine, Liberia, Trinidad and Tobago | Italy 87.2 | Trinidad and Tobago |
+| Korea/Japan 02 | 72 | 11 | Liberia 5, Ecuador 2 | Georgia, Ghana, Guinea, Costa Rica, New Zealand, Liberia, Ecuador | Brazil 88.5 | Ecuador |
+| Germany 06 | 71 | 12 | Iran 12, Estonia 8 | Guinea, Georgia, Egypt, Iran, Burkina Faso | Brazil 89.9 | Estonia |
+| South Africa 10 | 73 | 13 | Korea DPR 3 | Mali, Peru, Guinea, Algeria, Honduras, Burkina Faso, Congo DR, Korea DPR | Spain 88.9 | Korea DPR |
+| Brazil 14 | 71 | 1 | Iran 9 | Honduras | Spain 89.3 | Iran |
+| Russia 18 | 73 | 2 | — | Armenia, Panama | Spain 88.5 | Panama |
+| Qatar 22 | 73 | 2 | — | Gabon | France 87.9 | Qatar |
+| USA/Canada/Mexico 26 | 81 | 5 | Uzbekistan 8, Jordan 6 | Egypt, Iraq, Uzbekistan, Jordan | France 88.4 | Jordan |
 
-**What changed with the missing-names pass** (against the build before it): the spin rule
-asks for 4 defenders (was 5) and counts spare forwards as midfielders — Colombia 1998 and
-Japan 2002 are in; an international both FIFA 98 and 99 list has a card even when the game had
-no club for him (Chile, Paraguay, Jamaica, Iceland, Tunisia, Colombia and Peru… of 1998 can be
-spun; 2002 62 → 65, 2006 62 → 65); one man under two ids of one title is one
-person (a pool no longer holds him twice). 17 of the 518 era–nation pools have no keeper;
-pools with a keeper per era: 36 / 62 / 63 / 63 / 69 / 70 / 69 / 69.
+**What this changes for the draft — read this:**
 
-**France 98 is cut to 38 nations** (`ERA_IDENTIFIED`, `ERA_NATION_LIMIT`): a 1998 pool needs
-three in ten of its players to be men a later title knows by EA's id (Canada's squad of first
-names, the United States' and Slovakia's are out), and the era keeps its 38 strongest — Italy
-87.2, France 87.0, Brazil 86.9 … Mexico, Uruguay, Paraguay, Australia 76.5. Out: Hungary,
-Morocco, Türkiye, Slovenia, Jamaica, Latvia, Northern Ireland, Iceland, Tunisia, China PR.
+- **A pool can be tiny.** `eraNations(...)[i].size` goes down to **2** (it was at least 18);
+  `eraPool` of such a nation is just those players, best first. 563 pools in all, 33 of them
+  without a keeper, 15 with fewer than 14 players. **The draft's guards must look at the
+  pool, not only at `keepers`**: a spin may land on a nation only when its pool has a player
+  the XI can still take — one for an open slot (by position, as the draft judges a fit) who
+  is not already in the XI (`personId`). With two players in Liberia 98, that is Weah or
+  nothing: once a striker's slot is the only thing Weah could fill and it is taken, Liberia 98
+  must not be landed on. The same check covers a keeperless pool when only the keeper's slot
+  is open.
+- **`strength` of a small pool is honest**: the mean of the best XI where **a place the pool
+  cannot fill counts 60** (`ERA_FILL`) — Liberia 98 is 64.5, not 83. A reel weighted by
+  strength gives such a nation little; a flat reel gives every nation the same chance (then
+  a tiny pool lands as often as Brazil — weigh by `size` if that is not wanted).
+- **`keeperLevel`** (what a keeperless pool is rated with in goal) is the weakest first-choice
+  keeper of the era's *full* pools: 70 / 67 / 57 / 61 / 58 / 53 / 52 / 53.
+- **The always-in lists are data, not code for the draft**: nothing to read at run time —
+  `eraList` simply has more nations. In beyond the strongest 70, or with a pool under the
+  minimum: France 98 — United States, South Africa, Morocco, Japan, Jamaica, Iran, Tunisia,
+  Saudi Arabia, Korea Republic, Paraguay (World Cup 1998), Ukraine, Liberia, Trinidad and
+  Tobago (stars); 2002 — Côte d'Ivoire, Trinidad and Tobago, Costa Rica, New Zealand, United
+  Arab Emirates (14–16 players), Liberia, Ecuador; 2006 — Japan, Iran, Georgia, Peru, Egypt,
+  Estonia; 2010 — Egypt, Togo, New Zealand, Korea DPR; 2014 — Iran; 2018 — Iran, Panama,
+  Armenia; 2022 — Tunisia, Saudi Arabia, Qatar; 2026 — Iran, Costa Rica, New Zealand, Qatar,
+  Haiti, Panama, Curacao, South Africa, Iraq, Uzbekistan, Jordan. The one World Cup side with
+  no pool: Saudi Arabia 2006 (no Saudi player in FIFA 04–07).
+- **Who is in a pool** is still "the 26 best-rated of the cycle", with two reviewed
+  exceptions that put a man in: a **World Cup starter** of `data/world-cup-starters.json` (57
+  entries: Karembeu 1998, Grosso 2006, Capdevila 2010, Fred 2014, Carvajal 2018, Tchouaméni and
+  Richarlison 2022 …) and every player with a breakout-lag correction — he takes the place of
+  the pool's lowest-rated player (a keeper a keeper's; an outfielder the lowest-rated
+  outfielder's whose line keeps its minimum). Their cards are ordinary cards.
+- **Hand-made cards** (`data/judgement-cards.json`, 18): notable players the source lacks or
+  cannot tell apart — Gary Neville 1998, Francescoli, Stojković, Hong Myung-bo 1998 and 2002,
+  Köpke, Pagliuca, Shevchenko and Rebrov 1998, Aboutrika 2006 and 2008, Al-Deayea, Al-Owairan,
+  Daei, Davala, Edmundo, Lalas, Wynalda. Position, skills and club are a real row of his (another
+  id, another title), the overall is a judgement; at run time they are ordinary era cards
+  (the provenance `data/build/eras.json` → `stats.handCards` lists them).
 
 **The judgement on single cards** (`PLAYER_JUDGEMENT`, each entry with `kind` and its reason;
 `NATION_JUDGEMENT`): the agreed peaks (`peak`), 24 icons of 1997–2002 the coarse titles
-under-rate (`icon`: Keane, Batistuta, Bergkamp, Cafu, Roberto Carlos, Thuram …), 42 players
+under-rate (`icon`: Keane, Batistuta, Bergkamp, Cafu, Roberto Carlos, Thuram …), 43 players
 with **breakout lag** (`breakout`: a key man of his side at that World Cup whose card of the
 year still shows a prospect — Müller and Busquets 2010, Lahm 2006, Klose 2002, Saka and
-Musiala 2022 … lifted to sit inside the squad next to his team-mates), and England's players
+Musiala 2022 … lifted by one to three points, Xavi and Iniesta 2010 to 91; the starter rule
+puts each in his squad), and England's players
 in FIFA 98–2004 two points down at 90 (fading to nothing at 76). `node
 tools/research/era-names.mjs` lists who of about 300 notable players per era is still not in
 his nation's pool.
@@ -442,11 +479,11 @@ Things a draft should know about the data:
   Ronaldo ’98 are 88, Ronaldo ’00 92, and France 98's best XIs are in the low 80s. Their Prime (the fully
   described 2003–04 versions) is where those players reach 90+. A reel that weighs by
   `strength` will favour later eras unless it weighs inside an era.
-- **France 98 is the thinnest**: 38 nations, no Brazil-size depth outside Europe and Argentina/Brazil
+- **France 98 is the thinnest**: 49 nations, no Brazil-size depth outside Europe and Argentina/Brazil
   (FIFA 98/99 use their own player ids and mostly surnames: a player counts only when
   FIFA 2000–03 know him by name and club, or by name, national team and part of the pitch — or when both titles list him, at a club or in a national squad). Japan of 1998 is not spinnable (16 players); Liberia never is (Weah has no pool).
 - A pool can have 0, 1 or 2 keepers, and as few as 18 players.
-- 7,921 people are in a pool; 3,502 of them in two or more eras. 504 best
+- 8,380 people are in a pool; 3,697 of them in two or more eras. 505 best
   versions are kept outside the pools for the Prime.
 - Era cards and `catalog.legends` are separate objects for the same men (a legend's id ends
   in `:legend`, an era card's in `:era`): do not mix the two systems in one XI without

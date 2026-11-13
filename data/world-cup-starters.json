@@ -441,6 +441,22 @@
       "nation": "Korea Republic",
       "era": 2022,
       "why": "Two headers against Ghana."
+    },
+    {
+      "name": "Ousmane Dembélé",
+      "sourceName": "dembele",
+      "sofifaId": 231443,
+      "nation": "France",
+      "era": 2022,
+      "why": "Started every match of the finalists on the right."
+    },
+    {
+      "name": "Thomas Linke",
+      "sourceName": "linke",
+      "sofifaId": 808,
+      "nation": "Germany",
+      "era": 2002,
+      "why": "Every minute of the 2002 finalists at centre-back."
     }
   ]
 }

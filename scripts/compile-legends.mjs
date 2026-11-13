@@ -351,7 +351,7 @@ export const PLAYER_JUDGEMENT = [
     id: 36,
     name: 'Yorke',
     kind: 'icon',
-    cards: { 99: 3, 0: 5 },
+    cards: { 99: 2, 0: 2 },
     why: 'The Premier League’s top scorer and the Champions League’s joint top scorer in Manchester United’s 1999 Treble: the coarse titles have him at 81.',
   },
   // Breakout lag (`kind: 'breakout'`): a key man of his national team at that World Cup —
@@ -706,7 +706,7 @@ export const ERA_SELECTION = {
   today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
   spinnable: `A nation that played the era's World Cup finals, or has a player shown ${ERA_STAR}+ in the era — with whatever players it has; and of the others — a pool of at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders (a forward beyond the first ${ERA_LINES.ATT} counts as one) and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper — those among the era's ${ERA_NATIONS} strongest (mean overall of the best XI; without a keeper the era's weakest first-choice keeper stands in, an empty place counts ${ERA_FILL})`,
   starters:
-    "A World Cup starter of the reviewed list (data/world-cup-starters.json) or a player with a breakout-lag correction is in his nation's pool of that era: he takes the place of the lowest-rated player of his line",
+    "A World Cup starter of the reviewed list (data/world-cup-starters.json) or a player with a breakout-lag correction is in his nation's pool of that era: he takes the place of the lowest-rated player (a keeper a keeper\'s; an outfielder the lowest-rated outfielder\'s whose line keeps its minimum)",
   star: ERA_STAR,
   fill: ERA_FILL,
   best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
@@ -1515,14 +1515,17 @@ export function compileLegends(
         if (chosen.size >= ERA_SQUAD) break;
         if (c.line !== 'GK') chosen.add(c);
       }
-      // A starter who is not among them takes the place of the lowest-rated player of his
-      // line (who is not one himself).
+      // A starter who is not among them takes the place of the lowest-rated player — a keeper
+      // a keeper's, an outfielder the lowest-rated outfielder's whose line can spare him (the
+      // line minimums hold) — who is not a starter himself.
       for (const c of from) {
         if (!wanted.has(idOf(c)) || chosen.has(c)) continue;
-        const out = [...chosen]
-          .sort(byRating)
-          .findLast(x => x.line === c.line && !wanted.has(idOf(x)));
-        if (out) chosen.delete(out);
+        const size = line => [...chosen].filter(x => x.line === line).length,
+          spare = x =>
+            x.line === c.line ||
+            (c.line !== 'GK' && x.line !== 'GK' && size(x.line) > ERA_LINES[x.line]),
+          out = [...chosen].sort(byRating).findLast(x => !wanted.has(idOf(x)) && spare(x));
+        if (out && chosen.size >= ERA_SQUAD) chosen.delete(out);
         chosen.add(c);
         placed.push(
           `${era} ${nation}: ${c.name} ${c.rating} for ${out ? `${out.name} ${out.rating}` : 'nobody'}`,
