@@ -239,6 +239,7 @@ async function skipClips(page, until, limit = 80) {
     if (
       await page
         .locator(until)
+        .first()
         .isVisible()
         .catch(() => false)
     )
@@ -481,7 +482,10 @@ const matchFlows = [
             if (!(minute > 90 && minute <= 125)) throw new Error(`clip minute ${minute}`);
           });
         await step(`${view}: every kick and the winner`, async () => {
-          const decided = '[data-testid="shootout"] .pens.is-decided';
+          // With reduced motion the panel shows every kick at once and gives way to the result
+          // two seconds later: a runner that is late for the panel finds the same list there.
+          const decided =
+            '[data-testid="shootout"] .pens.is-decided, [data-testid="match-result"] .pens.is-decided';
           if (view === 'key') await skipClips(page, decided);
           await visible(page, decided, 90000);
           const marks = await page.locator('.pens__dot.is-goal, .pens__dot.is-miss').count();
