@@ -7,6 +7,7 @@
 //   node tools/calibration/blunders.mjs --engine /tmp/before/app --out /tmp/before.json
 //   node tools/calibration/blunders.mjs --compare /tmp/before.json /tmp/after.json
 //   node tools/calibration/blunders.mjs --list giveaway --limit 12     # samples to watch
+//   node tools/calibration/blunders.mjs --list rebound-left            # rebounds: lib/rebounds.mjs
 //   node tools/calibration/watch.mjs --fixture 3 --at 81.4             # …then look at one
 //
 // Options: --matches N (24), --workers N (3), --engine <app dir> (another checkout's app/,
@@ -18,6 +19,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadFixtures } from './lib/fixtures.mjs';
+import { reboundTracker } from './lib/rebounds.mjs';
 
 const W = 105,
   H = 68;
@@ -54,6 +56,10 @@ export const DETECTORS = {
   'hopeless-shot': 'shot from 28 m+ with xG under 0.08',
   'soft-goal': 'goal from a shot with xG under 0.19',
   'own-goal': 'own goal',
+  'rebound-left':
+    'rebound left to an attacker: a save, a blocked shot or the woodwork, then an attacker shoots within 3 s although a defender was closer to the ball at the save',
+  'rebound-goal': 'goal from a shot within 3 s of a save, a block or the woodwork (for scale)',
+  rebound: 'save, blocked shot or woodwork that leaves the ball in play (for scale)',
   'keeper-wander': 'seconds a keeper is 26 m+ from his goal in open play',
   'ping-pong': 'two players swapping 4+ short passes in a row',
   'back-to-keeper': 'unpressed pass back to the keeper from the opposition half',
@@ -88,6 +94,7 @@ function analyse(m, spec) {
     goalKick = null, // the goal kick being followed: { team, kicked, received }
     seenEvents = 0,
     step = 0;
+  const rebounds = reboundTracker(m);
   const still = new Array(22).fill(0),
     stillFlagged = new Array(22).fill(false),
     lastPos = m.players.map(p => ({ x: p.x, y: p.y }));
@@ -384,6 +391,22 @@ function analyse(m, spec) {
         lastPos[p.id].x = p.x;
         lastPos[p.id].y = p.y;
       }
+    }
+
+    // ---- rebounds (lib/rebounds.mjs): `at` is the save
+    for (const r of rebounds.step()) {
+      const info = {
+        at: r.at,
+        clock: `${Math.floor(r.time / 60)}'`,
+        kind: r.saveType ?? r.kind,
+        defender: r.defender,
+        attacker: r.attacker,
+        shotAfter: r.shotAfter,
+        goal: r.goal,
+      };
+      add('rebound', info);
+      if (r.left) add('rebound-left', info);
+      if (r.goal) add('rebound-goal', info);
     }
 
     // ---- events (newest first)

@@ -59,6 +59,7 @@ const FORMATION_NAME = [null, null],
 import { ShootoutMethods } from './shootout.js';
 import { KeeperMethods } from './keeper.js';
 import { WhistleMethods } from './whistle.js';
+import { ReboundMethods } from './rebound.js';
 
 // Cold start. V8 chooses how a field is stored from the first values written to it and, when
 // a later value does not fit (a whole-number field receives a fraction), re-shapes the object
@@ -311,6 +312,9 @@ export class Match {
       offside: false,
       deflectedBy: null,
       deflectedAt: -10,
+      // A shot kept out and loose in front of goal (rebound.js): the side defending it, since when.
+      reboundTeam: null,
+      reboundAt: -10,
       // Fields set later by passes, shots and restarts, declared up front (undefined reads
       // the same as absent) so the ball keeps one object shape: it is read in every hot loop.
       offsideState: undefined,
@@ -924,4 +928,5 @@ install(
   ShootoutMethods,
   KeeperMethods,
   WhistleMethods,
+  ReboundMethods,
 );
