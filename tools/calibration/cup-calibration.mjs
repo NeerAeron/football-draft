@@ -9,6 +9,7 @@
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000 --engine 24 --workers 2
 //   node tools/calibration/cup-calibration.mjs runs --runs 1000 --only pro --tuning '[-12.5, …]'
 //   CUP_BUDGET=1 node tools/calibration/cup-calibration.mjs runs …   # the user drafts in Budget mode
+//   CUP_GOAT=1 node tools/calibration/cup-calibration.mjs runs …     # the XI's best player counts as a GOAT
 //     (--tuning: try other CUP_TUNING offsets (nine: group ×3, R32, R16, QF, SF, final, play-off),
 //     a JSON array for --only's difficulty or a JSON object by difficulty; fast-model runs only.
 //     Legendary plays the real 48-nation field in a Nations draft (cup.js worldCupDraw), so
@@ -99,8 +100,21 @@ function draftXI(env, seed, difficulty) {
     if (!options.length) break;
     s.prime(options[0].slot, 0);
   }
+  // CUP_GOAT=1: what a GOAT is worth — the XI's best player counts as one (links.js: his boost
+  // for every player), whatever the data flags; the flag sits on the card while this XI plays
+  // its run. Compare the title rates with and without.
+  if (flagged) delete flagged.goat;
+  flagged = null;
+  if (process.env.CUP_GOAT === '1') {
+    const xi = s.lineup(0);
+    if (!xi.some(p => p.goat)) {
+      flagged = xi.reduce((a, p) => (p.sourceOverall > a.sourceOverall ? p : a));
+      flagged.goat = true;
+    }
+  }
   return s.matchSide(0);
 }
+let flagged = null;
 
 function playEngine(env, Match, config, seed, duration) {
   const m = new Match(seed >>> 0, duration);

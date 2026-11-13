@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
 import { surname } from '../../lib/player-view.js';
 import { editionLabel } from '../../../core/players/legends.js';
-import { Sheet, Button, Flag, Icon } from '../../components/index.js';
+import { Sheet, Button, Flag, Icon, GoatMark } from '../../components/index.js';
 
 /** "’19" for a prime option's version. */
 const era = prime => editionLabel(prime.to);
@@ -107,7 +107,9 @@ export function PrimeSheet({ open, onClose, team, hideRatings, onPrime }) {
                 >
                   <${Flag} code=${p.nationCode} name=${p.nation} size=${26} decorative />
                   <span class="draft-prime__who">
-                    <span class="draft-prime__name truncate">${p.name}</span>
+                    <span class="draft-prime__name truncate"
+                      >${p.name}${(prime?.to.goat || p.goat) && html` <${GoatMark} />`}</span
+                    >
                     <span class="draft-prime__meta"
                       >${s.role}${
                         prime

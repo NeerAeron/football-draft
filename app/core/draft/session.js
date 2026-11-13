@@ -863,6 +863,8 @@ export class DraftSession {
         year: this.#year(prime),
         position: prime.primaryPosition,
         tier: tierOfRating(ovr, this.tiers),
+        // His best version is a GOAT card: the Prime makes him one.
+        goat: !!prime.goat,
       },
       allowed: !reason,
       reason,
