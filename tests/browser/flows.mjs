@@ -483,7 +483,9 @@ const matchFlows = [
         await step(`${view}: every kick and the winner`, async () => {
           const decided = '[data-testid="shootout"] .pens.is-decided';
           if (view === 'key') await skipClips(page, decided);
-          await visible(page, decided, 90000);
+          // Full view plays the whole match at 4×: about 45 s, then extra time, added time and the
+          // kicks — some 80 s on a fast machine, more on a loaded runner.
+          await visible(page, decided, 180000);
           const marks = await page.locator('.pens__dot.is-goal, .pens__dot.is-miss').count();
           if (marks < 6) throw new Error(`only ${marks} kicks shown`);
           await visible(page, '.pens__row.is-winner');
