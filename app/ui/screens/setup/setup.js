@@ -93,7 +93,8 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
   const selected = levels.find(l => l.id === value) || levels[0];
   const typical = useMemo(() => {
     if (mode !== 'run') return null;
-    const rating = ladderBaseline(draftMode(type), value);
+    // A run's draft is a World Cup draft (eras).
+    const rating = ladderBaseline(draftMode(type), value, { eras: true });
     return projectRun({ rating, mode: draftMode(type), difficulty: value }).label.replace(
       'Projected: ',
       '',

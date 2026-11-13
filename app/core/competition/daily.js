@@ -118,6 +118,8 @@ export function dailyChallenge(catalog, date) {
         rerolls: DAILY_RULES.ladderRerolls,
         random,
         bosses: false,
+        // The Daily is a World Cup draft: its ladder is the era draft's.
+        eras: true,
       }).key,
     );
   const challenge = {

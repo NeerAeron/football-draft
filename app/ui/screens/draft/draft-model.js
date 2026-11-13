@@ -5,7 +5,7 @@ import { teamLinks, linkBoosts } from '../../../core/draft/links.js';
 import { FORMATIONS } from '../../../core/players/formations.js';
 import { NATURAL_FIT } from '../../../core/draft/session.js';
 import { freeLabel } from '../../../core/draft/budget.js';
-import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
+import { MODE_BASELINES, ERA_BASELINE, ladderTarget } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
 import { searchKey } from '../../../core/util/text.js';
@@ -354,10 +354,12 @@ export function landedAnnouncement(spin, poolSize) {
 
 /**
  * Effective rating estimate of a partial XI: filled slots as they are, open slots at the
- * mode's typical drafted rating; links chem plus the typical chem of the open share.
+ * mode's typical drafted rating (`eras`: a World Cup draft's); links chem plus the typical
+ * chem of the open share.
  */
-export function estimateRating(team, mode) {
-  const base = MODE_BASELINES[mode] || MODE_BASELINES.nations;
+export function estimateRating(team, mode, eras = false) {
+  const base =
+    eras && mode === 'nations' ? ERA_BASELINE : MODE_BASELINES[mode] || MODE_BASELINES.nations;
   const filled = team.slots.filter(s => s.player);
   const open = 11 - filled.length;
   const sum = filled.reduce((s, x) => s + x.rating, 0);
@@ -375,7 +377,8 @@ export function draftProjection({ kind, mode, difficulty, teams, side = 0, rules
   const team = teams[side];
   const filled = team.slots.filter(s => s.player).length;
   if (!filled) return null;
-  const rating = estimateRating(team, mode);
+  // Runs and the Daily draft an era and a nation per spin.
+  const rating = estimateRating(team, mode, kind === 'run' || kind === 'daily');
   if (kind === 'versus') {
     const other = teams[1 - side];
     if (!other) return null;

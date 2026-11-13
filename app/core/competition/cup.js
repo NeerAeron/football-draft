@@ -24,7 +24,7 @@ import {
   isKeeper,
 } from '../draft/pools.js';
 import { buildSide, seedValue, mixSeed, DIFFICULTIES } from '../draft/session.js';
-import { validLinks } from '../draft/links.js';
+import { validLinks, CHEM_CAP } from '../draft/links.js';
 import {
   chooseOpponent,
   buildOpponent,
@@ -94,21 +94,44 @@ export const MEDALS = { champion: 'gold', final: 'silver', third: 'bronze' };
  * play-off. The group is drawn from "lower pots" (weaker than the level); the knockouts escalate
  * so the final is a top side for that difficulty; the play-off opponent is a beaten
  * semi-finalist. Real teams only (no World XI / All-Stars). Legendary's row is used outside a
- * Nations draft only: in Nations it plays the real field (worldCupDraw). Tuned with
+ * Nations draft only: in Nations it plays the real field (worldCupDraw). In Nations the level
+ * target is the World Cup draft's (opponents.js ERA_BASELINE, 86.47): Pro and World Class are
+ * tuned for it — about 20% and 10% titles (Budget mode 13% and 6%). Tuned with
  * tools/calibration/cup-calibration.mjs (docs/competition-api.md).
  */
 export const CUP_TUNING = {
-  pro: [-12, -10.5, -9, -9, -8.5, -5.5, -2.5, 2.5, -2.5],
-  worldclass: [-12.5, -11, -9.5, -9.5, -9, -5.5, -2.5, 0.5, -2.5],
+  pro: [-14, -12.5, -11, -11, -9, -6, -3, 0.5, -3],
+  worldclass: [-14.5, -13, -11.5, -11.5, -10, -6.5, -3.5, -1, -3.5],
   legendary: [-13, -11.5, -10, -10, -9.5, -6.5, -3.5, -1, -3.5],
 };
 /**
  * The difficulty that plays the real World Cup field in a Nations draft, and the effective
  * ratings a run meets there on average (group pots 4, 3, 2, then R32, R16, QF, SF, final,
- * play-off; cup-calibration.mjs runs --only legendary) — projectRun's targets for it.
+ * play-off; cup-calibration.mjs runs --only legendary; in tournament form, FIELD_FORM) —
+ * projectRun's targets for it.
  */
 export const FIELD_LEVEL = 'legendary';
-export const FIELD_TYPICAL = [77.2, 79.1, 81.3, 80.3, 83.5, 84.6, 85.6, 86.5, 84.9];
+// A Nations run is the World Cup Run: its XI is a World Cup draft (an era and a nation per
+// spin), so its ladder is measured against that draft (opponents.js ERA_BASELINE).
+const ERA_CUP = mode => mode === 'nations';
+/**
+ * Knockout form: from the Round of 32 on, the nations of Legendary's field play above their
+ * cards — every player of the side gets this much on top of his boosts (engine `chem`, capped
+ * as ever at CHEM_CAP: 3.5 brings every player of a national XI to the cap, so the side plays
+ * at rating + 5), and its effective rating says so. The group is played as the nations are.
+ * The lever that puts Legendary's title odds where the owner wants them (3–5%; Budget about
+ * 1–2%): a drafted World Cup XI (86.5) is as strong as the field's best nations as they are,
+ * so without it one run in twelve won the cup. Group exits do not move (12%).
+ */
+export const FIELD_FORM = 3.5;
+/** A side in tournament form (`form` rating points; 0 = as it is). */
+function inForm(side, form) {
+  if (!form) return side;
+  const players = side.players.map(p => ({ ...p, chem: Math.min(CHEM_CAP, p.chem + form) })),
+    chem = players.reduce((sum, p) => sum + p.chem, 0) / players.length;
+  return { ...side, players, effective: Math.round((side.rating + chem) * 100) / 100, form };
+}
+export const FIELD_TYPICAL = [77.4, 79.8, 81.6, 84.2, 86.7, 87.7, 88.8, 89.4, 87.9];
 /**
  * Rating points the fast model adds to the user in his knockout matches (projectRun,
  * simulateNext). In the engine a drafted XI goes through 77.6% of its cup knockout ties where
@@ -245,6 +268,8 @@ const sideRef = s => ({
   nominal: s.nominal ?? s.effective,
   target: s.target ?? null,
   pot: s.pot ?? null,
+  // Legendary's field: the tournament form the side plays in (FIELD_FORM when it was drawn).
+  form: s.form ?? 0,
 });
 /** The group stage: three matches, played in the formation the XI was drafted in. */
 const GROUP_MATCHES = 3;
@@ -355,7 +380,10 @@ export class CupRun {
   opponentSide(round) {
     const o = this.#opponent(round);
     return {
-      ...buildSide({ ...o, players: this.#players(o.players), links: this.rules.links }),
+      ...inForm(
+        buildSide({ ...o, players: this.#players(o.players), links: this.rules.links }),
+        o.form,
+      ),
       key: o.key,
       flag: o.flag,
     };
@@ -908,6 +936,7 @@ export function createCupRun(catalog, options) {
             rerolls,
             random,
             bosses: false,
+            eras: ERA_CUP(mode),
           });
     if (!ref) throw Error('Unknown opponent: ' + fixed);
     if (!field) avoid.push(ref.key);
@@ -933,10 +962,15 @@ export function createCupRun(catalog, options) {
     if (built)
       opponents.push(
         sideRef({
-          ...built,
+          ...(field && round >= GROUP_MATCHES ? inForm(built, FIELD_FORM) : built),
           target: field
             ? null
-            : ladderTarget(mode, difficulty, { offset: offsets[round], rules, rerolls }),
+            : ladderTarget(mode, difficulty, {
+                offset: offsets[round],
+                rules,
+                rerolls,
+                eras: ERA_CUP(mode),
+              }),
           pot: field && round < 3 ? (pots.get(ref.key) ?? null) : null,
         }),
       );
@@ -1026,7 +1060,9 @@ export function projectRun({
     targets =
       mode === 'nations' && level === FIELD_LEVEL
         ? FIELD_TYPICAL
-        : cupOffsets(level).map(o => ladderTarget(mode, level, { offset: o, rules, rerolls })),
+        : cupOffsets(level).map(o =>
+            ladderTarget(mode, level, { offset: o, rules, rerolls, eras: ERA_CUP(mode) }),
+          ),
     random = lcg(mixSeed(seed >>> 0)),
     reached = Object.fromEntries(PLACES.map(s => [s, 0]));
   const keys = [USER, 'a', 'b', 'c'],

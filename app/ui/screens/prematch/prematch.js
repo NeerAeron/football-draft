@@ -221,7 +221,10 @@ function Opponent({ side, players, hideRatings }) {
 
 function Lineup({ side, index, players, title, hideRatings }) {
   const [picked, setPicked] = useState(null);
-  const strength = useMemo(() => lineupStrength(side.players, side.formation), [side]);
+  const strength = useMemo(
+    () => lineupStrength(side.players, side.formation, undefined, side.form),
+    [side],
+  );
   // The team OVR each formation would give (its best lineup), for the picker.
   const ratings = useMemo(
     () =>
@@ -331,7 +334,8 @@ export default function PrematchScreen() {
     [data, toView],
   );
   const strengths = useMemo(
-    () => (data ? data.sides.map(s => lineupStrength(s.players, s.formation)) : null),
+    () =>
+      data ? data.sides.map(s => lineupStrength(s.players, s.formation, undefined, s.form)) : null,
     [data],
   );
 
