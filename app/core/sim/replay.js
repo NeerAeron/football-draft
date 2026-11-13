@@ -232,6 +232,7 @@ export async function simulateComplete(
       if (
         record &&
         m.mode !== 'shootout' &&
+        !m.shootout &&
         (ticks % RECORD_STEP === 0 || (before !== m.mode && m.mode === 'halftime'))
       )
         frames.push(snapshot(m, frames.at(-1)));
@@ -286,7 +287,7 @@ export async function simulateHalf(source, onProgress = () => {}, cancelled = ()
     for (let i = 0; i < 600 && !m.finished && m.mode !== 'halftime'; i++) {
       m.step(1 / 60);
       ticks++;
-      if (ticks % RECORD_STEP === 0 && m.mode !== 'shootout')
+      if (ticks % RECORD_STEP === 0 && m.mode !== 'shootout' && !m.shootout)
         frames.push(snapshot(m, frames.at(-1)));
     }
     if (cancelled()) return null;

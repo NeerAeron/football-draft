@@ -55,6 +55,7 @@ test('by default nobody ball-watches, and a marker in his own box is touch-tight
   assert.equal(lapseShare(markingScene({ awareness: 45, lapses: null })), 0);
   const { m, d, a } = markingScene({ awareness: 70, lapses: null });
   const c = { t: 1, tac: m.settings(1), br: m.rel(m.ball.x, 1), marks: new Map([[d.id, a]]) };
+  c.line = Math.max(7, Math.min(48, 22 + (c.br - 52) * 0.34));
   c.coordination = 0;
   m.planDefender(d, c, 20, 30);
   assert.notEqual(d.action, 'Ball-watching');
@@ -76,6 +77,7 @@ test('a lapsing marker lets the runner go instead of staying goal-side', () => {
   for (let i = 0; i < 200 && !m.markLapse(d, a, qr, 0); i++) m.elapsed += 0.1;
   assert.ok(m.markLapse(d, a, qr, 0), 'a poor marker lapses within 20 s');
   const c = { t: 1, tac: m.settings(1), br: m.rel(m.ball.x, 1), marks: new Map([[d.id, a]]) };
+  c.line = Math.max(7, Math.min(48, 22 + (c.br - 52) * 0.34));
   c.coordination = 0;
   m.planDefender(d, c, 20, 30);
   assert.equal(d.action, 'Ball-watching');

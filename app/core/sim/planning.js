@@ -160,7 +160,8 @@ export class PlanningMethods {
         const stepped = line;
         for (const q of enemies) {
           const qx = this.rel(q.x, t);
-          if (this.formation(q)[0] <= 60 || qx >= 72 || qx < stepped - 1.5) continue;
+          if (this.formation(q)[0] <= 60 || qx >= 72) continue;
+          if (qx < stepped - 1.5 && qx < 52.5) continue; // offside position
           line = Math.min(line, qx - 1.2 - Math.max(0, q.topSpeed() - pace) * 0.8);
         }
       }
