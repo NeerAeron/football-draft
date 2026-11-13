@@ -280,7 +280,15 @@ export function compileLegends(
   older = { titles: [] },
   modern = [],
 ) {
-  const calibration = calibrateTitles(older.titles),
+  // What a national team is called: a nation's name as the catalog or any of the modern files
+  // spells it (the older titles list national squads next to clubs).
+  const nationWords = new Set(catalog.players.map(p => teamWords(p.source.nationality).join(' ')));
+  for (const row of legacyRows) nationWords.add(teamWords(row.nationality_name).join(' '));
+  for (const title of modern)
+    for (const row of title.rows) nationWords.add(teamWords(row.nationality_name).join(' '));
+  const calibration = calibrateTitles(older.titles, name =>
+      nationWords.has(teamWords(name).join(' ')),
+    ),
     teams = new Map(catalog.teams.map(t => [String(t.id), t])),
     current = new Map(catalog.players.map(p => [String(p.sourcePlayerId), p])),
     nations = new Set(catalog.players.map(p => p.source.nationality));

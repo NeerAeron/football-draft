@@ -166,7 +166,16 @@ test('one person across the titles: EA ids, two ids of one man, stand-ins, FIFA 
   assert.ok(dropped.length > 5 && dropped.every(line => /not the .+ of that id/.test(line)));
   const klinsmann = named(98, 'Klinsmann').person;
   assert.equal(klinsmann.ea, false);
-  assert.ok(klinsmann.rows.every(p => p.given === null));
+  // He retired before FIFA 2000 could vouch for him: rated by FIFA 98/99 alone, most of the
+  // way to the title's average — a card, a modest one.
+  assert.ok(klinsmann.rows.some(p => p.given > 76 && p.given < 84 && p.backing.length === 0));
+  assert.equal(named(99, 'Klinsmann').given, null); // FIFA 99 has him in the national squad only
+  // A FIFA 98/99 name several later players could be gets nothing (he would be in twice).
+  const cannavaro = named(98, 'Cannavaro').person;
+  assert.deepEqual([cannavaro.ea, cannavaro.ambiguous], [false, true]);
+  assert.ok(cannavaro.rows.every(p => p.given === null));
+  // A keeper is never an outfielder's later self.
+  assert.ok(named(98, 'Romario').person.rows.every(p => p.positions[0] !== 'GK'));
 });
 
 test('FIFA 09–14 keep the overall EA printed; FIFA 98–08 are chain-linked to it', () => {
@@ -218,7 +227,7 @@ test('FIFA 09–14 keep the overall EA printed; FIFA 98–08 are chain-linked to
   assert.ok(pool.trust > 0.3 && pool.trust < 0.55, 'trust: ' + pool.trust);
   assert.ok(pool.keeperTrust > 0.25 && pool.keeperTrust < 0.5, 'trust: ' + pool.keeperTrust);
   assert.deepEqual([FULL_TRUST, POOL_YEARS], [0.9, 3]);
-  assert.ok(pool.cards > 15000 && pool.keepers > 1500 && pool.unbacked > 10000);
+  assert.ok(pool.cards > 28000 && pool.keepers > 3000 && pool.alone > 12000 && pool.unbacked > 800);
   // What comes out reads like football: the best of 2003 is Ronaldo, of 2005 Ronaldinho, of
   // 2007 Buffon — and a year's best is not the same number every year.
   const best = edition =>

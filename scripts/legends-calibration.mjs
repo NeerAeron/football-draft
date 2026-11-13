@@ -204,7 +204,7 @@ const LOCAL_ID = 1_000_000; // FIFA 98/99 use their own ids: 98,001,109 = id 110
  *     data cannot tell him from.
  *   – Players who are only in classic, all-star or stand-in squads are not persons at all.
  */
-export function linkPersons(titles) {
+export function linkPersons(titles, isNation = () => false) {
   const dropped = [],
     merged = [],
     persons = new Map(),
@@ -255,11 +255,15 @@ export function linkPersons(titles) {
   const nationTeams = new Set(
       titles.flatMap(t => t.players.map(p => teamWords(p.nationName ?? '').join(' '))),
     ),
-    clubs = p => p.clubs.filter(team => !nationTeams.has(teamWords(team).join(' '))),
+    clubs = p =>
+      p.clubs.filter(team => !nationTeams.has(teamWords(team).join(' ')) && !isNation(team)),
     shareClub = (p, q) =>
       clubs(p).some(a => clubs(q).some(b => sameTeam(teamWords(a), teamWords(b)))),
     eaPersons = [...persons.values()],
     twins = new Map();
+  // A row with a club: the title has him in a league's squad, not only in a national team's
+  // (the national squads of the early titles are filled out with whoever was at hand).
+  for (const t of titles) for (const p of t.players) p.atClub = clubs(p).length > 0;
   for (const one of eaPersons)
     for (const k of new Set(one.rows.map(p => letters(p.fullName)))) {
       if (!twins.has(k)) twins.set(k, []);
@@ -310,14 +314,22 @@ export function linkPersons(titles) {
         for (const k of nameKeys(p))
           for (const q of byName.get(k) || []) {
             named.add(q);
-            const early = q.rows.filter(r => r.edition <= 3);
+            // (A keeper is never an outfielder's later self: Flamengo's striker Romário is
+            // not its keeper Zé Romário.)
+            const early = q.rows.filter(r => r.edition <= 3 && isKeeper(r) === isKeeper(p));
             if (early.some(r => shareClub(p, r))) {
               clubMates.add(q);
               candidates.add(q);
             } else if (early.some(r => shareNation(p, r) && zone(r) === zone(p))) candidates.add(q);
           }
-      const local = { id: part[0].edition * LOCAL_ID + id, rows: part, named: named.size },
-        chosen = candidates.size > 1 && clubMates.size === 1 ? clubMates : candidates;
+      const chosen = candidates.size > 1 && clubMates.size === 1 ? clubMates : candidates,
+        local = {
+          id: part[0].edition * LOCAL_ID + id,
+          rows: part,
+          named: named.size,
+          // Several later players could be him: the data cannot say which.
+          ambiguous: chosen.size > 1,
+        };
       if (chosen.size === 1) {
         const [q] = chosen;
         if (!claims.has(q)) claims.set(q, []);
@@ -332,11 +344,12 @@ export function linkPersons(titles) {
       q.rows.push(p);
     }
     q.rows.sort((a, b) => a.year - b.year);
-    for (const other of list.slice(1)) locals.push({ ...other, rival: q });
+    for (const other of list.slice(1)) locals.push({ ...other, rival: q, ambiguous: true });
   }
   for (const local of locals) {
     const one = person(local.id, false, local.rows);
     one.namesakes = local.named; // EA-id players of FIFA 2000–03 with his name
+    one.ambiguous = !!local.ambiguous;
     if (local.rival) one.namesakes = Math.max(1, one.namesakes);
   }
   return { persons, dropped, merged };
@@ -619,7 +632,7 @@ export function coarseTrust(links, yardstick, kind = 'outfield') {
  * generation backs stays without (`given` null). Returns the counts.
  */
 export function poolCoarse(titles, trust, keeperTrust = 0) {
-  const stats = { trust, keeperTrust, cards: 0, keepers: 0, unbacked: 0 };
+  const stats = { trust, keeperTrust, cards: 0, keepers: 0, alone: 0, unbacked: 0 };
   for (const title of titles) {
     if (!COARSE(title.edition)) continue;
     const own = generation(title.edition);
@@ -644,10 +657,17 @@ export function poolCoarse(titles, trust, keeperTrust = 0) {
           )
             nearest.set(g, q);
         }
-        if (nearest.size < 2) {
+        // A row no other generation backs: when it may be a later player the data cannot
+        // tell (a FIFA 98/99 name with several possible later selves) it gets nothing — he
+        // would be in the game twice — and nothing either when the title has him in a national
+        // squad only. Otherwise it is rated by its own title alone, which
+        // the weights below pull most of the way to the title's average: a card, a modest one
+        // (Klinsmann, Bebeto and Dunga retired before FIFA 2000 could vouch for them).
+        if (nearest.size < 2 && (p.person.ambiguous || !p.atClub)) {
           stats.unbacked++;
           continue;
         }
+        if (nearest.size < 2) stats.alone++;
         // A witness of reliability r weighs r / (1 − r) against the one part of "an average
         // player of this title": three coarse witnesses of 0.3 together are trusted 0.56.
         let weight = 1,
@@ -676,8 +696,8 @@ export function poolCoarse(titles, trust, keeperTrust = 0) {
  * without keeper link). Returns { persons, dropped, yardstick, links, pool } for the build's
  * provenance.
  */
-export function calibrateTitles(titles) {
-  const { persons, dropped, merged } = linkPersons(titles),
+export function calibrateTitles(titles, isNation = () => false) {
+  const { persons, dropped, merged } = linkPersons(titles, isNation),
     first = titles.findIndex(t => t.players[0].overall != null),
     official = titles.slice(first);
   for (const t of official) officialTitle(t);
