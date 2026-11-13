@@ -706,7 +706,7 @@ export const ERA_SELECTION = {
   today: `The ${ERAS.at(-1).label} era: FC 24, FC 25, FC 26 and today's catalog — a catalog player is in it as he is unless one of those versions shows more`,
   spinnable: `A nation that played the era's World Cup finals, or has a player shown ${ERA_STAR}+ in the era — with whatever players it has; and of the others — a pool of at least ${ERA_SPIN.players} players, ${ERA_SPIN.DEF} defenders, ${ERA_SPIN.MID} midfielders (a forward beyond the first ${ERA_LINES.ATT} counts as one) and ${ERA_SPIN.ATT} forwards, with or without a goalkeeper — those among the era's ${ERA_NATIONS} strongest (mean overall of the best XI; without a keeper the era's weakest first-choice keeper stands in, an empty place counts ${ERA_FILL})`,
   starters:
-    "A World Cup starter of the reviewed list (data/world-cup-starters.json) or a player with a breakout-lag correction is in his nation's pool of that era: he takes the place of the lowest-rated player (a keeper a keeper\'s; an outfielder the lowest-rated outfielder\'s whose line keeps its minimum)",
+    "A World Cup starter of the reviewed list (data/world-cup-starters.json) or a player with a breakout-lag correction is in his nation's pool of that era: he takes the place of the lowest-rated player (a keeper a keeper’s; an outfielder the lowest-rated outfielder’s whose line keeps its minimum)",
   star: ERA_STAR,
   fill: ERA_FILL,
   best: 'Everyone in a pool also has his best version of all titles in the file (the Prime), in a pool or not',
