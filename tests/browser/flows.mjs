@@ -971,7 +971,10 @@ export const flows = [
           if ((await rows.count()) !== 11) throw new Error('the sheet does not list the XI');
           const options = page.locator('[data-testid="prime-option"]');
           if (!(await options.count())) throw new Error('nobody in this XI has a better version');
-          if (!(await page.locator('.draft-prime__row:disabled').count()))
+          // (Every row is one or the other; an XI where everyone has a better version has
+          // no closed row.)
+          const closed = await page.locator('.draft-prime__row:disabled').count();
+          if (closed + (await options.count()) !== 11)
             throw new Error('players without a better version are selectable');
           const bump = await options.first().locator('.draft-prime__bump').textContent();
           if (!/^\s*\d\d\s*\d\d\s*[+−±]\d+\s*$/.test(bump)) throw new Error('no bump: ' + bump);
