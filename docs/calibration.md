@@ -23,6 +23,80 @@ AI-coached (`medium` / `hard` / `impossible`); team 0 follows the same game-stat
 (a sensible human). Every number is emergent: no quotas, no score fixing, no RNG tied to
 outcomes.
 
+## Phase 10: the level per side — overall, and defence against attack
+
+Owner's note on Phase 9's level: "look at defense vs offense levels AS WELL as overall … use
+both, total overall and D / keeper overall. Some parts can be adjusted, some parts can be baked
+into the sim engine." So there are two layers, and `match.level` is now one number per
+attacking side (`kickoffLevel`, read once at kick-off as before):
+
+1. **In play (the engine).** Better defenders and keepers win duels, block and save — this
+   was already most of it, and is unchanged.
+2. **At kick-off (adjustable).** The match term of Phase 9 for both sides alike — mean overall
+   of the 22 above 78, plus `gameplay.levelGap` per point between the sides — **plus**
+   `gameplay.levelUnits` (0.4) per point of `unitLean` (`players/unit-levels.js`): the
+   opponent's defence level above the opponent's overall, less the side's own attack level
+   above its own overall. Defence = keeper ×2, centre-backs 1, full-backs 0.8, holding
+   midfielder 0.7, a little of the midfield; attack = strikers 1, wingers 0.9, attacking
+   midfielder 0.85, wide midfielders 0.6, central 0.4. A typical real XI is at 0
+   (`UNIT_BALANCE`), so the averages stay where Phase 9 put them. `levelUnits: 0` = overall only.
+
+**The grid** (`grid.mjs` in the session's scratch folder; 80 matches a pair, 180 s, sides
+alternating ends, no favourite's edge): six strong clubs (S) and six modest ones (M) in 4-3-3
+with their lines swapped. SS 87.8 overall (attack 87.9, defence 87.8 by line); SW = S's attack
+with M's defence, 78.1 (87.9 / 69.9); BB a real club halfway, 79.8 (79.2 / 80.2); WS = M's
+attack with S's defence, 82.8 (76.8 / 87.8); MM 73.0 (76.8 / 69.9). Goals for the first · the
+second side:
+
+| pair | unit term off (engine + overall) | unit term on | level each side attacks at (on) |
+| --- | --- | --- | --- |
+| SS v MM | 2.21 · 0.35 | 2.31 · 0.41 | 13.6 · 12.4 |
+| SS v SW (same weak defence, star attack) | 2.04 · 1.06 | 2.29 · 1.20 | 10.6 · 9.1 |
+| SS v BB | 1.66 · 0.89 | 1.63 · 0.91 | 13.1 · 12.5 |
+| SS v WS (modest side, star defence and keeper) | 1.46 · 0.65 | 1.46 · 0.53 | 12.9 · 13.2 |
+| SS v SS | 1.59 · 1.45 | 1.36 · 1.57 | 10.4 · 9.6 |
+| SW v WS | 1.29 · 1.20 | 1.63 · 1.25 | 4.0 · 5.9 |
+| SW v BB | 1.73 · 1.41 | 1.68 · 1.63 | −0.6 · 0.3 |
+| WS v BB | 1.06 · 1.07 | 0.99 · 0.96 | 8.3 · 7.5 |
+| SW v SW | 1.88 · 2.04 (3.91) | 2.44 · 2.36 (4.80) | −3.5 · −3.3 |
+| BB v BB | 1.46 · 1.23 (2.69) | 1.20 · 1.20 (2.40) | 2.7 · 2.7 |
+| WS v WS | 1.00 · 0.90 (1.90) | 0.90 · 0.85 (1.75) | 9.8 · 9.6 |
+| MM v MM | 1.46 · 1.38 (2.84) | 1.43 · 1.41 (2.84) | −6.7 · −5.9 |
+
+Read down the first five rows: the same star attack scores 2.2–2.3 against a 70 defence —
+whether the side in front of it is modest (MM) or has a star attack of its own (SW) — 1.65
+against an 80 one and 1.46 against an 88 one, although WS's overall (82.8) is five points
+below SS's. A modest side with a fine defence and keeper concedes less than its overall says
+(WS: 1.46 from the star attack, where the overall-alike BB concedes 1.65), and a side with a
+star attack and a poor back line concedes more (SW: 2.0–2.3). Regressing a side's goals on
+`unitLean` (line means, the overall gap taken out at the model's slope): **2.45% a point with
+the unit term off — the engine's own doing — and 3.6% with it on**; about two thirds of the
+matchup effect is play, a third the kick-off term. The engine layer was left as it is: it
+already carries most of it and nothing in the grid runs the wrong way (the open pairs score
+most, the closed ones least, in both columns). ±0.15 goals of noise per cell.
+
+**Modes, with the unit term** (as Phase 9's table; `shotScatter` 0.92 → 0.94 re-centres):
+World Cup run Pro 3.04, World Class 2.92, Legendary 3.11, Daily 3.15, Quick Match nations 2.94,
+leagues 3.08, clubs 3.00, Exhibition clubs 3.04, nations 3.08, club fixtures 2.95 — every row in
+2.9–3.15; the regression gives −0.1% per point of level and ±5.6% per point of gap. User wins
+in run matches: Pro 71%, World Class 64%, Legendary 57%. Tight angles (192 fixtures): shots
+seeing under 12° of goal 0 of 15 scored, 60°+ off the centre line 5 of 23. `blunders.mjs
+--compare` against Phase 9 (24 fixtures; goals 3.00 → 3.21): goal kicks given away 0.21 →
+0.08, unpressed giveaways 0.25 → 0.54 (0.42 before Phase 9: noise of 24 matches), open shots
+in the box 0.29 → 0.17, hopeless shots 0.83 → 0.63, soft goals 0.96 → 1.13.
+
+**Fast rating model.** `MATCH_MODEL.goals` 1.33 → 1.46: the `gaps` sample refits to 1.50 a
+side (480 matches, slope 0.0525 again; the user's constant is down to 0.04, 0.8 rating
+points — the era data merged since moved the drafted XIs), the 980 run matches of the mode
+table say 1.44. Title odds, `runs --runs 400`, `CUP_TUNING` unchanged: Pro 18.5% → 19.0%, World
+Class 9.3% → 8.5%, Legendary 5.0% → 6.3%. The model can now read the units too:
+`expectedGoals` / `outcomeProbabilities` / `simulateResult` take `units = [a, b]`
+(`unitLevels(players)` of each side) and a side then scores 3.6% less per point of `unitLean`
+(`MATCH_MODEL.units`, the grid's slope). No caller passes them yet — cup opponents, the real
+field and the awards' modelled matches carry one rating each (`effective`), and giving every
+nation of the field its unit levels is a change in `cup.js` / `awards.js` / the opponent
+candidates, not in the model: results without `units` are exactly as before.
+
 ## Phase 9: about three goals a match in every mode
 
 Owner's note: "try to get average goals in every mode to roughly 3". Measured in the game's

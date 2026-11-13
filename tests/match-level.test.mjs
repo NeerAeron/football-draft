@@ -3,6 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match, GOAL } from '../app/core/sim/engine.js';
+import { unitLevels, unitLean } from '../app/core/players/unit-levels.js';
+import { expectedGoals, outcomeProbabilities } from '../app/core/competition/model.js';
 
 const lift = (m, team, points) => {
   for (const p of m.players)
@@ -124,4 +126,24 @@ test('a higher level makes the same save likelier, for both keepers alike', () =
   const low = saves(-10),
     high = saves(12);
   assert.ok(high > low, `saved ${low} at a low level, ${high} at a high one`);
+});
+
+test('the fast model can read the units: the same ratings, fewer goals against a better defence', () => {
+  const m = new Match(5),
+    side = t => m.players.filter(p => p.team === t);
+  const plain = [unitLevels(side(0)), unitLevels(side(1))];
+  liftLine(m, 1, DEFENCE, 6);
+  const wall = [unitLevels(side(0)), unitLevels(side(1))];
+  assert.ok(wall[1].defence > plain[1].defence + 4 && wall[1].attack === plain[1].attack);
+  assert.ok(unitLean(wall[0], wall[1]) > unitLean(plain[0], plain[1]) + 1.5);
+  // Same two ratings: without units nothing changes, with them side A scores less.
+  assert.deepEqual(expectedGoals(82, 80), expectedGoals(82, 80, undefined, null));
+  const [a, b] = expectedGoals(82, 80, undefined, wall),
+    [a0, b0] = expectedGoals(82, 80, undefined, plain);
+  assert.ok(a < a0 * 0.95, `against the wall ${a} (plain ${a0})`);
+  assert.ok(b < b0, 'and the attack in front of the wall is less than that rating says');
+  assert.ok(
+    outcomeProbabilities(82, 80, undefined, wall).win <
+      outcomeProbabilities(82, 80, undefined, plain).win,
+  );
 });
