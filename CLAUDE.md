@@ -370,9 +370,9 @@ all-time best stand above them), and a title that printed none (FIFA 98–08) is
 the next one through the players both have, so that they carry on average and in spread what
 the next title gives them (FIFA 08 against 09 … back to 98; no ranking, no forced top). FC 27
 is the baseline, not a ceiling: a title whose 30 best average less than FC 27's (FIFA 09–16,
-and 98–08 through FIFA 09) is lifted by that difference at the top, fading to nothing at 84. The
+and 98–08 through FIFA 09) is lifted by that difference at the very top only — in full from 90, nothing at 87 and under (`LIFT_FROM`, `LIFT_FULL`). The
 card then has the skills of its year, moved together until the game's `overallRating` shows
-that overall, so every threshold is in the rating a card shows: a player's **best version** is
+that overall — and reshaped where it would rate higher at a role that is not its own than FC 27's own cards of its position do (`cardFields`, `offRoleCap`: the coarse titles gave a left midfielder a centre-back's numbers; 978 cards) —, so every threshold is in the rating a card shows: a player's **best version** is
 his highest overall (ties → the latest title); **legends** = best versions shown 85+, of players
 not in the catalog and of catalog players whose card today shows at least 2 less (`legendOf`,
 `LEGEND_GAIN`), with the club of that title when the catalog has it; **prime versions**
