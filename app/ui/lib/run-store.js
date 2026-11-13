@@ -101,6 +101,9 @@ export function matchSideFor(side, { kind = 'ai', editable = kind !== 'ai', name
     kind,
     formation: side.formation,
     players: side.players,
+    // A Legendary knockout opponent plays in form (cup.js FIELD_FORM): its players' chem
+    // already carries it; the pre-match counts it in the side's strength.
+    ...(side.form ? { form: side.form } : {}),
     // The tactics set up for the run (CupRun.setLineup), when there are any.
     ...(side.tactics ? { tactics: side.tactics } : {}),
     editable,
@@ -195,7 +198,11 @@ export function createRunFromDraft(catalog, { session, context = {} }, { now = D
     budget: !!(context.options?.budget ?? context.budget ?? options.budget),
     challenge: challenge ? sanitizeChallenge(challenge) : null,
     links: user.links
-      ? { score: user.links.score, maxScore: user.links.maxScore, total: user.links.total }
+      ? {
+          score: user.links.score,
+          maxScore: user.links.maxScore,
+          total: user.links.shown ?? user.links.total,
+        }
       : null,
     startedAt: new Date(now).toISOString(),
   };

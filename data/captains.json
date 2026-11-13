@@ -1,188 +1,1038 @@
 {
-  "description": "Reviewed Captain list (compiler input, scripts/compile-league-catalog.mjs): real national-team captains, current players only, ranked leaders first. The compiler tags the first `size` players as Captain (catalog `captain: true`) and fails when an id, source name or nation does not match the catalog. `sofifaId` is the player_id of the source data (profileId ea:<id>:fc27:…). `size` is cut so that about one drafted World Cup XI in three has a captain (tools/calibration/draft-baselines.mjs --captains).",
-  "asOf": "2026-11-12",
-  "squadsSource": "https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_squads",
-  "size": 10,
+  "description": "Reviewed Captain list (compiler input): the great captains and leaders of 1997–2026, ranked, each with the World Cup cycles in which he led — his cards of those eras are Captains (app/data/eras.v1.json `captain: true`; the catalog player too when 2026 is one of them: catalog `captain: true`). The compiler takes the first `size` players and fails when an id, source name, nation or era of ANY entry does not match the data (so the cut can be moved without a surprise). Never a player of data/goats.json. `sofifaId` is EA’s player id (the person). `size` is the cut: the list is ranked for it — raise it to make Captains more frequent, lower it to make them rarer (docs/draft-api.md has the measured frequencies).",
+  "asOf": "2026-11-13",
+  "size": 14,
   "players": [
     {
       "rank": 1,
-      "name": "Virgil van Dijk",
-      "sourceName": "V. van Dijk",
-      "sofifaId": 203376,
-      "nation": "Netherlands",
-      "source": "https://nos.nl/artikel/2524636-vice-aanvoerder-ake-steekt-voelsprieten-uit-kleine-irritaties-kunnen-ontstaan",
-      "reason": "Netherlands captain at the 2026 World Cup (started every match with the armband), the squad's undisputed leader."
+      "name": "Paolo Maldini",
+      "sourceName": "P. Maldini",
+      "sofifaId": 1109,
+      "nation": "Italy",
+      "eras": [
+        1998,
+        2002,
+        2006
+      ],
+      "reason": "Il Capitano: Italy’s captain 1994–2002, Milan’s 1997–2009, lifted the Champions League as captain in 2003 and 2007."
     },
     {
       "rank": 2,
-      "name": "Joshua Kimmich",
-      "sourceName": "J. Kimmich",
-      "sofifaId": 212622,
-      "nation": "Germany",
-      "source": "https://www.sport1.de/news/fussball/dfb-team/2024/09/mit-kimmich-an-der-spitze-beim-dfb-bricht-eine-neue-ara-an",
-      "reason": "Germany captain since September 2024 (named by Nagelsmann), captain at the 2026 World Cup."
+      "name": "Carles Puyol",
+      "sourceName": "Puyol",
+      "sofifaId": 13038,
+      "nation": "Spain",
+      "eras": [
+        2006,
+        2010,
+        2014
+      ],
+      "reason": "Barcelona’s captain 2004–14 through three Champions Leagues; the heart of Spain’s back line in 2008 and 2010."
     },
     {
       "rank": 3,
+      "name": "Cafu",
+      "sourceName": "Cafu",
+      "sofifaId": 5003,
+      "nation": "Brazil",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "Captain of the 2002 world champions, the only man to play three World Cup finals; Brazil’s captain to 2006."
+    },
+    {
+      "rank": 4,
+      "name": "Roy Keane",
+      "sourceName": "R. Keane",
+      "sofifaId": 240,
+      "nation": "Republic of Ireland",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "Manchester United’s captain 1997–2005 (the Treble side’s driving force), Ireland’s captain: the type of the demanding leader."
+    },
+    {
+      "rank": 5,
+      "name": "Philipp Lahm",
+      "sourceName": "P. Lahm",
+      "sofifaId": 121939,
+      "nation": "Germany",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "Captain of the 2014 world champions and of Bayern’s 2013 treble side."
+    },
+    {
+      "rank": 6,
+      "name": "Sergio Ramos",
+      "sourceName": "Sergio Ramos",
+      "sofifaId": 155862,
+      "nation": "Spain",
+      "eras": [
+        2018,
+        2022
+      ],
+      "reason": "Real Madrid’s captain 2015–21 (three Champions Leagues in a row with the armband), Spain’s 2016–21."
+    },
+    {
+      "rank": 7,
+      "name": "Iker Casillas",
+      "sourceName": "Casillas",
+      "sofifaId": 5479,
+      "nation": "Spain",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "Captain of Spain’s Euro 2008, World Cup 2010 and Euro 2012 winners, and of Real Madrid."
+    },
+    {
+      "rank": 8,
+      "name": "Gianluigi Buffon",
+      "sourceName": "G. Buffon",
+      "sofifaId": 1179,
+      "nation": "Italy",
+      "eras": [
+        2014,
+        2018
+      ],
+      "reason": "Italy’s captain 2010–18, Juventus’s 2012–18; a GOAT keeper for many — kept here as a leader (the two lists cannot share a player)."
+    },
+    {
+      "rank": 9,
+      "name": "Javier Zanetti",
+      "sourceName": "J. Zanetti",
+      "sofifaId": 1041,
+      "nation": "Argentina",
+      "eras": [
+        2002,
+        2006,
+        2010
+      ],
+      "reason": "Inter’s captain 2001–14 (the 2010 treble), 143 caps for Argentina: Il Capitano of the other half of Milan."
+    },
+    {
+      "rank": 10,
+      "name": "Fabio Cannavaro",
+      "sourceName": "F. Cannavaro",
+      "sofifaId": 1183,
+      "nation": "Italy",
+      "eras": [
+        2006,
+        2010
+      ],
+      "reason": "Captain of the 2006 world champions, Ballon d’Or for it."
+    },
+    {
+      "rank": 11,
+      "name": "Didier Deschamps",
+      "sourceName": "D. Deschamps",
+      "sofifaId": 1068,
+      "nation": "France",
+      "eras": [
+        1998
+      ],
+      "reason": "Captain of France’s 1998 World Cup and Euro 2000 winners and of Marseille’s 1993 European champions."
+    },
+    {
+      "rank": 12,
+      "name": "Steven Gerrard",
+      "sourceName": "S. Gerrard",
+      "sofifaId": 13743,
+      "nation": "England",
+      "eras": [
+        2006,
+        2010,
+        2014
+      ],
+      "reason": "Liverpool’s captain 2003–15 — Istanbul 2005 — and England’s at two World Cups."
+    },
+    {
+      "rank": 13,
       "name": "Luka Modrić",
       "sourceName": "L. Modrić",
       "sofifaId": 177003,
       "nation": "Croatia",
-      "source": "https://glashrvatske.hrt.hr/en/sports/luka-modric-set-for-historic-200th-cap-for-croatia-against-panama-12778386",
-      "reason": "Croatia captain at his fifth World Cup, 200 caps."
+      "eras": [
+        2018,
+        2022,
+        2026
+      ],
+      "reason": "Croatia’s captain since 2016: the 2018 final (Golden Ball), third in 2022, still leading at 40."
     },
     {
-      "rank": 4,
+      "rank": 14,
+      "name": "Virgil van Dijk",
+      "sourceName": "V. van Dijk",
+      "sofifaId": 203376,
+      "nation": "Netherlands",
+      "eras": [
+        2022,
+        2026
+      ],
+      "reason": "The Netherlands’ captain since 2018, Liverpool’s since 2023: the organiser of every defence he has played in."
+    },
+    {
+      "rank": 15,
+      "name": "John Terry",
+      "sourceName": "J. Terry",
+      "sofifaId": 13732,
+      "nation": "England",
+      "eras": [
+        2006,
+        2010
+      ],
+      "reason": "Chelsea’s \"Captain, Leader, Legend\" 2004–17 (five titles, the 2012 Champions League), England’s captain 2006–12."
+    },
+    {
+      "rank": 16,
+      "name": "Patrick Vieira",
+      "sourceName": "P. Vieira",
+      "sofifaId": 1419,
+      "nation": "France",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "Captain of Arsenal’s Invincibles (2002–05) and of France (2006–09)."
+    },
+    {
+      "rank": 17,
+      "name": "Vincent Kompany",
+      "sourceName": "V. Kompany",
+      "sofifaId": 139720,
+      "nation": "Belgium",
+      "eras": [
+        2014,
+        2018
+      ],
+      "reason": "Manchester City’s captain 2011–19 (four titles), Belgium’s through its golden generation."
+    },
+    {
+      "rank": 18,
+      "name": "Hugo Lloris",
+      "sourceName": "H. Lloris",
+      "sofifaId": 167948,
+      "nation": "France",
+      "eras": [
+        2014,
+        2018,
+        2022
+      ],
+      "reason": "France’s record captain (2012–22): World Cup 2018, the final again in 2022."
+    },
+    {
+      "rank": 19,
+      "name": "Manuel Neuer",
+      "sourceName": "M. Neuer",
+      "sofifaId": 167495,
+      "nation": "Germany",
+      "eras": [
+        2018,
+        2022
+      ],
+      "reason": "Germany’s captain 2016–23 and Bayern’s since 2017 (the 2020 treble)."
+    },
+    {
+      "rank": 20,
+      "name": "Oliver Kahn",
+      "sourceName": "O. Kahn",
+      "sofifaId": 488,
+      "nation": "Germany",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "Der Titan: Bayern’s and Germany’s captain, carried Germany to the 2002 final (Golden Ball)."
+    },
+    {
+      "rank": 21,
+      "name": "Francesco Totti",
+      "sourceName": "F. Totti",
+      "sofifaId": 1238,
+      "nation": "Italy",
+      "eras": [
+        2002,
+        2006,
+        2010,
+        2014
+      ],
+      "reason": "Roma’s captain 1998–2017: the one-club captain of the modern game."
+    },
+    {
+      "rank": 22,
+      "name": "Thiago Silva",
+      "sourceName": "Thiago Silva",
+      "sofifaId": 164240,
+      "nation": "Brazil",
+      "eras": [
+        2014,
+        2018,
+        2022
+      ],
+      "reason": "O Monstro: captain of Brazil at three World Cups, of PSG for eight years, a leader at Chelsea at 36–39."
+    },
+    {
+      "rank": 23,
+      "name": "David Beckham",
+      "sourceName": "D. Beckham",
+      "sofifaId": 250,
+      "nation": "England",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "England’s captain 2000–06: the free kick against Greece that took England to the 2002 World Cup."
+    },
+    {
+      "rank": 24,
+      "name": "Tony Adams",
+      "sourceName": "T. Adams",
+      "sofifaId": 5,
+      "nation": "England",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "Arsenal’s captain 1988–2002 (titles in three decades), England’s at Euro 96."
+    },
+    {
+      "rank": 25,
+      "name": "Fernando Hierro",
+      "sourceName": "F. Hierro",
+      "sofifaId": 5626,
+      "nation": "Spain",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "Real Madrid’s and Spain’s captain to 2002–03; three Champions Leagues."
+    },
+    {
+      "rank": 26,
+      "name": "Rafael Márquez",
+      "sourceName": "R. Márquez",
+      "sofifaId": 26709,
+      "nation": "Mexico",
+      "eras": [
+        2002,
+        2006,
+        2010,
+        2014
+      ],
+      "reason": "El Káiser: Mexico’s captain at five World Cups (2002–18)."
+    },
+    {
+      "rank": 27,
+      "name": "Giorgio Chiellini",
+      "sourceName": "G. Chiellini",
+      "sofifaId": 138956,
+      "nation": "Italy",
+      "eras": [
+        2018,
+        2022
+      ],
+      "reason": "Juventus’s and Italy’s captain; lifted Euro 2020."
+    },
+    {
+      "rank": 28,
+      "name": "Diego Godín",
+      "sourceName": "D. Godín",
+      "sofifaId": 182493,
+      "nation": "Uruguay",
+      "eras": [
+        2014,
+        2018
+      ],
+      "reason": "Uruguay’s captain 2014–22 and the leader of Simeone’s Atlético."
+    },
+    {
+      "rank": 29,
+      "name": "Lothar Matthäus",
+      "sourceName": "L. Matthäus",
+      "sofifaId": 494,
+      "nation": "Germany",
+      "eras": [
+        1998
+      ],
+      "reason": "Captain of the 1990 world champions, still Germany’s sweeper at the 1998 World Cup at 37."
+    },
+    {
+      "rank": 30,
+      "name": "Alessandro Del Piero",
+      "sourceName": "A. Del Piero",
+      "sofifaId": 1075,
+      "nation": "Italy",
+      "eras": [
+        2002,
+        2006,
+        2010
+      ],
+      "reason": "Juventus’s captain 2001–12 — he stayed and led the club back up from Serie B."
+    },
+    {
+      "rank": 31,
+      "name": "Raúl",
+      "sourceName": "Raúl",
+      "sofifaId": 45661,
+      "nation": "Spain",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "Real Madrid’s captain 2003–10 and Spain’s 2002–06."
+    },
+    {
+      "rank": 32,
       "name": "Harry Kane",
       "sourceName": "H. Kane",
       "sofifaId": 202126,
       "nation": "England",
-      "source": "https://www.sportsmole.co.uk/football/england/world-cup/news/tuchel-confirms-england-vice-captain-for-2026-world-cup_598821.html",
-      "reason": "England captain since 2018, captain at the 2026 World Cup."
+      "eras": [
+        2018,
+        2022,
+        2026
+      ],
+      "reason": "England’s captain since 2018 (a World Cup semi-final, two European finals) and its record scorer."
     },
     {
-      "rank": 5,
-      "name": "Lionel Messi",
-      "sourceName": "L. Messi",
-      "sofifaId": 158023,
-      "nation": "Argentina",
-      "source": "https://eleconomista.com.ar/deportes/todos-jugadores-capitanes-seleccion-argentina-era-scaloni-n98523",
-      "reason": "Argentina captain for over a decade, captain of the 2026 World Cup finalists."
+      "rank": 33,
+      "name": "Joshua Kimmich",
+      "sourceName": "J. Kimmich",
+      "sofifaId": 212622,
+      "nation": "Germany",
+      "eras": [
+        2026
+      ],
+      "reason": "Germany’s captain since 2024 and the voice of Bayern’s dressing room."
     },
     {
-      "rank": 6,
+      "rank": 34,
       "name": "Son Heung-min",
       "sourceName": "Son Heung Min",
       "sofifaId": 200104,
       "nation": "Korea Republic",
-      "source": "https://citizen.digital/article/south-korea-boss-backs-son-as-captain-after-rift-rumours-n392964",
-      "reason": "Korea Republic captain since 2018, captain at his fourth World Cup."
+      "eras": [
+        2022,
+        2026
+      ],
+      "reason": "Korea’s captain since 2018 and Tottenham’s when it won the 2025 Europa League."
     },
     {
-      "rank": 7,
+      "rank": 35,
+      "name": "Diego Simeone",
+      "sourceName": "D. Simeone",
+      "sofifaId": 5571,
+      "nation": "Argentina",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "Argentina’s captain at the 1998 and 2002 World Cups."
+    },
+    {
+      "rank": 36,
+      "name": "Michael Ballack",
+      "sourceName": "M. Ballack",
+      "sofifaId": 3647,
+      "nation": "Germany",
+      "eras": [
+        2006,
+        2010
+      ],
+      "reason": "Germany’s Capitano 2004–10."
+    },
+    {
+      "rank": 37,
+      "name": "Didier Drogba",
+      "sourceName": "D. Drogba",
+      "sofifaId": 31432,
+      "nation": "Côte d'Ivoire",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "Côte d’Ivoire’s captain 2006–14, the man who asked a country to lay down its arms; Chelsea’s leader in Munich 2012."
+    },
+    {
+      "rank": 38,
+      "name": "Nemanja Vidić",
+      "sourceName": "N. Vidić",
+      "sofifaId": 140601,
+      "nation": "Serbia",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "Manchester United’s captain 2010–14, Serbia’s leader."
+    },
+    {
+      "rank": 39,
+      "name": "Peter Schmeichel",
+      "sourceName": "P. Schmeichel",
+      "sofifaId": 232,
+      "nation": "Denmark",
+      "eras": [
+        1998
+      ],
+      "reason": "Captain of Manchester United in the 1999 Champions League final; Denmark’s leader for a decade."
+    },
+    {
+      "rank": 40,
       "name": "Marquinhos",
       "sourceName": "Marquinhos",
       "sofifaId": 207865,
       "nation": "Brazil",
-      "source": "https://foot-africa.com/en/news/brazil-ancelotti-names-the-captain-for-the-2026-world-cup-1225459/",
-      "reason": "Named Brazil captain for the 2026 World Cup by Ancelotti; started every logged match with the armband."
+      "eras": [
+        2022,
+        2026
+      ],
+      "reason": "PSG’s captain since 2020 — lifted the club’s first Champions League in 2025; a captain of Brazil."
     },
     {
-      "rank": 8,
-      "name": "Granit Xhaka",
-      "sourceName": "G. Xhaka",
-      "sofifaId": 199503,
-      "nation": "Switzerland",
-      "source": "https://thepeninsulaqatar.com/article/20/05/2026/veteran-midfielder-xhaka-to-lead-switzerland-at-world-cup",
-      "reason": "Switzerland captain and record cap holder, led the side at a fourth straight World Cup."
+      "rank": 41,
+      "name": "Frank de Boer",
+      "sourceName": "F. De Boer",
+      "sofifaId": 5667,
+      "nation": "Netherlands",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "The Netherlands’ captain at the 1998 World Cup and Euro 2000."
     },
     {
-      "rank": 9,
+      "rank": 42,
+      "name": "Zvonimir Boban",
+      "sourceName": "Z. Boban",
+      "sofifaId": 1115,
+      "nation": "Croatia",
+      "eras": [
+        1998
+      ],
+      "reason": "Captain of the Croatia that finished third in 1998."
+    },
+    {
+      "rank": 43,
+      "name": "Javier Mascherano",
+      "sourceName": "J. Mascherano",
+      "sofifaId": 142754,
+      "nation": "Argentina",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "El Jefecito: Argentina’s captain 2008–11 and its leader in the 2014 final."
+    },
+    {
+      "rank": 44,
+      "name": "Alan Shearer",
+      "sourceName": "A. Shearer",
+      "sofifaId": 51,
+      "nation": "England",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "England’s captain 1996–2000 and Newcastle’s for a decade."
+    },
+    {
+      "rank": 45,
+      "name": "Marcel Desailly",
+      "sourceName": "M. Desailly",
+      "sofifaId": 1116,
+      "nation": "France",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "France’s captain 2000–04 after Deschamps (Confederations Cups 2001 and 2003), Chelsea’s too."
+    },
+    {
+      "rank": 46,
+      "name": "Bastian Schweinsteiger",
+      "sourceName": "B. Schweinsteiger",
+      "sofifaId": 121944,
+      "nation": "Germany",
+      "eras": [
+        2014,
+        2018
+      ],
+      "reason": "The bloodied leader of the 2014 final; Germany’s captain 2014–16."
+    },
+    {
+      "rank": 47,
+      "name": "Jürgen Klinsmann",
+      "sourceName": "Klinsmann",
+      "sofifaId": 98002693,
+      "nation": "Germany",
+      "eras": [
+        1998
+      ],
+      "reason": "Captain of Germany’s Euro 96 winners and at the 1998 World Cup."
+    },
+    {
+      "rank": 48,
+      "name": "Rigobert Song",
+      "sourceName": "R. Song",
+      "sofifaId": 1638,
+      "nation": "Cameroon",
+      "eras": [
+        2002,
+        2006,
+        2010
+      ],
+      "reason": "Cameroon’s captain for a decade: two Africa Cups (2000, 2002), four World Cups."
+    },
+    {
+      "rank": 49,
+      "name": "Jordan Henderson",
+      "sourceName": "J. Henderson",
+      "sofifaId": 183711,
+      "nation": "England",
+      "eras": [
+        2022
+      ],
+      "reason": "Liverpool’s captain 2015–23: the 2019 Champions League and the 2020 title, the club’s first in thirty years."
+    },
+    {
+      "rank": 50,
       "name": "Kalidou Koulibaly",
       "sourceName": "K. Koulibaly",
       "sofifaId": 201024,
       "nation": "Senegal",
-      "source": "https://fr.allafrica.com/stories/202605210452.html",
-      "reason": "Senegal captain, captain of the 2021 Africa Cup of Nations winners and at the 2026 World Cup."
+      "eras": [
+        2022,
+        2026
+      ],
+      "reason": "Captain of Senegal’s first Africa Cup winners (2021)."
     },
     {
-      "rank": 10,
-      "name": "Andy Robertson",
-      "sourceName": "A. Robertson",
-      "sofifaId": 216267,
-      "nation": "Scotland",
-      "source": "https://www.uefa.com/european-qualifiers/news/02a6-20d159741fe9-a2a8fac9839d-1000--scotland-at-the-world-cup-2026-squad-fixtures-group-and-hi/",
-      "reason": "Scotland captain since 2018, captain at the 2026 World Cup."
-    },
-    {
-      "rank": 11,
-      "name": "Rodri",
-      "sourceName": "Rodri",
-      "sofifaId": 231866,
-      "nation": "Spain",
-      "source": "https://www.elgoldigital.com/futbol/seleccion-espana/rodri-entrevista-mundial-2026-capitan-seleccion-espanola/",
-      "reason": "Spain captain at the 2026 World Cup (finalists), started all seven matches with the armband."
-    },
-    {
-      "rank": 12,
-      "name": "Cristiano Ronaldo",
-      "sourceName": "Cristiano Ronaldo",
-      "sofifaId": 20801,
-      "nation": "Portugal",
-      "source": "https://www.flashscore.es/noticias/futebol-campeonato-do-mundo-mundial-2026-cristiano-ronaldo-lidera-portugal-pela-sexta-vez/xWWsC1M5/",
-      "reason": "Portugal captain at his sixth World Cup."
-    },
-    {
-      "rank": 13,
-      "name": "Martin Ødegaard",
-      "sourceName": "M. Ødegaard",
-      "sofifaId": 222665,
-      "nation": "Norway",
-      "source": "https://www.dagbladet.no/sport/moter-pressen/84763654",
-      "reason": "Norway captain since 2021, led the side to the 2026 World Cup quarter-final."
-    },
-    {
-      "rank": 14,
-      "name": "Pierre-Emile Højbjerg",
-      "sourceName": "P. Højbjerg",
-      "sofifaId": 213648,
-      "nation": "Denmark",
-      "source": "https://www.sn.dk/art6653062/koebenhavn-kommune/sport/riemer-spreder-lederansvaret-paa-fodboldlandsholdet/",
-      "reason": "Denmark captain under Brian Riemer."
-    },
-    {
-      "rank": 15,
-      "name": "Mohamed Salah",
-      "sourceName": "M. Salah",
-      "sofifaId": 209331,
-      "nation": "Egypt",
-      "source": "https://www.aljazeera.com/sports/2026/5/21/mohamed-salah-to-captain-egypt-as-squad-announced-for-fifa-world-cup-2026",
-      "reason": "Egypt captain at the 2026 World Cup."
-    },
-    {
-      "rank": 16,
-      "name": "Achraf Hakimi",
-      "sourceName": "A. Hakimi",
-      "sofifaId": 235212,
-      "nation": "Morocco",
-      "source": "https://www.moroccoworldnews.com/2025/05/199801/regragui-hakimi-will-captain-morocco-in-next-afcon/",
-      "reason": "Morocco captain since May 2025, captain at the 2026 World Cup."
-    },
-    {
-      "rank": 17,
-      "name": "Jan Oblak",
-      "sourceName": "J. Oblak",
-      "sofifaId": 200389,
-      "nation": "Slovenia",
-      "source": "https://siol.net/sportal/nogomet/jan-oblak-odkrito-spregovoril-o-reprezentancni-in-klubski-prihodnosti-693141",
-      "reason": "Long-time Slovenia captain."
-    },
-    {
-      "rank": 18,
-      "name": "Hakan Çalhanoğlu",
-      "sourceName": "H. Çalhanoğlu",
-      "sofifaId": 208128,
-      "nation": "Türkiye",
-      "source": "https://www.dailysabah.com/sports/football/turkiye-unveil-26-player-squad-for-historic-2026-world-cup-return",
-      "reason": "Türkiye captain at the 2026 World Cup."
-    },
-    {
-      "rank": 19,
+      "rank": 51,
       "name": "Robert Lewandowski",
       "sourceName": "R. Lewandowski",
       "sofifaId": 188545,
       "nation": "Poland",
-      "source": "https://www.polskieradio.pl/395/7790/Artykul/3571953,football-lewandowski-back-as-captain-as-poland-boss-names-squad-for-world-cup-qualifiers",
-      "reason": "Poland captain, reinstated by Jan Urban in 2025."
+      "eras": [
+        2018,
+        2022,
+        2026
+      ],
+      "reason": "Poland’s captain since 2014 and its record scorer."
     },
     {
-      "rank": 20,
+      "rank": 52,
+      "name": "Makoto Hasebe",
+      "sourceName": "M. Hasebe",
+      "sofifaId": 181098,
+      "nation": "Japan",
+      "eras": [
+        2010,
+        2014,
+        2018
+      ],
+      "reason": "Japan’s captain at three World Cups (2010–18)."
+    },
+    {
+      "rank": 53,
+      "name": "Samuel Eto’o",
+      "sourceName": "S. Eto'o",
+      "sofifaId": 9676,
+      "nation": "Cameroon",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "Cameroon’s captain 2009–14 and its greatest player."
+    },
+    {
+      "rank": 54,
+      "name": "Lúcio",
+      "sourceName": "Lúcio",
+      "sofifaId": 107715,
+      "nation": "Brazil",
+      "eras": [
+        2010
+      ],
+      "reason": "Brazil’s captain 2006–10 (Confederations Cup 2009) and a leader of Inter’s 2010 treble."
+    },
+    {
+      "rank": 55,
+      "name": "Roberto Ayala",
+      "sourceName": "R. Ayala",
+      "sofifaId": 1131,
+      "nation": "Argentina",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "El Ratón: captained Argentina a record 63 times."
+    },
+    {
+      "rank": 56,
+      "name": "Jay-Jay Okocha",
+      "sourceName": "A. Okocha",
+      "sofifaId": 570,
+      "nation": "Nigeria",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "Nigeria’s captain 2002–06."
+    },
+    {
+      "rank": 57,
+      "name": "Pavel Nedvěd",
+      "sourceName": "P. Nedved",
+      "sofifaId": 6235,
+      "nation": "Czechia",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "The Czech captain 2000–06."
+    },
+    {
+      "rank": 58,
+      "name": "Andriy Shevchenko",
+      "sourceName": "A. Shevchenko",
+      "sofifaId": 13128,
+      "nation": "Ukraine",
+      "eras": [
+        2006
+      ],
+      "reason": "Captain of Ukraine’s only World Cup side (quarter-finals 2006)."
+    },
+    {
+      "rank": 59,
+      "name": "Diego Lugano",
+      "sourceName": "D. Lugano",
+      "sofifaId": 138445,
+      "nation": "Uruguay",
+      "eras": [
+        2010,
+        2014
+      ],
+      "reason": "Uruguay’s captain in the 2010 semi-final and the 2011 Copa América win."
+    },
+    {
+      "rank": 60,
+      "name": "Simon Kjær",
+      "sourceName": "S. Kjær",
+      "sofifaId": 179645,
+      "nation": "Denmark",
+      "eras": [
+        2022
+      ],
+      "reason": "Denmark’s captain: led his team through the night Eriksen collapsed and on to the Euro 2020 semi-final."
+    },
+    {
+      "rank": 61,
+      "name": "Martin Ødegaard",
+      "sourceName": "M. Ødegaard",
+      "sofifaId": 222665,
+      "nation": "Norway",
+      "eras": [
+        2026
+      ],
+      "reason": "Arsenal’s captain since 2022 and Norway’s since 2021."
+    },
+    {
+      "rank": 62,
+      "name": "Granit Xhaka",
+      "sourceName": "G. Xhaka",
+      "sofifaId": 199503,
+      "nation": "Switzerland",
+      "eras": [
+        2026
+      ],
+      "reason": "Switzerland’s captain and record international; the leader of Leverkusen’s unbeaten 2024 champions."
+    },
+    {
+      "rank": 63,
+      "name": "Andrew Robertson",
+      "sourceName": "A. Robertson",
+      "sofifaId": 216267,
+      "nation": "Scotland",
+      "eras": [
+        2022,
+        2026
+      ],
+      "reason": "Scotland’s captain since 2018: two European Championships after 23 years without a tournament."
+    },
+    {
+      "rank": 64,
+      "name": "Luís Figo",
+      "sourceName": "Figo",
+      "sofifaId": 5589,
+      "nation": "Portugal",
+      "eras": [
+        2006
+      ],
+      "reason": "Portugal’s captain at the 2006 World Cup (fourth place)."
+    },
+    {
+      "rank": 65,
+      "name": "José Luis Chilavert",
+      "sourceName": "J. Luis Chilavert",
+      "sofifaId": 10967,
+      "nation": "Paraguay",
+      "eras": [
+        2002
+      ],
+      "reason": "Paraguay’s captain and loudest voice at the 1998 and 2002 World Cups."
+    },
+    {
+      "rank": 66,
+      "name": "Eden Hazard",
+      "sourceName": "E. Hazard",
+      "sofifaId": 183277,
+      "nation": "Belgium",
+      "eras": [
+        2018,
+        2022
+      ],
+      "reason": "Belgium’s captain 2015–22: third at the 2018 World Cup with the armband."
+    },
+    {
+      "rank": 67,
+      "name": "Sergio Busquets",
+      "sourceName": "Sergio Busquets",
+      "sofifaId": 189511,
+      "nation": "Spain",
+      "eras": [
+        2022
+      ],
+      "reason": "Barcelona’s captain 2021–23 and Spain’s at the 2022 World Cup."
+    },
+    {
+      "rank": 68,
+      "name": "Claudio Bravo",
+      "sourceName": "C. Bravo",
+      "sofifaId": 174543,
+      "nation": "Chile",
+      "eras": [
+        2014,
+        2018
+      ],
+      "reason": "Captain of Chile’s only Copa América winners (2015 and 2016)."
+    },
+    {
+      "rank": 69,
+      "name": "Daniele De Rossi",
+      "sourceName": "D. De Rossi",
+      "sofifaId": 53302,
+      "nation": "Italy",
+      "eras": [
+        2018
+      ],
+      "reason": "Capitan Futuro: Roma’s captain after Totti, a leader of Italy for a decade."
+    },
+    {
+      "rank": 70,
+      "name": "Park Ji-sung",
+      "sourceName": "J. Sung Park",
+      "sofifaId": 39943,
+      "nation": "Korea Republic",
+      "eras": [
+        2010
+      ],
+      "reason": "Korea’s captain 2008–11."
+    },
+    {
+      "rank": 71,
+      "name": "Hong Myung-bo",
+      "sourceName": "H. Bo",
+      "sofifaId": 138161,
+      "nation": "Korea Republic",
+      "eras": [
+        2006
+      ],
+      "reason": "Captain of the Korea that reached the 2002 semi-final (his only card is of 2003–06)."
+    },
+    {
+      "rank": 72,
+      "name": "Lucas Radebe",
+      "sourceName": "L. Radebe",
+      "sofifaId": 181,
+      "nation": "South Africa",
+      "eras": [
+        2002
+      ],
+      "reason": "The Chief: South Africa’s captain at two World Cups and Leeds United’s."
+    },
+    {
+      "rank": 73,
+      "name": "Gheorghe Hagi",
+      "sourceName": "G. Hagi",
+      "sofifaId": 1965,
+      "nation": "Romania",
+      "eras": [
+        1998,
+        2002
+      ],
+      "reason": "Romania’s captain through its best decade; Galatasaray’s leader in the 2000 UEFA Cup win."
+    },
+    {
+      "rank": 74,
+      "name": "Giovanni van Bronckhorst",
+      "sourceName": "G. Van Bronckhorst",
+      "sofifaId": 5704,
+      "nation": "Netherlands",
+      "eras": [
+        2010
+      ],
+      "reason": "The Netherlands’ captain in the 2010 World Cup final."
+    },
+    {
+      "rank": 75,
       "name": "Edin Džeko",
       "sourceName": "E. Džeko",
       "sofifaId": 180930,
       "nation": "Bosnia and Herzegovina",
-      "source": "https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/bosnia-veteran-dzeko-relishing-responsibility-of-world-cup-captaincy-2026-06-09",
-      "reason": "Bosnia and Herzegovina captain at the 2026 World Cup, record caps and goals."
+      "eras": [
+        2018,
+        2022
+      ],
+      "reason": "Bosnia and Herzegovina’s captain since 2014 and record scorer."
+    },
+    {
+      "rank": 76,
+      "name": "Gareth Bale",
+      "sourceName": "G. Bale",
+      "sofifaId": 173731,
+      "nation": "Wales",
+      "eras": [
+        2022
+      ],
+      "reason": "Captain of the Wales that reached its first World Cup in 64 years."
+    },
+    {
+      "rank": 77,
+      "name": "Bruno Fernandes",
+      "sourceName": "Bruno Fernandes",
+      "sofifaId": 212198,
+      "nation": "Portugal",
+      "eras": [
+        2026
+      ],
+      "reason": "Manchester United’s captain since 2023."
+    },
+    {
+      "rank": 78,
+      "name": "Mohamed Salah",
+      "sourceName": "M. Salah",
+      "sofifaId": 209331,
+      "nation": "Egypt",
+      "eras": [
+        2022,
+        2026
+      ],
+      "reason": "Egypt’s captain since 2019."
+    },
+    {
+      "rank": 79,
+      "name": "Achraf Hakimi",
+      "sourceName": "A. Hakimi",
+      "sofifaId": 235212,
+      "nation": "Morocco",
+      "eras": [
+        2026
+      ],
+      "reason": "Morocco’s captain."
+    },
+    {
+      "rank": 80,
+      "name": "Gianluigi Donnarumma",
+      "sourceName": "G. Donnarumma",
+      "sofifaId": 230621,
+      "nation": "Italy",
+      "eras": [
+        2026
+      ],
+      "reason": "Italy’s captain since 2023."
+    },
+    {
+      "rank": 81,
+      "name": "Wayne Rooney",
+      "sourceName": "W. Rooney",
+      "sofifaId": 54050,
+      "nation": "England",
+      "eras": [
+        2018
+      ],
+      "reason": "England’s and Manchester United’s captain 2014–17."
+    },
+    {
+      "rank": 82,
+      "name": "Carlos Valderrama",
+      "sourceName": "C. Valderrama",
+      "sofifaId": 16385,
+      "nation": "Colombia",
+      "eras": [
+        2002
+      ],
+      "reason": "El Pibe: Colombia’s captain at three World Cups (1990–98)."
+    },
+    {
+      "rank": 83,
+      "name": "Iván Zamorano",
+      "sourceName": "I. Zamorano",
+      "sofifaId": 5642,
+      "nation": "Chile",
+      "eras": [
+        2002
+      ],
+      "reason": "Chile’s captain at the 1998 World Cup."
+    },
+    {
+      "rank": 84,
+      "name": "Mario Yepes",
+      "sourceName": "M. Yepes",
+      "sofifaId": 24438,
+      "nation": "Colombia",
+      "eras": [
+        2014
+      ],
+      "reason": "Colombia’s captain in its best World Cup (quarter-finals 2014)."
+    },
+    {
+      "rank": 85,
+      "name": "Andrés Guardado",
+      "sourceName": "A. Guardado",
+      "sofifaId": 171897,
+      "nation": "Mexico",
+      "eras": [
+        2018,
+        2022
+      ],
+      "reason": "El Principito: Mexico’s captain, five World Cups."
+    },
+    {
+      "rank": 86,
+      "name": "Claudio Reyna",
+      "sourceName": "C. Reyna",
+      "sofifaId": 4233,
+      "nation": "United States",
+      "eras": [
+        2002,
+        2006
+      ],
+      "reason": "Captain America: led the United States to the 2002 quarter-finals."
+    },
+    {
+      "rank": 87,
+      "name": "Christian Pulisic",
+      "sourceName": "C. Pulisic",
+      "sofifaId": 227796,
+      "nation": "United States",
+      "eras": [
+        2026
+      ],
+      "reason": "The face and frequent captain of the host nation’s side."
     }
   ]
 }

@@ -73,7 +73,7 @@ export function TeamSummary({
     <${Stat}
       label="Boosts"
       testid="team-boosts"
-      value=${fmtBoost(team.links.total)}
+      value=${fmtBoost(team.links.shown)}
       tone="green"
       sub=${boostDelta > 0 ? html`<span class="delta is-up">${fmtBoost(boostDelta)}</span>` : null}
     />

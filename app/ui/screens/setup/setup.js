@@ -10,7 +10,7 @@ import { readJSON, writeJSON } from '../../lib/storage.js';
 import { preloadRoutes } from '../../lib/screen-loader.js';
 import { loadWarmCatalog } from '../../lib/catalog-warm.js';
 import { projectRun } from '../../../core/competition/cup.js';
-import { MODE_BASELINES } from '../../../core/draft/opponents.js';
+import { ladderBaseline } from '../../../core/draft/opponents.js';
 import { formationLabel } from '../../../core/players/formations.js';
 import {
   startDraft,
@@ -89,30 +89,20 @@ function TypePicker({ value, onChange }) {
   <//>`;
 }
 
-function Pips({ count, max = 2, label }) {
-  return html`<span class="pips" role="img" aria-label=${label}>
-    ${Array.from(
-      { length: max },
-      (_, i) => html`<span key=${i} class=${cx('pips__pip', i < count && 'is-on')}></span>`,
-    )}
-  </span>`;
-}
-
 function DifficultyPicker({ mode, type, value, onChange, levels }) {
-  const rerollText = n => (n === 0 ? 'No re-rolls' : n === 1 ? '1 re-roll' : `${n} re-rolls`);
   const selected = levels.find(l => l.id === value) || levels[0];
   const typical = useMemo(() => {
     if (mode !== 'run') return null;
-    const base = MODE_BASELINES[draftMode(type)];
-    const rating = base.effective[Math.min(2, selected.rerolls)];
+    // A run's draft is a World Cup draft (eras).
+    const rating = ladderBaseline(draftMode(type), value, { eras: true });
     return projectRun({ rating, mode: draftMode(type), difficulty: value }).label.replace(
       'Projected: ',
       '',
     );
-  }, [mode, type, value, selected.rerolls]);
+  }, [mode, type, value]);
   return html`<${ChoiceGroup}
     legend="Difficulty"
-    hint="Difficulty sets how strong your opponents are and how many re-rolls you get. The match engine is the same at every level."
+    hint="Difficulty sets how strong your opponents are. The match engine is the same at every level."
   >
     <div class="ladder">
       ${levels.map(
@@ -130,19 +120,13 @@ function DifficultyPicker({ mode, type, value, onChange, levels }) {
               onChange=${() => onChange(l.id)}
             />
             <span class="ladder__name">${l.label}</span>
-            <${Pips} count=${l.rerolls} label=${rerollText(l.rerolls)} />
           </label>`,
       )}
     </div>
     <div class="ladder__detail" aria-live="polite">
       <p>
         <b>${selected.label}:</b>
-        ${' '}${rerollText(selected.rerolls)}${
-          mode === 'run' && selected.primes > 0
-            ? ` and ${selected.primes} Prime boost${selected.primes === 1 ? '' : 's'}`
-            : ''
-        }
-        per draft. ${selected.text}
+        ${' '}${selected.text}
       </p>
       ${
         typical &&
@@ -250,15 +234,11 @@ function VersusPlayers({ state, update }) {
 }
 
 function Summary({ mode, state, levels }) {
-  const level = levels.find(l => l.id === state.difficulty);
   const rows = [
     ['Draft', modeLabel(state.type)],
     mode === 'versus'
       ? ['Re-rolls', `${versusRerolls(state.difficulty)} each`]
-      : [
-          'Difficulty',
-          `${difficultyLabel(state.difficulty)} · ${level.rerolls} re-roll${level.rerolls === 1 ? '' : 's'}`,
-        ],
+      : ['Difficulty', difficultyLabel(state.difficulty)],
     ['Formation', formationLabel(state.formation)],
     state.hideRatings && ['Ratings', 'Hidden (Ball Knower)'],
     spinsNations(state.type) && state.uniqueNations && ['Nations', 'One player each'],

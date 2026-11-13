@@ -119,12 +119,20 @@ export async function compileLegendsFile(compiled, runtime) {
       sha256: LEGACY_NAMES.sha256,
     }),
     modern = await readModernTitles(),
+    marks = {
+      goats: JSON.parse(await readFile(PATHS.goats, 'utf8')),
+      captains: JSON.parse(await readFile(PATHS.captains, 'utf8')),
+      worldCups: JSON.parse(await readFile(PATHS.worldCups, 'utf8')),
+      starters: JSON.parse(await readFile(PATHS.starters, 'utf8')),
+      handCards: JSON.parse(await readFile(PATHS.handCards, 'utf8')),
+    },
     { legends, primes, eras, stats, calibration, notes } = compileLegends(
       rows,
       compiled,
       hash,
       older,
       modern,
+      marks,
     ),
     sample = runtime.players[0].profileId.match(/^(\D*)\d+(\D.*)$/);
   if (older.source.sha256 !== LEGACY_TITLES.workbookSha256)
@@ -226,12 +234,31 @@ async function main() {
     const eraBytes = Buffer.from(built.eras.text);
     await writeFile(PATHS.eras, built.eras.text);
     await writeFile(PATHS.erasProvenance, JSON.stringify(built.eras.provenance) + '\n');
-    const { sameName, otherNations: eraOthers, ...eraCounts } = built.eras.stats;
+    const {
+      sameName,
+      otherNations: eraOthers,
+      goats,
+      captains,
+      starters,
+      handCards,
+      displaced,
+      ...eraCounts
+    } = built.eras.stats;
     eraReport = {
       ...eraCounts,
+      goatCards: goats.length,
+      startersPlaced: starters.length,
+      // pushed out of a pool by a starter: their cards stay in the file, in no pool
+      displacedKept: displaced.length,
+      handCards: handCards.length,
+      captainCards: captains.length,
       sameName: sameName.length,
       otherNations: Object.keys(eraOthers).length,
       eras: built.eras.summary.map(e => `${e.label}: ${e.nations} of ${e.qualified}`),
+      // qualified, but beyond the era's limit of nations (the strongest are kept)
+      left: built.eras.summary.map(e => `${e.label}: ${e.left.join(", ") || "—"}`),
+      // in beyond the limit, or with a pool under the minimum: World Cup sides, star nations
+      always: built.eras.summary.map(e => `${e.label}: ${e.always.join(", ") || "—"}`),
       path: PATHS.eras,
       bytes: eraBytes.length,
       gzip: gzipSync(eraBytes, { level: 9 }).length,

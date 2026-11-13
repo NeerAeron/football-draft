@@ -360,10 +360,10 @@ function Cards2() {
       <div class="g-cards g-cards--bottom">
         <${PlayerCard} player=${{ ...HAALAND, captain: true }} size="s" />
         <${PlayerCard}
-          player=${{ ...HAALAND, legend: true, era: '’18', name: 'Legend ’18' }}
+          player=${{ ...HAALAND, prime: true, era: '’18', name: 'Prime ’18' }}
           size="s"
         />
-        <${PlayerCard} player=${HAALAND} size="m" />
+        <${PlayerCard} player=${{ ...HAALAND, goat: true, era: '’12' }} size="m" />
         <${PlayerCard} player=${HAALAND} size="l" />
       </div>
     <//>
@@ -444,6 +444,9 @@ function Rows() {
                 </li>`,
             )}
             <li><${PlayerRow} player=${VVD} hideRatings fit=${FITS[2]} /></li>
+            <li>
+              <${PlayerRow} player=${{ ...HAALAND, goat: true, era: '’12' }} onClick=${() => {}} />
+            </li>
           </ul>
         </div>
       <//>

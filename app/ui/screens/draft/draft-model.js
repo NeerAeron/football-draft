@@ -5,7 +5,7 @@ import { teamLinks, linkBoosts } from '../../../core/draft/links.js';
 import { FORMATIONS } from '../../../core/players/formations.js';
 import { NATURAL_FIT } from '../../../core/draft/session.js';
 import { freeLabel } from '../../../core/draft/budget.js';
-import { MODE_BASELINES, ladderTarget } from '../../../core/draft/opponents.js';
+import { MODE_BASELINES, ERA_BASELINE, ladderTarget } from '../../../core/draft/opponents.js';
 import { projectRun } from '../../../core/competition/cup.js';
 import { outcomeProbabilities } from '../../../core/competition/model.js';
 import { searchKey } from '../../../core/util/text.js';
@@ -13,8 +13,45 @@ import { editionLabel } from '../../../core/players/legends.js';
 import { keyStatsFirst, surname } from '../../lib/player-view.js';
 import { boost as fmtBoost } from '../../lib/format.js';
 
-export const CATEGORY_LABEL = { nation: 'Nation', league: 'League', club: 'Club' };
-export const CATEGORY_ICON = { nation: 'flag', league: 'layout-grid', club: 'shield' };
+export const CATEGORY_LABEL = { era: 'Era', nation: 'Nation', league: 'League', club: 'Club' };
+export const CATEGORY_ICON = {
+  era: 'hourglass',
+  nation: 'flag',
+  league: 'layout-grid',
+  club: 'shield',
+};
+
+/**
+ * The token buttons of a draft's side to act (snapshot().tokens): a World Cup draft has three
+ * — [{ kind: 'nation' | 'era' | 'prime', label, icon, left, disabled, name }] — and a draft
+ * of today's players none (its re-roll is the Re-roll button). `disabled`: spent, or nothing
+ * to spend it on now. `name` is the accessible name ("Nation respin: 1 left").
+ */
+export function tokenButtons(snap) {
+  const t = snap?.tokens;
+  if (!snap?.eras || !t) return [];
+  const NAME = { nation: 'Nation respin', era: 'Era respin', prime: 'Prime' };
+  return [
+    ['nation', 'Nation', 'flag'],
+    ['era', 'Era', 'hourglass'],
+    ['prime', 'Prime', 'sparkles'],
+  ]
+    .filter(([kind]) => t[kind])
+    .map(([kind, label, icon]) => ({
+      kind,
+      label,
+      icon,
+      left: t[kind].left,
+      disabled: !t[kind].can,
+      name: `${NAME[kind]}: ${t[kind].left} left`,
+    }));
+}
+
+/** "’02": the year tag of a version (a pool entry's or a slot player's `year`), '' without. */
+export const yearTag = year => (year ? `’${String(year % 100).padStart(2, '0')}` : '');
+/** "Brazil · Korea/Japan 02": the nation and the era a spin landed on (the nation alone without). */
+export const spinTitle = spin =>
+  spin ? (spin.era ? `${spin.option.name} · ${spin.era.name}` : spin.option.name) : '';
 
 /** Chips over the pool: one sort (Best fit / Overall) or a line filter. */
 export function poolFilters(hideRatings = false) {
@@ -174,7 +211,7 @@ const groupRank = label => new Map(GROUP_ORDER).get(label) ?? 99;
 export const rowStats = (stats, position) => keyStatsFirst(stats, position);
 
 /**
- * "Prime 94 +8": a Prime boost is available for this player — what it makes him and what it
+ * "Prime 94 +8": the Prime is available for this player — what it makes him and what it
  * adds to the rating on his card (`ovr`). Short on purpose: a pool row must never cut it.
  */
 export const primeNote = (version, ovr) =>
@@ -184,10 +221,6 @@ export const primeLine = (version, ovr) =>
   version
     ? { era: editionLabel(version), ovr: version.ovr, gain: ovr != null ? version.ovr - ovr : null }
     : null;
-
-/** The Legend spin's one line: which years the legends' versions are from. */
-export const legendYearsLine = years =>
-  years ? `Best versions, ${years[0] === years[1] ? years[0] : `${years[0]}–${years[1]}`}` : '';
 
 /** PitchView link lines from mates pairs: nation mates 3 (gold), club mates 2 (volt). */
 export function linkLines(pairs = []) {
@@ -201,6 +234,7 @@ export function reelItems(reel, { league = null } = {}) {
   const landed = reel.options[reel.landing];
   const live = reel.options.filter(o => o.weight > 0);
   const items = live.map(o => {
+    if (reel.category === 'era') return { id: o.id, label: o.short ?? o.name, sub: '' };
     if (reel.category === 'nation')
       return {
         id: o.id,
@@ -271,14 +305,14 @@ export function spinHeadline(spin, poolSize = 0) {
   if (!spin) return null;
   const o = spin.option;
   const players = `${poolSize} player${poolSize === 1 ? '' : 's'}`;
-  if (spin.legend)
+  if (spin.era)
     return {
       title: o.name,
       kind: 'nation',
-      legend: true,
+      era: spin.era.short ?? spin.era.name,
       flag: { code: o.code, name: o.name, src: o.flag || undefined },
-      meta: `${poolSize} legend${poolSize === 1 ? '' : 's'}`,
-      big: true,
+      meta: players,
+      big: false,
       badge: null,
     };
   if (spin.category === 'nation')
@@ -314,15 +348,18 @@ export function spinHeadline(spin, poolSize = 0) {
 export function landedAnnouncement(spin, poolSize) {
   const h = spinHeadline(spin, poolSize);
   if (!h) return '';
-  return `${spin.legend ? 'Legend spin' : CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
+  if (spin.era) return `${spinTitle(spin)}. ${h.meta}.`;
+  return `${CATEGORY_LABEL[spin.category]}: ${h.title}. ${h.meta}.`;
 }
 
 /**
  * Effective rating estimate of a partial XI: filled slots as they are, open slots at the
- * mode's typical drafted rating; links chem plus the typical chem of the open share.
+ * mode's typical drafted rating (`eras`: a World Cup draft's); links chem plus the typical
+ * chem of the open share.
  */
-export function estimateRating(team, mode) {
-  const base = MODE_BASELINES[mode] || MODE_BASELINES.nations;
+export function estimateRating(team, mode, eras = false) {
+  const base =
+    eras && mode === 'nations' ? ERA_BASELINE : MODE_BASELINES[mode] || MODE_BASELINES.nations;
   const filled = team.slots.filter(s => s.player);
   const open = 11 - filled.length;
   const sum = filled.reduce((s, x) => s + x.rating, 0);
@@ -340,7 +377,8 @@ export function draftProjection({ kind, mode, difficulty, teams, side = 0, rules
   const team = teams[side];
   const filled = team.slots.filter(s => s.player).length;
   if (!filled) return null;
-  const rating = estimateRating(team, mode);
+  // Runs and the Daily draft an era and a nation per spin.
+  const rating = estimateRating(team, mode, kind === 'run' || kind === 'daily');
   if (kind === 'versus') {
     const other = teams[1 - side];
     if (!other) return null;
@@ -419,13 +457,15 @@ export function mateLines(preview) {
 /**
  * What drafting `profileId` into `slot` would do: team OVR after the pick (exact mean slot
  * rating) and the boosts —
- *   boosts / gain  the XI's total boost after the pick and what the pick adds to it;
+ *   boosts / gain  the XI's total shown boost after the pick and what the pick adds to it;
  *   boost          his own mates boost (0, 1, 1.5 or 2.5);
  *   mates          [{ kind, names, boost, shared }] one entry per kind that boosts him
  *                  (nation, club): his mates of that kind (surnames), the boost, and whether
  *                  those mates get it thanks to him ("+1.5 each");
  *   lifts          [{ name, to }] other players whose boost rises, not said by `mates`;
- *   captain        { boost } when the pick gives the XI its first Captain (+1 to everyone);
+ *   captain        { boost } when the pick gives the XI its first Leader (+1 to everyone);
+ *   goat           { boost } when the pick is a GOAT (his boost for every player counts in the
+ *                  ratings and is never shown: not in `boosts` / `gain`, no line with a number);
  *   budget         Budget mode: { label, slots, left } of the tier he uses up (left = after
  *                  the pick), { free: true, label } for a free player; null without a budget;
  *   links          the mates score after the pick (sum of the mates boosts).
@@ -481,8 +521,8 @@ export function pickPreview(session, side, profileId, slot) {
   return {
     rating: Math.round((sum / n) * 10) / 10,
     links: links.score,
-    boosts: links.total,
-    gain: links.total - before.total,
+    boosts: links.shown,
+    gain: links.shown - before.shown,
     boost: me.boost,
     mates,
     lifts,
@@ -490,6 +530,7 @@ export function pickPreview(session, side, profileId, slot) {
       links.captain === slot && before.captain === null && links.captainBoost > 0
         ? { boost: links.captainBoost }
         : null,
+    goat: links.goatBoost > before.goatBoost ? { boost: links.goatBoost - before.goatBoost } : null,
     budget,
   };
 }

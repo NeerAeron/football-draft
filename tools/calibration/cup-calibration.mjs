@@ -9,6 +9,8 @@
 //   node tools/calibration/cup-calibration.mjs runs --runs 2000 --engine 24 --workers 2
 //   node tools/calibration/cup-calibration.mjs runs --runs 1000 --only pro --tuning '[-12.5, …]'
 //   CUP_BUDGET=1 node tools/calibration/cup-calibration.mjs runs …   # the user drafts in Budget mode
+//   CUP_GOAT=1 node tools/calibration/cup-calibration.mjs runs …     # the XI's best player counts as a GOAT
+//   CUP_GOAT=0 …                                                      # nobody's GOAT counts (the reference)
 //     (--tuning: try other CUP_TUNING offsets (nine: group ×3, R32, R16, QF, SF, final, play-off),
 //     a JSON array for --only's difficulty or a JSON object by difficulty; fast-model runs only.
 //     Legendary plays the real 48-nation field in a Nations draft (cup.js worldCupDraw), so
@@ -34,8 +36,7 @@ const MATCH_SECONDS = 180; // the game's one match length (core/sim/constants.js
 const FORMATION_CYCLE = ['433', '4231', '442', '352', '343'];
 
 async function setup() {
-  const { loadRuntimeCatalog, readLegends } = await imp('scripts/data/catalog-file.mjs');
-  const { attachLegends } = await imp('app/core/players/legends.js');
+  const { loadEraCatalog } = await imp('scripts/data/catalog-file.mjs');
   const session = await imp('app/core/draft/session.js');
   const opponents = await imp('app/core/draft/opponents.js');
   const cup = await imp('app/core/competition/cup.js');
@@ -56,8 +57,8 @@ async function setup() {
   const { CONFIG } = await imp('app/core/config/config.js');
   const { lcg } = await imp('app/core/util/rng.js');
   return {
-    // With the legends file: the Legend spin and Prime boosts are part of a World Cup draft.
-    catalog: attachLegends(loadRuntimeCatalog(), readLegends()),
+    // With the era pools: a World Cup draft spins an era and a nation.
+    catalog: loadEraCatalog(),
     ...session,
     ...opponents,
     ...cup,
@@ -70,25 +71,28 @@ async function setup() {
 }
 
 const BUDGET = process.argv.includes('--budget') || process.env.CUP_BUDGET === '1';
-// A typical draft: the session's suggested (positional) pick, a smart re-roll below 78.
+// A typical World Cup draft: the session's suggested (positional) pick, the tokens spent.
 function draftXI(env, seed, difficulty) {
   const s = env.createDraftSession(env.catalog, {
     mode: 'nations',
     seed,
-    rerolls: env.CONFIG.draft.rerolls[difficulty],
+    difficulty,
     formation: FORMATION_CYCLE[seed % FORMATION_CYCLE.length],
     budget: BUDGET, // --budget: the user drafts in Budget mode (tier caps)
-    legendSpin: true,
-    primes: env.CONFIG.draft.primes[difficulty] || null,
+    // A World Cup draft: an era and a nation per spin, and the three tokens.
+    eras: true,
+    primes: true,
   });
   while (!s.complete) {
     s.spin();
-    if (s.rerollsLeft[0] > 0 && s.suggestPick().rating < 78) s.reroll();
+    // The respins, used sensibly: the nation, then the era, when the best pick is under 78.
+    if (!s.respinBlocked('nation') && s.suggestPick().rating < 78) s.respin('nation');
+    if (!s.respinBlocked('era') && s.suggestPick().rating < 78) s.respin('era');
     const move = s.suggestPick(),
       r = s.pick(move.profileId, move.slot);
     if (!r.ok) throw Error(r.reason);
   }
-  // Prime boosts, used sensibly: each on the player who gains most in his slot.
+  // The Prime, used sensibly: on the player who gains most in his slot.
   for (;;) {
     const options = s
       .primeOptions(0)
@@ -97,8 +101,26 @@ function draftXI(env, seed, difficulty) {
     if (!options.length) break;
     s.prime(options[0].slot, 0);
   }
+  // CUP_GOAT=1: what a GOAT is worth — the XI's best player counts as one (links.js: his boost
+  // for every player), whatever the data flags; the flag sits on the card while this XI plays
+  // its run. Compare the title rates with and without.
+  // CUP_GOAT=0: no XI has one (the GOAT cards drafted count as ordinary cards) — the reference.
+  for (const [p, goat] of flagged) p.goat = goat;
+  flagged.clear();
+  const xi = s.lineup(0),
+    mark = (p, goat) => {
+      flagged.set(p, p.goat);
+      p.goat = goat;
+    };
+  if (process.env.CUP_GOAT === '0') for (const p of xi) if (p.goat) mark(p, false);
+  if (process.env.CUP_GOAT === '1' && !xi.some(p => p.goat))
+    mark(
+      xi.reduce((a, p) => (p.sourceOverall > a.sourceOverall ? p : a)),
+      true,
+    );
   return s.matchSide(0);
 }
+const flagged = new Map(); // card → the flag it had, put back before the next draft
 
 function playEngine(env, Match, config, seed, duration) {
   const m = new Match(seed >>> 0, duration);
@@ -130,7 +152,8 @@ function runGap(env, Match, spec) {
       mode: 'nations',
       level: spec.difficulty,
       offset: user.effective - spec.gap - base,
-      excludePlayers: user.players.map(p => p.profileId),
+      // An era card of a catalog player counts as him.
+      excludePlayers: user.players.map(p => p.eraOf ?? p.profileId),
       random,
     });
   const config = env.fixtureConfig(

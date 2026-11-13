@@ -7,6 +7,9 @@ import {
   captainSlot,
   validLinks,
   LINK_KINDS,
+  goatBoost,
+  goatSlots,
+  CHEM_CAP,
 } from '../app/core/draft/links.js';
 import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 
@@ -19,7 +22,7 @@ const player = (clubId, nationality, leagueId, extra = {}) => ({
 });
 
 test('mates: nation mate +1.5, club mate +1, both +2.5 — one mate is enough, no league mates', () => {
-  assert.deepEqual(rules, { nation: 1.5, club: 1, captain: 1 });
+  assert.deepEqual(rules, { nation: 1.5, club: 1, captain: 1, goat: 1.5 });
   assert.deepEqual(LINK_KINDS, ['nation', 'club']);
   const xi = [
     player('c1', 'France', 'L1'), // nation mate (1) and club mate (2) -> +2.5
@@ -43,6 +46,7 @@ test('mates: nation mate +1.5, club mate +1, both +2.5 — one mate is enough, n
     boost: 2.5,
     kinds: ['nation', 'club'],
     chem: 2.5,
+    shown: 2.5,
     mates: { nation: 1, club: 1 },
   });
   assert.equal(links.score, 5);
@@ -126,7 +130,61 @@ test('a Captain gives every player +1 on top of the mates boosts; two do not sta
   // No captain, no boost; a Captain worth 0 gives none.
   assert.equal(teamLinks([loner(1), loner(2)], rules).captainBoost, 0);
   assert.deepEqual(chemValues(xi, { nation: 1.5, club: 1, captain: 0 }), [0, 0, 0, 2.5, 2.5]);
-  assert.deepEqual(Object.keys(linkBoosts(rules)), ['nation', 'club', 'captain']);
+  assert.deepEqual(Object.keys(linkBoosts(rules)), ['nation', 'club', 'captain', 'goat']);
+});
+
+test('a GOAT gives every player more than a Captain; further GOATs add half each; chem stops at 5', () => {
+  const p = (id, extra = {}) => ({
+    sourceOverall: 80,
+    source: { clubId: `c${id}`, nationality: `N${id}`, leagueId: `l${id}` },
+    ...extra,
+  });
+  assert.ok(rules.goat > rules.captain);
+  // One GOAT: +1.5 for everyone, himself included.
+  const one = teamLinks([p(1, { goat: true }), p(2), null, p(3)], rules);
+  assert.deepEqual([one.goats, one.goatBoost, one.captain], [[0], 1.5, null]);
+  assert.deepEqual(chemValues([p(1, { goat: true }), p(2), null, p(3)], rules), [1.5, 1.5, 0, 1.5]);
+  assert.equal(one.score, 0, 'not a mates boost');
+  assert.equal(one.total, 4.5);
+  // … and never itemised: what the UI shows (`shown`) leaves the GOATs' part out.
+  assert.equal(one.shown, 0);
+  assert.deepEqual(
+    one.players.map(e => e?.shown ?? null),
+    [0, 0, null, 0],
+  );
+  // Two and three: half as much each time.
+  assert.deepEqual(
+    [0, 1, 2, 3].map(n => goatBoost(n, 1.5)),
+    [0, 1.5, 2.25, 2.625],
+  );
+  assert.deepEqual(goatSlots([p(1), p(2, { goat: true }), null, p(3, { goat: true })]), [1, 3]);
+  assert.equal(teamLinks([p(1, { goat: true }), p(2, { goat: true })], rules).goatBoost, 2.25);
+  // With a Captain both count: 2.5 for everyone.
+  const both = [p(1, { goat: true }), p(2, { captain: true }), p(3)];
+  assert.deepEqual(chemValues(both, rules), [2.5, 2.5, 2.5]);
+  assert.deepEqual(
+    teamLinks(both, rules).players.map(e => e.shown),
+    [1, 1, 1],
+    'the Leader’s +1 is shown',
+  );
+  assert.equal(teamLinks(both, rules).shown, 3);
+  // Mates on top, but never more than the engine takes.
+  const mate = id => ({
+    sourceOverall: 80,
+    profileId: 'm' + id,
+    source: { clubId: 'c', nationality: 'N', leagueId: 'l' },
+  });
+  const full = [
+    p(1, { goat: true }),
+    p(2, { goat: true }),
+    p(3, { captain: true }),
+    mate(1),
+    mate(2),
+  ];
+  assert.deepEqual(chemValues(full, rules), [3.25, 3.25, 3.25, CHEM_CAP, CHEM_CAP]);
+  // Rules without a GOAT number (a run saved before): no GOAT boost, still rules.
+  assert.equal(teamLinks(both, { nation: 1.5, club: 1, captain: 1 }).goatBoost, 0);
+  assert.equal(linkBoosts({ nation: 1.5, club: 1, captain: 1 }).goat, 0);
 });
 
 test('the mates rules are three numbers: older shapes are not rules', () => {
@@ -135,6 +193,7 @@ test('the mates rules are three numbers: older shapes are not rules', () => {
     nation: 2,
     club: 0.5,
     captain: 0,
+    goat: 0,
   });
   assert.equal(validLinks(DEFAULT_CONFIG.draft.links), true);
   assert.equal(validLinks({ nation: 0, club: 2.5, captain: 0 }), true);

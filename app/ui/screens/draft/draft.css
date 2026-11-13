@@ -804,7 +804,7 @@
   letter-spacing: 0;
   color: var(--text-2);
 }
-.pick__legend {
+.pick__year {
   color: var(--gold-300);
 }
 .pick__rating {
@@ -817,12 +817,6 @@
 }
 .pick-effects__prime b {
   color: var(--text-1);
-}
-.stage__years {
-  margin: var(--space-2) 0 0;
-  color: var(--gold-300);
-  font-size: var(--text-xs);
-  text-align: center;
 }
 .pick__club {
   color: var(--text-3);
@@ -1345,77 +1339,95 @@
   color: var(--green-300);
 }
 
-/* ---------- Legend spin: the first spin of a World Cup draft, in gold ---------- */
-.stage.is-legend {
-  border-color: color-mix(in srgb, var(--gold-400) 65%, transparent);
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgb(245 200 76 / 0.2), transparent 62%),
-    linear-gradient(180deg, rgb(245 200 76 / 0.07), transparent 55%), var(--surface-1);
-  box-shadow:
-    0 0 0 1px rgb(245 200 76 / 0.18),
-    0 10px 34px rgb(245 200 76 / 0.14);
+/* ---------- Tokens of a World Cup draft: Nation, Era, Prime ---------- */
+.draft-tokens {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  width: 100%;
 }
-.stage.is-legend .stage__cat,
-.stage.is-legend .reveal__cat,
-.stage.is-legend .stage-reels__label {
-  color: var(--gold-300);
+.draft-tokens--one {
+  display: flex;
+  width: auto;
+  flex: none;
 }
-.stage.is-legend .stage-idle__window {
-  border-color: color-mix(in srgb, var(--gold-400) 70%, transparent);
-  background: radial-gradient(circle, rgb(245 200 76 / 0.22), transparent 70%);
-  color: var(--gold-300);
-}
-.stage.is-legend .reveal__title {
-  background: linear-gradient(100deg, #fff3c4, var(--gold-400) 55%, #fff3c4);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.stage.is-legend .reel {
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--gold-400) 70%, transparent);
-}
-
-/* ---------- Prime boost: the board's button and the sheet ---------- */
-.draft-prime-btn {
+.draft-token {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  min-height: 40px;
-  padding: 0 var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--gold-400) 55%, transparent);
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-2);
   border-radius: var(--radius-md);
-  background: rgb(245 200 76 / 0.08);
-  color: var(--gold-300);
+  background: var(--surface-2);
+  color: var(--text-1);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease;
 }
-.draft-prime-btn b {
+.draft-token:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.draft-token__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.draft-token__count {
   min-width: 22px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
-  color: var(--on-gold);
+  background: var(--surface-4);
+  color: var(--text-1);
   text-align: center;
 }
-.draft-prime-btn.is-ready {
-  box-shadow: 0 0 14px rgb(245 200 76 / 0.22);
+.draft-token--prime {
+  border-color: color-mix(in srgb, var(--gold-400) 55%, transparent);
+  background: rgb(245 200 76 / 0.08);
+  color: var(--gold-300);
 }
-.draft-prime-btn.is-spent {
+.draft-token--prime .draft-token__count {
+  background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
+  color: var(--on-gold);
+}
+.draft-token:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.draft-token.is-spent {
   border-color: var(--line-1);
   background: none;
   color: var(--text-3);
 }
-.draft-prime-btn.is-spent b {
+.draft-token.is-spent .draft-token__count {
   background: var(--surface-3);
   color: var(--text-2);
 }
-.draft-prime__lead {
-  margin: 0 0 var(--space-3);
-  color: var(--text-2);
-  font-size: var(--text-sm);
+.draft-bar--tokens > .btn {
+  flex: 1;
+  min-width: 0;
 }
+.draft-tokens--one .draft-token {
+  min-height: 56px;
+  padding: 0 var(--space-3);
+}
+.draft.is-wide .draft-tokens--one .draft-token {
+  min-height: 48px;
+}
+.stage-reels__reel.is-kept {
+  opacity: 0.7;
+}
+.stage.is-eras .reveal__cat {
+  color: var(--gold-300);
+}
+
+/* ---------- The Prime sheet ---------- */
 .draft-prime__list {
   display: grid;
   gap: 6px;

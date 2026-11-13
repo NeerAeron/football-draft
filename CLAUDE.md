@@ -65,14 +65,16 @@ app/                     served statically (deploy = publish this folder); runti
     gallery/             gallery page + generated fixture (make-fixture.mjs)
     vendor/              Preact 10.29.8, htm 3.1.1, Lucide icon subset (+ licences, README.txt)
   data/catalog.v3.json   compiled columnar catalog (decode via services/catalog.js)
-  data/legends.v1.json   Legends + Prime versions, fetched when a World Cup draft starts (services/legends.js)
+  data/legends.v1.json   Legends + Prime versions of the Legend-spin draft: no longer loaded by the game
+  data/eras.v1.json      era pools (nation × World Cup cycle), fetched when a World Cup draft, run or the
+                         Daily opens (services/eras.js) — never on Home
   data/eras.v1.json      era pools: per World Cup cycle and nation its best 26, each at his best
                          version of those years (services/eras.js; core/players/eras.js)
   assets/                logos/ (league logos, 256 px palette PNGs), flags/ (flag-icons SVGs, MIT),
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
                          source-map.json (the source's club/league/nation names → the reference),
-                         captains.json (reviewed Captain list with sources), legacy-titles.json
+                         captains.json + goats.json (reviewed lists: Captains and GOAT cards, player + era), world-cups.json (finalists per era), world-cup-starters.json, judgement-cards.json (hand-made cards), legacy-titles.json
                          (FIFA 98–14, the top 1,000 of each title: legends input), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
@@ -89,7 +91,7 @@ tests/*.test.mjs         node:test suites; tests/fixtures/ inputs (also used by 
 tests/browser/flows.mjs  Playwright flows used by test:browser and shots — keep selectors in sync
 tools/calibration/       manual calibration runners (write to /tmp; not run by npm test), incl.
                          match-calibration.mjs (engine stats, docs/calibration.md),
-                         draft-baselines.mjs (MODE_BASELINES), ai-calibration.mjs (ladder results),
+                         draft-baselines.mjs (MODE_BASELINES; --eras: World Cup drafts), reel-odds.mjs (what the reel weights make of a draft), ai-calibration.mjs (ladder results),
                          cup-calibration.mjs (fast-model fit, CUP_TUNING odds, docs/competition-api.md),
                          blunders.mjs (detector of frustrating plays) + watch.mjs (frame viewer),
                          lib/fixtures.mjs (their deterministic club fixtures), lib/rebounds.mjs
@@ -154,16 +156,20 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   titles); step-wise `decodeErasSteps` / `attachErasSteps` for the browser — contract in
   `docs/draft-api.md` "Eras").
 - **Draft** (`draft/`) — `session.js` (`createDraftSession`/`restoreDraftSession`: spins,
-  re-rolls, picks, placement, the Legend spin (`legendSpin`: the first spin of a World Cup
-  draft) and Prime boosts (`primes`, `prime(slot)`), `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
-  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; `SESSION_FORMAT` 2), `pools.js` (catalog index: nations field/pots, leagues, clubs, `draftSquad` (a nation's draftable players: its best 30 of the players shown 65+, 3 GK and line minimums — a nation spin never offers anyone else, `nation.squad`),
-  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel; `legendIndex` for the Legend spin), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
+  re-rolls, picks, placement; World Cup drafts (`eras`: the run and the Daily) spin an era and a
+  nation per pick — the pool is `eraPool` (≤ 26, no rating minimum), one person once
+  (`personId`) — with the tokens of `CONFIG.draft.tokens`, the same on every difficulty:
+  `respin('nation')`, `respin('era')` (the nation stays when the new era has it) and the Prime
+  (`primes`, `prime(slot)`: `bestVersion`); guards: every landing has a pick, and while the
+  keeper slot is open at least half the nation reel has a keeper; `matchSide`, `buildSide`, `matchSetup`/`applyMatchSetup`,
+  `DIFFICULTIES`: `pro`, `worldclass`, `legendary`; `SESSION_FORMAT` 3), `pools.js` (catalog index: nations field/pots, leagues, clubs, `draftSquad` (a nation's draftable players: its best 30 of the players shown 65+, 3 GK and line minimums — a nation spin never offers anyone else, `nation.squad`),
+  `bestEleven`, cached role ratings, `catalogStamp`, `selectable`: drafts offer only players shown at `draft.pickMinimum` (65) or more — pools and spin guards; teams' XIs never ask; `playable` = the 56 strongest nations that can field an XI (`nations.playableSize`), on the reel and met as an opponent, `field` = its strongest 48 in pots, `spinField` = the reel — all of this is the draft of today's players: Quick Match, Versus), `links.js` (`teamLinks`, chem: nation mate +1.5, club mate +1, +1 for everyone with a Captain (the UI says Leader), +1.5 with a GOAT — an era card flagged `goat` —, at most 5; `shown` = chem without the GOATs' part: a GOAT's boost is never itemised in the UI), `reels.js` (`reelWeights`: the hidden weights of a World Cup draft's era and nation reels, `CONFIG.draft.reels`), `budget.js` (the player tiers Superstar 88+ / Star 84+ / Starter 80+ and Budget mode's slots),
   `opponents.js` (difficulty ladder: `pickOpponent`, `buildOpponent`, `opponentCandidates`,
-  `ladderPreview`, `MODE_BASELINES`), `nation-codes.js`.
+  `ladderPreview`, `MODE_BASELINES` for drafts of today's players, `ERA_BASELINE` for the World Cup draft: `eras: true` in `ladderTarget`), `nation-codes.js`.
 - **Competition** (`competition/`) — `cup.js` (`createCupRun`/`restoreCupRun`: group (top two +
   best thirds, `BEST_THIRD`) + five knockouts from the Round of 32 (the semi-final loser plays the
   third-place play-off), places and medals instead of grades (`PLACES`), Pro / World Class on the
-  ladder (`CUP_TUNING`), Legendary on a real 48-nation World Cup (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`; `setLineup`: the line-up set up before a match — positions, tactics and, after the group stage, the formation — stays for the rest of the run), `model.js` (fast Poisson rating model, shootouts),
+  ladder (`CUP_TUNING`, offsets to the World Cup draft's baseline), Legendary on a real 48-nation World Cup whose nations play their knockouts in form (`FIELD_FORM`: chem up to the cap) (`worldCupDraw`: each run qualifies its own 48 of the playable nations, the top 30 always, the rest weighted by strength), standings, `projectRun`; `setLineup`: the line-up set up before a match — positions, tactics and, after the group stage, the formation — stays for the rest of the run), `model.js` (fast Poisson rating model, shootouts),
   `scorers.js` (`matchPerformances`: player lines — scorers, assists, ratings — for a result of the fast model), `awards.js` (Golden Boot / Ball / Glove over the whole tournament: `CupRun.awards()`, `awardsSteps()`; `CupRun.squadStats()` is the XI's table),
   `daily.js` (daily seed/schedule/opponents, perfect XI, points, streaks), `share.js` (share
   text, challenge-link encode/decode).
@@ -180,8 +186,9 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
   column order, which the callers' player order relies on. The pre-match's `bestSlots` DP in
   `ui/lib/prematch-store.js` is a different problem — ten players, any subset of slots — and
   stays).
-- **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `legends.js`
-  (`loadLegends`: the legends file, attached to the catalog), `sim-client.js`
+- **Services** (`app/services/`) — `catalog.js` (`loadCatalog`, cached), `eras.js`
+  (`loadEras`: the era pools, attached to the catalog in slices; `legends.js` is unused),
+  `sim-client.js`
   (`createSimClient`: Instant results and Key Moments halves in a module Worker, main-thread
   fallback) + `sim-worker.js` (the worker; `runSimJob`, `hydrateMatch`), `sound.js` (Web Audio
   cues, `MatchSoundEvents`, `selectionSound`), `playback.js` (`PlaybackClock`).
@@ -216,7 +223,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 | `football-draft-ui` | `ui/lib/prefs.js` | motion, hideRatings, onboarded, draftType |
 | `football-draft-sound` | `services/sound.js` | muted, volume |
 | `football-draft-setup` | setup screen | last choices per mode |
-| `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`) |
+| `football-draft-draft` | `draft-store.js` | the draft in progress (`session.serialize()`; a World Cup draft holds era card ids `ea:<id>:fc<edition>:era`, its tokens left and who was primed) |
 | `football-draft-prematch` / `-match-view` | `prematch-store.js` | pre-match edits (until its match has a result) / last view |
 | `football-draft-match` | `match-store.js` | current match request + result |
 | `football-draft-match-camera` | `screens/match/camera-prefs.js` | camera per view (`key`/`full`: `'action'` or `'wide'`) |
@@ -228,7 +235,7 @@ catalog, with core's rating caches filled in short slices first). The decoded ca
 
 Shapes are in `docs/ui-draft.md`, `docs/ui-match.md` and `docs/ui-run.md`; readers must stay
 tolerant of missing or broken data. **One cut-off for older saves and links**: only today's
-formats are read (cup 3, cabinet 3, draft 2, three difficulties, three modes, cup and daily
+formats are read (cup 4, cabinet 3, draft 3, three difficulties, three modes, cup and daily
 links); anything older reads as "nothing saved" / "link not valid" — never converted, never a
 crash. When a format changes, bump its number and let the old one fall through the readers
 (`tests/run-ui-store.test.mjs` fuzzes them); do not add mapping code.
@@ -317,7 +324,7 @@ surname, known-as name) the first workbook (`legends-98-14.xlsx`, the top 1,000 
 SHA-256 `b49592c7…5de2a`) had for FIFA 2003–14, so the best known are "Z. Zidane" and not
 "Zinedine Zidane"; everyone else's whole name is shown as initial + rest.
 FIFA 2000–14 use EA's player ids (EA reused some: rows of one id whose years of birth are
-more than a year apart are two men), FIFA 98/99 their own (joined by name and club, or by name, national team and part of the pitch); team ids
+more than a year apart are two men), FIFA 98/99 their own (joined by name and club, or by name, national team and part of the pitch; of several namesakes at his club the one in his national team; an international both titles list has a card even without a club in the game); team ids
 come with the shirt numbers from FIFA 2003 on; FIFA 09–14 store an overall, the older titles do
 not; FIFA 98–2003 have coarse scales (8–16 levels) and 8–17 skills, often surnames only.
 `scripts/data/legacy-titles.mjs` decodes it (positions, feet, which skill stands for a missing
@@ -382,22 +389,42 @@ player's nearest version that has it (composure for FIFA 11–16, else his react
 weak foot for the early titles). It is stamped with the catalog build (`catalog.ids`)
 and the badge configuration, so rebuild both files together.
 
+**The judgement** (after the measured calibration; `TITLE_JUDGEMENT` and `PLAYER_JUDGEMENT` in
+`scripts/compile-legends.mjs`, each entry with its reviewed reason, all of it in the provenance
+`data/build/legends.json` → `calibration.judgement` / `players` / `careers`): where a title as a
+whole reads too generous, too stingy or too flat next to what the game's followers think of its
+players, **every card of the title** moves by one rule — `top` points at the level of the
+title's 30 best, in proportion above and below, nothing at `from` and under (FIFA 98–2000
++3.4…+4.8, FIFA 2001–03 +1, FIFA 2004 −0.8, FIFA 07 +0.8; the other 21 titles as they are). No
+era is made equal to another. `NATION_JUDGEMENT`: England's players in FIFA 98–2004 (titles made in and for England) two points down at 90, fading to nothing at 76. `PLAYER_JUDGEMENT` has three kinds, each entry with its reason — `icon` (24 players of 1997–2002 the coarse titles plainly under-rate: Maldini, Keane, Batistuta, Roberto Carlos …), `breakout` (43 players with breakout lag: a key man of his side at that World Cup whose card still shows a prospect — Müller 2010, Lahm 2006, Saka 2022 — lifted by one to three points, Xavi and Iniesta 2010 to 91) and the peaks: a handful of players have corrections of their own, for the peaks
+everyone agrees on that a title's flat top hides (Ronaldo 1997–98 and 2002, Zidane 1997–2002,
+Ronaldinho 2004–06, Messi 2009–10, Cristiano Ronaldo 2008, Rivaldo 1998–99, Henry 2003–05, Kaká
+2007) and for one plainly wrong card (Denilson in the coarse titles); the build fails when an
+id, name or title of that list does not meet the data. Do not add per-player edits beyond such
+cases: fix the title.
+
 **Era pools** — `app/data/eras.v1.json` (`core/players/eras-codec.js`, the legends file's
-player table; 12,486 cards, 2.4 MB / 0.71 MB gzip; fetched by `services/eras.js` with a draft)
+player table; 13,762 cards, 2.7 MB / 0.79 MB gzip; fetched by `services/eras.js` with a draft)
 comes out of the same compile (`compileLegends` returns `eras`; rules `ERA_*` in
 `scripts/compile-legends.mjs`): per World Cup cycle (`ERAS`: 1998 = the ratings of 1997–98 …
 2026 = 2023–26, i.e. FC 24–26 and today's catalog) and nation the best 26, each at his best
 version inside the era (the same overalls and cards as above; 3 keepers and at least 7
 defenders, 7 midfielders, 4 forwards where the nation has them; no minimum rating). A catalog
 player is in the 2026 pool as he is unless an FC 24–26 version shows more. A nation can be spun
-in an era when its pool has 18 players, 5 defenders, 5 midfielders and 2 forwards — no
+in an era when it played that era's World Cup finals (`data/world-cups.json`) or has a card showing 85+ (`ERA_STAR`) — with whatever players it has, even two — or when its pool has 14 players, 3 defenders, 4 midfielders (a forward beyond the first four counts as one) and 2 forwards and is among the era's 70 strongest — no
 goalkeeper required (`keepers` says how many a pool has; the draft's guards make sure one can
 be drafted; a keeperless pool's strength takes the era's weakest first-choice keeper,
-`keeperLevel`); the 70 strongest when more qualify (27 / 54 / 62 / 70 / 70 / 70 / 70 / 70 nations;
+`keeperLevel`); 50 / 72 / 70 / 73 / 71 / 73 / 73 / 81 nations — France 98’s limit is 41 pools of players a later title can identify, `ERA_IDENTIFIED` / `ERA_NATION_LIMIT`; a place a small pool cannot fill counts 60 in its strength; World Cup starters of `data/world-cup-starters.json` and players with a breakout correction take the place of the pool's lowest-rated player (who keeps his card in the file, in no pool: `stats.displaced` in `data/build/eras.json` says who replaced him); `data/judgement-cards.json` holds 18 hand-made cards for notables the source lacks or cannot tell apart (a real row of his, the overall by judgement);
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
-file (601 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
-independent; both are stamped with the catalog build. **Captains** come from the reviewed
-list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
+file (505 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
+independent; both are stamped with the catalog build. **GOAT cards and Captains** are two
+reviewed lists of player + era: `data/goats.json` (seven players at the World Cup cycles of
+their peak — a GOAT card is a player AND an era) and `data/captains.json` (the leaders of
+1997–2026, ranked, each with the eras in which he led; the first `size`, 14, count — the game calls them Leaders; never a
+player of the GOAT list). The compiler puts `goat` / `captain` on those cards of the era pools
+(`eraMarks`), `captain` on today's catalog player when 2026 is one of his eras, and fails on a
+wrong id, name, nation or era of any entry. How the flags are exposed and how often a draft
+meets one: `docs/draft-api.md` "GOAT cards and Captains".
 
 Builds are deterministic (byte-identical reruns). Format v3 is columnar
 (`app/core/players/catalog-codec.js`); it also carries precomputed badges, club ratings and club

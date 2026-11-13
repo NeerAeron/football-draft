@@ -10,6 +10,7 @@ import {
   PLACES,
   THIRD_ROUND,
   FIELD_TYPICAL,
+  FIELD_FORM,
   projectRun,
   CUP_ROUNDS,
   cupOffsets,
@@ -22,9 +23,13 @@ import {
   MATCH_MODEL,
   simulateShootout,
 } from '../app/core/competition/model.js';
-import { ladderTarget, MODE_BASELINES, opponentCandidates } from '../app/core/draft/opponents.js';
+import {
+  ladderTarget,
+  ladderBaseline,
+  opponentCandidates,
+  ERA_BASELINE,
+} from '../app/core/draft/opponents.js';
 import { catalogIndex } from '../app/core/draft/pools.js';
-import { DEFAULT_CONFIG } from '../app/core/config/config.js';
 import { lcg } from '../app/core/util/rng.js';
 import { FORMATIONS } from '../app/core/players/formations.js';
 
@@ -135,7 +140,12 @@ test('a run draws a weaker group, escalating knockouts and never repeats an oppo
   );
   const offsets = cupOffsets('pro');
   // (The group plays weakest first by what the XI is worth, which need not be target order.)
-  const targets = offsets.map(offset => ladderTarget('nations', 'pro', { offset }));
+  // A Nations run is a World Cup draft: its ladder is the era draft's (ERA_BASELINE).
+  const targets = offsets.map(offset => ladderTarget('nations', 'pro', { offset, eras: true }));
+  assert.equal(ladderTarget('nations', 'pro', { eras: true }), ERA_BASELINE.effective);
+  assert.ok(ERA_BASELINE.effective > ladderBaseline('nations', 'pro') + 1);
+  // Other modes have no era draft: the option changes nothing there.
+  assert.equal(ladderTarget('clubs', 'pro', { eras: true }), ladderTarget('clubs', 'pro'));
   assert.deepEqual(
     run.opponents
       .slice(0, 3)
@@ -416,8 +426,32 @@ test('Legendary plays the real field: a drawn and simulated 48-nation World Cup'
   assert.ok(final > 85 && final < 88, `final ${final}`);
   assert.ok(Math.abs(third - sf) < 1.5, `play-off ${third} vs semi-final ${sf}`);
   // projectRun's targets for the level are these typical ratings (weakened XIs: a bit lower).
-  FIELD_TYPICAL.slice(3).forEach((t, i) =>
-    assert.ok(Math.abs(t - mean[3 + i]) < 1.5, `round ${3 + i}: ${t} vs ${mean[3 + i]}`),
+  // In the knockouts the field plays in form (FIELD_FORM, up to the chem cap): the typical
+  // ratings stand that much above the nations as they are.
+  FIELD_TYPICAL.slice(3).forEach((t, i) => {
+    const lift = t - mean[3 + i];
+    assert.ok(lift > 1.5 && lift < FIELD_FORM + 1, `round ${3 + i}: ${t} vs ${mean[3 + i]}`);
+  });
+  // Knockout form: group opponents as they are, knockout and play-off opponents at the cap —
+  // in the stored rating, in the engine side, and after a restore.
+  for (const cup of [run, restoreCupRun(catalog, run.serialize())]) {
+    assert.deepEqual(
+      cup.opponents.map(o => o.form),
+      [0, 0, 0, ...Array(6).fill(FIELD_FORM)],
+    );
+    const group = cup.opponentSide(0),
+      knockout = cup.opponentSide(3);
+    assert.ok(group.players.some(p => p.chem < 5));
+    assert.equal(group.effective, cup.opponents[0].effective);
+    assert.ok(knockout.players.every(p => p.chem === 5));
+    assert.equal(knockout.effective, Math.round((knockout.rating + 5) * 100) / 100);
+    assert.equal(knockout.effective, cup.opponents[3].effective);
+  }
+  // The ladder levels have no form.
+  assert.ok(
+    createCupRun(catalog, { mode: 'nations', difficulty: 'pro', seed: 31, user }).opponents.every(
+      o => o.form === 0,
+    ),
   );
   // Outside a Nations draft there is no field: Legendary uses its ladder row.
   const clubs = createCupRun(catalog, {
@@ -738,16 +772,15 @@ test('rating model: probabilities, determinism, shootouts and projections', () =
 // Monte-Carlo against the exact round targets.
 test('difficulty ladder: title odds fall level by level and finals are top sides', () => {
   const windows = {
-    pro: [0.14, 0.27],
+    pro: [0.13, 0.26],
     // 6% at this baseline rating (80,000 runs, with or without extra time in the model): the
     // window leaves room for the 3,000 runs here to read 5%.
-    worldclass: [0.04, 0.15],
+    worldclass: [0.05, 0.15],
     legendary: [0.015, 0.08],
   };
   let previous = 1;
   for (const [difficulty, [lo, hi]] of Object.entries(windows)) {
-    const rerolls = DEFAULT_CONFIG.draft.rerolls[difficulty],
-      rating = MODE_BASELINES.nations.effective[Math.min(2, rerolls)];
+    const rating = ladderBaseline('nations', difficulty, { eras: true });
     const p = projectRun({ rating, mode: 'nations', difficulty, runs: 3000 }).probabilities;
     assert.ok(p.champion >= lo && p.champion <= hi, `${difficulty} champion ${p.champion}`);
     assert.ok(p.champion <= previous, difficulty);

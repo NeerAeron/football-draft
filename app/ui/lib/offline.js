@@ -23,9 +23,8 @@ const WORKERS = [
   './ui/screens/run/auto-sim-worker.js',
   './ui/screens/daily/perfect-xi-worker.js',
 ];
-// Data fetched on demand (the Legends and Prime versions, the era pools: first when a draft
-// starts).
-const DATA = ['./data/legends.v1.json', './data/eras.v1.json'];
+// Data fetched on demand (the era pools: first when a World Cup draft starts).
+const DATA = ['./data/eras.v1.json'];
 
 const idle = fn => (globalThis.requestIdleCallback || (cb => setTimeout(cb, 500)))(fn);
 const installed = () =>

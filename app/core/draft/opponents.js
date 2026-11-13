@@ -31,6 +31,21 @@ export const MODE_BASELINES = {
   leagues: { ovr: 82.72, sd: 1.87, chem: 1.21, effective: [83.08, 83.93, 84.57] },
   clubs: { ovr: 78.82, sd: 1.77, chem: 0.57, effective: [78.92, 79.4, 79.76] },
 };
+/**
+ * The typical World Cup draft (an era and a nation per spin; Nations): 200 drafts, the best
+ * player picked, the three tokens used sensibly (respins when the best pick is under 78, the
+ * Prime on the biggest gain) — `draft-baselines.mjs --eras --primes default`. `effective` is
+ * what the World Cup Run's and the Daily's opponents are measured against (`eras: true` in
+ * ladderTarget); `plain` is the same draft without tokens, `budget` the Budget-mode draft.
+ */
+export const ERA_BASELINE = {
+  ovr: 85.57,
+  sd: 1.21,
+  chem: 1.07,
+  effective: 86.64,
+  plain: 85.76,
+  budget: 84.75,
+};
 export const LEVELS = DIFFICULTIES.map(id => ({ id, label: DIFFICULTY_LABELS[id] }));
 const KINDS_BY_MODE = {
   nations: ['nation', 'boss'],
@@ -44,12 +59,31 @@ export const BOSSES = {
 const BOSS_FIT = 0.99;
 const round2 = x => Math.round(x * 100) / 100;
 
-/** Effective target rating for a mode, level and round offset (rules: a session's rules). */
-export function ladderTarget(mode, level, { offset = 0, rules = CONFIG.draft, rerolls } = {}) {
+// Which column of MODE_BASELINES.effective a level's target reads (the re-rolls a draft of that
+// level had when the baselines and CUP_TUNING were measured). Every difficulty has the same
+// tokens now; the columns stay until the ladder is re-measured.
+const BASELINE_REROLLS = { pro: 2, worldclass: 1, legendary: 1 };
+/** The typical drafted XI (effective rating) a level's opponents are measured against. */
+export const ladderBaseline = (mode, level, { eras = false } = {}) =>
+  eras && mode === 'nations'
+    ? ERA_BASELINE.effective
+    : MODE_BASELINES[mode].effective[BASELINE_REROLLS[level] ?? 1];
+/**
+ * Effective target rating for a mode, level and round offset (rules: a session's rules).
+ * `eras`: the draft is a World Cup draft (Nations) — measured against ERA_BASELINE, the same
+ * on every level (the tokens are).
+ */
+export function ladderTarget(
+  mode,
+  level,
+  { offset = 0, rules = CONFIG.draft, rerolls, eras = false } = {},
+) {
   const base = MODE_BASELINES[mode];
   if (!base) throw Error('Unknown draft mode: ' + mode);
   if (!(level in rules.ladder)) throw Error('Unknown difficulty: ' + level);
-  const r = Math.max(0, Math.min(2, rerolls ?? rules.rerolls[level]));
+  if (eras && mode === 'nations')
+    return round2(ERA_BASELINE.effective + rules.ladder[level] + offset);
+  const r = Math.max(0, Math.min(2, rerolls ?? BASELINE_REROLLS[level]));
   return round2(base.effective[r] + rules.ladder[level] + offset);
 }
 
@@ -231,7 +265,7 @@ export function candidatesNear(candidates, target, { minimum = 3, avoid = [] } =
 /**
  * Choose an opponent (reference, no XI yet): uniform among candidatesNear(target).
  * @param options { mode, level, seed, offset?, avoid?: keys, rules?, rerolls?, random?,
- *   bosses? (false: real teams only) }
+ *   bosses? (false: real teams only), eras? (the user's XI is a World Cup draft) }
  */
 export function chooseOpponent(
   catalog,
@@ -245,9 +279,10 @@ export function chooseOpponent(
     rerolls,
     random,
     bosses = true,
+    eras = false,
   } = {},
 ) {
-  const target = ladderTarget(mode, level, { offset, rules, rerolls }),
+  const target = ladderTarget(mode, level, { offset, rules, rerolls, eras }),
     near = candidatesNear(modeCandidates(catalog, mode, { rules, bosses }), target, { avoid });
   if (!near.length) throw Error('No opponent is available');
   const draw = random ?? lcg(seedValue(seed ?? 0));

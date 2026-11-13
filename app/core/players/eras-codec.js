@@ -16,7 +16,8 @@
 //                                         given in goal for its strength) }
 //   cards { count, sourceId[] (EA's player id: the person), edition[] (98, 99, 0–26), year[],
 //           name[], fullName[], club[] (catalog team id, 0 = none), nation[], current[] (1 =
-//           the person is in the catalog: `eraOf`), position, secondary[], foot, weakFoot[],
+//           the person is in the catalog: `eraOf`), mark[] (1 = a GOAT card, 2 = a Captain
+//           card, 0 = neither), position, secondary[], foot, weakFoot[],
 //           sourceOverall[], attrs[K*N], tendencies[T*N], tags[], evidence[],
 //           evidenceConfidence[] }       every card: pool members, and the best versions
 //                                         kept for the Prime that are in no pool
@@ -79,8 +80,10 @@ export function encodeEras(data) {
       keeperLevel,
     })),
     cards: encodeTable(data.cards, keys, 'era', {
-      columns: () => ({ name: [], fullName: [], club: [], nation: [], current: [] }),
+      columns: () => ({ name: [], fullName: [], club: [], nation: [], current: [], mark: [] }),
       push(out, p) {
+        if (p.goat && p.captain) throw Error(`${p.profileId}: a GOAT and a Captain`);
+        out.mark.push(p.goat ? 1 : p.captain ? 2 : 0);
         out.name.push(p.name);
         out.fullName.push(p.fullName);
         out.club.push(p.source.clubId == null ? 0 : Number(p.source.clubId));
@@ -125,6 +128,7 @@ export function* decodeErasSteps(file) {
     throw Error('Unsupported eras format');
   const { prefix, suffix } = file.catalog.profileId,
     c = file.cards,
+    mark = c.mark ?? [], // a file from before the marks: nobody is marked
     cards = yield* decodeTableSteps(file, c, 'era', i => ({
       name: c.name[i],
       fullName: c.fullName[i],
@@ -133,6 +137,7 @@ export function* decodeErasSteps(file) {
         nationality: file.nations[c.nation[i]],
       },
       ...(c.current[i] ? { eraOf: prefix + c.sourceId[i] + suffix } : {}),
+      ...(mark[i] === 1 ? { goat: true } : mark[i] === 2 ? { captain: true } : {}),
     }));
   return {
     compilerVersion: file.compilerVersion,

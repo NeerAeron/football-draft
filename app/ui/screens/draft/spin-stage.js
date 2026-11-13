@@ -1,5 +1,6 @@
 // Spin stage: the honest reel(s) while a spin animates, the reveal card once it lands, an
-// idle "what the next spin draws" panel, and the odds dialog. The session has already
+// idle "what the next spin draws" panel, and the odds dialog (not in a World Cup draft, whose
+// two reels — era, then nation — show no odds). The session has already
 // decided the landing; reels only travel there (their own timing, never the draft RNG).
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { html, cx } from '../../lib/html.js';
@@ -21,7 +22,6 @@ import {
   reelItems,
   spinHeadline,
   oddsSummary,
-  legendYearsLine,
 } from './draft-model.js';
 
 // Long enough to build a beat of suspense, short enough for eleven of them in a row.
@@ -30,6 +30,11 @@ const TIMING = {
   league: [{ duration: 1050, cycles: 2 }],
   club: [
     { duration: 700, cycles: 1 },
+    { duration: 950, cycles: 2 },
+  ],
+  // A World Cup draft: the era lands first, then the nation.
+  era: [
+    { duration: 800, cycles: 2 },
     { duration: 950, cycles: 2 },
   ],
 };
@@ -61,40 +66,53 @@ function HonestReel({ items, landIndex, spinKey, ...rest }) {
 }
 
 function SpinningReels({ spin, spinKey, onLanded }) {
-  const [leg, setLeg] = useState(0);
   const reels = spin.reels;
-  const timing = TIMING[spin.category] || TIMING.nation;
+  // A respin moves only the reels it draws again (`spin.spun`): the other one stays landed.
+  const spun = i => spin.spun?.[i] !== false;
+  const nextLeg = from => {
+    for (let i = from; i < reels.length; i++) if (spun(i)) return i;
+    return reels.length;
+  };
+  const [leg, setLeg] = useState(() => nextLeg(0));
+  const timing = TIMING[spin.era ? 'era' : spin.category] || TIMING.nation;
   const legs = useMemo(
     () => reels.map((r, i) => reelItems(r, { league: i === 1 ? spin.league : null })),
     [spin],
   );
-  useEffect(() => setLeg(0), [spinKey]);
+  useEffect(() => setLeg(nextLeg(0)), [spinKey]);
   return html`<div class=${cx('stage-reels', reels.length > 1 && 'stage-reels--two')}>
     ${legs.map(
       (r, i) =>
-        html`<div key=${i} class="stage-reels__reel">
-          <span class="stage-reels__label"
-            >${spin.legend ? 'Legends' : CATEGORY_LABEL[reels[i].category]}</span
-          >
+        html`<div key=${i} class=${cx('stage-reels__reel', !spun(i) && 'is-kept')}>
+          <span class="stage-reels__label">${CATEGORY_LABEL[reels[i].category]}</span>
           ${
-            i > leg
-              ? html`<div class="stage-reels__wait" aria-hidden="true">
-                  <span>?</span>
-                </div>`
-              : html`<${HonestReel}
+            !spun(i)
+              ? html`<${Reel}
                   items=${r.items}
                   landIndex=${r.landIndex}
-                  spinKey=${`${spinKey}:${i}`}
-                  duration=${timing[i]?.duration || 1300}
-                  cycles=${timing[i]?.cycles || 2}
+                  spinKey=${null}
                   size=${reels.length > 1 && i === 0 ? 'sm' : 'md'}
                   label=${`${CATEGORY_LABEL[reels[i].category]} reel`}
-                  onTick=${() => playCue('tick')}
-                  onLand=${() => {
-                    if (i < legs.length - 1) setLeg(i + 1);
-                    else onLanded();
-                  }}
                 />`
+              : i > leg
+                ? html`<div class="stage-reels__wait" aria-hidden="true">
+                    <span>?</span>
+                  </div>`
+                : html`<${HonestReel}
+                    items=${r.items}
+                    landIndex=${r.landIndex}
+                    spinKey=${`${spinKey}:${i}`}
+                    duration=${timing[i]?.duration || 1300}
+                    cycles=${timing[i]?.cycles || 2}
+                    size=${reels.length > 1 && i === 0 ? 'sm' : 'md'}
+                    label=${`${CATEGORY_LABEL[reels[i].category]} reel`}
+                    onTick=${() => playCue('tick')}
+                    onLand=${() => {
+                      const next = nextLeg(i + 1);
+                      if (next < legs.length) setLeg(next);
+                      else onLanded();
+                    }}
+                  />`
           }
         </div>`,
     )}
@@ -116,9 +134,10 @@ function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
   >
     <span class="reveal__media"><${Media} head=${head} size=${compact ? 52 : 64} /></span>
     <span class="reveal__text">
-      <span class="reveal__cat">
-        ${spin.legend ? 'Legends' : CATEGORY_LABEL[spin.category]}${
-          spin.reroll ? ` · re-roll ${spin.reroll}` : ''
+      <span class="reveal__cat" data-testid=${head.era ? 'spin-era' : undefined}>
+        ${
+          head.era ??
+          `${CATEGORY_LABEL[spin.category]}${spin.reroll ? ` · re-roll ${spin.reroll}` : ''}`
         }
       </span>
       <span class="reveal__title">${head.title}</span>
@@ -129,8 +148,8 @@ function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
     </span>
     ${head.badge && html`<${Chip} tone="gold" variant="solid" size="sm" class="reveal__badge">${head.badge}<//>`}
     ${
-      // The Legend reel shows no odds.
-      !spin.legend &&
+      // A World Cup draft shows no odds.
+      !spin.era &&
       html`<${IconButton}
         icon="info"
         label="Odds of this spin"
@@ -142,7 +161,7 @@ function RevealCard({ spin, poolSize, onOdds, fresh, compact }) {
   </div>`;
 }
 
-function IdlePanel({ category, complete, turnName, legend, years }) {
+function IdlePanel({ category, complete, turnName, eras }) {
   if (complete)
     return html`<div class="stage-idle is-complete">
       <span class="stage-idle__icon" aria-hidden="true"
@@ -153,14 +172,13 @@ function IdlePanel({ category, complete, turnName, legend, years }) {
         <span>Every slot is filled. Check your XI, then continue.</span>
       </span>
     </div>`;
-  if (legend)
+  if (eras)
     return html`<div class="stage-idle">
       <span class="stage-idle__window" aria-hidden="true">
-        <${Icon} name="star" size=${26} />
+        <span class="stage-idle__q">?</span>
       </span>
       <span class="stage-idle__text">
-        <b>Spin for a legend</b>
-        <span data-testid="legend-years">${legendYearsLine(years)}</span>
+        <b>Spin an era and a nation</b>
       </span>
     </div>`;
   return html`<div class="stage-idle">
@@ -236,20 +254,20 @@ export function SpinStage({
   const spin = snap.spin;
   const category = snap.category;
   const animating = animate != null && spin;
-  const legend = !snap.complete && snap.legendRound;
+  const eras = !!snap.eras;
   return html`<section
-    class=${cx('stage', animating && 'is-spinning', legend && 'is-legend')}
-    aria-label=${legend ? 'Legend spin' : 'Spin'}
-    data-legend=${legend ? 'true' : undefined}
+    class=${cx('stage', animating && 'is-spinning', eras && 'is-eras')}
+    aria-label="Spin"
+    data-eras=${eras ? 'true' : undefined}
   >
     <header class="stage__head">
       <span class="stage__cat">
-        <${Icon} name=${legend ? 'star' : CATEGORY_ICON[category] || 'reel'} size=${16} />
+        <${Icon} name=${eras ? 'reel' : CATEGORY_ICON[category] || 'reel'} size=${16} />
         ${
           snap.complete
             ? 'All picks made'
-            : legend
-              ? 'Legend spin'
+            : eras
+              ? 'Era · Nation'
               : `${CATEGORY_LABEL[category] || ''} spin`
         }
       </span>
@@ -289,23 +307,13 @@ export function SpinStage({
               category=${category}
               complete=${snap.complete}
               turnName=${turnName}
-              legend=${legend}
-              years=${snap.legendYears}
+              eras=${eras}
             />`
-    }
-    ${
-      // The Legend spin says where its legends come from: one line, no odds.
-      legend &&
-      spin &&
-      snap.legendYears &&
-      html`<p class="stage__years" data-testid="legend-years">
-        ${legendYearsLine(snap.legendYears)}
-      </p>`
     }
     ${actions && html`<div class="stage__actions">${actions}</div>`}
     ${
       spin &&
-      !spin.legend &&
+      !spin.era &&
       html`<${OddsDialog} open=${odds} onClose=${() => setOdds(false)} spin=${spin} />`
     }
   </section>`;

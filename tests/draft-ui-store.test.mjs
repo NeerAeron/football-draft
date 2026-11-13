@@ -19,16 +19,16 @@ globalThis.localStorage = {
 globalThis.location = { hash: '#/' };
 
 const catalog = await loadRuntimeCatalog();
-const { readLegends } = await import('../scripts/data/catalog-file.mjs');
-const { attachLegends } = await import('../app/core/players/legends.js');
+const { readEras } = await import('../scripts/data/catalog-file.mjs');
+const { attachEras, personId } = await import('../app/core/players/eras.js');
 const draft = await import('../app/ui/lib/draft-store.js');
 const prematch = await import('../app/ui/lib/prematch-store.js');
 const { readMatchResult, currentRequest } = await import('../app/ui/lib/match-store.js');
-// World Cup drafts ask for the legends data; nothing else does.
+// World Cup drafts ask for the era pools; nothing else does.
 const loads = [];
-draft.setCatalogLoader(async ({ legends = false } = {}) => {
-  loads.push(legends);
-  return legends ? attachLegends(catalog, readLegends()) : catalog;
+draft.setCatalogLoader(async ({ eras = false } = {}) => {
+  loads.push(eras);
+  return eras ? attachEras(catalog, readEras()) : catalog;
 });
 
 const reset = () => {
@@ -91,8 +91,8 @@ test('one cut-off: a draft slot of an older format is nothing saved; a broken on
   await draft.startDraft({ kind: 'quick', type: 'nations', seed: 7 });
   draft.autoPick();
   const raw = JSON.parse(storage.get(draft.DRAFT_KEY));
-  assert.equal(raw.format, 2);
-  assert.equal(raw.session.format, 2);
+  assert.equal(raw.format, 3);
+  assert.equal(raw.session.format, 3);
   const reload = async value => {
     draft.clearDraft();
     if (value !== undefined)
@@ -102,6 +102,7 @@ test('one cut-off: a draft slot of an older format is nothing saved; a broken on
   // Older formats and junk: nothing to resume, anywhere.
   for (const value of [
     { ...raw, format: 1 },
+    { ...raw, format: 2 },
     { ...raw, format: undefined },
     '{broken',
     'null',
@@ -120,6 +121,7 @@ test('one cut-off: a draft slot of an older format is nothing saved; a broken on
   // no throw, nothing half-restored.
   for (const [what, patch] of [
     ['session format 1', s => (s.format = 1)],
+    ['session format 2 (the Legend spin)', s => (s.format = 2)],
     ['Amateur', s => (s.options.difficulty = 'amateur')],
     ['no rules', s => (s.rules = null)],
     ['numbered Budget bands', s => (s.rules.budget = { band1: { minimum: 87, slots: 2 } })],
@@ -139,48 +141,73 @@ test('one cut-off: a draft slot of an older format is nothing saved; a broken on
   assert.equal(loaded.session.history.length, 1);
 });
 
-test('a World Cup draft: Legend spin first, Prime boosts, legends data only for it', async () => {
+test('a World Cup draft: an era and a nation per spin, the tokens, era data only for it', async () => {
   reset();
   loads.length = 0;
-  for (const kind of ['quick', 'versus', 'daily']) {
+  for (const kind of ['quick', 'versus']) {
     const ctx = draft.normalizeContext({ kind, type: 'nations', seed: 1 });
     assert.equal(draft.worldCupDraft(ctx), false);
     const options = draft.sessionOptions(ctx);
-    assert.ok(!('legendSpin' in options) && !('primes' in options), kind);
+    assert.ok(!('eras' in options) && !('primes' in options), kind);
+  }
+  // The run and the Daily are World Cup drafts.
+  for (const kind of ['run', 'daily']) {
+    const ctx = draft.normalizeContext({ kind, type: 'nations', seed: 1 });
+    assert.equal(draft.worldCupDraft(ctx), true);
+    const options = draft.sessionOptions(ctx);
+    assert.deepEqual([options.eras, options.primes], [true, true], kind);
   }
   await draft.startDraft({ kind: 'quick', type: 'nations', seed: 7 });
-  assert.equal(draft.draftStore.get().snap.legendRound, false);
+  assert.equal(draft.draftStore.get().snap.eras, false);
+  assert.equal(draft.respinDraft('era'), null, 'no era to respin in a Quick Match draft');
   assert.deepEqual(loads, [false]);
   reset();
   const session = await draft.startDraft({ kind: 'run', type: 'nations', seed: 7 });
   assert.deepEqual(loads, [false, true]);
   let snap = draft.draftStore.get().snap;
-  assert.deepEqual([snap.legendSpin, snap.legendRound, snap.spin.legend], [true, true, true]);
-  assert.deepEqual(snap.primes, { perSide: 2, left: [2] });
-  assert.ok(snap.pool.length <= 10 && snap.pool.every(e => e.legend));
+  assert.equal(snap.eras, true);
+  assert.ok(snap.spin.era && snap.spin.reels.length === 2);
+  assert.deepEqual(snap.primes, { perSide: 1, left: [1] });
+  assert.deepEqual(
+    [snap.tokens.nation.left, snap.tokens.era.left, snap.tokens.prime.left],
+    [1, 1, 1],
+  );
+  assert.ok(snap.pool.length <= 26 && snap.pool.every(e => e.year));
+  // The respins through the store: a new spin to animate, persisted.
+  const era = snap.spin.era.id,
+    token = draft.draftStore.get().animate;
+  const again = draft.respinDraft('nation');
+  assert.equal(again.era.id, era);
+  assert.ok(draft.draftStore.get().animate > token);
+  assert.equal(draft.respinDraft('nation'), null, 'one nation respin');
+  assert.notEqual(draft.respinDraft('era').era.id, era);
+  assert.equal(draft.respinDraft('era'), null, 'one era respin');
+  const state = () => JSON.parse(storage.get(draft.DRAFT_KEY)).session.state;
+  assert.deepEqual([state().rerollsLeft, state().eraRespinsLeft], [[0], [0]]);
+  assert.equal(state().current.respin, 'era');
+  snap = draft.draftStore.get().snap;
   assert.ok(draft.pickPlayer(snap.pool[0].profileId).ok);
   assert.ok(draft.autoComplete());
-  // A reload in the middle restores the legend (the loader is asked for the legends again).
+  // A reload in the middle restores the era cards (the loader is asked for the eras again).
   const raw = storage.get(draft.DRAFT_KEY);
   draft.clearDraft();
   storage.set(draft.DRAFT_KEY, raw);
   assert.ok(await draft.loadDraft());
   assert.equal(loads.at(-1), true);
   snap = draft.draftStore.get().snap;
-  assert.equal(snap.teams[0].slots.filter(x => x.player.legend).length, 1);
-  // Prime boost through the store: persisted, the XI holds the prime version.
+  assert.ok(state().picks[0].some(id => /^ea:\d+:fc\d+:era$/.test(id)));
+  assert.equal(snap.teams[0].slots.filter(x => x.player.year).length, 11);
+  assert.equal(new Set(draft.currentDraft().session.lineup(0).map(personId)).size, 11);
+  // The Prime through the store: persisted, the XI holds his best version.
   const option = draft.currentDraft().session.primeOptions(0)[0];
-  if (option) {
-    const result = draft.primeDrafted(option.slot);
-    assert.equal(result.ok, true);
-    const after = draft.draftStore.get().snap.teams[0];
-    assert.equal(after.primesLeft, 1);
-    assert.equal(after.slots[option.slot].player.prime, true);
-    assert.match(
-      JSON.parse(storage.get(draft.DRAFT_KEY)).session.state.picks[0][option.slot],
-      /:prime$/,
-    );
-  }
+  assert.ok(option, 'somebody in this XI has a better version');
+  const result = draft.primeDrafted(option.slot);
+  assert.equal(result.ok, true);
+  const after = draft.draftStore.get().snap.teams[0];
+  assert.equal(after.primesLeft, 0);
+  assert.equal(after.slots[option.slot].player.prime, true);
+  assert.equal(state().picks[0][option.slot], option.to.profileId);
+  assert.equal(state().primed[option.to.profileId], option.profileId);
   assert.equal(draft.primeDrafted(99).ok, false);
   // The run takes the XI as it is.
   const { createRunFromDraft } = await import('../app/ui/lib/run-store.js');
@@ -213,7 +240,7 @@ test('a Daily draft is kept with the Daily record from its first pick, and resum
   reset();
   const { readDaily, lockedDailyDraft } = await import('../app/ui/lib/run-store.js');
   const { dailyChallenge } = await import('../app/core/competition/daily.js');
-  const day = dailyChallenge(catalog, '2026-11-08'),
+  const day = dailyChallenge(attachEras(catalog, readEras()), '2026-11-08'),
     context = {
       kind: 'daily',
       type: 'nations',
@@ -221,7 +248,6 @@ test('a Daily draft is kept with the Daily record from its first pick, and resum
       formation: day.formation,
       seed: day.seed,
       schedule: day.schedule,
-      rerolls: day.rerolls,
       daily: day.id,
       useDefaultRules: true,
       returnTo: '/daily',

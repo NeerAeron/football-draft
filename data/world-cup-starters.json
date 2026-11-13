@@ -1,0 +1,462 @@
+{
+  "description": "World Cup starters who must be in their nation's pool of that era (compiler input, scripts/compile-legends.mjs): regulars of sides that mattered at the tournament whom the best-26-by-rating rule leaves out. Each takes the place of the lowest-rated player of his line in the pool; his card is EA's, unchanged. `sofifaId` is EA's player id, `sourceName` a word of his name in the data — the build fails when the id has no card for that nation in that era or the name does not match.",
+  "asOf": "2026-11-13",
+  "players": [
+    {
+      "name": "Christian Karembeu",
+      "sourceName": "karembeu",
+      "sofifaId": 1252,
+      "nation": "France",
+      "era": 1998,
+      "why": "Started the 1998 final and semi-final for the champions; Real Madrid’s Champions League winner that spring."
+    },
+    {
+      "name": "César Sampaio",
+      "sourceName": "sampaio",
+      "sofifaId": 41140,
+      "nation": "Brazil",
+      "era": 1998,
+      "why": "Brazil’s holding midfielder in every match of 1998, scorer of the tournament’s first goal."
+    },
+    {
+      "name": "Dražen Ladić",
+      "sourceName": "ladic",
+      "sofifaId": 5979,
+      "nation": "Croatia",
+      "era": 1998,
+      "why": "The keeper of third-placed Croatia in every match of 1998."
+    },
+    {
+      "name": "Carlos Roa",
+      "sourceName": "roa",
+      "sofifaId": 38147,
+      "nation": "Argentina",
+      "era": 1998,
+      "why": "Argentina’s keeper in 1998: the shoot-out against England."
+    },
+    {
+      "name": "Edmílson",
+      "sourceName": "edmilson",
+      "sofifaId": 40702,
+      "nation": "Brazil",
+      "era": 2002,
+      "why": "One of the three centre-backs of the 2002 champions (the overhead kick against Costa Rica)."
+    },
+    {
+      "name": "Torsten Frings",
+      "sourceName": "frings",
+      "sofifaId": 5430,
+      "nation": "Germany",
+      "era": 2002,
+      "why": "Started every match of the 2002 finalists."
+    },
+    {
+      "name": "Carsten Ramelow",
+      "sourceName": "ramelow",
+      "sofifaId": 3894,
+      "nation": "Germany",
+      "era": 2002,
+      "why": "Started the 2002 final and five more matches."
+    },
+    {
+      "name": "Damiano Tommasi",
+      "sourceName": "tommasi",
+      "sofifaId": 4781,
+      "nation": "Italy",
+      "era": 2002,
+      "why": "Started all four of Italy’s matches in 2002."
+    },
+    {
+      "name": "Henri Camara",
+      "sourceName": "camara",
+      "sofifaId": 32448,
+      "nation": "Senegal",
+      "era": 2002,
+      "why": "Both goals against Sweden for the quarter-finalists."
+    },
+    {
+      "name": "Brad Friedel",
+      "sourceName": "friedel",
+      "sofifaId": 11983,
+      "nation": "United States",
+      "era": 2002,
+      "why": "The quarter-finalists’ keeper: two penalties saved."
+    },
+    {
+      "name": "Fabio Grosso",
+      "sourceName": "grosso",
+      "sofifaId": 45733,
+      "nation": "Italy",
+      "era": 2006,
+      "why": "The semi-final goal, the final’s last penalty: the champions’ left-back."
+    },
+    {
+      "name": "Simone Perrotta",
+      "sourceName": "perrotta",
+      "sofifaId": 4731,
+      "nation": "Italy",
+      "era": 2006,
+      "why": "Started all seven matches of the 2006 champions."
+    },
+    {
+      "name": "Daniele De Rossi",
+      "sourceName": "rossi",
+      "sofifaId": 53302,
+      "nation": "Italy",
+      "era": 2006,
+      "why": "A starter until his red card, back for the final and its shoot-out."
+    },
+    {
+      "name": "Roberto Abbondanzieri",
+      "sourceName": "abbondanzieri",
+      "sofifaId": 139036,
+      "nation": "Argentina",
+      "era": 2006,
+      "why": "Argentina’s keeper in 2006."
+    },
+    {
+      "name": "Juan",
+      "sourceName": "silveira",
+      "sofifaId": 46042,
+      "nation": "Brazil",
+      "era": 2006,
+      "why": "Brazil’s centre-back in all five matches of 2006."
+    },
+    {
+      "name": "Gary Neville",
+      "sourceName": "neville",
+      "sofifaId": 244,
+      "nation": "England",
+      "era": 2006,
+      "why": "England’s right-back when fit (two matches), Manchester United’s captain."
+    },
+    {
+      "name": "Nuno Valente",
+      "sourceName": "valente",
+      "sofifaId": 20205,
+      "nation": "Portugal",
+      "era": 2006,
+      "why": "The semi-finalists’ left-back."
+    },
+    {
+      "name": "Joan Capdevila",
+      "sourceName": "capdevila",
+      "sofifaId": 25924,
+      "nation": "Spain",
+      "era": 2010,
+      "why": "The champions’ left-back in all seven matches."
+    },
+    {
+      "name": "Ángel Di María",
+      "sourceName": "maria",
+      "sofifaId": 183898,
+      "nation": "Argentina",
+      "era": 2010,
+      "why": "Started all five matches of 2010."
+    },
+    {
+      "name": "Gabriel Heinze",
+      "sourceName": "heinze",
+      "sofifaId": 8222,
+      "nation": "Argentina",
+      "era": 2010,
+      "why": "Argentina’s left-back, the winner against Nigeria."
+    },
+    {
+      "name": "Sergio Romero",
+      "sourceName": "romero",
+      "sofifaId": 173373,
+      "nation": "Argentina",
+      "era": 2010,
+      "why": "Argentina’s keeper in 2010."
+    },
+    {
+      "name": "Felipe Melo",
+      "sourceName": "melo",
+      "sofifaId": 135475,
+      "nation": "Brazil",
+      "era": 2010,
+      "why": "Brazil’s holding midfielder in 2010."
+    },
+    {
+      "name": "Elano",
+      "sourceName": "elano",
+      "sofifaId": 136137,
+      "nation": "Brazil",
+      "era": 2010,
+      "why": "Two goals in his three matches of 2010."
+    },
+    {
+      "name": "Gilberto Silva",
+      "sourceName": "gilberto",
+      "sofifaId": 47390,
+      "nation": "Brazil",
+      "era": 2010,
+      "why": "Started all five matches at 33."
+    },
+    {
+      "name": "Fábio Coentrão",
+      "sourceName": "coentrao",
+      "sofifaId": 171688,
+      "nation": "Portugal",
+      "era": 2010,
+      "why": "The left-back of the tournament for many."
+    },
+    {
+      "name": "Sergio Romero",
+      "sourceName": "romero",
+      "sofifaId": 173373,
+      "nation": "Argentina",
+      "era": 2014,
+      "why": "The finalists’ keeper: the semi-final shoot-out."
+    },
+    {
+      "name": "Marcos Rojo",
+      "sourceName": "rojo",
+      "sofifaId": 201862,
+      "nation": "Argentina",
+      "era": 2014,
+      "why": "In the 2014 all-star team at left-back."
+    },
+    {
+      "name": "Lucas Biglia",
+      "sourceName": "biglia",
+      "sofifaId": 158963,
+      "nation": "Argentina",
+      "era": 2014,
+      "why": "Started from the round of 16 to the final."
+    },
+    {
+      "name": "Fred",
+      "sourceName": "chaves",
+      "sofifaId": 160774,
+      "nation": "Brazil",
+      "era": 2014,
+      "why": "Brazil’s centre-forward in six matches of 2014."
+    },
+    {
+      "name": "Luiz Gustavo",
+      "sourceName": "gustavo",
+      "sofifaId": 185221,
+      "nation": "Brazil",
+      "era": 2014,
+      "why": "Brazil’s holding midfielder in 2014."
+    },
+    {
+      "name": "Paulinho",
+      "sourceName": "maciel",
+      "sofifaId": 187961,
+      "nation": "Brazil",
+      "era": 2014,
+      "why": "Started five matches of 2014."
+    },
+    {
+      "name": "Jasper Cillessen",
+      "sourceName": "cillessen",
+      "sofifaId": 199987,
+      "nation": "Netherlands",
+      "era": 2014,
+      "why": "The keeper of the third-placed side."
+    },
+    {
+      "name": "Georginio Wijnaldum",
+      "sourceName": "wijnaldum",
+      "sofifaId": 181291,
+      "nation": "Netherlands",
+      "era": 2014,
+      "why": "Started from the round of 16; scored in the third-place match."
+    },
+    {
+      "name": "Mathieu Debuchy",
+      "sourceName": "debuchy",
+      "sofifaId": 158626,
+      "nation": "France",
+      "era": 2014,
+      "why": "France’s right-back in 2014."
+    },
+    {
+      "name": "Charles Aránguiz",
+      "sourceName": "aranguiz",
+      "sofifaId": 199042,
+      "nation": "Chile",
+      "era": 2014,
+      "why": "Scored against Spain; Chile’s midfield in 2014."
+    },
+    {
+      "name": "Marcelo Díaz",
+      "sourceName": "diaz",
+      "sofifaId": 176930,
+      "nation": "Chile",
+      "era": 2014,
+      "why": "Chile’s playmaker from deep in every match."
+    },
+    {
+      "name": "Divock Origi",
+      "sourceName": "origi",
+      "sofifaId": 213135,
+      "nation": "Belgium",
+      "era": 2014,
+      "why": "Started the knock-out matches at 19."
+    },
+    {
+      "name": "Lucas Hernández",
+      "sourceName": "hernandez",
+      "sofifaId": 220814,
+      "nation": "France",
+      "era": 2018,
+      "why": "The champions’ left-back in every match."
+    },
+    {
+      "name": "Dani Carvajal",
+      "sourceName": "ramos",
+      "sofifaId": 204963,
+      "nation": "Spain",
+      "era": 2018,
+      "why": "Spain’s right-back; three Champions Leagues running."
+    },
+    {
+      "name": "Gabriel Jesus",
+      "sourceName": "jesus",
+      "sofifaId": 230666,
+      "nation": "Brazil",
+      "era": 2018,
+      "why": "Brazil’s centre-forward in all five matches."
+    },
+    {
+      "name": "Rodrigo Bentancur",
+      "sourceName": "bentancur",
+      "sofifaId": 227535,
+      "nation": "Uruguay",
+      "era": 2018,
+      "why": "Started all five matches of the quarter-finalists."
+    },
+    {
+      "name": "Aurélien Tchouaméni",
+      "sourceName": "tchouameni",
+      "sofifaId": 241637,
+      "nation": "France",
+      "era": 2022,
+      "why": "Started every match of the finalists."
+    },
+    {
+      "name": "Dayot Upamecano",
+      "sourceName": "upamecano",
+      "sofifaId": 229558,
+      "nation": "France",
+      "era": 2022,
+      "why": "The finalists’ centre-back."
+    },
+    {
+      "name": "Adrien Rabiot",
+      "sourceName": "rabiot",
+      "sofifaId": 210008,
+      "nation": "France",
+      "era": 2022,
+      "why": "Started six matches of the finalists."
+    },
+    {
+      "name": "Nahuel Molina",
+      "sourceName": "molina",
+      "sofifaId": 233084,
+      "nation": "Argentina",
+      "era": 2022,
+      "why": "The champions’ right-back; scored in the quarter-final."
+    },
+    {
+      "name": "Richarlison",
+      "sourceName": "richarlison",
+      "sofifaId": 231943,
+      "nation": "Brazil",
+      "era": 2022,
+      "why": "Brazil’s No. 9: three goals, the goal of the tournament."
+    },
+    {
+      "name": "Raphinha",
+      "sourceName": "dias",
+      "sofifaId": 233419,
+      "nation": "Brazil",
+      "era": 2022,
+      "why": "Started every match on the right."
+    },
+    {
+      "name": "Lucas Paquetá",
+      "sourceName": "tolentino",
+      "sofifaId": 233927,
+      "nation": "Brazil",
+      "era": 2022,
+      "why": "Started four matches in midfield."
+    },
+    {
+      "name": "Danilo",
+      "sourceName": "danilo",
+      "sofifaId": 199304,
+      "nation": "Brazil",
+      "era": 2022,
+      "why": "Brazil’s full-back in the knock-outs."
+    },
+    {
+      "name": "Josip Juranović",
+      "sourceName": "juranovic",
+      "sofifaId": 257771,
+      "nation": "Croatia",
+      "era": 2022,
+      "why": "The right-back of the third-placed side."
+    },
+    {
+      "name": "Azzedine Ounahi",
+      "sourceName": "ounahi",
+      "sofifaId": 255125,
+      "nation": "Morocco",
+      "era": 2022,
+      "why": "The revelation of the semi-finalists’ midfield."
+    },
+    {
+      "name": "Nathan Aké",
+      "sourceName": "ake",
+      "sofifaId": 208920,
+      "nation": "Netherlands",
+      "era": 2022,
+      "why": "Every minute of the quarter-finalists’ five matches."
+    },
+    {
+      "name": "Dani Olmo",
+      "sourceName": "olmo",
+      "sofifaId": 244260,
+      "nation": "Spain",
+      "era": 2022,
+      "why": "Started every match; Spain’s first goal."
+    },
+    {
+      "name": "Ferran Torres",
+      "sourceName": "torres",
+      "sofifaId": 241461,
+      "nation": "Spain",
+      "era": 2022,
+      "why": "Started three matches, two goals."
+    },
+    {
+      "name": "Cho Gue-sung",
+      "sourceName": "cho",
+      "sofifaId": 247686,
+      "nation": "Korea Republic",
+      "era": 2022,
+      "why": "Two headers against Ghana."
+    },
+    {
+      "name": "Ousmane Dembélé",
+      "sourceName": "dembele",
+      "sofifaId": 231443,
+      "nation": "France",
+      "era": 2022,
+      "why": "Started every match of the finalists on the right."
+    },
+    {
+      "name": "Thomas Linke",
+      "sourceName": "linke",
+      "sofifaId": 808,
+      "nation": "Germany",
+      "era": 2002,
+      "why": "Every minute of the 2002 finalists at centre-back."
+    }
+  ]
+}

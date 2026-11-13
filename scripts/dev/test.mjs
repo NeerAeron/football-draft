@@ -28,6 +28,7 @@ const SLOW = [
   'however it is played: complete, by halves, stepped',
   'event contract over a full match',
   'a budget draft never exceeds a band',
+  'never a dead end: every landing has a pick',
   'precomputed values match the live configuration',
   'stale configuration stamps recompute',
   // Recompiles the 91 MB legacy CSV (~20 s; only where data/raw has the pinned files).
