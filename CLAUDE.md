@@ -72,7 +72,7 @@ app/                     served statically (deploy = publish this folder); runti
                          fonts/ (woff2 + OFL), icons/ (app icons), og-image.png (link-preview card)
 data/                    repo root, NOT deployed: catalog-reference.json (compiler input),
                          source-map.json (the source's club/league/nation names → the reference),
-                         captains.json (reviewed Captain list with sources), legacy-titles.json
+                         captains.json + goats.json (reviewed lists: Captains and GOAT cards, player + era), legacy-titles.json
                          (FIFA 98–14, the top 1,000 of each title: legends input), logo and
                          nation-code sources, rules-/goal-location-reference.json (research outputs);
                          raw/ (downloaded CSV) and build/ (provenance catalog) are generated, gitignored
@@ -409,8 +409,14 @@ be drafted; a keeperless pool's strength takes the era's weakest first-choice ke
 `keeperLevel`); the 70 strongest when more qualify (27 / 54 / 62 / 70 / 70 / 70 / 70 / 70 nations;
 the build fails under 20). Everyone in a pool also has his best version of all titles in the
 file (601 outside any pool) — `bestVersion`, the Prime. The legends file and the era file are
-independent; both are stamped with the catalog build. **Captains** come from the reviewed
-list `data/captains.json` (first `size` players; the build fails on a wrong id, name or nation).
+independent; both are stamped with the catalog build. **GOAT cards and Captains** are two
+reviewed lists of player + era: `data/goats.json` (seven players at the World Cup cycles of
+their peak — a GOAT card is a player AND an era) and `data/captains.json` (the leaders of
+1997–2026, ranked, each with the eras in which he led; the first `size`, 40, count; never a
+player of the GOAT list). The compiler puts `goat` / `captain` on those cards of the era pools
+(`eraMarks`), `captain` on today's catalog player when 2026 is one of his eras, and fails on a
+wrong id, name, nation or era of any entry. How the flags are exposed and how often a draft
+meets one: `docs/draft-api.md` "GOAT cards and Captains".
 
 Builds are deterministic (byte-identical reruns). Format v3 is columnar
 (`app/core/players/catalog-codec.js`); it also carries precomputed badges, club ratings and club

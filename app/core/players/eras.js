@@ -163,6 +163,30 @@ export const eraNations = (catalog, eraId) =>
 /** The pool of a nation in an era: ≤ 26 players, best first (the same frozen array every call). */
 export const eraPool = (catalog, eraId, nation) =>
   catalog?.eras?.pools.get(poolKey(Number(eraId), nation)) ?? NONE;
+/**
+ * The marked cards of the era pools, by era then nation: { goats: [{ era, nation, player }],
+ * captains: [...] } — the reviewed lists data/goats.json and data/captains.json as the pools
+ * have them (`player.goat` / `player.captain`; a Captain of today can be the catalog player).
+ * A card is never both. Built on first use.
+ */
+export function eraMarks(catalog) {
+  const eras = catalog?.eras;
+  if (!eras) return NO_MARKS;
+  if (!eras.marks) {
+    const goats = [],
+      captains = [];
+    for (const era of eras.list)
+      for (const nation of [...era.nations].sort((a, b) => (a.name < b.name ? -1 : 1)))
+        for (const player of eraPool(catalog, era.id, nation.name)) {
+          const entry = { era: era.id, nation: nation.name, player };
+          if (player.goat) goats.push(Object.freeze(entry));
+          else if (player.captain) captains.push(Object.freeze(entry));
+        }
+    eras.marks = Object.freeze({ goats: Object.freeze(goats), captains: Object.freeze(captains) });
+  }
+  return eras.marks;
+}
+const NO_MARKS = Object.freeze({ goats: NONE, captains: NONE });
 /** An era card by profileId (null when unknown or no eras are attached). */
 export const eraPlayer = (catalog, id) => catalog?.eras?.byId.get(String(id)) ?? null;
 

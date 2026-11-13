@@ -1,5 +1,5 @@
 {
-  "description": "Reviewed GOAT list (compiler input, scripts/compile-legends.mjs): the handful of players the game’s followers put in the greatest-of-all-time conversation, each at the World Cup cycles of his peak — a GOAT card is a player AND an era (his card in his nation’s pool of that era, app/data/eras.v1.json `goat: true`). The build fails when an id, source name, nation or era does not match the data (the player must be in that pool). `sofifaId` is EA’s player id (the person: profileId ea:<id>:…). Never a player of data/captains.json.",
+  "description": "Reviewed GOAT list (compiler input, scripts/compile-legends.mjs): the handful of players the game’s followers put in the greatest-of-all-time conversation, each at the World Cup cycles of his peak — a GOAT card is a player AND an era (his card in his nation’s pool of that era, app/data/eras.v1.json `goat: true`); his cards of other eras are ordinary cards. The build fails when an id, source name, nation or era does not match the data (the player must be in that pool). `sofifaId` is EA’s player id (the person: profileId ea:<id>:…). Never a player of data/captains.json. `closeCalls` are the decisions that could have gone the other way: not read by the build.",
   "asOf": "2026-11-13",
   "players": [
     {
@@ -81,6 +81,63 @@
         2014
       ],
       "reason": "The 2010 World Cup final’s goal, player of Euro 2012, runner-up for the Ballon d’Or 2010: with Xavi, the midfield everybody else was measured against. A close call, as Xavi."
+    }
+  ],
+  "closeCalls": [
+    {
+      "name": "Xavi and Andrés Iniesta",
+      "decision": "in",
+      "note": "The two entries a fan could strike: never the best player in the world, but the midfield of the best national side and the best club side of the period. Without them the list is five."
+    },
+    {
+      "name": "Lionel Messi, 2026",
+      "decision": "out",
+      "note": "Ballon d’Or 2023 and the 2024 Copa América, but the card of 2023–26 is a 36-to-39-year-old in MLS: a great player’s late years, not the GOAT’s."
+    },
+    {
+      "name": "Lionel Messi, 2006",
+      "decision": "out",
+      "note": "The teenager of 2005–06: the peak starts with 2008–09."
+    },
+    {
+      "name": "Cristiano Ronaldo, 2022",
+      "decision": "out",
+      "note": "Juventus and the return to Manchester (2019–22): still a great scorer, no longer one of the two best players in the world."
+    },
+    {
+      "name": "Ronaldo, 2006",
+      "decision": "out",
+      "note": "La Liga’s top scorer in 2004 and the World Cup record in 2006, but past the two peaks (1996–98, 2002)."
+    },
+    {
+      "name": "Ronaldinho, 2002 and 2010",
+      "decision": "out",
+      "note": "A world champion at 22 and a late flourish at Milan; the GOAT is the Barcelona player of 2004–06."
+    },
+    {
+      "name": "Andrés Iniesta, 2018",
+      "decision": "out",
+      "note": "Man of the match in the 2015 Champions League final; the peak years are 2008–12."
+    },
+    {
+      "name": "Thierry Henry (2002, 2006)",
+      "decision": "out",
+      "note": "The best player in England for five years, twice second or third for the Ballon d’Or — the nearest miss among forwards."
+    },
+    {
+      "name": "Kaká (2010: Ballon d’Or 2007), Rivaldo (2002: Ballon d’Or 1999), Luís Figo (2002: Ballon d’Or 2000)",
+      "decision": "out",
+      "note": "Best in the world for a season or two; none is in the all-time conversation."
+    },
+    {
+      "name": "Neymar (2018), Kylian Mbappé (2022, 2026), Luka Modrić (2018)",
+      "decision": "out",
+      "note": "Neymar and Mbappé stood behind Messi and Cristiano Ronaldo in their best years and Mbappé’s story is not finished; Modrić is in the Captain list."
+    },
+    {
+      "name": "Paolo Maldini, Gianluigi Buffon",
+      "decision": "out",
+      "note": "Each a GOAT of his position for many; both are Captains instead (a player is in one list only)."
     }
   ]
 }

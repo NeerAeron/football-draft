@@ -244,7 +244,10 @@ test('prime versions: a catalog player at his best past version, any gain, ident
   const messi = catalog.players.find(p => p.name === 'L. Messi'),
     prime = primeVersion(catalog, messi);
   assert.deepEqual([messi.sourceOverall, prime.sourceOverall, prime.edition], [89, 95, 16]);
-  assert.equal(prime.captain, true); // the armband goes with him
+  assert.equal(prime.captain, false); // a GOAT-list player is no Captain
+  const modric = catalog.players.find(p => p.name === 'L. Modrić');
+  assert.equal(modric.captain, true);
+  assert.equal(primeVersion(catalog, modric).captain, true); // the armband goes with him
   assert.equal(editionLabel(prime), '’15'); // FIFA 16's release ratings: 2015
   assert.equal(editionYear(prime), 2015);
   // The year is the stored one; an edition alone reads as its release year.

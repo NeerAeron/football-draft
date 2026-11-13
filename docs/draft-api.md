@@ -282,7 +282,8 @@ sentence, the share text).
   era: 2002, year: 2002, edition: 3,
   name, fullName, primaryPosition, secondaryPositions, attrs, foot, weakFoot, tendencies, tags,
   sourceOverall,                  // the overall of that version on the common scale
-  captain: false,
+  goat: true, captain: false,     // the marks (see "GOAT cards and Captains"): always booleans
+                                  // on an era card, never both true
   person: 'ea:1397',              // one person, whatever the card (see below)
   eraOf: 'ea:…:fc27:u…' | undefined, // the catalog player's profileId when he is in the catalog
   source: { club, clubId, leagueId, nationality }, // the club of that version when the catalog
@@ -314,6 +315,65 @@ every drafted player — "Brazil 2002 Ronaldinho" → Ronaldinho ’05; a catalo
 past card. The card may come from an era in which he is not in his nation's 26 (it is kept in
 the file for this). Swap it in place of the drafted player: same person, its own positions,
 attributes, badges, club and year (`editionLabel(card)` → "’05").
+
+### GOAT cards and Captains (the marks)
+
+Two reviewed lists are build inputs, and the compiler writes them onto the pools' cards
+(`scripts/compile-legends.mjs`; an entry whose EA id, name, nation or era does not meet the
+data fails the build — every entry, also the Captains behind the cut):
+
+- **`data/goats.json` — GOAT cards: a player AND an era.** Seven players, 17 cards: Messi
+  2010 / 2014 / 2018 / 2022, Cristiano Ronaldo 2010 / 2014 / 2018, Ronaldo 1998 / 2002, Zidane
+  1998 / 2002 / 2006, Ronaldinho 2006, Xavi 2010 / 2014, Iniesta 2010 / 2014 (each with its
+  reason; `closeCalls` names what could have gone the other way). Only the card of a listed
+  era is a GOAT: Messi's 2006 and 2026 cards, Ronaldinho's 2002 card are ordinary cards.
+- **`data/captains.json` — Captains: the leaders of 1997–2026, ranked, each with the eras in
+  which he led** (87 entries; the first `size` = **40** count: 40 players, 89 cards). His cards of those eras are Captains; his other cards are not (Maldini 1998 /
+  2002 / 2006, not 2010). **No player is in both lists** (Maldini, Buffon and Modrić are
+  Captains). The old list of today's national-team captains is gone: of today's players only
+  the list's own are Captains.
+
+**How the flags reach you:**
+
+| what you hold | `goat` | `captain` |
+| --- | --- | --- |
+| an era card (`player.era` set; from `eraPool`, `eraPlayer`, `personVersions`, `bestVersion`) | `true` / `false` | `true` / `false` |
+| a catalog player (in a 2026 pool as he is, or anywhere else) | `undefined` — **never a GOAT** | `true` / `false` (catalog field, as before): van Dijk, Kane, Kimmich, Modrić, Marquinhos, Son |
+| a legend / a prime version (`legends.js`) | `undefined` | legend `false`; a prime version carries the catalog player's |
+
+So test `player.goat === true` and `player.captain === true` on whatever a pool or a slot
+holds; nothing else is needed. A card is never both. The flag belongs to **the card, not the
+person**: in the 2026 era a Captain is flagged on the object the pool holds (the catalog
+player, or his FC 24–26 era card when that shows more — the catalog player is then a Captain
+too). The cards kept outside the pools for the Prime (`bestVersion`) are flagged only when
+they are also a pool's card of a listed era — so **a Prime swap takes the marks of the card
+swapped in**: Xavi 2006 (ordinary) primed is Xavi ’11, a GOAT card; Kimmich today (Captain)
+primed to an earlier card of an era in which he is not listed would lose the armband — if a
+primed Captain should keep it, carry it over in the session (`drafted.captain || prime.captain`).
+
+`eraMarks(catalog)` → `{ goats: [{ era, nation, player }], captains: [...] }` — every marked
+card of the pools, by era then nation (frozen, built on first use): for a gallery, a count or
+a test. Per era as built: GOAT cards 2 / 2 / 2 / 4 / 4 / 2 / 1 / 0; Captain cards 8 / 14 / 15 /
+13 / 13 / 10 / 10 / 6 (in 8 / 9 / 8 / 8 / 11 / 9 / 9 / 6 pools).
+
+**How often a draft meets one** (11 spins, era and then nation drawn evenly from the reels —
+a model of the two-spinner draft, `size` is the lever):
+
+| `size` | Captain cards | a spin's pool has a Captain | pools with a Captain per draft | at least one in a draft |
+| --- | --- | --- | --- | --- |
+| 20 | 45 | 8% | 0.85 | 59% |
+| 30 | 70 | 11% | 1.19 | 72% |
+| **40** | **89** | **13%** | **1.47** | **79%** |
+| 50 | 107 | 15% | 1.68 | 84% |
+| 60 | 126 | 18% | 1.99 | 89% |
+| 87 (all) | 161 | 24% | 2.63 | 95% |
+
+A Captain is within 4 points of his pool's best player in most of those pools (1.28 per draft
+at 40), so a player who wants one gets one in roughly every second or third draft and is
+offered one about every 0.7 drafts — the owner's "a captain every 0.3–1 game". A GOAT card
+is in 3% of pools: 0.33 per draft, at least one in 28% of drafts. Re-rolls and a reel
+weighted by strength raise all of these (the Captains' nations are the strong ones). The boosts
+and the look are the draft's (`links.js`, the UI); the data only says who.
 
 **Which nations can be spun in an era** (decided by the compiler, `ERA_SPIN` in
 `scripts/compile-legends.mjs`, recorded in the file's `selection`): a nation whose pool has at
@@ -497,11 +557,13 @@ each, +2.5 for club mates inside them, +1 with their captain), real club XIs clu
 entry's `boost` says what a player would get in the XI as it stands, `captainBoost` what he
 would give it.
 
-**Captains** are a reviewed list of real national-team captains, current players only
-(`data/captains.json`: name, sofifa id, nation, source URL, reason, ranked leaders first). The
-compiler tags its first `size` (10) players — van Dijk, Kimmich, Modrić, Kane, Messi, Son,
-Marquinhos, Xhaka, Koulibaly, Robertson — and fails when an id, name or nation does not match
-the catalog. The size is cut so that about one drafted World Cup XI in three has a captain:
+**Captains** are the reviewed list of the leaders of 1997–2026 (`data/captains.json`, see
+"GOAT cards and Captains" under Eras: player + eras, ranked, cut at `size` 40). Among today's
+catalog players the Captains are the list's players who lead in the 2026 era — van Dijk, Kane,
+Kimmich, Modrić, Marquinhos, Son (Messi, a GOAT-list player, is none) — and the build fails
+when an id, name or nation does not match the catalog. The numbers that follow were measured
+with the list before it (today's national-team captains, 10 of them) and the Nations draft:
+the size was cut so that about one drafted World Cup XI in three has a captain:
 measured with `draft-baselines.mjs --legend --primes default --captains N` (400 drafts, pick the
 best player; 1 / 2 re-rolls): 8 → 29% / 33%, **10 → 32% / 35%**, 12 → 35% / 38%, 15 → 44% / 49%,
 20 → 65% / 69%. The tag goes with a player into his prime version; legends are never captains.

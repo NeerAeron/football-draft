@@ -128,6 +128,7 @@ export function* decodeErasSteps(file) {
     throw Error('Unsupported eras format');
   const { prefix, suffix } = file.catalog.profileId,
     c = file.cards,
+    mark = c.mark ?? [], // a file from before the marks: nobody is marked
     cards = yield* decodeTableSteps(file, c, 'era', i => ({
       name: c.name[i],
       fullName: c.fullName[i],
@@ -136,7 +137,7 @@ export function* decodeErasSteps(file) {
         nationality: file.nations[c.nation[i]],
       },
       ...(c.current[i] ? { eraOf: prefix + c.sourceId[i] + suffix } : {}),
-      ...(c.mark[i] === 1 ? { goat: true } : c.mark[i] === 2 ? { captain: true } : {}),
+      ...(mark[i] === 1 ? { goat: true } : mark[i] === 2 ? { captain: true } : {}),
     }));
   return {
     compilerVersion: file.compilerVersion,

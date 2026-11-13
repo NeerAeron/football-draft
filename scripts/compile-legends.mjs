@@ -987,38 +987,43 @@ export function compileLegends(
       bestOnly++;
     }
   // GOATs and Captains: reviewed lists of player + era. The card must be there — that man, by
-  // EA's id, name and nation, in his nation's pool of that era — or the build fails.
+  // EA's id, name and nation, in his nation's pool of that era — or the build fails. Every
+  // entry is checked, also the Captains behind the list's `size` cut (so the cut can be moved
+  // without a surprise); only the first `size` are marked.
   const marked = { goat: [], captain: [] };
   const mark = (list, flag, size = Infinity) => {
     const out = new Set();
     for (const [i, entry] of (list?.players ?? []).entries()) {
-      if (i >= size) break;
-      const names = new Set();
+      const names = new Set(),
+        on = i < size,
+        id = Number(entry.sofifaId);
+      if (out.has(id)) throw Error(`${flag} ${entry.name} (${id}) is listed twice`);
+      if (!entry.eras?.length || new Set(entry.eras).size !== entry.eras.length)
+        throw Error(`${flag} ${entry.name}: eras ${JSON.stringify(entry.eras)}`);
       for (const era of entry.eras) {
         const pool = eraPools.find(x => x.era === era && x.nation === entry.nation),
-          at = pool ? pool.people.findIndex(c => idOf(c) === Number(entry.sofifaId)) : -1;
+          at = pool ? pool.people.findIndex(c => idOf(c) === id) : -1;
         if (at < 0)
-          throw Error(
-            `${flag} ${entry.name} (${entry.sofifaId}): no card in ${entry.nation}'s pool of ${era}`,
-          );
+          throw Error(`${flag} ${entry.name} (${id}): no card in ${entry.nation}'s pool of ${era}`);
         const c = pool.people[at],
           own = eraCards.get(pool.members[at]);
         if (own) {
-          own[flag] = true;
+          if (on) own[flag] = true;
           names.add(own.name);
         } else {
-          // Today's catalog player as he is: a Captain there by the catalog's own flag.
-          if (flag !== 'captain' || !c.now.captain)
+          // Today's catalog player as he is: a Captain there by the catalog's own flag (the
+          // catalog compiler reads the same list); the catalog has no GOAT flag.
+          if (flag !== 'captain' || !!c.now.captain !== on)
             throw Error(`${flag} ${entry.name}: his ${era} card is the catalog player`);
           names.add(c.now.name);
         }
-        marked[flag].push(`${era} ${entry.nation}: ${entry.name}`);
+        if (on) marked[flag].push(`${era} ${entry.nation}: ${entry.name}`);
       }
       if (!names.has(entry.sourceName))
         throw Error(
-          `${flag} ${entry.name}: the data calls ${entry.sofifaId} "${[...names].join('" / "')}", not "${entry.sourceName}"`,
+          `${flag} ${entry.name}: the data calls ${id} "${[...names].join('" / "')}", not "${entry.sourceName}"`,
         );
-      out.add(Number(entry.sofifaId));
+      out.add(id);
     }
     return out;
   };

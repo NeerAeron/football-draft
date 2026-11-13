@@ -183,8 +183,8 @@ club we have reviewed metadata for (15,788 players, 553 clubs in 41 leagues, 163
 including 831 players rated 65+ whose clubs the game does not carry (nation pools only), plus
 precomputed badges, club ratings and club best XIs.
 League selection and the reviewed club metadata (Opta scores, colours, logos) live in
-`data/catalog-reference.json`; the Captains are a reviewed list of real national-team captains
-with sources (`data/captains.json`). `app/data/legends.v1.json` (fetched only when a World Cup
+`data/catalog-reference.json`; the Captains are a reviewed list of the leaders of 1997–2026, each with his eras
+(`data/captains.json`), the GOAT cards a list of player + era (`data/goats.json`). `app/data/legends.v1.json` (fetched only when a World Cup
 draft starts) holds 431 legends — best past versions of 1997–2025 the game shows at 85+: 307
 players who are not in the catalog and 124 catalog players who were at least two points better
 then — and the prime versions of 4,815 catalog players (any gain on today's card), compiled by
