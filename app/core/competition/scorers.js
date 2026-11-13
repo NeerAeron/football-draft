@@ -10,7 +10,9 @@
 //     points of finishing double a player's share (it was twelve: over the eight matches of a
 //     finalist the best finisher of a World Cup then scored 9 on average and up to 15; now 7–8
 //     and at most 11), and a striker gets about fifteen times a centre-back's. OWN_GOAL (3%) of
-//     the goals belong to nobody.
+//     the goals belong to nobody. A player who has scored in the match has half his share for
+//     the next goal (AGAIN): braces happen, four goals in a 5–1 hardly — without it a striker
+//     of a side that scored 28 in eight matches took 15 of them.
 //   * ASSISTED (85%) of the goals have an assist, drawn among the other ten in proportion to
 //     ROLE.assist × 2^((create − 70) / 18), create = 0.4 vision + 0.3 short passes + 0.3 crosses.
 //   * The match rating follows the engine's performanceRating (sim/replay.js) with what a result
@@ -36,6 +38,7 @@ const ROLE = {
   ST: { goal: 1, assist: 0.5, base: 6.2 },
 };
 const OWN_GOAL = 0.03,
+  AGAIN = 0.5,
   ASSISTED = 0.85,
   FORM = 0.35;
 const attr = (p, key) => Number(p.attrs?.[key]) || 60;
@@ -77,6 +80,8 @@ export function matchPerformances(xi, { goalsFor, goalsAgainst, random }) {
     const scorer = draw(goalWeights, random);
     if (scorer < 0) continue;
     goals[scorer]++;
+    // A second goal in the same match is half as likely as the first, a third a quarter.
+    goalWeights[scorer] *= AGAIN;
     if (random() < ASSISTED) {
       const maker = draw(assistWeights, random, scorer);
       if (maker >= 0) assists[maker]++;

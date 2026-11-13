@@ -33,7 +33,11 @@
 // attack above its own — a side scores `units` (3.6%) less. Engine, a grid of 960 matches
 // between club XIs with their lines swapped (docs/calibration.md, Phase 10): 2.45% a point from
 // what better defenders and keepers do in play, 3.6% with the kick-off level's unit term.
-// Without `units` (every caller today: opponents carry one rating) nothing changes.
+// Without `units` nothing changes. The sides of a run carry them (buildSide, opponentCandidates:
+// `side.units`), and every result of the fast model between two such sides takes them
+// (`unitsOf(a, b)`): the user's simmed matches, the other matches of his group, Legendary's
+// World Cup around him and the ties that complete a tournament for its awards. projectRun and
+// the odds bars work on ratings alone.
 import { unitLean } from '../players/unit-levels.js';
 
 const EXTRA_RATE = 0.88;
@@ -50,6 +54,14 @@ export const MATCH_MODEL = {
   extraTime: EXTRA_TIME_SHARE,
 };
 
+/**
+ * The two sides' units for the fast model ([a.units, b.units]) — null unless both have them (a
+ * run saved before sides carried units plays on by its ratings alone).
+ */
+const complete = u =>
+  !!u && [u.overall, u.attack, u.defence].every(x => Number.isFinite(x) && x > 0);
+export const unitsOf = (a, b) =>
+  complete(a?.units) && complete(b?.units) ? [a.units, b.units] : null;
 /** Expected goals [a, b] for two effective ratings. */
 export function expectedGoals(ratingA, ratingB, model = MATCH_MODEL, units = null) {
   const d = ratingA - ratingB,

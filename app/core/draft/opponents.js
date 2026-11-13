@@ -18,7 +18,7 @@ import {
 } from './pools.js';
 import { clubSquads, clubLineupStamp } from '../players/club-lineups.js';
 import { teamLinks } from './links.js';
-import { buildSide, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session.js';
+import { buildSide, sideUnits, seedValue, DIFFICULTIES, DIFFICULTY_LABELS } from './session.js';
 
 /**
  * Typical drafted XI per mode: solo, positional policy (best slot rating), smart re-roll below
@@ -131,7 +131,8 @@ function xiFor(index, kind, id, exclude) {
 }
 /**
  * Every opponent with a complete XI, with its nominal (unweakened) rating:
- * [{ key, kind, id, name, code, color, secondary, formation, rating, chem, effective }].
+ * [{ key, kind, id, name, code, color, secondary, formation, rating, chem, effective,
+ *    units: { overall, attack, defence } }].
  * Cached per catalog, ratings and link rules.
  */
 export function opponentCandidates(catalog, options) {
@@ -162,6 +163,8 @@ export function* opponentCandidatesSteps(catalog, { rules = CONFIG.draft } = {})
       rating: round2(xi.rating),
       chem: round2(chem),
       effective: round2(xi.rating + chem),
+      // Attack and defence of the XI (the fast model's unit lean; players/unit-levels.js).
+      units: sideUnits(xi.players, xi.formation),
     });
   };
   const none = new Set();

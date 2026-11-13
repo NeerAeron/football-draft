@@ -30,7 +30,7 @@
 //     (4) matches; level: goals, assists, then the stable order.
 // The tournament is always a whole one — eight matches for the finalists — whatever the user
 // played of it: a run that ended in the group or the Round of 32 has the same kind of winners
-// (a Golden Boot of five to eleven goals, mostly seven or eight, in a side that played six
+// (a Golden Boot of four to thirteen goals, mostly six to eight, in a side that played six
 // matches or more).
 //   * Golden Glove — the keeper with the most clean sheets among the teams that reached the
 //     quarter-finals; level: fewer goals against per match, more matches, the stable order.
@@ -40,7 +40,7 @@ import { FORMATIONS } from '../players/formations.js';
 import { baseProfileId } from '../players/legends.js';
 import { mixSeed } from '../draft/session.js';
 import { opponentCandidates, buildOpponent } from '../draft/opponents.js';
-import { simulateResult } from './model.js';
+import { simulateResult, unitsOf } from './model.js';
 import { matchPerformances } from './scorers.js';
 
 export const BALL_MATCHES = 4;
@@ -62,9 +62,9 @@ const count = v => (Number.isInteger(v) && v >= 0 ? v : 0);
 
 // A tie that had to end one way (`wins`: 0 | 1), or any way (null): the fast model, drawn
 // again until it does.
-function tie(ratingA, ratingB, random, wins = null) {
+function tie(ratingA, ratingB, random, wins = null, units = null) {
   for (let attempt = 0; attempt < 24; attempt++) {
-    const r = simulateResult(ratingA, ratingB, random, { knockout: true }),
+    const r = simulateResult(ratingA, ratingB, random, { knockout: true, units }),
       winner = r.goals[0] > r.goals[1] || r.shootout?.winner === 0 ? 0 : 1;
     if (wins === null || winner === wins) return { goals: r.goals, winner };
   }
@@ -94,11 +94,14 @@ export function* tournamentSteps(run, { catalog, player }) {
         formation: t.formation,
         players: t.players,
         effective: Number(t.effective) || 0,
+        units: t.units ?? null,
         xi: undefined,
       });
   team(USER, { ...run.user, kind: 'draft' });
   for (const o of run.opponents) team(o.key, o);
   const rating = key => teams.get(key)?.effective ?? 0,
+    // The two sides' units (attack against defence), when the run's sides carry them.
+    lean = (a, b) => unitsOf(teams.get(a), teams.get(b)),
     random = lcg(mixSeed(run.rngSeed ^ 0x3c6ef372)),
     matches = [];
 
@@ -159,7 +162,7 @@ export function* tournamentSteps(run, { catalog, player }) {
     matches.push({
       stage: 'sf',
       sides: [finalist.key, other.key],
-      ...tie(finalist.effective, other.effective, random, 0),
+      ...tie(finalist.effective, other.effective, random, 0, lean(finalist.key, other.key)),
     });
   }
 
@@ -174,7 +177,7 @@ export function* tournamentSteps(run, { catalog, player }) {
     let winner;
     if (played) winner = wonMatch(played) ? 0 : 1;
     else {
-      const r = tie(rating(seat), rating(opponent), random);
+      const r = tie(rating(seat), rating(opponent), random, null, lean(seat, opponent));
       matches.push({ stage: KNOCKOUTS[i], sides: [seat, opponent], ...r });
       winner = r.winner;
     }
@@ -185,7 +188,7 @@ export function* tournamentSteps(run, { catalog, player }) {
     decider = (stage, a, b) => {
       if (last?.id === stage) return wonMatch(last) ? USER : last.opponent;
       if (!a || !b) return null;
-      const r = tie(rating(a), rating(b), random);
+      const r = tie(rating(a), rating(b), random, null, lean(a, b));
       matches.push({ stage, sides: [a, b], ...r });
       return r.winner === 0 ? a : b;
     };

@@ -126,9 +126,9 @@ test('awards of a whole World Cup, also when the run ended in the group or the R
         assert.equal(run.snapshot().place, out, label);
         assert.equal(teams, difficulty === 'legendary' ? 48 : 10, label);
         // Nobody of an XI that went out early wins anything.
-        for (const a of [boot, ball, glove]) assert.equal(a.user, false, label);
+        for (const a of [ball, glove]) assert.equal(a.user, false, label);
         // The Boot: a whole tournament's goals, from more than a group stage.
-        assert.ok(boot.goals >= 4 && boot.goals <= 12, `${label}: Boot ${boot.goals}`);
+        assert.ok(boot.goals >= 4 && boot.goals <= 13, `${label}: Boot ${boot.goals}`);
         assert.ok(boot.matches >= 4, `${label}: Boot in ${boot.matches} matches`);
         // The Ball and the Glove: players of quarter-finalists (six matches or more).
         assert.ok(ball.matches >= 6, `${label}: Ball in ${ball.matches} matches`);

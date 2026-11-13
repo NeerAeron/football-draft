@@ -802,6 +802,57 @@ test('difficulty ladder: title odds fall level by level and finals are top sides
     }
 });
 
+test('the fast model takes the sides’ units: a strong defence concedes less than its overall says', async () => {
+  const { expectedGoals, unitsOf } = await import('../app/core/competition/model.js');
+  const flat = { overall: 80, attack: 80.8, defence: 80 }, // a typical side: no lean
+    wall = { overall: 80, attack: 80.8, defence: 84 },
+    open = { overall: 80, attack: 80.8, defence: 76 };
+  const plain = expectedGoals(80, 80);
+  // Two typical sides: as the ratings say. Without units on both sides: ratings alone.
+  const even = expectedGoals(80, 80, undefined, unitsOf({ units: flat }, { units: flat }));
+  assert.ok(Math.abs(even[0] - plain[0]) < 1e-9 && Math.abs(even[1] - plain[1]) < 1e-9);
+  assert.equal(unitsOf({ units: flat }, {}), null);
+  assert.equal(unitsOf({ units: flat }, { units: { overall: 80 } }), null);
+  // Against the wall a side scores less, against the open defence more; its own goals stay.
+  const [forWall, againstWall] = expectedGoals(80, 80, undefined, [wall, flat]),
+    [, againstOpen] = expectedGoals(80, 80, undefined, [open, flat]);
+  assert.ok(againstWall < plain[1] * 0.9 && againstOpen > plain[1] * 1.1);
+  assert.ok(Math.abs(forWall - plain[0]) < 1e-9);
+  // Every side of a run carries its units: candidates, the user's side, the opponents.
+  const nations = opponentCandidates(catalog).filter(c => c.kind === 'nation');
+  for (const c of nations)
+    assert.ok(c.units.overall > 60 && c.units.attack > 55 && c.units.defence > 55, c.name);
+  const run = createCupRun(catalog, { mode: 'nations', difficulty: 'legendary', seed: 9, user });
+  assert.ok(run.opponents.every(o => unitsOf(o, o)));
+  const match = run.nextMatch();
+  assert.ok(unitsOf(match.home, match.away));
+  assert.deepEqual(match.away.units, run.opponents[0].units);
+  // Average goals stay where they were (about three a match between nations).
+  let before = 0,
+    after = 0,
+    n = 0;
+  for (const a of nations)
+    for (const b of nations) {
+      if (a === b) continue;
+      const p = expectedGoals(a.effective, b.effective),
+        q = expectedGoals(a.effective, b.effective, undefined, unitsOf(a, b));
+      before += p[0] + p[1];
+      after += q[0] + q[1];
+      n++;
+    }
+  assert.ok(Math.abs(after - before) / n < 0.1, `${before / n} → ${after / n} goals a match`);
+  // A run saved before sides carried units plays on by its ratings (and restores).
+  const data = JSON.parse(JSON.stringify(run.serialize()));
+  for (const o of data.opponents) delete o.units;
+  const old = restoreCupRun(catalog, data);
+  assert.ok(old.simulateNext());
+  // Same seed, same run — units included.
+  const twin = createCupRun(catalog, { mode: 'nations', difficulty: 'legendary', seed: 9, user });
+  while (!run.complete) run.simulateNext();
+  while (!twin.complete) twin.simulateNext();
+  assert.deepEqual(twin.serialize(), run.serialize());
+});
+
 test('third place goes through on four points or more, never on fewer', async () => {
   const { thirdQualifies } = await import('../app/core/competition/cup.js');
   assert.ok(thirdQualifies({ points: 4, gd: -5 }));
