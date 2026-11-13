@@ -429,3 +429,21 @@ button.pitch-slot.is-fit-blocked:hover .pitch-slot__ring {
     0 0 0 1.5px rgb(3 12 8 / 0.75),
     0 0 6px rgb(245 200 76 / 0.7);
 }
+
+/* A GOAT on the pitch: a holographic ring and the small mark where the armband would be. */
+.pitch-slot__token--goat .pitch-slot__face {
+  box-shadow:
+    0 0 0 2px #f5c84c,
+    0 0 0 4px rgb(155 231 255 / 0.45),
+    0 0 14px rgb(245 200 76 / 0.6);
+}
+.pitch-slot__goat {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  z-index: 1;
+  translate: -50% 0;
+  height: 13px;
+  padding: 0 4px;
+  font-size: 8px;
+}

@@ -461,6 +461,7 @@ export function mateLines(preview) {
  *                  those mates get it thanks to him ("+1.5 each");
  *   lifts          [{ name, to }] other players whose boost rises, not said by `mates`;
  *   captain        { boost } when the pick gives the XI its first Captain (+1 to everyone);
+ *   goat           { boost } when the pick is a GOAT: what he adds for every player;
  *   budget         Budget mode: { label, slots, left } of the tier he uses up (left = after
  *                  the pick), { free: true, label } for a free player; null without a budget;
  *   links          the mates score after the pick (sum of the mates boosts).
@@ -525,6 +526,7 @@ export function pickPreview(session, side, profileId, slot) {
       links.captain === slot && before.captain === null && links.captainBoost > 0
         ? { boost: links.captainBoost }
         : null,
+    goat: links.goatBoost > before.goatBoost ? { boost: links.goatBoost - before.goatBoost } : null,
     budget,
   };
 }

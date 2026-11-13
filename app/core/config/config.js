@@ -121,6 +121,10 @@ export const DEFAULT_CONFIG = {
       nation: 1.5,
       club: 1,
       captain: 1,
+      // A GOAT (an era card flagged `goat`: one of the few greatest, in his year) gives every
+      // player of the XI this much — about +5 points of title odds on World Class; each
+      // further GOAT adds half of what the one before added.
+      goat: 1.5,
     },
     // The draft's player tiers (draft/budget.js), by the rating shown on the player, highest
     // first: `minimum` is where the tier starts (these are the tiers the game shows: frames,
@@ -957,6 +961,7 @@ const DRAFT_FIELDS = {
   'draft.links.nation': ['Nation mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.club': ['Club mate boost (attribute points)', 0, 4, 0.5],
   'draft.links.captain': ['Captain boost to every player (attribute points)', 0, 2, 0.25],
+  'draft.links.goat': ['GOAT boost to every player (attribute points)', 0, 3, 0.25],
   'draft.budget.': [null, 0, 99, 1],
 };
 const LEVEL_LABELS = {
@@ -1085,7 +1090,7 @@ const CROSS_FIELD_RULES = [
   {
     message: 'Mates boosts cannot total more than 5 (the engine cap).',
     reset: ['draft.links'],
-    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain <= 5,
+    ok: ({ draft: { links: l } }) => l.nation + l.club + l.captain + l.goat <= 5,
   },
   {
     message: 'Draft tiers must descend and their Budget slots stay within an XI.',

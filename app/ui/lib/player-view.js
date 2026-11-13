@@ -18,6 +18,7 @@
 //   attrs?: { pace: 89, acceleration: 91, … },  // engine attributes (core/players/ratings ATTRS)
 //   source?: { nationality, clubId, … },  // what makes mates (core/draft/links.js)
 //   captain?: true,              // Captain tag (an armband mark; +1 for his whole XI)
+//   goat?: true,                 // a GOAT card (the GOAT mark and a holographic edge)
 //   prime?: true,                // the Prime was spent on him (set by the draft board)
 //   era?: '’18',                 // an era card: the year of that version's ratings
 //   primeNote?: 'Prime 94 · ’19' // draft only: a Prime boost would make him this
@@ -117,6 +118,7 @@ export function playerView(p, { team, league, nation } = {}) {
     attrs: p.attrs, // every attribute (the draft's "All attributes" panel)
     source: p.source, // nation / club: who his mates are (draft/links.js)
     captain: !!p.captain, // Captain tag: +1 for his whole XI (draft/links.js)
+    goat: !!p.goat, // one of the greatest, in his year: +1.5 for his whole XI
     sourceOverall: p.sourceOverall ?? p.overall, // decides who wears the armband
     prime: !!p.prime,
     era: editionLabel(p), // '’18' for an era card (the year of its ratings), else ''

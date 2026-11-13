@@ -31,7 +31,7 @@ import { resolveTier, isTopTier } from '../lib/tiers.js';
 import { keyStatsFirst } from '../lib/player-view.js';
 import { Flag } from './flag.js';
 import { FitTag, fitText } from './fit-tag.js';
-import { CaptainMark } from './captain-mark.js';
+import { CaptainMark, GoatMark } from './captain-mark.js';
 
 export function PlayerRow({
   player,
@@ -57,6 +57,7 @@ export function PlayerRow({
   const classes = cx(
     'prow',
     !hideRatings && isTopTier(t) && `prow--tier-${t.id}`,
+    p.goat && 'prow--goat is-goat-edge',
     selected && 'is-selected',
     disabled && 'is-disabled',
     onClick && 'prow--interactive',
@@ -74,7 +75,7 @@ export function PlayerRow({
     <span class="prow__name"
       >${p.name}${p.era && html` <span class="prow__era num">${p.era}</span>`}${
         p.captain && html` <${CaptainMark} class="prow__captain" />`
-      }</span
+      }${p.goat && html` <${GoatMark} class="prow__goat" />`}</span
     >
     <span class="prow__pos">${p.position}</span>
     <span class=${cx('prow__ovr num', !hideRatings && `tier-text-${t.id}`)}
@@ -121,6 +122,7 @@ export function PlayerRow({
       p.nation?.name,
       p.club?.name,
       p.captain && 'captain',
+      p.goat && 'GOAT',
       p.era && `${p.era} version`,
       cost && (cost.text || cost.label),
       boost && `${boost.label} ${boost.text}`,

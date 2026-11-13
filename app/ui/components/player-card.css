@@ -368,3 +368,7 @@
     0 0 0 1.5px color-mix(in srgb, var(--gold-400) 75%, transparent),
     0 6px 22px rgb(245 200 76 / 0.22);
 }
+
+.pcard__rating .goat-mark {
+  margin-top: 0.3em;
+}

@@ -16,7 +16,9 @@
 // draft without any token. Extra columns: `captain` = share of XIs with a Captain, `primeGain`
 // = slot-rating points the Prime added, `primeEligible` = XI players with a better version
 // (before it is spent), `primeEligible2` = share of XIs with two or more, `eraRespins` = era
-// respins used, `years` = mean year of the XI's cards. --captains N: tag the first N players
+// respins used, `years` = mean year of the XI's cards; `goat` / `captain` = share of XIs with
+// one, `goatSpins` / `captainSpins` = spins per draft that offered one, `goatOffered` /
+// `captainOffered` = share of drafts that were offered one. --captains N: tag the first N players
 // of data/captains.json instead of the catalog's own Captain flags (to choose the list size).
 //
 // --catalog: a v3 catalog (default: app/data/catalog.v3.json) or a v2 runtime JSON.
@@ -201,6 +203,8 @@ function draft(mode, seed, rerolls, policy, scheme) {
     spendOrWait = 0,
     differs = 0,
     eraRespins = 0,
+    goatSpins = 0,
+    captainSpins = 0,
     primeGain = 0;
   while (!s.complete) {
     s.spin();
@@ -212,6 +216,10 @@ function draft(mode, seed, rerolls, policy, scheme) {
       s.respin('era');
       eraRespins++;
     }
+    // What the landing offers (after the respins): a GOAT, a Captain.
+    const offered = s.poolPlayers().filter(p => s.affordable(p));
+    if (offered.some(p => p.goat)) goatSpins++;
+    if (offered.some(p => p.captain)) captainSpins++;
     const greedy = s.suggestPick();
     const move = policy === 'links' ? linkMove(s) : policy === 'smart' ? smartMove(s) : greedy;
     if (s.bands) {
@@ -255,6 +263,9 @@ function draft(mode, seed, rerolls, policy, scheme) {
     links: links.score,
     effective: ovr + links.chem,
     captain: links.captain === null ? 0 : 1,
+    goat: links.goats.length ? 1 : 0,
+    goatSpins,
+    captainSpins,
     eraRespins,
     years: xi.reduce((t, p) => t + (p.year ?? 2026), 0) / 11,
     primeGain,
@@ -311,6 +322,12 @@ for (const scheme of schemes)
             : {}),
           effective: r2(mean(rows.map(r => r.effective))),
           captain: r2(mean(rows.map(r => r.captain))),
+          goat: r2(mean(rows.map(r => r.goat))),
+          // Spins per draft that offered one, and the share of drafts that were offered one.
+          goatSpins: r2(mean(rows.map(r => r.goatSpins))),
+          goatOffered: r2(mean(rows.map(r => (r.goatSpins ? 1 : 0)))),
+          captainSpins: r2(mean(rows.map(r => r.captainSpins))),
+          captainOffered: r2(mean(rows.map(r => (r.captainSpins ? 1 : 0)))),
           ...(ERAS && mode === 'nations'
             ? {
                 eras: true,

@@ -29,7 +29,7 @@ import {
   isKeeper,
   LINE_OF,
 } from './pools.js';
-import { teamLinks, linkBoosts } from './links.js';
+import { teamLinks, linkBoosts, goatBoost } from './links.js';
 import { reelWeights } from './reels.js';
 import { budgetBands, bandIndex, bandUse, tierOfRating } from './budget.js';
 
@@ -924,6 +924,8 @@ export class DraftSession {
       league: this.#index.leagueById.get(String(s.leagueId))?.name ?? null,
       leagueId: s.leagueId == null ? null : String(s.leagueId),
       captain: !!p.captain,
+      // One of the greatest of all time, in his year: a boost for the whole XI (links.js).
+      goat: !!p.goat,
       // The Prime was spent on him: this is his best version.
       prime: !!this.primed[p.profileId],
       era: this.eras ? (p.era ?? CURRENT_ERA) : null,
@@ -955,6 +957,7 @@ export class DraftSession {
       clubs,
       value: linkBoosts(this.rules.links),
       captain: this.lineup(side).some(p => p?.captain),
+      goats: this.lineup(side).filter(p => p?.goat).length,
     };
   }
   #entry(p, side, used, mates) {
@@ -989,6 +992,10 @@ export class DraftSession {
         : null,
       // A Captain who would be the XI's first: what he gives every player (else 0).
       captainBoost: p.captain && !mates.captain ? mates.value.captain : 0,
+      // A GOAT: what he would add for every player (half as much for each GOAT already there).
+      goatBoost: p.goat
+        ? goatBoost(mates.goats + 1, mates.value.goat) - goatBoost(mates.goats, mates.value.goat)
+        : 0,
       best: best && {
         slot: best.slot,
         role: best.role,
@@ -1222,6 +1229,8 @@ export function buildSide({
       pairs: summary.pairs,
       captain: summary.captain,
       captainBoost: summary.captainBoost,
+      goats: summary.goats,
+      goatBoost: summary.goatBoost,
     },
   };
 }

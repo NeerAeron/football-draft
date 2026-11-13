@@ -27,7 +27,7 @@ import { Flag } from './flag.js';
 import { Crest, LeagueLogo } from './crest.js';
 import { Chip } from './chip.js';
 import { Icon } from './icon.js';
-import { CaptainMark } from './captain-mark.js';
+import { CaptainMark, GoatMark } from './captain-mark.js';
 
 const MARK = { s: 18, m: 22, l: 28 };
 const BADGE_COUNT = { s: 0, m: 1, l: 3 };
@@ -78,12 +78,14 @@ export function PlayerCard({
     p.club?.name,
     p.era ? `${p.prime ? 'prime version, ' : ''}${p.era} version` : null,
     p.captain ? 'captain' : null,
+    p.goat ? 'GOAT' : null,
   ]
     .filter(Boolean)
     .join(', ');
   const classes = cx(
     'pcard',
     p.prime && 'pcard--prime',
+    p.goat && 'pcard--goat is-goat-edge',
     `pcard--${size}`,
     `pcard--tier-${frame}`,
     selected && 'is-selected',
@@ -99,6 +101,7 @@ export function PlayerCard({
           <span class="pcard__pos">${p.position}</span>
           ${p.era && html`<span class="pcard__era num">${p.era}</span>`}
           ${p.captain && html`<${CaptainMark} size=${size === 's' ? 'sm' : 'md'} />`}
+          ${p.goat && html`<${GoatMark} size=${size === 's' ? 'sm' : 'md'} />`}
         </span>
         <span class="pcard__art"><${KitShirt} colors=${p.club?.colors} /></span>
         <span class="pcard__marks">
