@@ -101,6 +101,14 @@ function primeShapes(duration) {
   }
 }
 
+// Who makes a side's attack and its defence, for the unit levels of kickoffLevel: how much
+// each role shoots and creates, and how much it keeps goals out (the keeper most of all).
+const UNIT_ATTACK = { ST: 1, LW: 0.9, RW: 0.9, AM: 0.85, LM: 0.6, RM: 0.6, CM: 0.4, DM: 0.1 },
+  UNIT_DEFENCE = { GK: 2, CB: 1, LB: 0.8, RB: 0.8, DM: 0.7, CM: 0.3, LM: 0.15, RM: 0.15 },
+  // Real XIs rate their attack this much above their defence on these weights (551 clubs:
+  // 0.5, 56 nations: 1.1), so a typical side is at 0.
+  UNIT_BALANCE = 0.8;
+
 export class Match {
   constructor(seed = Date.now(), duration = 180) {
     if (!DURATION_PROFILES[duration]) throw new RangeError('Unsupported match length');
@@ -395,7 +403,7 @@ export class Match {
     this.shootoutState = null;
     this.penaltyEnd = null;
     this.edge = null; // [team 0, team 1]: set at kick-off (kickoffEdge)
-    this.level = null; // points of overall the match is above 78: set at kick-off (kickoffLevel)
+    this.level = null; // [team 0, team 1]: the level each side attacks at (kickoffLevel)
     this.resetInsights();
   }
   addEvent(text, team, type = 'play', extra = {}) {
@@ -817,20 +825,50 @@ export class Match {
     if (lead > 0) edge[0] = Math.min(lead * rule.perPoint, rule.cap);
     return edge;
   }
-  // The level of the match (tuning.gameplay.levelScatter / levelSaves): the mean overall of
-  // the two line-ups at kick-off, in points above 78, plus levelGap points for every point
-  // between them. Read once, like the edge; both sides play under the same level, so it
-  // moves how many goals a match has and not who scores them.
+  // The level each side attacks at (tuning.gameplay.levelScatter / levelSaves), read once at
+  // kick-off like the edge: [team 0's attack, team 1's attack], in points.
+  // 1. The match: the mean overall of the two line-ups above 78, plus levelGap points for
+  //    every point between them — the same for both sides, so the number of goals does not
+  //    climb with the general level of the players or with a mismatch.
+  // 2. The units (levelUnits): what a side scores is judged against the defence it faces.
+  //    The opponent's defence level (keeper, back line, holding midfield — UNIT_DEFENCE)
+  //    above the opponent's own overall raises the level this side attacks at (its shots
+  //    scatter more and are saved more); its own attack level (forwards, wide and attacking
+  //    midfielders — UNIT_ATTACK) above its own overall lowers it. A balanced side is at 0,
+  //    so this adds to what better defenders and keepers already do in play and leaves the
+  //    average alone: a modest side with a fine defence and keeper concedes less than its
+  //    overall says, a star side with a poor back line more.
   kickoffLevel() {
     const overall = [0, 0],
-      count = [0, 0];
+      count = [0, 0],
+      attack = [0, 0],
+      attackWeight = [0, 0],
+      defence = [0, 0],
+      defenceWeight = [0, 0];
     for (const p of this.players) {
-      overall[p.team] += overallRating(p, false);
-      count[p.team]++;
+      const t = p.team,
+        rating = overallRating(p, false),
+        a = UNIT_ATTACK[p.role] ?? 0,
+        d = UNIT_DEFENCE[p.role] ?? 0;
+      overall[t] += rating;
+      count[t]++;
+      attack[t] += rating * a;
+      attackWeight[t] += a;
+      defence[t] += rating * d;
+      defenceWeight[t] += d;
     }
-    const a = overall[0] / (count[0] || 1),
-      b = overall[1] / (count[1] || 1);
-    return clamp((a + b) / 2 - 78 + Math.abs(a - b) * this.tuning.gameplay.levelGap, -14, 14);
+    const g = this.tuning.gameplay,
+      level = [0, 0];
+    for (let t = 0; t < 2; t++) overall[t] /= count[t] || 1;
+    const match =
+      (overall[0] + overall[1]) / 2 - 78 + Math.abs(overall[0] - overall[1]) * g.levelGap;
+    for (let t = 0; t < 2; t++) {
+      const o = 1 - t,
+        own = attackWeight[t] ? attack[t] / attackWeight[t] - overall[t] : 0,
+        facing = defenceWeight[o] ? defence[o] / defenceWeight[o] - overall[o] : 0;
+      level[t] = clamp(match + (facing - own + UNIT_BALANCE) * g.levelUnits, -14, 14);
+    }
+    return level;
   }
   stepInner(dt) {
     if (this.finished) return;
