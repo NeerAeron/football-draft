@@ -279,6 +279,7 @@ function runCup(env, Match, { seed, difficulty, engine, model }) {
         res = env.simulateResult(m.home.effective + edge, m.away.effective, random, {
           knockout: m.knockout,
           model,
+          units: env.unitsOf(m.home, m.away),
         });
       run.recordResult({
         goalsFor: res.goals[0],

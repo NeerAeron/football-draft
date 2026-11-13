@@ -9,7 +9,7 @@ everything else here is deterministic for a seed. Storage, clipboard and dates b
 | `cup.js` | `createCupRun`, `restoreCupRun`, `CupRun`, `standings`, `worldCupDraw`, `projectRun`, `cupOffsets`, `thirdQualifies`, `CUP_ROUNDS`, `THIRD_ROUND`, `CUP_TUNING`, `FIELD_LEVEL`, `FIELD_TYPICAL`, `FIELD_FORM`, `CUP_FORMAT`, `BEST_THIRD`, `KNOCKOUT_EDGE`, `STAGE_LABELS`, `PLACES`, `PLACE_LABELS`, `MEDALS` |
 | `model.js` | `simulateResult`, `simulateShootout`, `outcomeProbabilities`, `expectedGoals`, `MATCH_MODEL` |
 | `scorers.js` | `matchPerformances` (player lines for a modelled result) |
-| `awards.js` | `tournamentSteps` (behind `CupRun.awards()` / `awardsSteps()`), `BALL_MATCHES`, `BALL_DEPTH`, `GLOVE_STAGE` |
+| `awards.js` | `tournamentSteps` (behind `CupRun.awards()` / `awardsSteps()`), `BALL_MATCHES`, `BALL_DEPTH`, `BALL_STAGE`, `GLOVE_STAGE` |
 | `daily.js` | `dailyId`, `dailyNumber`, `dailyIdFromNumber`, `previousDay`, `nextDay`, `dailyChallenge`, `perfectXI`, `perfectPercent`, `dailyScore`, `canPlayDaily`, `updateStreak`, `currentStreak`, `DAILY_EPOCH`, `DAILY_RULES`, `DAILY_POINTS` |
 | `share.js` | `shareText`, `resultEmoji`, `isUltimate`, `ULTIMATE`, `encodeChallenge`, `decodeChallenge` |
 
@@ -255,10 +255,21 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
   (`opponents[i].players` — whatever `buildOpponent` returned).
   **The rules.** Golden Boot: most goals; level → more assists, fewer matches, then the order
   of the tournament's matches. Golden Ball: best average match rating + `BALL_DEPTH` (0.1) per
-  round the team went past the group (champions +0.6), among players with `BALL_MATCHES` (4) or
-  more; level → goals, assists. Golden Glove: most clean sheets among keepers of teams that
+  round the team went past the group (champions +0.6), among the players of teams that played
+  a quarter-final (`BALL_STAGE`) with `BALL_MATCHES` (4) or more; level → goals, assists. Golden Glove: most clean sheets among keepers of teams that
   played a quarter-final (`GLOVE_STAGE`); level → fewer goals against per match, more matches.
-  Over 60 fast-simulated Pro runs of one XI the user's players won 11 Boots, 13 Balls and 14
+  **Always a whole World Cup**: whatever the user played of it, the rest is played here by the
+  fast model (above), so a run that ended in the group or the Round of 32 has a complete
+  tournament's winners. Measured over 60 runs per cell — the user out in the group, out in the
+  Round of 32, or playing on (`scorers.js` shares goals by role × 2^((finish − 70) / 18), and a
+  player who has scored in a match has half his share for its next goal): the Golden Boot has
+  6.3–7.0 goals on Pro (4–11) and 7.3–7.5 on Legendary (5–13) — it was 8.8, up to 15, when
+  twelve points of finishing doubled a share and a scorer kept it — in a side that played six
+  matches or more in 58–59 of 60 runs (Legendary 52–59); the
+  Golden Ball is always a player of a quarter-finalist (6–8 matches; it went to players with
+  four or five good matches in 8 of 20 Legendary runs before `BALL_STAGE`); the Golden Glove
+  has 3.9–4.3 clean sheets in 7.6–8 matches.
+  Over 60 fast-simulated Pro runs of one XI (before those two changes) the user's players won 11 Boots, 13 Balls and 14
   Gloves; on Legendary 2, 3 and 1.
 * `projectRun({ rating: team.effective, mode, difficulty })` → `{ stage ('group' … 'sf', 'final',
   'champion': the round reached), place, label: 'Projected: Quarter-finals', probabilities (by
@@ -276,8 +287,17 @@ for (let m = run.nextMatch(); m; m = run.nextMatch()) {
 Independent Poisson goals on effective ratings: `λA = 1.46·e^{0.0525(rA−rB)}`,
 `λB = 1.46·e^{−0.0525(rA−rB)}` (1.33 before the level per side, docs/calibration.md Phase 10;
 optional `units = [a, b]` — each side's `unitLevels` — make a side score 3.6% less per point
-of `unitLean`: the opponent's defence above its overall, less its own attack above its own;
-no caller passes them yet) — gap 0: 37% W / 26% D / 37% L; gap 6: 61 / 22 / 17 — refitted
+of `unitLean`: the opponent's defence above its overall, less its own attack above its own.
+**The sides of a run carry their units** — `side.units = { overall, attack, defence }` from
+`buildSide` and on every opponent candidate — and every modelled result between two such sides
+takes them, `unitsOf(a, b)`: `simulateNext`, the other matches of the user's group,
+Legendary's World Cup around him (`worldCupDraw`) and the ties that complete a tournament for
+its awards; a run saved before that has no units on its opponents and plays on by ratings;
+`projectRun` and the odds bars work on ratings alone. Nation against nation the average stays
+at three goals a match (3.04 → 3.08); Slovenia (defence 2.7 above its overall) against Guinea
+(3.7 under): 1.64–1.30 by ratings, 1.82–1.29 with units. Title odds, 400 runs, before → after:
+Pro 19.5% → 19.8%, World Class 9.3% → 11.0%, Legendary 3.8% → 4.0% — inside the targets, no
+re-fit) — gap 0: 37% W / 26% D / 37% L; gap 6: 61 / 22 / 17 — refitted
 (624 engine matches, `cup-calibration.mjs gaps` + `fit`) after the engine was brought to about
 three goals a match in every mode (docs/calibration.md, Phase 9): 2.9 goals a match on those
 gaps, engine against model −4…−1.5 24/28/48 vs 27/25/48, +4…+8 67/22/11 vs 61/21/18, +8…+13

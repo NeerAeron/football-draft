@@ -73,7 +73,9 @@ export function PlayerRow({
       ><${Flag} code=${p.nation?.code} name=${p.nation?.name} size=${30} decorative
     /></span>
     <span class="prow__name"
-      >${p.name}${p.era && html` <span class="prow__era num">${p.era}</span>`}${
+      ><span class="prow__name-text">${p.name}</span>${
+        p.era && html` <span class="prow__era num">${p.era}</span>`
+      }${
         p.captain && html` <${CaptainMark} class="prow__captain" />`
       }${p.goat && html` <${GoatMark} class="prow__goat" />`}</span
     >
