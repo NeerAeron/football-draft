@@ -359,13 +359,15 @@ export class PassingMethods {
     }
     return list.sort((a, b) => b.score - a.score);
   }
-  // The goal kick (restart.routine, set up in setupGoalKick). Short: only a ball that is
-  // really on — along the ground to a team-mate with nobody within 13 m of where he takes it,
-  // no opponent near the lane and a second to spare. Otherwise long: to the best header of
-  // the ball up the pitch, away from the touchlines, where the midfield is waiting for the
-  // second ball. Losing that one costs a header on halfway, not a chance.
-  goalKickOption(p, opts) {
-    if (this.restart?.routine !== 'long') {
+  // The ball out of a build-up shape (restarts.js buildUpSpot): a goal kick, a deep free kick,
+  // the keeper's kick or throw from his hands. Short (never when the routine is 'long'): only
+  // a ball that is really on — along the ground to a team-mate with nobody within 13 m of
+  // where he takes it, no opponent near the lane and a second to spare. Otherwise long: to
+  // the best header of the ball up the pitch (onside, unless it is a goal kick), away from
+  // the touchlines, where the midfield is waiting for the second ball. Losing that one costs
+  // a header on halfway, not a chance. `shortOnly`: null when no short ball is on.
+  buildUpOption(p, opts, routine, shortOnly = false, goalKick = false) {
+    if (routine !== 'long') {
       let best = null,
         value = -Infinity;
       for (const o of opts) {
@@ -384,19 +386,26 @@ export class PassingMethods {
       }
       if (best) return best;
     }
+    if (shortOnly) return null;
     const dir = this.direction(p.team),
-      reach = 56 + p.skill('power') * 0.15;
+      reach = 56 + p.skill('power') * 0.15,
+      from = this.rel(p.x, p.team),
+      beyond = Math.max(52, from + 30);
+    const line = goalKick ? Infinity : Math.max(from, this.offsideLine(p.team)) - 0.5;
     let target = null,
       value = -Infinity;
     for (const r of this.activePlayers) {
-      if (r.team !== p.team || r.role === 'GK') continue;
-      const depth = this.rel(r.x, p.team);
+      if (r.team !== p.team || r.role === 'GK' || r === p) continue;
+      // Judged where he will be when the ball comes down: he is still running up to his
+      // spot (onside is judged where he is now).
+      if (this.rel(r.x, p.team) > line) continue;
+      const depth = this.rel(r.x, p.team) + clamp((r.tx - r.x) * dir, 0, 10);
       let v =
         r.skill('heading') * 0.6 +
         r.skill('strength') * 0.25 +
         r.tendency('aerial') * 10 +
         (r.has('aerial') ? 5 : 0) -
-        Math.max(0, 52 - depth) * 2 -
+        Math.max(0, beyond - depth) * 2 -
         Math.max(0, dist(p, r) - reach) * 1.5 -
         Math.max(0, Math.abs(r.y - 34) - 16) * 1.2;
       // Team-mates near him for the knock-down; opponents beside him make it a duel.
@@ -412,8 +421,10 @@ export class PassingMethods {
       }
     }
     if (!target) return null;
-    // Dropped just short of him, so he comes onto it facing the play, and never by the line.
-    const aim = { x: target.x - dir * 1.5, y: clamp(target.y, 13, 55) },
+    // Dropped just short of him (of where his run takes him), so he comes onto it facing the
+    // play, and never by the line.
+    const lead = clamp((target.tx - target.x) * dir, 0, 10),
+      aim = { x: target.x + dir * (lead - 1.5), y: clamp(target.y, 13, 55) },
       length = dist(p, aim);
     if (length > reach) {
       aim.x = p.x + ((aim.x - p.x) * reach) / length;
@@ -594,16 +605,11 @@ export class PassingMethods {
       length = hypot(tx - p.x, ty - p.y),
       angle = Math.atan2(ty - p.y, tx - p.x);
     const speed = this.passSpeed(length, loft);
-    const restartType = p.goalKickExempt
-      ? 'Goal kick'
-      : typeof restart === 'string'
-        ? restart
-        : null;
+    const restartType = typeof restart === 'string' ? restart : null;
     b.x = p.x;
     b.y = p.y;
     b.offsideState = offsideSnapshot(this, p, restartType);
     b.restartTaker = restartType ? p.id : null;
-    p.goalKickExempt = false;
     b.owner = null;
     b.x += Math.cos(angle) * 0.6;
     b.y += Math.sin(angle) * 0.6;

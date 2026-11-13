@@ -186,10 +186,12 @@ test("a parry never carries the ball into the keeper's own net", () => {
   }
 });
 
-// A goal kick is a cut: both sides are set when it is awarded. Against a mid-block the keeper
-// builds up short to a man with room; against a high press he goes long, to a header of the
-// ball up the pitch and away from the touchlines.
-function goalKick(seed, press) {
+// Building up from the back: a goal kick, a deep free kick (offside, foul) and the keeper's
+// hands share one shape. Nobody is placed — both sides run to it and the taker waits until
+// they are set or `gameplay.buildUpWait`. Against a mid-block the ball goes short to a man
+// with room; against a high press it goes long, to a header of the ball up the pitch and
+// away from the touchlines. Never to an opponent, never straight out.
+function crowded(seed, press) {
   const m = new Match(seed);
   for (let i = 0; i < 90; i++) m.step(1 / 60);
   m.teams[0].tactics.mentality = m.teams[1].tactics.mentality = 'balanced';
@@ -199,58 +201,173 @@ function goalKick(seed, press) {
     if (p.role !== 'GK') {
       p.x = m.abs(8 + (p.id % 11) * 2, 0);
       p.y = 20 + (p.id % 7) * 4;
+      p.vx = p.vy = 0;
     }
   m.mode = 'play';
-  m.startRestart('Goal kick', 0, m.abs(5.5, 0), 34);
   return m;
 }
 const nearestOpponent = (m, team, at) =>
   Math.min(
     ...m.activePlayers.filter(q => q.team !== team).map(q => Math.hypot(q.x - at.x, q.y - at.y)),
   );
+// Steps until `done`, checking that nobody is moved faster than a man can run.
+function runUntil(m, done, limit = 600) {
+  let steps = 0;
+  while (!done() && steps++ < limit) {
+    const before = m.activePlayers.map(q => [q.x, q.y]);
+    m.step(1 / 60);
+    if (!done())
+      m.activePlayers.forEach((q, i) =>
+        assert.ok(Math.hypot(q.x - before[i][0], q.y - before[i][1]) < 0.2, `${q.name} jumped`),
+      );
+  }
+  return steps / 60;
+}
+// The kick out of a build-up shape: to a team-mate, short with room or long to a header.
+function assertBuildUpKick(m, kicker, { long = null, goalKick = false } = {}) {
+  assert.equal(m.ball.kind, 'pass');
+  assert.equal(m.ball.kicker, kicker.id);
+  const target = m.players[m.ball.target],
+    aim = m.ball.destination,
+    length = Math.hypot(aim.x - kicker.x, aim.y - kicker.y),
+    isLong = m.ball.vz > 0;
+  assert.equal(target.team, kicker.team);
+  assert.notEqual(target.id, kicker.id);
+  assert.ok(aim.y > 4 && aim.y < 64, 'never at the touchline');
+  if (long !== null) assert.equal(isLong, long, `kick of ${length}`);
+  if (isLong) {
+    assert.ok(length > 22, `long kick of ${length}`);
+    assert.ok(m.rel(aim.x, kicker.team) > 44, `lands up the pitch (${m.rel(aim.x, kicker.team)})`);
+    assert.ok(Math.abs(aim.y - 34) < 24);
+    if (!goalKick) assert.equal(m.ball.offside, false, 'the target is onside');
+  } else assert.ok(nearestOpponent(m, kicker.team, aim) > 12, 'the receiver has room');
+  return isLong;
+}
 
-test('goal kick: both sides are set at once; short against a mid-block, long against a press', () => {
+test('goal kick: both sides run to their shape; the keeper waits, then short or long', () => {
   for (let seed = 1; seed <= 8; seed++) {
     for (const press of [3, 5]) {
-      const m = goalKick(seed, press),
-        long = press === 5;
+      const m = crowded(seed, press),
+        long = press === 5,
+        keeper = m.keeper(0);
+      m.startRestart('Goal kick', 0, m.abs(5.5, 0), 34);
       assert.equal(m.restart.routine, long ? 'long' : 'short');
+      const waited = runUntil(m, () => m.mode !== 'restart');
+      assert.ok(waited <= m.tuning.gameplay.buildUpWait + 2.1, `waited ${waited}`);
       const front = Math.min(...m.activePlayers.filter(p => p.team === 1).map(p => m.rel(p.x, 0)));
-      // The defending side is outside the box, and well off it unless it presses.
-      assert.ok(front > (long ? 20 : 40), `front line at ${front}`);
-      for (const p of m.activePlayers) assert.ok(p.y >= 2 && p.y <= 66);
-      while (m.mode === 'restart') m.step(1 / 60);
-      assert.equal(m.ball.kind, 'held');
-      const keeper = m.players[m.ball.owner];
-      assert.equal(keeper.role, 'GK');
-      let steps = 0;
-      while (m.ball.owner === keeper.id && steps++ < 240) m.step(1 / 60);
-      assert.equal(m.ball.kind, 'pass', 'the keeper kicks within four seconds');
-      assert.equal(m.ball.kicker, keeper.id);
-      const target = m.players[m.ball.target],
-        aim = m.ball.destination,
-        length = Math.hypot(aim.x - keeper.x, aim.y - keeper.y);
-      assert.equal(target.team, 0);
-      assert.ok(aim.y > 4 && aim.y < 64, 'never at the touchline');
-      if (long) {
-        assert.ok(length > 42, `long kick of ${length}`);
-        assert.ok(m.rel(aim.x, 0) > 48, 'lands beyond halfway');
-        assert.ok(Math.abs(aim.y - 34) < 24);
-        // Team-mates around the landing for the second ball.
-        const around = m.activePlayers.filter(
-          q => q.team === 0 && q !== target && Math.hypot(q.x - aim.x, q.y - aim.y) < 20,
-        ).length;
-        assert.ok(around >= 2, `${around} team-mates near the landing`);
-      } else {
-        assert.ok(length < 34, `short kick of ${length}`);
-        assert.ok(nearestOpponent(m, 0, aim) > 12, 'the receiver has room');
-      }
+      assert.ok(front > 16.5, `the defending side is outside the box (${front})`);
+      for (const p of m.activePlayers) assert.ok(p.y >= 0.5 && p.y <= 67.5);
+      // The centre-backs have split either side of the box (short) or pushed up (long).
+      const back = m.activePlayers.filter(
+        p => p.team === 0 && p.role !== 'GK' && m.formation(p)[0] < 30,
+      );
+      for (const p of back)
+        assert.ok(Math.hypot(p.tx - p.x, p.ty - p.y) < 14, `${p.role} near his spot`);
+      const went = assertBuildUpKick(m, keeper, { goalKick: true });
+      if (long) assert.ok(went, 'long against the press');
     }
   }
 });
 
+test('goal kick against a mid-block that is set: short to a free man at once', () => {
+  const m = crowded(3, 3);
+  m.startRestart('Goal kick', 0, m.abs(5.5, 0), 34);
+  // Both sides already in the shape.
+  for (const p of m.activePlayers)
+    if (p.role !== 'GK') {
+      p.x = p.tx;
+      p.y = p.ty;
+    }
+  const waited = runUntil(m, () => m.mode !== 'restart');
+  assert.ok(waited < 1.6, `no waiting when everybody is set (${waited})`);
+  assertBuildUpKick(m, m.keeper(0), { long: false, goalKick: true });
+});
+
+test('free kick after an offside deep in the own half: set up and played like a goal kick', () => {
+  let short = 0;
+  for (let seed = 1; seed <= 8; seed++) {
+    const m = crowded(seed, seed % 2 ? 3 : 5),
+      spot = { x: m.abs(24, 0), y: 30 };
+    m.startRestart('Offside', 0, spot.x, spot.y, 0.75);
+    const r = m.restart,
+      taker = m.players[r.taker];
+    assert.ok(r.build);
+    assert.equal(r.routine, seed % 2 ? 'short' : 'long');
+    assert.ok(taker.role !== 'GK' && m.formation(taker)[0] < 58, 'a defender or midfielder');
+    const waited = runUntil(m, () => m.mode !== 'restart');
+    assert.ok(waited >= 0.99 && waited <= m.tuning.gameplay.buildUpWait + 2.1, `waited ${waited}`);
+    for (const p of m.activePlayers)
+      if (p.team === 1)
+        assert.ok(Math.hypot(p.x - spot.x, p.y - spot.y) >= 9.15, `${p.name} keeps his distance`);
+    if (!assertBuildUpKick(m, taker)) short++;
+    assert.equal(m.ball.indirect, taker.id);
+  }
+  assert.ok(short >= 1, 'a short ball when it is on');
+});
+
+test('a free kick in midfield is not built up from', () => {
+  const m = crowded(2, 3);
+  m.startRestart('Free kick', 0, m.abs(60, 0), 30, 0.85);
+  assert.equal(m.restart.build, false);
+  assert.ok(m.restart.timer < 1);
+});
+
+test('keeper with the ball in his hands: the sides spread, he waits, then plays to a team-mate', () => {
+  for (let seed = 1; seed <= 8; seed++) {
+    const m = crowded(seed, seed % 2 ? 3 : 5),
+      keeper = m.keeper(0);
+    keeper.x = m.abs(6, 0);
+    keeper.y = 34;
+    m.ball.x = keeper.x;
+    m.ball.y = keeper.y;
+    m.own(keeper, true);
+    assert.equal(m.ball.kind, 'held');
+    const held = runUntil(m, () => m.ball.owner !== keeper.id);
+    // He does not kick into the crowd at once, and not later than the cap (plus a thought).
+    assert.ok(held > 1.5 && held <= m.tuning.gameplay.buildUpWait + 1, `held ${held}`);
+    const spread = m.activePlayers.filter(p => p.team === 1 && m.rel(p.x, 0) > 22).length;
+    assert.ok(spread >= 6, `${spread} opponents have dropped off`);
+    assertBuildUpKick(m, keeper, seed % 2 ? {} : { long: true });
+  }
+});
+
+test('keeper with the ball in his hands throws at once to a free defender', () => {
+  const m = crowded(5, 3),
+    keeper = m.keeper(0);
+  // The opponents are up the pitch already; a centre-back is alone beside the box.
+  for (const p of m.activePlayers) if (p.team === 1 && p.role !== 'GK') p.x = m.abs(60, 0);
+  const cb = m.activePlayers.find(p => p.team === 0 && p.role === 'CB');
+  cb.x = m.abs(12, 0);
+  cb.y = 50;
+  keeper.x = m.abs(6, 0);
+  keeper.y = 34;
+  m.ball.x = keeper.x;
+  m.ball.y = keeper.y;
+  m.own(keeper, true);
+  const held = runUntil(m, () => m.ball.owner !== keeper.id);
+  assert.ok(held < 2, `released after ${held}`);
+  assertBuildUpKick(m, keeper, { long: false });
+});
+
+test('the long ball of a build-up never goes to a man in an offside position', () => {
+  const m = crowded(6, 5),
+    keeper = m.keeper(0);
+  for (const p of m.activePlayers) {
+    if (p.role === 'GK') continue;
+    // Our forwards beyond their whole back line.
+    p.x = p.tx = m.abs(p.team === 0 ? (m.formation(p)[0] >= 58 ? 66 : 45) : 60, 0);
+  }
+  m.own(keeper, true);
+  const kick = m.buildUpOption(keeper, m.options(keeper), 'long');
+  assert.ok(m.rel(kick.r.x, 0) <= 60, 'an onside target');
+  const free = m.buildUpOption(keeper, m.options(keeper), 'long', false, true);
+  assert.ok(m.rel(free.r.x, 0) > 60, 'a goal kick has no offside');
+});
+
 test('goal kick: the side that is chasing the game goes long', () => {
-  const m = goalKick(4, 3);
+  const m = crowded(4, 3);
+  m.startRestart('Goal kick', 0, m.abs(5.5, 0), 34);
+  assert.equal(m.restart.routine, 'short');
   m.teams[0].tactics.mentality = 'push';
   m.mode = 'play';
   m.startRestart('Goal kick', 0, m.abs(5.5, 0), 34);
