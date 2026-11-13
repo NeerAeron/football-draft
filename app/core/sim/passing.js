@@ -605,16 +605,11 @@ export class PassingMethods {
       length = hypot(tx - p.x, ty - p.y),
       angle = Math.atan2(ty - p.y, tx - p.x);
     const speed = this.passSpeed(length, loft);
-    const restartType = p.goalKickExempt
-      ? 'Goal kick'
-      : typeof restart === 'string'
-        ? restart
-        : null;
+    const restartType = typeof restart === 'string' ? restart : null;
     b.x = p.x;
     b.y = p.y;
     b.offsideState = offsideSnapshot(this, p, restartType);
     b.restartTaker = restartType ? p.id : null;
-    p.goalKickExempt = false;
     b.owner = null;
     b.x += Math.cos(angle) * 0.6;
     b.y += Math.sin(angle) * 0.6;

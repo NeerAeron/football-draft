@@ -367,7 +367,6 @@ export class Match {
       p.runBehind = null;
       p.finishUntil = 0;
       p.finishTarget = null;
-      p.goalKickExempt = false;
       p.penaltyDive = null;
       p.vx = 0;
       p.vy = 0;
