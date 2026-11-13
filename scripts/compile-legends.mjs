@@ -178,6 +178,12 @@ export const PLAYER_JUDGEMENT = [
     cards: { 98: 4, 99: 4, 0: 3 },
     why: 'The best goalkeeper of the 1990s (IFFHS World’s Best Goalkeeper 1992 and 1993, UEFA’s club goalkeeper of 1998, the 1999 treble): FIFA 98/99 have no keeper skills and he retired before a fully described title could vouch for him, so he came out at 84, level with Rossi and Letizi.',
   },
+  {
+    id: 2384,
+    name: 'Poom',
+    cards: { 1: -4, 4: -8 },
+    why: 'A good Premier League and Championship goalkeeper (Derby, Sunderland), Estonia’s best player — never one of the world’s best. Two titles are flukes far above his standing: FIFA 2004 (2003) gives him goalkeeping 89, level with Kahn, between cards of 78 and 73 the years around, and FIFA 2001’s coarse scale reads 86. Judged down to 81 (2003) and 82 (2000), a little above his other cards: Estonia is no star nation on a fluke.',
+  },
   // The icons of 1997–2002 the coarse titles plainly under-rate (`kind: 'icon'`).
   {
     id: 240,
@@ -1498,7 +1504,9 @@ export function compileLegends(
       if (!entry.breakout && !c.name.includes(words(entry.sourceName)))
         throw Error(`Starter ${entry.name}: the data calls ${id} "${c.name}"`);
     }
+    let swaps = []; // the starter rule in this pool: { c: who came in, out: who made way }
     const squad = from => {
+      swaps = [];
       const chosen = new Set(),
         take = (line, count) => {
           for (const c of from) {
@@ -1527,9 +1535,7 @@ export function compileLegends(
           out = [...chosen].sort(byRating).findLast(x => !wanted.has(idOf(x)) && spare(x));
         if (out && chosen.size >= ERA_SQUAD) chosen.delete(out);
         chosen.add(c);
-        placed.push(
-          `${era} ${nation}: ${c.name} ${c.rating} for ${out ? `${out.name} ${out.rating}` : 'nobody'}`,
-        );
+        swaps.push({ c, out: out && !chosen.has(out) ? out : null });
       }
       return [...chosen].sort(byRating);
     };
@@ -1555,11 +1561,16 @@ export function compileLegends(
       members = squad(unique.filter(identified));
       always = members.length > 0 && (finalist || members.some(c => c.rating >= ERA_STAR));
     }
+    for (const { c, out } of swaps)
+      placed.push(
+        `${era} ${nation}: ${c.name} ${c.rating} for ${out ? `${out.name} ${out.rating}` : 'nobody'}`,
+      );
     if (!always && !(fields && known)) continue;
     squads.push({
       era,
       nation,
       members,
+      swaps,
       always,
       full: fields,
       keeper: members.find(c => c.line === 'GK'),
@@ -1647,6 +1658,28 @@ export function compileLegends(
       eraCard(c.one, best, c.now, pool.nation);
       bestOnly++;
     }
+  // The players a World Cup starter pushed out of a pool stay in the data: each keeps his era
+  // card in the file — in no pool, so never offered in a draft and on no screen (like the
+  // best versions above; it is one of his versions for the Prime) — and the build's
+  // provenance says who took his place.
+  const displaced = [];
+  for (const era of ERAS)
+    for (const pool of eraPools.filter(x => x.era === era.id)) {
+      const sq = squads.find(x => x.era === pool.era && x.nation === pool.nation);
+      for (const { c, out } of sq.swaps) {
+        if (!out || sq.members.includes(out)) continue;
+        displaced.push({
+          era: pool.era,
+          nation: pool.nation,
+          name: out.name,
+          rating: out.rating,
+          profileId: eraCard(out.one, out.v, out.now, pool.nation),
+          by: c.name,
+          byRating: c.rating,
+          byProfileId: eraCard(c.one, c.v, c.now, pool.nation),
+        });
+      }
+    }
   // GOATs and Captains: reviewed lists of player + era. The card must be there — that man, by
   // EA's id, name and nation, in his nation's pool of that era — or the build fails. Every
   // entry is checked, also the Captains behind the list's `size` cut (so the cut can be moved
@@ -1729,6 +1762,7 @@ export function compileLegends(
       goats: marked.goat,
       captains: marked.captain,
       starters: placed,
+      displaced,
       handCards: handMade,
       bestOnly,
       noNation: eraStats.noNation,

@@ -542,6 +542,121 @@ test('never a dead end: every landing has a pick, whatever was drafted (brute fo
   assert.ok(closed > 100, `spins with a closed row: ${closed}`);
 });
 
+test('small pools: a landing always has a pick — every pool of every era, late in a draft', () => {
+  // The data has pools of two or three players, many without a keeper. Drain the smallest
+  // ones first (every player of Liberia 98, Ecuador 02 … is in the XI), then look at every
+  // nation of every era with one or two slots left: a nation is on the reel exactly when its
+  // pool still has somebody for an open slot.
+  const small = eraList(catalog)
+    .flatMap(e => e.nations.map(n => ({ era: e.id, nation: n.name, size: n.size })))
+    .filter(x => x.size < 14)
+    .sort((a, b) => a.size - b.size);
+  assert.ok(small.length >= 8 && small[0].size <= 3, 'the data has tiny pools');
+  const drain = [];
+  for (const x of small) {
+    const outfield = eraPool(catalog, x.era, x.nation).filter(p => !isKeeper(p)).length;
+    for (let i = 0; i < outfield && drain.length < 9; i++)
+      drain.push({ era: x.era, spin: x.nation });
+  }
+  assert.equal(drain.length, 9);
+  const drained = new Set(drain.map(r => `${r.era} ${r.spin}`));
+  // `last`: what round ten picks — a keeper (an outfield slot stays open), an outfielder
+  // (the keeper's slot stays open) or nothing (both stay open, the test spins at round ten).
+  const start = (last, final, options = {}) => {
+    const rounds = [...drain];
+    if (last !== 'both') rounds.push({ era: null, spin: null });
+    rounds.push(final);
+    while (rounds.length < 11) rounds.push({ era: null, spin: null });
+    const s = eraDraft({ seed: 77, formation: '433', schedule: { rounds }, ...options });
+    for (let i = 0; i < drain.length; i++) {
+      const spin = s.spin();
+      assert.ok(spin.scheduled, `round ${i}: ${drain[i].spin} ${drain[i].era}`);
+      const pick = keeperLast(s);
+      assert.ok(s.pick(pick.profileId, pick.slot).ok);
+    }
+    if (last !== 'both') {
+      s.spin();
+      const pick = (last === 'keeper' ? keeperFirst : keeperLast)(s),
+        entry = s.snapshot().pool.find(e => e.profileId === pick.profileId);
+      // The scenario needs that class in the pool; a pool without it is another scenario.
+      if ((entry.position === 'GK') !== (last === 'keeper')) return null;
+      assert.ok(s.pick(pick.profileId, pick.slot).ok);
+    }
+    return s;
+  };
+  const candidates = (s, era, nation) => {
+    const taken = new Set(s.lineup(0).filter(Boolean).map(personId)),
+      open = s.openClasses();
+    return eraPool(catalog, era, nation).filter(
+      p => !taken.has(personId(p)) && (isKeeper(p) ? open.gk : open.out),
+    );
+  };
+  let closed = 0,
+    looked = 0,
+    forced = 0;
+  for (const last of ['keeper', 'outfielder', 'both'])
+    for (const era of eraList(catalog)) {
+      const s = start(last, { era: era.id, spin: null });
+      if (!s) continue;
+      const spin = s.spin(),
+        open = s.openClasses(),
+        label = `${last} ${era.id}`;
+      assert.deepEqual(
+        [open.gk, open.out],
+        { keeper: [false, true], outfielder: [true, false], both: [true, true] }[last],
+      );
+      assert.equal(spin.era.id, era.id, label);
+      assert.ok(
+        s.snapshot().pool.some(e => e.available),
+        `${label}: ${spin.option.id}`,
+      );
+      for (const o of spin.reels[1].options) {
+        const can = candidates(s, era.id, o.id).length > 0;
+        looked++;
+        // On the reel only with a pick; with one class open, exactly then. (With both open
+        // a keeper-less nation may be left off: half the reel has a keeper.)
+        if (o.weight > 0) assert.ok(can, `${label}: ${o.id} has nobody to pick`);
+        else if (last !== 'both') assert.ok(!can, `${label}: ${o.id} is off the reel`);
+        if (!can) closed++;
+        if (drained.has(`${era.id} ${o.id}`) && last !== 'outfielder')
+          assert.equal(o.weight, 0, `${label}: ${o.id} has nobody left`);
+      }
+    }
+  assert.ok(looked > 1500 && closed > 40, `${looked} pools looked at, ${closed} closed`);
+  // Land on every small pool itself, in each of the three states (and in Budget mode): the
+  // landing is taken only when there is a pick, and the pick goes through.
+  for (const budget of [false, true])
+    for (const last of ['keeper', 'outfielder', 'both'])
+      for (const x of small) {
+        const s = start(last, { era: x.era, spin: x.nation }, { budget });
+        if (!s) continue;
+        const spin = s.spin(),
+          label = `${last} ${x.nation} ${x.era}${budget ? ' budget' : ''}`,
+          can = candidates(s, x.era, x.nation);
+        if (spin.scheduled) {
+          forced++;
+          assert.ok(can.length > 0, label);
+          assert.ok(
+            s
+              .snapshot()
+              .pool.filter(e => e.available)
+              .every(e => can.some(p => p.profileId === e.profileId)),
+            label,
+          );
+        } else if (!budget && last !== 'both') assert.equal(can.length, 0, label);
+        const pick = s.suggestPick();
+        assert.ok(s.pick(pick.profileId, pick.slot).ok, label);
+        // … and the draft still ends with eleven different people.
+        while (!s.complete) {
+          s.spin();
+          const next = s.suggestPick();
+          assert.ok(s.pick(next.profileId, next.slot).ok, label);
+        }
+        assert.equal(new Set(s.lineup(0).map(personId)).size, 11, label);
+      }
+  assert.ok(forced >= 10, `forced landings on small pools: ${forced}`);
+});
+
 test('Budget mode in an era draft: tiers by the shown rating of the era card, the Prime is free', () => {
   const tiers = DEFAULT_CONFIG.draft.budget;
   for (let seed = 1; seed <= 25; seed++) {
@@ -742,7 +857,16 @@ test('reel weights: deep, famous squads come up more, nobody is shut out, all-ti
       const weight = w.nations.get(n.name),
         r = ratings(era.id, n.name);
       // Every spinnable nation can come up; the best squad is a few times likelier, not more.
-      assert.ok(weight >= 1 && weight <= 1 + rules.nation.lift, `${n.name} ${weight}`);
+      // A full pool, or a star's small nation, starts from 1; a tiny pool without a star from
+      // its share of a full one (rare, never shut out).
+      const tiny = r.length < rules.nation.full && r[0] < rules.nation.star;
+      assert.ok(weight > 0 && weight <= 1 + rules.nation.lift, `${n.name} ${weight}`);
+      if (!tiny) assert.ok(weight >= 1, `${n.name} ${weight}`);
+      else
+        assert.ok(
+          weight >= (r.length / rules.nation.full) ** rules.nation.small && weight < 2,
+          `${n.name} ${weight}`,
+        );
       assert.equal(
         weight,
         nationWeight(
@@ -766,7 +890,8 @@ test('reel weights: deep, famous squads come up more, nobody is shut out, all-ti
       const rank = sorted.indexOf(w.nations.get(n.name)) + 1;
       assert.ok(rank <= (list.length * 2) / 3, `${n.name} ${era.id}: ${rank} of ${list.length}`);
     }
-    assert.ok(Math.max(...list) / Math.min(...list) < 6, String(era.id));
+    const full = list.filter(x => x >= 1);
+    assert.ok(Math.max(...full) / Math.min(...full) < 6, String(era.id));
   }
   // Per draft of eleven spins: a squad with a 93+ player about once every four drafts (the
   // owner: famous squads being findable matters more than rarity), a 90+ player on offer in
@@ -785,6 +910,26 @@ test('reel weights: deep, famous squads come up more, nobody is shut out, all-ti
     goat = nationWeight(squad([94, 88, 87, 86], 80));
   assert.ok(deep > oneStar && oneStar > nobody && nobody >= 1);
   assert.ok(small < deep && goat < deep && goat > nobody);
+  // A handful of unknown players is rare; a star's small nation is not.
+  const koreaDpr = weights.get(2010).nations.get('Korea DPR'),
+    ecuador = weights.get(2002).nations.get('Ecuador'),
+    liberia = weights.get(1998).nations.get('Liberia'),
+    trinidad = weights.get(1998).nations.get('Trinidad and Tobago');
+  assert.ok(koreaDpr < 0.1 && ecuador < 0.1, `${koreaDpr} ${ecuador}`);
+  // The owner: a pool under about eight players without a star comes up at most once in
+  // several hundred nation spins of its era.
+  for (const era of eraList(catalog)) {
+    const w = weights.get(era.id).nations,
+      sum = [...w.values()].reduce((a, b) => a + b, 0);
+    for (const n of era.nations) {
+      const r = ratings(era.id, n.name);
+      if (r.length < 8 && r[0] < rules.nation.star)
+        assert.ok(w.get(n.name) / sum < 1 / 300, `${n.name} ${era.id}: ${w.get(n.name) / sum}`);
+    }
+  }
+  assert.ok(liberia >= 1 && trinidad >= 1, `${liberia} ${trinidad}`);
+  assert.equal(nationWeight([74, 73, 70]), nationWeight([74, 73, 70], rules));
+  assert.ok(nationWeight([86, 73]) >= 1 && nationWeight([84, 73]) < 0.1);
   // A squad with a GOAT card is an all-timer's squad whatever he shows that year.
   const marked = nationWeight(squad([92, 88, 87, 86], 80), rules, true);
   assert.equal(marked, goat);

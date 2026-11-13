@@ -241,12 +241,15 @@ async function main() {
       captains,
       starters,
       handCards,
+      displaced,
       ...eraCounts
     } = built.eras.stats;
     eraReport = {
       ...eraCounts,
       goatCards: goats.length,
       startersPlaced: starters.length,
+      // pushed out of a pool by a starter: their cards stay in the file, in no pool
+      displacedKept: displaced.length,
       handCards: handCards.length,
       captainCards: captains.length,
       sameName: sameName.length,

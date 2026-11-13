@@ -119,7 +119,10 @@ test('every era: the nations that can field a pool, the World Cup sides and the 
   const counts = list.map(e => e.nations.length);
   // The 70 strongest pools (France 98: 41), and on top of them every nation that played the
   // era's World Cup and every nation with a star.
-  assert.deepEqual(counts, [50, 72, 71, 73, 71, 73, 73, 81]);
+  assert.deepEqual(counts, [50, 72, 70, 73, 71, 73, 73, 81]);
+  // (Estonia 2006 is no star nation: Poom's FIFA 2004 card is judged down from 89.)
+  assert.ok(!eraNations(catalog, 2006).some(n => n.name === 'Estonia'));
+  assert.equal(Math.round(overallRating(pool(2002, 'Estonia')[0], true, 'GK')), 82);
   // (France 98 keeps pools of players the data can identify: no Canada of first names.)
   assert.ok(!eraNations(catalog, 1998).some(n => ['Canada', 'Iceland'].includes(n.name)));
   // A World Cup side is always there, with whatever players the data has (data/world-cups.json).
@@ -196,7 +199,7 @@ test('every era: the nations that can field a pool, the World Cup sides and the 
     }
   }
   assert.deepEqual(eraNations(catalog, 1990), []);
-  assert.ok(small >= 15 && small <= 40, 'small pools: ' + small);
+  assert.ok(small >= 12 && small <= 40, 'small pools: ' + small);
   assert.ok(pool(1998, 'Japan').length >= 14); // a World Cup side of 1998
   assert.deepEqual(pool(1998, 'Canada'), []); // not spinnable then
   assert.ok(['England', 'Italy', 'France'].includes(list[0].nations[0].name));
@@ -412,6 +415,30 @@ test('the judgement: breakout lag, the icons of 1998–2002, England’s home ti
     .map(n => n.name)
     .sort();
   assert.deepEqual(top98, ['Brazil', 'France', 'Italy']);
+});
+
+test('a player a World Cup starter pushed out keeps his card in the file, in no pool', () => {
+  // Cassano (Italy 2006, for De Rossi), Kirsten (Germany 2002, for Ramelow), Martial and
+  // Digne (France 2022): the build's provenance (data/build/eras.json, stats.displaced) says
+  // who replaced whom; the cards are kept like the best versions outside the pools.
+  for (const [id, era, nation, starter] of [
+    ['ea:7631:fc6:era', 2006, 'Italy', 'De Rossi'],
+    ['ea:775:fc0:era', 2002, 'Germany', 'Ramelow'],
+    ['ea:211300:fc21:era', 2022, 'France', 'Tchouaméni'],
+    ['ea:200458:fc22:era', 2022, 'France', 'Upamecano'],
+  ]) {
+    const card = eraPlayer(catalog, id);
+    assert.ok(card, id);
+    assert.equal(card.source.nationality, nation);
+    assert.equal(eraOf(card), era, id);
+    const members = pool(era, nation);
+    assert.ok(!members.some(p => personId(p) === personId(card)), `${card.name} is in the pool`);
+    assert.ok(
+      members.some(p => p.name.includes(starter)),
+      `${starter} in ${nation} ${era}`,
+    );
+    assert.ok(!card.goat && !card.captain);
+  }
 });
 
 test('the pools read like football', () => {

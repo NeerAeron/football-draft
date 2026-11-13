@@ -105,6 +105,12 @@ export const DEFAULT_CONFIG = {
         // this share of what its depth lifts it by: the greatest stay an event.
         rareFrom: 93,
         rare: 0.4,
+        // A pool of fewer than `full` players without a star (best shown under `star`) starts
+        // from (players / full) ^ small instead of 1: tiny pools of unknown players are quite
+        // rare (the owner: at most once in several hundred nation spins of the era).
+        full: 14,
+        star: 85,
+        small: 2,
       },
     },
     // Opponent strength vs the mode's typical drafted XI (effective rating, links included).
@@ -961,6 +967,9 @@ const DRAFT_FIELDS = {
     0.5,
   ],
   'draft.reels.nation.curve': ['Nation reel: curve of the weight', 0.5, 4, 0.25],
+  'draft.reels.nation.full': ['Nation reel: players of a full pool', 0, 26, 1],
+  'draft.reels.nation.small': ['Nation reel: curve of a small pool', 0.5, 4, 0.25],
+  'draft.reels.nation.star': ['Nation reel: a star is shown at least', 70, 99, 1],
   'draft.reels.nation.rareFrom': ['Nation reel: an all-timer is shown at least', 85, 99, 1],
   'draft.reels.nation.rare': [
     'Nation reel: share of its weight an all-timer squad keeps',

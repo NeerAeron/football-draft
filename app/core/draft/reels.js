@@ -1,7 +1,8 @@
 // Reel weights of a World Cup draft: how likely an era, and a nation inside it, comes up.
 // "The rule of fun": world-class players are a thrill when they are not routine, and a nation
 // nobody knows a player of is no fun — so famous, deep squads come up more often than a
-// one-star or no-star squad, without ever shutting a nation out (every weight is positive; only
+// one-star or no-star squad, and a few unknown players (a tiny pool without a star) are rare,
+// without ever shutting a nation out (every weight is positive; only
 // the session's guards set one to 0). Never shown in the UI. Pure and deterministic: a weight
 // depends only on the pool as the data has it, not on what was drafted, so the Daily's schedule
 // and a session draw with the same odds. Numbers: CONFIG.draft.reels; measured by
@@ -18,9 +19,14 @@ const round3 = x => Math.round(x * 1000) / 1000;
  *   quality q(r) = (r − floor) / span, 0…1 (72 → 0, 92 and more → 1 by default);
  *   score = second·q(2nd best) + third·q(3rd) + fourth·q(4th) + depth·q(mean of 5th–8th)
  *         + best·q(best) + size·(players / 26);
- *   weight = 1 + lift · (score / the highest possible score) ^ curve · rarity,
+ *   weight = base + lift · (score / the highest possible score) ^ curve · rarity,
  *   rarity = `rare` for a squad with an all-timer (best shown `rareFrom`+, or a GOAT card:
- *   `allTimer`), else 1.
+ *   `allTimer`), else 1;
+ *   base = 1, or (players / `full`) ^ `small` for a pool of fewer than `full` players without
+ *   a star (its best shown under `star`): a handful of unknown players is quite rare — Korea
+ *   DPR 2010 with three players once in a few thousand nation spins of its era, a pool of six
+ *   once in several hundred — while a star's small nation (Weah's
+ *   Liberia, Yorke's Trinidad and Tobago) comes up like any modest squad.
  * Recognisable depth counts most (the 2nd to 4th best), the squad's size next, the single best
  * player least: one star does not make a nation a favourite of the reel.
  */
@@ -41,8 +47,13 @@ export function nationWeight(ratings, rules = CONFIG.draft.reels, allTimer = fal
   // Rarity: a squad with an all-timer (shown `rareFrom` or more, or a GOAT whatever he shows)
   // keeps only the share `rare` of what its depth lifts it by — never less than a squad nobody
   // knows.
-  const rare = allTimer || at(0) >= n.rareFrom ? n.rare : 1;
-  return round3(1 + n.lift * Math.pow(top > 0 ? score / top : 0, n.curve) * rare);
+  const rare = allTimer || at(0) >= n.rareFrom ? n.rare : 1,
+    full = n.full ?? 0,
+    base =
+      ratings.length >= full || at(0) >= (n.star ?? 0)
+        ? 1
+        : Math.pow(ratings.length / full, n.small ?? 1);
+  return round3(base + n.lift * Math.pow(top > 0 ? score / top : 0, n.curve) * rare);
 }
 
 /**
